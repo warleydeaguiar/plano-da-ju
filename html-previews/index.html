@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plano da Ju — Design Previews</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+      background: #1C1C1E;
+      min-height: 100vh;
+      padding: 40px 32px;
+      color: white;
+    }
+
+    .top {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+    .logo-pill {
+      background: linear-gradient(135deg, #8B3A6E, #C4607A);
+      border-radius: 14px;
+      width: 48px; height: 48px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+    }
+    .top-text {}
+    .top-title { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+    .top-sub { font-size: 13px; color: #8E8E93; margin-top: 2px; }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #8E8E93;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 14px;
+      margin-top: 32px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+    }
+
+    .card {
+      background: #2C2C2E;
+      border-radius: 16px;
+      padding: 18px 16px;
+      cursor: pointer;
+      text-decoration: none;
+      display: block;
+      transition: background 0.15s, transform 0.1s;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .card:hover { background: #3A3A3C; transform: translateY(-2px); }
+    .card:active { transform: scale(0.97); }
+
+    .card-icon { font-size: 28px; margin-bottom: 12px; }
+    .card-name { font-size: 14px; font-weight: 600; color: white; margin-bottom: 4px; letter-spacing: -0.2px; }
+    .card-desc { font-size: 12px; color: #8E8E93; line-height: 1.5; }
+
+    .badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 20px;
+      margin-top: 8px;
+    }
+    .badge-done { background: rgba(52,199,89,0.2); color: #34C759; }
+    .badge-progress { background: rgba(196,96,122,0.2); color: #C4607A; }
+    .badge-pending { background: rgba(142,142,147,0.15); color: #8E8E93; }
+
+    .divider {
+      height: 1px;
+      background: rgba(255,255,255,0.06);
+      margin: 32px 0 0;
+    }
+
+    .footer {
+      margin-top: 32px;
+      padding: 20px;
+      background: #2C2C2E;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .footer-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+    .footer-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      font-size: 13px;
+      color: #8E8E93;
+    }
+    .footer-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .dot-pink { background: #C4607A; }
+    .dot-green { background: #34C759; }
+    .dot-gray { background: #48484A; }
+  </style>
+</head>
+<body>
+
+  <div class="top">
+    <div class="logo-pill">💆‍♀️</div>
+    <div class="top-text">
+      <div class="top-title">Plano da Ju</div>
+      <div class="top-sub">Design Previews — Fase 0</div>
+    </div>
+  </div>
+
+  <!-- App Mobile -->
+  <div class="section-label">App Mobile — Telas principais</div>
+  <div class="grid">
+
+    <a class="card" href="home.html">
+      <div class="card-icon">🏠</div>
+      <div class="card-name">Home</div>
+      <div class="card-desc">Tela principal preditiva com cronograma do dia</div>
+      <div class="badge badge-done">Pronto</div>
+    </a>
+
+    <a class="card" href="checkin.html">
+      <div class="card-icon">📊</div>
+      <div class="card-name">Check-in Diário</div>
+      <div class="card-desc">Smart quiz que não repete o que já sabe</div>
+      <div class="badge badge-done">Pronto</div>
+    </a>
+
+    <a class="card" href="progresso.html">
+      <div class="card-icon">📈</div>
+      <div class="card-name">Evolução</div>
+      <div class="card-desc">Fotos + análise IA + gráficos de progresso</div>
+      <div class="badge badge-done">Pronto</div>
+    </a>
+
+    <a class="card" href="plano.html">
+      <div class="card-icon">📋</div>
+      <div class="card-name">Meu Plano</div>
+      <div class="card-desc">Cronograma de 52 semanas + lista de produtos</div>
+      <div class="badge badge-done">Pronto</div>
+    </a>
+
+    <a class="card" href="agenda.html">
+      <div class="card-icon">📅</div>
+      <div class="card-name">Agenda</div>
+      <div class="card-desc">Calendário semanal de cuidados capilares</div>
+      <div class="badge badge-done">Pronto</div>
+    </a>
+
+    <a class="card" href="loja.html">
+      <div class="card-icon">🛍️</div>
+      <div class="card-name">Produtos</div>
+      <div class="card-desc">Iberaparis + alternativos com links afiliados</div>
+      <div class="badge badge-done">Pronto</div>
+    </a>
+
+    <a class="card" href="perfil.html">
+      <div class="card-icon">👤</div>
+      <div class="card-name">Perfil</div>
+      <div class="card-desc">Assinatura, configurações, dados do cabelo</div>
+      <div class="badge badge-done">Pronto</div>
+    </a>
+
+  </div>
+
+  <!-- Web/Funil -->
+  <div class="section-label">Funil Web — plano.julianecost.com</div>
+  <div class="grid">
+
+    <a class="card" href="quiz.html">
+      <div class="card-icon">✍️</div>
+      <div class="card-name">Quiz</div>
+      <div class="card-desc">Diagnóstico capilar em 3 telas: boas-vindas, perguntas e análise IA</div>
+      <div class="badge badge-done">Pronto</div>
+    </a>
+
+    <a class="card" href="oferta.html">
+      <div class="card-icon">💳</div>
+      <div class="card-name">Página de Oferta</div>
+      <div class="card-desc">Apresentação do plano + CTA de compra (R$34,90)</div>
+      <div class="badge badge-done">Pronto</div>
+    </a>
+
+    <a class="card" href="obrigado.html">
+      <div class="card-icon">🎉</div>
+      <div class="card-name">Pós-compra</div>
+      <div class="card-desc">Confirmação + link para baixar o app</div>
+      <div class="badge badge-done">Pronto</div>
+    </a>
+
+  </div>
+
+  <!-- Admin -->
+  <div class="section-label">Admin — Painel da Juliane</div>
+  <div class="grid">
+
+    <a class="card" href="admin-planos.html">
+      <div class="card-icon">🔍</div>
+      <div class="card-name">Revisão de Planos</div>
+      <div class="card-desc">Aprovar/editar planos gerados pela IA</div>
+      <div class="badge badge-done">Pronto</div>
+    </a>
+
+    <a class="card" href="admin-dashboard.html">
+      <div class="card-icon">📊</div>
+      <div class="card-name">Dashboard</div>
+      <div class="card-desc">Assinantes ativas, churn, check-ins</div>
+      <div class="badge badge-done">Pronto</div>
+    </a>
+
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="footer">
+    <div class="footer-title">Status dos previews</div>
+    <div class="footer-item">
+      <div class="footer-dot dot-green"></div>
+      12 telas prontas para revisão
+    </div>
+    <div class="footer-item">
+      <div class="footer-dot dot-gray"></div>
+      0 telas pendentes de criação
+    </div>
+    <div class="footer-item">
+      <div class="footer-dot dot-pink"></div>
+      Após aprovação dos previews → início do código real
+    </div>
+  </div>
+
+</body>
+</html>

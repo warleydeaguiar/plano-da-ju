@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Plano da Ju — Home</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    :root {
+      --accent: #C4607A;
+      --accent2: #9B4A6A;
+      --bg: #F2F2F7;
+      --surface: #FFFFFF;
+      --dark: #1C1C1E;
+      --mid: #48484A;
+      --sub: #8E8E93;
+      --sep: #E5E5EA;
+      --green: #34C759;
+      --gold: #FF9500;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', sans-serif;
+      background: #E8E8EE;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .phone {
+      width: 390px;
+      height: 844px;
+      background: var(--bg);
+      border-radius: 54px;
+      overflow: hidden;
+      box-shadow: 0 50px 100px rgba(0,0,0,0.3), 0 0 0 1px rgba(0,0,0,0.06), inset 0 0 0 1px rgba(255,255,255,0.6);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* Status bar */
+    .status {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 28px 0;
+      flex-shrink: 0;
+    }
+    .status-time {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+      color: var(--dark);
+    }
+    .status-icons {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .signal {
+      display: flex;
+      gap: 1.5px;
+      align-items: flex-end;
+      height: 10px;
+    }
+    .signal span {
+      width: 3px;
+      background: var(--dark);
+      border-radius: 1px;
+    }
+    .wifi-icon, .battery-icon {
+      font-size: 13px;
+      color: var(--dark);
+    }
+
+    /* Scroll area */
+    .scroll {
+      flex: 1;
+      overflow-y: auto;
+      scrollbar-width: none;
+      padding-bottom: 90px;
+    }
+    .scroll::-webkit-scrollbar { display: none; }
+
+    /* Header */
+    .header {
+      padding: 10px 20px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .header-name {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--dark);
+    }
+    .header-sub {
+      font-size: 14px;
+      color: var(--sub);
+      margin-top: 2px;
+      font-weight: 400;
+    }
+    .avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent2), var(--accent));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      font-weight: 700;
+      color: white;
+      letter-spacing: -0.5px;
+    }
+
+    /* Streak pill */
+    .streak-row {
+      padding: 0 20px 14px;
+      display: flex;
+      gap: 8px;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--surface);
+      border-radius: 30px;
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--dark);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .pill-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+    }
+    .pill-dot.green { background: var(--green); }
+    .pill-dot.gold { background: var(--gold); }
+
+    /* Hero card */
+    .hero-card {
+      margin: 0 16px 12px;
+      background: linear-gradient(150deg, var(--accent2) 0%, var(--accent) 100%);
+      border-radius: 20px;
+      padding: 22px 22px 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-card::after {
+      content: '';
+      position: absolute;
+      top: -40px; right: -40px;
+      width: 140px; height: 140px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 50%;
+    }
+    .hero-eyebrow {
+      font-size: 12px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.65);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 6px;
+    }
+    .hero-count {
+      font-size: 42px;
+      font-weight: 700;
+      color: white;
+      letter-spacing: -1px;
+      line-height: 1;
+    }
+    .hero-unit {
+      font-size: 16px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.8);
+      margin-left: 4px;
+    }
+    .hero-desc {
+      font-size: 13px;
+      color: rgba(255,255,255,0.7);
+      margin-top: 6px;
+      font-weight: 400;
+    }
+    .hero-footer {
+      margin-top: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .hero-next {
+      font-size: 12px;
+      color: rgba(255,255,255,0.65);
+    }
+    .hero-next strong {
+      color: white;
+      font-size: 13px;
+      display: block;
+      margin-top: 2px;
+      font-weight: 600;
+    }
+    .hero-btn {
+      background: rgba(255,255,255,0.18);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 20px;
+      padding: 7px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      color: white;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    /* Section headers */
+    .section-header {
+      padding: 20px 20px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+    .section-title {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: var(--dark);
+    }
+    .section-link {
+      font-size: 15px;
+      color: var(--accent);
+      font-weight: 400;
+      cursor: pointer;
+    }
+
+    /* Today card */
+    .today-card {
+      margin: 0 16px 12px;
+      background: var(--surface);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07), 0 4px 12px rgba(0,0,0,0.04);
+    }
+    .today-main {
+      padding: 16px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      border-bottom: 1px solid var(--sep);
+    }
+    .today-icon-raw {
+      font-size: 32px;
+      flex-shrink: 0;
+      line-height: 1;
+    }
+    .today-text { flex: 1; min-width: 0; }
+    .today-tag {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .today-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--dark);
+      margin-top: 2px;
+      letter-spacing: -0.2px;
+    }
+    .today-product {
+      font-size: 13px;
+      color: var(--sub);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .today-chevron {
+      font-size: 18px;
+      color: var(--sep);
+      flex-shrink: 0;
+    }
+    .today-action {
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+    .today-action-icon { font-size: 18px; }
+    .today-action-text {
+      font-size: 14px;
+      color: var(--accent);
+      font-weight: 500;
+      flex: 1;
+    }
+    .today-action-chevron { font-size: 14px; color: var(--sep); }
+
+    /* Check-in row */
+    .checkin-card {
+      margin: 0 16px 12px;
+      background: var(--dark);
+      border-radius: 16px;
+      padding: 16px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(28,28,30,0.2);
+    }
+    .checkin-icon-raw { font-size: 24px; flex-shrink: 0; }
+    .checkin-text { flex: 1; }
+    .checkin-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: white;
+      letter-spacing: -0.2px;
+    }
+    .checkin-sub { font-size: 13px; color: rgba(255,255,255,0.5); margin-top: 2px; }
+    .checkin-caret { font-size: 20px; color: rgba(255,255,255,0.3); }
+
+    /* List group (Apple-style) */
+    .list-group {
+      margin: 0 16px 12px;
+      background: var(--surface);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+    }
+    .list-row {
+      display: flex;
+      align-items: center;
+      padding: 13px 18px;
+      gap: 14px;
+      border-bottom: 1px solid var(--sep);
+      cursor: pointer;
+    }
+    .list-row:last-child { border-bottom: none; }
+    .list-icon-raw { font-size: 22px; flex-shrink: 0; width: 28px; text-align: center; }
+    .list-content { flex: 1; min-width: 0; }
+    .list-day {
+      font-size: 11px;
+      color: var(--sub);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .list-name {
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--dark);
+      margin-top: 1px;
+    }
+    .list-note { font-size: 13px; color: var(--sub); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .list-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .badge-done {
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: var(--green);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px;
+      color: white;
+    }
+    .badge-today {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent);
+      background: #FDEEF2;
+      padding: 3px 8px;
+      border-radius: 20px;
+    }
+    .list-chevron { font-size: 14px; color: var(--sep); }
+
+    /* Quick log */
+    .quick-row {
+      margin: 0 16px 12px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .quick-tile {
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 16px 16px 14px;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+    }
+    .qt-icon { font-size: 26px; margin-bottom: 10px; }
+    .qt-name { font-size: 14px; font-weight: 600; color: var(--dark); letter-spacing: -0.2px; }
+    .qt-sub { font-size: 12px; color: var(--sub); margin-top: 3px; }
+
+    /* Tip */
+    .tip-group {
+      margin: 0 16px 20px;
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 16px 18px;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+    }
+    .tip-icon-raw { font-size: 22px; flex-shrink: 0; margin-top: 1px; }
+    .tip-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--gold);
+      margin-bottom: 4px;
+    }
+    .tip-text { font-size: 14px; color: var(--mid); line-height: 1.5; font-weight: 400; }
+
+    /* Bottom tab bar */
+    .tab-bar {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 82px;
+      background: rgba(242,242,247,0.92);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 0.5px solid rgba(0,0,0,0.12);
+      display: flex;
+      align-items: flex-start;
+      padding-top: 8px;
+    }
+    .tab {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      cursor: pointer;
+    }
+    .tab-icon { font-size: 25px; }
+    .tab-label { font-size: 10px; font-weight: 500; color: var(--sub); letter-spacing: 0.1px; }
+    .tab.active .tab-label { color: var(--accent); }
+    .tab.active .tab-icon { filter: none; }
+  </style>
+</head>
+<body>
+  <div class="phone">
+
+    <!-- Status bar -->
+    <div class="status">
+      <span class="status-time">9:41</span>
+      <div class="status-icons">
+        <div class="signal">
+          <span style="height:4px"></span>
+          <span style="height:6px"></span>
+          <span style="height:8px"></span>
+          <span style="height:10px"></span>
+        </div>
+        <span class="wifi-icon">▾▴</span>
+        <span class="battery-icon">▭</span>
+      </div>
+    </div>
+
+    <div class="scroll">
+
+      <!-- Header -->
+      <div class="header">
+        <div>
+          <div class="header-name">Olá, Maria ☀️</div>
+          <div class="header-sub">Seu cabelo ondulado, dia 3</div>
+        </div>
+        <div class="avatar">M</div>
+      </div>
+
+      <!-- Pills -->
+      <div class="streak-row">
+        <div class="pill">
+          <div class="pill-dot green"></div>
+          12 dias seguidos
+        </div>
+        <div class="pill">
+          <div class="pill-dot gold"></div>
+          3 dias desde lavagem
+        </div>
+      </div>
+
+      <!-- Hero card: days since wash -->
+      <div class="hero-card">
+        <div class="hero-eyebrow">Desde a última lavagem</div>
+        <div>
+          <span class="hero-count">3</span>
+          <span class="hero-unit">dias</span>
+        </div>
+        <div class="hero-desc">Ideal para lavar: a cada 4–5 dias para ondulado</div>
+        <div class="hero-footer">
+          <div class="hero-next">
+            Próxima lavagem
+            <strong>Amanhã ou domingo</strong>
+          </div>
+          <div class="hero-btn">Registrar lavagem</div>
+        </div>
+      </div>
+
+      <!-- Today -->
+      <div class="section-header">
+        <div class="section-title">Para hoje</div>
+      </div>
+
+      <div class="today-card">
+        <div class="today-main">
+          <div class="today-icon-raw">🧴</div>
+          <div class="today-text">
+            <div class="today-tag">Indicado agora</div>
+            <div class="today-name">Máscara de Hidratação</div>
+            <div class="today-product">Iberaparis Hydra + Óleo de Argan</div>
+          </div>
+          <div class="today-chevron">›</div>
+        </div>
+        <div class="today-action">
+          <div class="today-action-icon">📖</div>
+          <div class="today-action-text">Ver passo a passo</div>
+          <div class="today-action-chevron">›</div>
+        </div>
+      </div>
+
+      <!-- Check-in -->
+      <div class="checkin-card">
+        <div class="checkin-icon-raw">🌿</div>
+        <div class="checkin-text">
+          <div class="checkin-title">Check-in de hoje</div>
+          <div class="checkin-sub">Como está seu cabelo? • 3 perguntas</div>
+        </div>
+        <div class="checkin-caret">›</div>
+      </div>
+
+      <!-- Schedule -->
+      <div class="section-header">
+        <div class="section-title">Próximos cuidados</div>
+        <div class="section-link">Ver agenda</div>
+      </div>
+
+      <div class="list-group">
+        <div class="list-row">
+          <div class="list-icon-raw">✓</div>
+          <div class="list-content">
+            <div class="list-day">Quarta · Há 3 dias</div>
+            <div class="list-name">Lavagem com Co-wash</div>
+            <div class="list-note">Inoar Bomba + Máscara Nutrição</div>
+          </div>
+          <div class="list-right">
+            <div class="badge-done">✓</div>
+            <div class="list-chevron">›</div>
+          </div>
+        </div>
+        <div class="list-row">
+          <div class="list-icon-raw">🧴</div>
+          <div class="list-content">
+            <div class="list-day">Hoje · Sábado</div>
+            <div class="list-name">Máscara de Hidratação</div>
+            <div class="list-note">Iberaparis Hydra</div>
+          </div>
+          <div class="list-right">
+            <div class="badge-today">Hoje</div>
+            <div class="list-chevron">›</div>
+          </div>
+        </div>
+        <div class="list-row">
+          <div class="list-icon-raw">🚿</div>
+          <div class="list-content">
+            <div class="list-day">Domingo</div>
+            <div class="list-name">Lavagem com Shampoo Lowpoo</div>
+            <div class="list-note">Iberaparis Crespo Assumido</div>
+          </div>
+          <div class="list-right">
+            <div class="list-chevron">›</div>
+          </div>
+        </div>
+        <div class="list-row">
+          <div class="list-icon-raw">💆</div>
+          <div class="list-content">
+            <div class="list-day">Quarta que vem</div>
+            <div class="list-name">Tratamento de Nutrição</div>
+            <div class="list-note">Máscara Manteiga de Karité</div>
+          </div>
+          <div class="list-right">
+            <div class="list-chevron">›</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick log -->
+      <div class="section-header">
+        <div class="section-title">Registrar</div>
+      </div>
+
+      <div class="quick-row">
+        <div class="quick-tile">
+          <div class="qt-icon">🚿</div>
+          <div class="qt-name">Lavei o cabelo</div>
+          <div class="qt-sub">Marcar agora</div>
+        </div>
+        <div class="quick-tile">
+          <div class="qt-icon">💆</div>
+          <div class="qt-name">Fiz tratamento</div>
+          <div class="qt-sub">Máscara, óleo...</div>
+        </div>
+        <div class="quick-tile">
+          <div class="qt-icon">💨</div>
+          <div class="qt-name">Usei calor</div>
+          <div class="qt-sub">Secador, chapinha</div>
+        </div>
+        <div class="quick-tile">
+          <div class="qt-icon">📸</div>
+          <div class="qt-name">Foto de progresso</div>
+          <div class="qt-sub">Registrar evolução</div>
+        </div>
+      </div>
+
+      <!-- Tip -->
+      <div class="section-header">
+        <div class="section-title">Dica do dia</div>
+      </div>
+
+      <div class="tip-group">
+        <div class="tip-icon-raw">💬</div>
+        <div>
+          <div class="tip-label">Juliane recomenda</div>
+          <div class="tip-text">Para ondulado no 3º dia, use difusor com o cabelo úmido e aplique gel antes de secar — reduz frizz sem pesar.</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Tab bar -->
+    <div class="tab-bar">
+      <div class="tab active">
+        <div class="tab-icon">🏠</div>
+        <div class="tab-label" style="color: var(--accent)">Início</div>
+      </div>
+      <div class="tab">
+        <div class="tab-icon">📅</div>
+        <div class="tab-label">Agenda</div>
+      </div>
+      <div class="tab">
+        <div class="tab-icon">📋</div>
+        <div class="tab-label">Meu Plano</div>
+      </div>
+      <div class="tab">
+        <div class="tab-icon">📈</div>
+        <div class="tab-label">Evolução</div>
+      </div>
+      <div class="tab">
+        <div class="tab-icon">👤</div>
+        <div class="tab-label">Perfil</div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

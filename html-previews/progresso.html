@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Plano da Ju — Evolução</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    :root {
+      --accent: #C4607A;
+      --accent2: #9B4A6A;
+      --bg: #F2F2F7;
+      --surface: #FFFFFF;
+      --dark: #1C1C1E;
+      --mid: #48484A;
+      --sub: #8E8E93;
+      --sep: #E5E5EA;
+      --green: #34C759;
+      --gold: #FF9500;
+      --blue: #007AFF;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+      background: #E8E8EE;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .phone {
+      width: 390px;
+      height: 844px;
+      background: var(--bg);
+      border-radius: 54px;
+      overflow: hidden;
+      box-shadow: 0 50px 100px rgba(0,0,0,0.3), 0 0 0 1px rgba(0,0,0,0.06);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .status {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 28px 0;
+      flex-shrink: 0;
+      background: var(--bg);
+    }
+    .status-time { font-size: 15px; font-weight: 600; letter-spacing: -0.3px; color: var(--dark); }
+    .status-icons { display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--dark); }
+
+    .scroll {
+      flex: 1;
+      overflow-y: auto;
+      scrollbar-width: none;
+      padding-bottom: 90px;
+    }
+    .scroll::-webkit-scrollbar { display: none; }
+
+    .page-header {
+      padding: 12px 20px 16px;
+    }
+    .page-title {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--dark);
+    }
+    .page-sub { font-size: 14px; color: var(--sub); margin-top: 3px; }
+
+    /* Scores row */
+    .scores-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      padding: 0 16px;
+      margin-bottom: 12px;
+    }
+    .score-card {
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 14px 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+      text-align: center;
+    }
+    .score-icon { font-size: 20px; margin-bottom: 6px; }
+    .score-value {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--dark);
+    }
+    .score-label { font-size: 11px; color: var(--sub); margin-top: 3px; font-weight: 500; }
+    .score-delta {
+      font-size: 11px;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+    .delta-up { color: var(--green); }
+    .delta-down { color: #FF3B30; }
+    .delta-same { color: var(--sub); }
+
+    /* Section headers */
+    .section-header {
+      padding: 20px 20px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+    .section-title { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; color: var(--dark); }
+    .section-link { font-size: 15px; color: var(--accent); cursor: pointer; }
+
+    /* Before/After slider */
+    .before-after {
+      margin: 0 16px 12px;
+      background: var(--surface);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+    }
+    .ba-photos {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      height: 180px;
+      position: relative;
+    }
+    .ba-photo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 52px;
+      position: relative;
+    }
+    .ba-before { background: linear-gradient(135deg, #D4C5DC, #BBA8C8); }
+    .ba-after  { background: linear-gradient(135deg, #C4A0B4, #A07090); }
+    .ba-label {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.5);
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .ba-divider {
+      position: absolute;
+      top: 0; bottom: 0;
+      left: 50%;
+      width: 2px;
+      background: white;
+      transform: translateX(-50%);
+    }
+    .ba-handle {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px;
+      color: var(--sub);
+    }
+    .ba-info {
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .ba-dates { font-size: 12px; color: var(--sub); }
+    .ba-days { font-size: 13px; font-weight: 600; color: var(--accent); }
+
+    /* AI Analysis card */
+    .ai-card {
+      margin: 0 16px 12px;
+      background: var(--dark);
+      border-radius: 20px;
+      padding: 18px 18px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .ai-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .ai-icon { font-size: 20px; }
+    .ai-title { font-size: 14px; font-weight: 600; color: white; }
+    .ai-sub { font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 1px; }
+
+    .ai-scores {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .ai-score-row {
+      background: rgba(255,255,255,0.07);
+      border-radius: 12px;
+      padding: 10px 12px;
+    }
+    .ai-score-name { font-size: 11px; color: rgba(255,255,255,0.5); font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
+    .ai-score-val { font-size: 18px; font-weight: 700; color: white; margin-top: 4px; }
+    .ai-score-bar {
+      height: 3px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 3px;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+    .ai-score-fill { height: 100%; border-radius: 3px; background: var(--accent); }
+
+    .ai-text {
+      font-size: 13px;
+      color: rgba(255,255,255,0.7);
+      line-height: 1.6;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      padding-top: 12px;
+    }
+
+    /* Chart */
+    .chart-card {
+      margin: 0 16px 12px;
+      background: var(--surface);
+      border-radius: 20px;
+      padding: 18px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+    }
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+    .chart-title { font-size: 15px; font-weight: 600; color: var(--dark); }
+    .chart-val { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; color: var(--dark); }
+    .chart-unit { font-size: 14px; color: var(--sub); }
+    .chart-delta { font-size: 13px; font-weight: 600; color: var(--green); }
+
+    /* Simple SVG line chart */
+    .chart-svg { width: 100%; height: 80px; }
+
+    .chart-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 6px;
+    }
+    .chart-label { font-size: 11px; color: var(--sub); }
+
+    /* Streak */
+    .streak-card {
+      margin: 0 16px 12px;
+      background: var(--surface);
+      border-radius: 20px;
+      padding: 18px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+    }
+    .streak-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    .streak-num { font-size: 34px; font-weight: 700; letter-spacing: -1px; color: var(--dark); }
+    .streak-label { font-size: 13px; color: var(--sub); margin-top: 2px; }
+    .flame { font-size: 28px; }
+
+    .streak-dots {
+      display: flex;
+      gap: 5px;
+    }
+    .s-dot {
+      flex: 1;
+      height: 6px;
+      border-radius: 3px;
+    }
+    .s-dot.filled { background: var(--accent); }
+    .s-dot.today { background: var(--gold); }
+    .s-dot.empty { background: var(--sep); }
+
+    .streak-days {
+      display: flex;
+      gap: 5px;
+      margin-top: 4px;
+    }
+    .s-day { flex: 1; text-align: center; font-size: 9px; color: var(--sub); font-weight: 500; }
+
+    /* Gallery grid */
+    .gallery {
+      padding: 0 16px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 3px;
+      margin-bottom: 12px;
+    }
+    .gallery-item {
+      aspect-ratio: 1;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      position: relative;
+      overflow: hidden;
+    }
+    .g1 { background: linear-gradient(135deg, #D4C5DC, #BBA8C8); }
+    .g2 { background: linear-gradient(135deg, #C8B8D4, #B09AC0); }
+    .g3 { background: linear-gradient(135deg, #C0A8C8, #A890B8); }
+    .g4 { background: linear-gradient(135deg, #BCA0C0, #A888B4); }
+    .g5 { background: linear-gradient(135deg, #C4A0B4, #A07090); }
+    .g6 { background: linear-gradient(135deg, #C89AAC, #A87090); }
+    .gallery-date {
+      position: absolute;
+      bottom: 4px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 9px;
+      font-weight: 600;
+      color: white;
+      background: rgba(0,0,0,0.4);
+      padding: 2px 6px;
+      border-radius: 10px;
+      white-space: nowrap;
+    }
+
+    /* Add photo btn */
+    .add-photo {
+      margin: 0 16px 20px;
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 16px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+      cursor: pointer;
+      border: 2px dashed var(--sep);
+    }
+    .add-photo-icon { font-size: 24px; }
+    .add-photo-text { flex: 1; }
+    .add-photo-title { font-size: 15px; font-weight: 600; color: var(--accent); }
+    .add-photo-sub { font-size: 12px; color: var(--sub); margin-top: 2px; }
+    .add-chevron { font-size: 18px; color: var(--sep); }
+
+    /* Tab bar */
+    .tab-bar {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 82px;
+      background: rgba(242,242,247,0.92);
+      backdrop-filter: blur(20px);
+      border-top: 0.5px solid rgba(0,0,0,0.12);
+      display: flex;
+      align-items: flex-start;
+      padding-top: 8px;
+      border-radius: 0 0 54px 54px;
+    }
+    .tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; }
+    .tab-icon { font-size: 25px; }
+    .tab-label { font-size: 10px; font-weight: 500; color: var(--sub); }
+    .tab.active .tab-label { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="phone">
+    <div class="status">
+      <span class="status-time">9:41</span>
+      <div class="status-icons"><span>▭ WiFi ▭</span></div>
+    </div>
+
+    <div class="scroll">
+      <div class="page-header">
+        <div class="page-title">Evolução</div>
+        <div class="page-sub">90 dias de acompanhamento</div>
+      </div>
+
+      <!-- Scores -->
+      <div class="scores-row">
+        <div class="score-card">
+          <div class="score-icon">✨</div>
+          <div class="score-value">4.2</div>
+          <div class="score-label">Brilho</div>
+          <div class="score-delta delta-up">↑ +0.8</div>
+        </div>
+        <div class="score-card">
+          <div class="score-icon">💧</div>
+          <div class="score-value">3.9</div>
+          <div class="score-label">Hidratação</div>
+          <div class="score-delta delta-up">↑ +1.1</div>
+        </div>
+        <div class="score-card">
+          <div class="score-icon">🌀</div>
+          <div class="score-value">2.1</div>
+          <div class="score-label">Frizz</div>
+          <div class="score-delta delta-up">↓ −1.4</div>
+        </div>
+      </div>
+
+      <!-- Before/After -->
+      <div class="section-header">
+        <div class="section-title">Antes & Depois</div>
+      </div>
+      <div class="before-after">
+        <div class="ba-photos">
+          <div class="ba-photo ba-before">
+            💇‍♀️
+            <div class="ba-label">Antes · Jan 10</div>
+          </div>
+          <div class="ba-photo ba-after">
+            👱‍♀️
+            <div class="ba-label">Hoje · Abr 10</div>
+          </div>
+          <div class="ba-divider"></div>
+          <div class="ba-handle">⟺</div>
+        </div>
+        <div class="ba-info">
+          <div class="ba-dates">Jan 10, 2026 → Abr 10, 2026</div>
+          <div class="ba-days">90 dias de rotina</div>
+        </div>
+      </div>
+
+      <!-- AI Analysis -->
+      <div class="section-header">
+        <div class="section-title">Análise da IA</div>
+      </div>
+      <div class="ai-card">
+        <div class="ai-header">
+          <div class="ai-icon">🔬</div>
+          <div>
+            <div class="ai-title">Última análise · Hoje</div>
+            <div class="ai-sub">Baseada na foto enviada às 9:12</div>
+          </div>
+        </div>
+        <div class="ai-scores">
+          <div class="ai-score-row">
+            <div class="ai-score-name">Brilho</div>
+            <div class="ai-score-val">4.2 / 5</div>
+            <div class="ai-score-bar"><div class="ai-score-fill" style="width:84%"></div></div>
+          </div>
+          <div class="ai-score-row">
+            <div class="ai-score-name">Hidratação</div>
+            <div class="ai-score-val">3.9 / 5</div>
+            <div class="ai-score-bar"><div class="ai-score-fill" style="width:78%"></div></div>
+          </div>
+          <div class="ai-score-row">
+            <div class="ai-score-name">Pontas</div>
+            <div class="ai-score-val">3.5 / 5</div>
+            <div class="ai-score-bar"><div class="ai-score-fill" style="width:70%"></div></div>
+          </div>
+          <div class="ai-score-row">
+            <div class="ai-score-name">Frizz</div>
+            <div class="ai-score-val">2.1 / 5</div>
+            <div class="ai-score-bar"><div class="ai-score-fill" style="width:42%; background:#34C759"></div></div>
+          </div>
+        </div>
+        <div class="ai-text">
+          Brilho e hidratação melhoraram muito desde janeiro. As pontas ainda precisam de atenção — considere um corte nas próximas semanas e priorize nutrição nas lavagens.
+        </div>
+      </div>
+
+      <!-- Length chart -->
+      <div class="section-header">
+        <div class="section-title">Comprimento</div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Crescimento registrado</div>
+            <div class="chart-delta">↑ +4.5 cm nos últimos 90 dias</div>
+          </div>
+          <div>
+            <div class="chart-val">34<span class="chart-unit"> cm</span></div>
+          </div>
+        </div>
+        <svg class="chart-svg" viewBox="0 0 310 80" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#C4607A" stop-opacity="0.15"/>
+              <stop offset="100%" stop-color="#C4607A" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <!-- Area fill -->
+          <path d="M0,64 C30,60 60,56 90,52 C120,48 150,44 180,40 C210,36 240,30 280,22 L310,18 L310,80 L0,80 Z" fill="url(#grad)"/>
+          <!-- Line -->
+          <path d="M0,64 C30,60 60,56 90,52 C120,48 150,44 180,40 C210,36 240,30 280,22 L310,18" fill="none" stroke="#C4607A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <!-- Dots -->
+          <circle cx="0" cy="64" r="3.5" fill="#C4607A"/>
+          <circle cx="90" cy="52" r="3.5" fill="#C4607A"/>
+          <circle cx="180" cy="40" r="3.5" fill="#C4607A"/>
+          <circle cx="310" cy="18" r="5" fill="#C4607A" stroke="white" stroke-width="2"/>
+        </svg>
+        <div class="chart-labels">
+          <div class="chart-label">Jan</div>
+          <div class="chart-label">Fev</div>
+          <div class="chart-label">Mar</div>
+          <div class="chart-label">Hoje</div>
+        </div>
+      </div>
+
+      <!-- Streak -->
+      <div class="section-header">
+        <div class="section-title">Consistência</div>
+      </div>
+      <div class="streak-card">
+        <div class="streak-top">
+          <div>
+            <div class="streak-num">12</div>
+            <div class="streak-label">dias seguindo a rotina</div>
+          </div>
+          <div class="flame">🔥</div>
+        </div>
+        <div class="streak-dots">
+          <div class="s-dot filled"></div>
+          <div class="s-dot filled"></div>
+          <div class="s-dot filled"></div>
+          <div class="s-dot filled"></div>
+          <div class="s-dot filled"></div>
+          <div class="s-dot filled"></div>
+          <div class="s-dot filled"></div>
+          <div class="s-dot filled"></div>
+          <div class="s-dot filled"></div>
+          <div class="s-dot filled"></div>
+          <div class="s-dot filled"></div>
+          <div class="s-dot today"></div>
+          <div class="s-dot empty"></div>
+          <div class="s-dot empty"></div>
+        </div>
+        <div class="streak-days">
+          <div class="s-day">S</div><div class="s-day">D</div>
+          <div class="s-day">S</div><div class="s-day">T</div>
+          <div class="s-day">Q</div><div class="s-day">Q</div>
+          <div class="s-day">S</div><div class="s-day">S</div>
+          <div class="s-day">D</div><div class="s-day">S</div>
+          <div class="s-day">T</div><div class="s-day">Q</div>
+          <div class="s-day">Q</div><div class="s-day">S</div>
+        </div>
+      </div>
+
+      <!-- Photo gallery -->
+      <div class="section-header">
+        <div class="section-title">Galeria</div>
+        <div class="section-link">Ver todas</div>
+      </div>
+      <div class="gallery">
+        <div class="gallery-item g6">💇‍♀️<div class="gallery-date">10 Jan</div></div>
+        <div class="gallery-item g5">💆‍♀️<div class="gallery-date">10 Fev</div></div>
+        <div class="gallery-item g4">👩‍🦱<div class="gallery-date">05 Mar</div></div>
+        <div class="gallery-item g3">👩‍🦳<div class="gallery-date">20 Mar</div></div>
+        <div class="gallery-item g2">👱‍♀️<div class="gallery-date">05 Abr</div></div>
+        <div class="gallery-item g1">✨<div class="gallery-date">Hoje</div></div>
+      </div>
+
+      <!-- Add photo -->
+      <div class="add-photo">
+        <div class="add-photo-icon">📸</div>
+        <div class="add-photo-text">
+          <div class="add-photo-title">Registrar foto de hoje</div>
+          <div class="add-photo-sub">IA analisa e compara com fotos anteriores</div>
+        </div>
+        <div class="add-chevron">›</div>
+      </div>
+
+    </div>
+
+    <div class="tab-bar">
+      <div class="tab"><div class="tab-icon">🏠</div><div class="tab-label">Início</div></div>
+      <div class="tab"><div class="tab-icon">📅</div><div class="tab-label">Agenda</div></div>
+      <div class="tab"><div class="tab-icon">📋</div><div class="tab-label">Meu Plano</div></div>
+      <div class="tab active"><div class="tab-icon">📈</div><div class="tab-label" style="color:#C4607A">Evolução</div></div>
+      <div class="tab"><div class="tab-icon">👤</div><div class="tab-label">Perfil</div></div>
+    </div>
+  </div>
+</body>
+</html>

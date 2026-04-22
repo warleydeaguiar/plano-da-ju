@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Plano da Ju — Check-in Diário</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    :root {
+      --rose: #C4607A;
+      --rose-light: #F2B8C6;
+      --rose-pale: #FDE8EE;
+      --gold: #C9943A;
+      --gold-light: #F5E3C0;
+      --cream: #FDF8F5;
+      --dark: #2D1B2E;
+      --mid: #6B5370;
+      --text-light: #9B8AA0;
+      --white: #FFFFFF;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #F0EAF4;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .phone-frame {
+      width: 390px;
+      height: 844px;
+      background: var(--cream);
+      border-radius: 44px;
+      overflow: hidden;
+      box-shadow: 0 40px 80px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.08);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Gradient top */
+    .top-gradient {
+      background: linear-gradient(160deg, #8B3A6E 0%, var(--rose) 100%);
+      padding: 50px 24px 32px;
+      flex-shrink: 0;
+    }
+    .back-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: rgba(255,255,255,0.8);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      margin-bottom: 20px;
+    }
+    .checkin-header-label {
+      font-size: 11px;
+      color: rgba(255,255,255,0.65);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .checkin-header-title {
+      font-size: 24px;
+      font-weight: 800;
+      color: white;
+      line-height: 1.2;
+    }
+    .checkin-context {
+      font-size: 13px;
+      color: rgba(255,255,255,0.75);
+      margin-top: 6px;
+    }
+
+    /* Progress bar */
+    .progress-wrap {
+      margin-top: 20px;
+    }
+    .progress-track {
+      height: 4px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: white;
+      border-radius: 4px;
+      width: 33%;
+      transition: width 0.4s ease;
+    }
+    .progress-label {
+      font-size: 11px;
+      color: rgba(255,255,255,0.6);
+      margin-top: 6px;
+      text-align: right;
+    }
+
+    /* Question cards */
+    .questions-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 20px 120px;
+      scrollbar-width: none;
+    }
+    .questions-area::-webkit-scrollbar { display: none; }
+
+    /* Smart context note */
+    .smart-note {
+      background: #EDF7ED;
+      border: 1.5px solid #A8D5A6;
+      border-radius: 12px;
+      padding: 10px 14px;
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      margin-bottom: 20px;
+    }
+    .smart-note-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+    .smart-note-text { font-size: 12px; color: #3D7A3A; line-height: 1.5; }
+    .smart-note-text strong { font-weight: 700; }
+
+    .question-block { margin-bottom: 28px; }
+    .q-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-light);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 8px;
+    }
+    .q-text {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--dark);
+      line-height: 1.35;
+      margin-bottom: 16px;
+    }
+
+    /* Options grid */
+    .options-grid { display: flex; flex-direction: column; gap: 8px; }
+    .option-btn {
+      background: white;
+      border: 2px solid #EDE6F2;
+      border-radius: 14px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .option-btn.selected {
+      border-color: var(--rose);
+      background: var(--rose-pale);
+    }
+    .option-emoji { font-size: 20px; flex-shrink: 0; }
+    .option-label { font-size: 14px; font-weight: 600; color: var(--dark); }
+    .option-sub { font-size: 11px; color: var(--text-light); margin-top: 2px; }
+    .option-check {
+      margin-left: auto;
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      border: 2px solid #EDE6F2;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+    .option-btn.selected .option-check {
+      background: var(--rose);
+      border-color: var(--rose);
+      color: white;
+    }
+
+    /* Emoji scale */
+    .emoji-scale {
+      display: flex;
+      gap: 8px;
+    }
+    .scale-btn {
+      flex: 1;
+      background: white;
+      border: 2px solid #EDE6F2;
+      border-radius: 14px;
+      padding: 12px 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+    .scale-btn.selected {
+      border-color: var(--rose);
+      background: var(--rose-pale);
+    }
+    .scale-emoji { font-size: 22px; }
+    .scale-label { font-size: 10px; font-weight: 600; color: var(--text-light); text-align: center; }
+    .scale-btn.selected .scale-label { color: var(--rose); }
+
+    /* Skipped questions notice */
+    .skipped-notice {
+      background: var(--gold-light);
+      border: 1.5px solid #E8D0A0;
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 20px;
+    }
+    .skipped-title { font-size: 12px; font-weight: 700; color: var(--gold); margin-bottom: 4px; }
+    .skipped-text { font-size: 12px; color: #7A5E20; line-height: 1.5; }
+
+    /* Bottom action */
+    .bottom-action {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      background: var(--cream);
+      padding: 16px 20px 36px;
+      border-top: 1px solid #EDE6F2;
+    }
+    .btn-next {
+      width: 100%;
+      background: linear-gradient(135deg, #8B3A6E, var(--rose));
+      color: white;
+      border: none;
+      border-radius: 16px;
+      padding: 16px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-skip {
+      width: 100%;
+      background: transparent;
+      color: var(--text-light);
+      border: none;
+      padding: 10px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: center;
+      margin-top: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="phone-frame">
+
+    <!-- Top gradient header -->
+    <div class="top-gradient">
+      <div class="back-btn">‹ Voltar</div>
+      <div class="checkin-header-label">Check-in diário</div>
+      <div class="checkin-header-title">Como está seu cabelo hoje?</div>
+      <div class="checkin-context">Sábado, 3 dias após lavagem • 3 perguntas</div>
+      <div class="progress-wrap">
+        <div class="progress-track">
+          <div class="progress-fill" style="width: 33%"></div>
+        </div>
+        <div class="progress-label">1 de 3</div>
+      </div>
+    </div>
+
+    <!-- Questions -->
+    <div class="questions-area">
+
+      <!-- Smart skip notice -->
+      <div class="smart-note">
+        <div class="smart-note-icon">✨</div>
+        <div class="smart-note-text">
+          <strong>Perguntas personalizadas para hoje.</strong> Como você já registrou sua lavagem há 3 dias, pulamos as perguntas sobre isso.
+        </div>
+      </div>
+
+      <!-- Question 1 -->
+      <div class="question-block">
+        <div class="q-label">Pergunta 1 de 3</div>
+        <div class="q-text">Como você está sentindo seu cabelo agora?</div>
+        <div class="options-grid">
+          <div class="option-btn selected">
+            <div class="option-emoji">💧</div>
+            <div>
+              <div class="option-label">Ressecado</div>
+              <div class="option-sub">Sem brilho, sensação de palha</div>
+            </div>
+            <div class="option-check">✓</div>
+          </div>
+          <div class="option-btn">
+            <div class="option-emoji">✨</div>
+            <div>
+              <div class="option-label">Normal / Bom</div>
+              <div class="option-sub">Macio e com brilho</div>
+            </div>
+            <div class="option-check"></div>
+          </div>
+          <div class="option-btn">
+            <div class="option-emoji">💦</div>
+            <div>
+              <div class="option-label">Oleoso</div>
+              <div class="option-sub">Pesado ou com raiz oleosa</div>
+            </div>
+            <div class="option-check"></div>
+          </div>
+          <div class="option-btn">
+            <div class="option-emoji">🌪️</div>
+            <div>
+              <div class="option-label">Com muito frizz</div>
+              <div class="option-sub">Arrepiado, difícil de controlar</div>
+            </div>
+            <div class="option-check"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Question 2 -->
+      <div class="question-block">
+        <div class="q-label">Pergunta 2 de 3</div>
+        <div class="q-text">Percebeu queda de cabelo hoje?</div>
+        <div class="options-grid">
+          <div class="option-btn">
+            <div class="option-emoji">😌</div>
+            <div>
+              <div class="option-label">Não, queda normal</div>
+            </div>
+            <div class="option-check"></div>
+          </div>
+          <div class="option-btn">
+            <div class="option-emoji">😟</div>
+            <div>
+              <div class="option-label">Sim, mais que o normal</div>
+            </div>
+            <div class="option-check"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Question 3 -->
+      <div class="question-block">
+        <div class="q-label">Pergunta 3 de 3</div>
+        <div class="q-text">Como está seu couro cabeludo?</div>
+        <div class="emoji-scale">
+          <div class="scale-btn">
+            <div class="scale-emoji">😣</div>
+            <div class="scale-label">Com coceira</div>
+          </div>
+          <div class="scale-btn">
+            <div class="scale-emoji">😐</div>
+            <div class="scale-label">Normal</div>
+          </div>
+          <div class="scale-btn selected">
+            <div class="scale-emoji">😊</div>
+            <div class="scale-label">Bem limpo</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Auto-skipped notice -->
+      <div class="skipped-notice">
+        <div class="skipped-title">🤖 Pulado automaticamente</div>
+        <div class="skipped-text">Não perguntamos sobre lavagem pois você registrou há 3 dias. Nem sobre protetor térmico, pois não há calor previsto para hoje no seu plano.</div>
+      </div>
+
+    </div>
+
+    <!-- Bottom action -->
+    <div class="bottom-action">
+      <button class="btn-next">Salvar check-in →</button>
+      <button class="btn-skip">Pular por hoje</button>
+    </div>
+
+  </div>
+</body>
+</html>

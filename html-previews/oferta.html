@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Seu Plano Capilar Está Pronto — Plano da Ju</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    :root {
+      --rose: #C4607A; --rose-deep: #8B3A6E; --rose-pale: #FDE8EE;
+      --rose-light: #F2B8C6; --dark: #2D1B2E; --mid: #6B5370;
+      --light: #9B8AA0; --bg: #F5EFF9;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+    .page-wrap { width: 100%; max-width: 480px; min-height: 100vh; background: white; display: flex; flex-direction: column; }
+
+    .hero { background: linear-gradient(160deg, #3D1040 0%, #6B2060 45%, #9B4070 75%, var(--rose) 100%); padding: 52px 28px 36px; display: flex; flex-direction: column; align-items: center; text-align: center; position: relative; overflow: hidden; }
+    .hero::before { content:''; position:absolute; top:-80px; right:-80px; width:220px; height:220px; background:rgba(255,255,255,0.05); border-radius:50%; }
+    .hero::after { content:''; position:absolute; bottom:-60px; left:-60px; width:180px; height:180px; background:rgba(255,255,255,0.04); border-radius:50%; }
+    .hero-badge { background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.32); border-radius: 30px; padding: 6px 18px; font-size: 12px; color: white; font-weight: 600; margin-bottom: 20px; letter-spacing: 0.5px; position: relative; z-index: 1; }
+    .hero h1 { font-size: 22px; font-weight: 800; color: white; line-height: 1.25; margin-bottom: 12px; letter-spacing: -0.3px; position: relative; z-index: 1; }
+    .hero-sub { font-size: 14px; color: rgba(255,255,255,0.76); line-height: 1.6; max-width: 300px; margin-bottom: 24px; position: relative; z-index: 1; }
+
+    .locked-card { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.22); border-radius: 18px; padding: 20px; width: 100%; position: relative; z-index: 1; overflow: hidden; }
+    .locked-inner { filter: blur(5px); pointer-events: none; user-select: none; }
+    .locked-line { height: 10px; background: rgba(255,255,255,0.3); border-radius: 6px; margin-bottom: 10px; }
+    .locked-line.w80 { width: 80%; }
+    .locked-line.w60 { width: 60%; }
+    .locked-line.w90 { width: 90%; }
+    .locked-line.w50 { width: 50%; }
+    .locked-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+    .lock-icon { font-size: 28px; }
+    .lock-text { font-size: 13px; font-weight: 700; color: white; letter-spacing: 0.2px; }
+
+    .body-section { background: white; padding: 28px 24px; flex: 1; }
+
+    .sec-label { font-size: 11px; font-weight: 700; color: var(--light); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; }
+    .sec-title { font-size: 18px; font-weight: 800; color: var(--dark); margin-bottom: 16px; letter-spacing: -0.3px; }
+
+    .analysis-card { background: white; border: 1px solid #EDE6F2; border-radius: 14px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .an-icon { width: 42px; height: 42px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; background: var(--rose-pale); }
+    .an-txt { flex: 1; }
+    .an-name { font-size: 13px; font-weight: 700; color: var(--dark); margin-bottom: 2px; }
+    .an-desc { font-size: 12px; color: var(--light); }
+    .an-badge { font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
+    .badge-low { background: #FFE8E8; color: #D44; }
+    .badge-med { background: #FFF3E0; color: #C87000; }
+
+    .divider { height: 1px; background: #EDE6F2; margin: 24px 0; }
+
+    .inc-list { margin-bottom: 24px; }
+    .inc-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid #EDE6F2; }
+    .inc-item:last-child { border-bottom: none; }
+    .inc-ic { font-size: 22px; flex-shrink: 0; }
+    .inc-name { font-size: 14px; font-weight: 700; color: var(--dark); margin-bottom: 2px; }
+    .inc-desc { font-size: 12px; color: var(--light); line-height: 1.4; }
+
+    .price-box { background: var(--rose-pale); border: 1.5px solid var(--rose-light); border-radius: 18px; padding: 24px; text-align: center; margin-bottom: 20px; }
+    .price-de { font-size: 14px; color: var(--light); text-decoration: line-through; margin-bottom: 4px; }
+    .price-por { font-size: 13px; color: var(--mid); margin-bottom: 6px; }
+    .price-val { font-size: 48px; font-weight: 900; color: var(--dark); letter-spacing: -1.5px; line-height: 1; margin-bottom: 8px; }
+    .price-period { font-size: 13px; color: var(--mid); }
+
+    .btn-buy { width: 100%; background: #22C55E; color: white; border: none; border-radius: 16px; padding: 20px; font-size: 18px; font-weight: 800; cursor: pointer; letter-spacing: 0.5px; text-transform: uppercase; box-shadow: 0 6px 24px rgba(34,197,94,0.42); margin-bottom: 16px; text-decoration: none; display: block; text-align: center; transition: opacity 0.2s; }
+    .btn-buy:active { opacity: 0.9; }
+
+    .guarantee { background: linear-gradient(135deg, #F0FFF4, #DCFCE7); border: 1px solid #86EFAC; border-radius: 14px; padding: 16px; display: flex; gap: 12px; align-items: flex-start; margin-bottom: 28px; }
+    .gu-ic { font-size: 32px; flex-shrink: 0; }
+    .gu-title { font-size: 14px; font-weight: 800; color: #15803D; margin-bottom: 3px; }
+    .gu-text { font-size: 12px; color: #16A34A; line-height: 1.5; }
+
+    .testi-mini { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+    .tm-card { background: white; border: 1px solid #EDE6F2; border-radius: 14px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
+    .tm-av { width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, #E0A0B0, var(--rose)); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+    .tm-body { flex: 1; }
+    .tm-name { font-size: 13px; font-weight: 700; color: var(--dark); margin-bottom: 1px; }
+    .tm-stars { font-size: 12px; color: #F4B942; margin-bottom: 3px; }
+    .tm-text { font-size: 12px; color: var(--mid); line-height: 1.45; }
+
+    .pay-methods { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px; }
+    .pm { background: #F5F5F5; border-radius: 8px; padding: 6px 12px; font-size: 11px; font-weight: 700; color: #555; }
+
+    .page-footer { text-align: center; padding: 20px 24px 36px; border-top: 1px solid #EDE6F2; background: #FAFAFA; }
+    .footer-txt { font-size: 11px; color: var(--light); line-height: 1.7; }
+    .secure-txt { text-align: center; font-size: 12px; color: var(--light); display: flex; align-items: center; justify-content: center; gap: 4px; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <div class="hero">
+    <div class="hero-badge">🎉 Seu diagnóstico está pronto!</div>
+    <h1>Maria, preparamos seu Plano Capilar Personalizado</h1>
+    <p class="hero-sub">Baseado nas suas respostas, identificamos exatamente o que seu cabelo ondulado com alta porosidade precisa</p>
+    <div class="locked-card">
+      <div class="locked-inner">
+        <div class="locked-line w90"></div>
+        <div class="locked-line w80"></div>
+        <div class="locked-line w60"></div>
+        <div class="locked-line w90"></div>
+        <div class="locked-line w50"></div>
+        <div class="locked-line w80"></div>
+      </div>
+      <div class="locked-overlay">
+        <div class="lock-icon">🔒</div>
+        <div class="lock-text">Desbloqueie seu plano completo</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="body-section">
+
+    <div class="sec-title">O que descobrimos sobre seu cabelo</div>
+    <div class="analysis-card">
+      <div class="an-icon">🍎</div>
+      <div class="an-txt">
+        <div class="an-name">Alimentação</div>
+        <div class="an-desc">Impacto no crescimento e saúde capilar</div>
+      </div>
+      <span class="an-badge badge-low">Baixo</span>
+    </div>
+    <div class="analysis-card">
+      <div class="an-icon">🔄</div>
+      <div class="an-txt">
+        <div class="an-name">Rotina</div>
+        <div class="an-desc">Consistência e frequência dos cuidados</div>
+      </div>
+      <span class="an-badge badge-low">Baixo</span>
+    </div>
+    <div class="analysis-card">
+      <div class="an-icon">🧴</div>
+      <div class="an-txt">
+        <div class="an-name">Produtos</div>
+        <div class="an-desc">Adequação ao seu tipo e porosidade</div>
+      </div>
+      <span class="an-badge badge-med">Médio</span>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="sec-title">O que você vai receber</div>
+    <div class="inc-list">
+      <div class="inc-item">
+        <div class="inc-ic">📋</div>
+        <div>
+          <div class="inc-name">Cronograma das 52 semanas</div>
+          <div class="inc-desc">Seu plano semana a semana, do início ao resultado</div>
+        </div>
+      </div>
+      <div class="inc-item">
+        <div class="inc-ic">🧴</div>
+        <div>
+          <div class="inc-name">Lista de produtos para ondulado + alta porosidade</div>
+          <div class="inc-desc">Seleção curada para o seu tipo de cabelo</div>
+        </div>
+      </div>
+      <div class="inc-item">
+        <div class="inc-ic">💧</div>
+        <div>
+          <div class="inc-name">Cronograma H/N/R personalizado</div>
+          <div class="inc-desc">Hidratação, nutrição e reconstrução na medida certa</div>
+        </div>
+      </div>
+      <div class="inc-item">
+        <div class="inc-ic">📱</div>
+        <div>
+          <div class="inc-name">App Plano da Ju (iOS + Android)</div>
+          <div class="inc-desc">Acompanhe sua evolução direto no celular</div>
+        </div>
+      </div>
+      <div class="inc-item">
+        <div class="inc-ic">🎯</div>
+        <div>
+          <div class="inc-name">Diagnóstico capilar completo</div>
+          <div class="inc-desc">Entenda cada aspecto da saúde do seu cabelo</div>
+        </div>
+      </div>
+      <div class="inc-item">
+        <div class="inc-ic">📈</div>
+        <div>
+          <div class="inc-name">Acompanhamento de progresso</div>
+          <div class="inc-desc">Fotos e métricas para ver sua transformação</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="price-box">
+      <div class="price-de">De R$ 97,00</div>
+      <div class="price-por">Por apenas</div>
+      <div class="price-val">R$ 34,90</div>
+      <div class="price-period">acesso vitalício • sem mensalidade</div>
+    </div>
+
+    <a href="#" class="btn-buy">🔒 QUERO MEU PLANO AGORA</a>
+
+    <div class="guarantee">
+      <div class="gu-ic">🛡️</div>
+      <div>
+        <div class="gu-title">Garantia de 7 dias</div>
+        <div class="gu-text">100% do seu dinheiro de volta, sem perguntas, se você não ficar satisfeita.</div>
+      </div>
+    </div>
+
+    <div class="testi-mini">
+      <div class="tm-card">
+        <div class="tm-av">F</div>
+        <div class="tm-body">
+          <div class="tm-name">Fernanda S.</div>
+          <div class="tm-stars">★★★★★</div>
+          <div class="tm-text">"Em 3 semanas meu cabelo já estava completamente diferente!"</div>
+        </div>
+      </div>
+      <div class="tm-card">
+        <div class="tm-av">D</div>
+        <div class="tm-body">
+          <div class="tm-name">Daniela M.</div>
+          <div class="tm-stars">★★★★★</div>
+          <div class="tm-text">"O cronograma personalizado fez toda a diferença pra mim."</div>
+        </div>
+      </div>
+      <div class="tm-card">
+        <div class="tm-av">M</div>
+        <div class="tm-body">
+          <div class="tm-name">Maria S.</div>
+          <div class="tm-stars">★★★★★</div>
+          <div class="tm-text">"Nunca pensei que meu cabelo poderia ficar tão saudável assim!"</div>
+        </div>
+      </div>
+    </div>
+
+    <a href="#" class="btn-buy">🔒 COMPRAR AGORA — R$ 34,90</a>
+
+    <div class="pay-methods">
+      <span class="pm">💳 Cartão</span>
+      <span class="pm">📱 PIX</span>
+      <span class="pm">🏦 Boleto</span>
+    </div>
+
+    <div class="secure-txt">🔒 Compra 100% segura e protegida</div>
+
+  </div>
+
+  <div class="page-footer">
+    <div class="footer-txt">Compra segura • PagarMe • CNPJ 00.000.000/0001-00</div>
+  </div>
+
+</div>
+</body>
+</html>

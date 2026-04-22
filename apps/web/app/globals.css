@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+:root {
+  --pink: #C4607A;
+  --pink-dark: #8B3A6E;
+  --bg: #1C0020;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}

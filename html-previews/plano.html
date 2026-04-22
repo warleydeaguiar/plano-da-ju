@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Plano da Ju — Meu Plano</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    :root {
+      --accent: #C4607A;
+      --accent2: #9B4A6A;
+      --bg: #F2F2F7;
+      --surface: #FFFFFF;
+      --dark: #1C1C1E;
+      --mid: #48484A;
+      --sub: #8E8E93;
+      --sep: #E5E5EA;
+      --green: #34C759;
+      --gold: #FF9500;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+      background: #E8E8EE;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .phone {
+      width: 390px;
+      height: 844px;
+      background: var(--bg);
+      border-radius: 54px;
+      overflow: hidden;
+      box-shadow: 0 50px 100px rgba(0,0,0,0.3), 0 0 0 1px rgba(0,0,0,0.06);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* Hero top */
+    .plan-hero {
+      background: linear-gradient(160deg, var(--accent2) 0%, var(--accent) 100%);
+      padding: 50px 22px 22px;
+      flex-shrink: 0;
+      position: relative;
+      overflow: hidden;
+    }
+    .plan-hero::after {
+      content: '';
+      position: absolute;
+      top: -50px; right: -50px;
+      width: 160px; height: 160px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 50%;
+    }
+    .hero-eyebrow {
+      font-size: 12px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.65);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 6px;
+    }
+    .hero-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: white;
+      letter-spacing: -0.4px;
+      line-height: 1.2;
+      margin-bottom: 4px;
+    }
+    .hero-subtitle {
+      font-size: 14px;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 18px;
+    }
+    .hero-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+    .chip {
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 20px;
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: white;
+    }
+
+    /* Juliane badge */
+    .ju-badge {
+      margin: 0 16px;
+      transform: translateY(-20px);
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+    .ju-avatar {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent2), var(--accent));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+      border: 2px solid var(--sep);
+    }
+    .ju-info { flex: 1; }
+    .ju-name { font-size: 14px; font-weight: 700; color: var(--dark); }
+    .ju-role { font-size: 12px; color: var(--sub); margin-top: 2px; }
+    .ju-verified {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--green);
+    }
+
+    /* Scroll */
+    .scroll {
+      flex: 1;
+      overflow-y: auto;
+      scrollbar-width: none;
+      margin-top: -20px;
+      padding-bottom: 90px;
+    }
+    .scroll::-webkit-scrollbar { display: none; }
+
+    /* Tabs */
+    .plan-tabs {
+      display: flex;
+      padding: 4px 16px 16px;
+      gap: 8px;
+    }
+    .plan-tab {
+      flex: 1;
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 10px 6px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--sub);
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .plan-tab.active {
+      background: var(--accent);
+      color: white;
+    }
+
+    /* Section */
+    .section-header {
+      padding: 8px 20px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+    .section-title { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; color: var(--dark); }
+    .section-link { font-size: 15px; color: var(--accent); cursor: pointer; }
+
+    /* Diagnosis card */
+    .diag-card {
+      margin: 0 16px 12px;
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+    }
+    .diag-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .diag-item {}
+    .diag-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--sub);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-bottom: 4px;
+    }
+    .diag-value {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--dark);
+    }
+    .diag-tag {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 20px;
+      margin-top: 2px;
+    }
+    .tag-rose { background: #FDEEF2; color: var(--accent); }
+    .tag-blue { background: #EAF2FF; color: #007AFF; }
+    .tag-green { background: #EAF9EE; color: var(--green); }
+    .tag-gold { background: #FFF3E0; color: var(--gold); }
+
+    /* Week plan */
+    .week-card {
+      margin: 0 16px 12px;
+      background: var(--surface);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+    }
+    .week-header {
+      padding: 14px 16px;
+      background: #FAFAFA;
+      border-bottom: 1px solid var(--sep);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--sub);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .week-row {
+      display: flex;
+      align-items: center;
+      padding: 13px 16px;
+      gap: 14px;
+      border-bottom: 1px solid var(--sep);
+    }
+    .week-row:last-child { border-bottom: none; }
+    .week-day {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--sub);
+      width: 36px;
+      flex-shrink: 0;
+      text-transform: uppercase;
+    }
+    .week-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .dot-rosa { background: var(--accent); }
+    .dot-azul { background: #007AFF; }
+    .dot-verde { background: var(--green); }
+    .dot-cinza { background: var(--sep); }
+    .dot-ouro { background: var(--gold); }
+
+    .week-event { font-size: 14px; font-weight: 500; color: var(--dark); flex: 1; }
+    .week-note { font-size: 12px; color: var(--sub); }
+    .week-chevron { font-size: 14px; color: var(--sep); }
+
+    /* Products list */
+    .product-row {
+      margin: 0 16px;
+      background: var(--surface);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+      margin-bottom: 12px;
+    }
+    .prod-item {
+      display: flex;
+      align-items: center;
+      padding: 14px 16px;
+      gap: 14px;
+      border-bottom: 1px solid var(--sep);
+      cursor: pointer;
+    }
+    .prod-item:last-child { border-bottom: none; }
+    .prod-icon { font-size: 28px; flex-shrink: 0; }
+    .prod-info { flex: 1; min-width: 0; }
+    .prod-name { font-size: 14px; font-weight: 600; color: var(--dark); }
+    .prod-brand { font-size: 12px; color: var(--sub); margin-top: 2px; }
+    .prod-use { font-size: 12px; color: var(--accent); margin-top: 2px; font-weight: 500; }
+    .prod-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+    .prod-price { font-size: 14px; font-weight: 700; color: var(--dark); }
+    .prod-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 20px;
+    }
+    .badge-essential { background: #FDEEF2; color: var(--accent); }
+    .badge-optional { background: #F2F2F7; color: var(--sub); }
+    .badge-eco { background: #EAF9EE; color: var(--green); }
+
+    /* Important tip */
+    .tip-block {
+      margin: 0 16px 20px;
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 16px 18px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+    }
+    .tip-eyebrow {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--gold);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .tip-text { font-size: 14px; color: var(--mid); line-height: 1.6; }
+
+    /* Tab bar */
+    .tab-bar {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 82px;
+      background: rgba(242,242,247,0.92);
+      backdrop-filter: blur(20px);
+      border-top: 0.5px solid rgba(0,0,0,0.12);
+      display: flex;
+      align-items: flex-start;
+      padding-top: 8px;
+      border-radius: 0 0 54px 54px;
+    }
+    .tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; }
+    .tab-icon { font-size: 25px; }
+    .tab-label { font-size: 10px; font-weight: 500; color: var(--sub); }
+    .tab.active .tab-label { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="phone">
+
+    <!-- Hero -->
+    <div class="plan-hero">
+      <div class="hero-eyebrow">Seu plano personalizado</div>
+      <div class="hero-title">Cronograma Capilar</div>
+      <div class="hero-subtitle">Criado para o seu perfil em 12 de jan. de 2026</div>
+      <div class="hero-chips">
+        <div class="chip">Ondulado</div>
+        <div class="chip">Alta porosidade</div>
+        <div class="chip">Ressecamento</div>
+      </div>
+    </div>
+
+    <div class="scroll">
+
+      <!-- Juliane badge -->
+      <div class="ju-badge">
+        <div class="ju-avatar">👩‍⚕️</div>
+        <div class="ju-info">
+          <div class="ju-name">Juliane Cost</div>
+          <div class="ju-role">Especialista Capilar</div>
+        </div>
+        <div class="ju-verified">✓ Revisado</div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="plan-tabs">
+        <div class="plan-tab active">Rotina</div>
+        <div class="plan-tab">Produtos</div>
+        <div class="plan-tab">Dicas</div>
+      </div>
+
+      <!-- Diagnosis -->
+      <div class="section-header">
+        <div class="section-title">Seu diagnóstico</div>
+      </div>
+      <div class="diag-card">
+        <div class="diag-grid">
+          <div class="diag-item">
+            <div class="diag-label">Tipo de cabelo</div>
+            <div class="diag-tag tag-rose">Ondulado</div>
+          </div>
+          <div class="diag-item">
+            <div class="diag-label">Porosidade</div>
+            <div class="diag-tag tag-blue">Alta</div>
+          </div>
+          <div class="diag-item">
+            <div class="diag-label">Principal foco</div>
+            <div class="diag-tag tag-gold">Hidratação</div>
+          </div>
+          <div class="diag-item">
+            <div class="diag-label">Químicas</div>
+            <div class="diag-tag tag-rose">Mechas</div>
+          </div>
+          <div class="diag-item">
+            <div class="diag-label">Lavagem ideal</div>
+            <div class="diag-value">A cada 4–5 dias</div>
+          </div>
+          <div class="diag-item">
+            <div class="diag-label">Crescimento</div>
+            <div class="diag-tag tag-green">Normal</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Weekly routine -->
+      <div class="section-header">
+        <div class="section-title">Rotina semanal</div>
+        <div class="section-link">Semana 14 ›</div>
+      </div>
+      <div class="week-card">
+        <div class="week-header">Esta semana</div>
+        <div class="week-row">
+          <div class="week-day">Seg</div>
+          <div class="week-dot dot-cinza"></div>
+          <div class="week-event">Descanso</div>
+          <div class="week-note">Sem manipulação</div>
+          <div class="week-chevron">›</div>
+        </div>
+        <div class="week-row">
+          <div class="week-day">Ter</div>
+          <div class="week-dot dot-cinza"></div>
+          <div class="week-event">Descanso</div>
+          <div class="week-note">Protetor se sair</div>
+          <div class="week-chevron">›</div>
+        </div>
+        <div class="week-row">
+          <div class="week-day">Qua</div>
+          <div class="week-dot dot-azul"></div>
+          <div class="week-event">Lavagem + Hidratação</div>
+          <div class="week-note">Co-wash · Máscara Hydra</div>
+          <div class="week-chevron">›</div>
+        </div>
+        <div class="week-row">
+          <div class="week-day">Qui</div>
+          <div class="week-dot dot-cinza"></div>
+          <div class="week-event">Descanso</div>
+          <div class="week-note">Umidificador se seco</div>
+          <div class="week-chevron">›</div>
+        </div>
+        <div class="week-row">
+          <div class="week-day">Sex</div>
+          <div class="week-dot dot-ouro"></div>
+          <div class="week-event">Óleo de finalização</div>
+          <div class="week-note">Iberaparis Argan</div>
+          <div class="week-chevron">›</div>
+        </div>
+        <div class="week-row">
+          <div class="week-day">Sáb</div>
+          <div class="week-dot dot-rosa"></div>
+          <div class="week-event">Máscara de Nutrição</div>
+          <div class="week-note">30 min · Karité</div>
+          <div class="week-chevron">›</div>
+        </div>
+        <div class="week-row">
+          <div class="week-day">Dom</div>
+          <div class="week-dot dot-azul"></div>
+          <div class="week-event">Lavagem + Reconstrução</div>
+          <div class="week-note">Shampoo lowpoo · Queratina</div>
+          <div class="week-chevron">›</div>
+        </div>
+      </div>
+
+      <!-- Products -->
+      <div class="section-header">
+        <div class="section-title">Produtos essenciais</div>
+        <div class="section-link">Ver todos ›</div>
+      </div>
+      <div class="product-row">
+        <div class="prod-item">
+          <div class="prod-icon">🧴</div>
+          <div class="prod-info">
+            <div class="prod-name">Shampoo Lowpoo Cachos</div>
+            <div class="prod-brand">Iberaparis</div>
+            <div class="prod-use">Lavagem principal · 2x/semana</div>
+          </div>
+          <div class="prod-right">
+            <div class="prod-price">R$38</div>
+            <div class="prod-badge badge-essential">Essencial</div>
+          </div>
+        </div>
+        <div class="prod-item">
+          <div class="prod-icon">💜</div>
+          <div class="prod-info">
+            <div class="prod-name">Máscara Hydra Intense</div>
+            <div class="prod-brand">Iberaparis</div>
+            <div class="prod-use">Hidratação · 1x/semana</div>
+          </div>
+          <div class="prod-right">
+            <div class="prod-price">R$52</div>
+            <div class="prod-badge badge-essential">Essencial</div>
+          </div>
+        </div>
+        <div class="prod-item">
+          <div class="prod-icon">✨</div>
+          <div class="prod-info">
+            <div class="prod-name">Óleo de Argan Puro</div>
+            <div class="prod-brand">Iberaparis</div>
+            <div class="prod-use">Finalização · diário</div>
+          </div>
+          <div class="prod-right">
+            <div class="prod-price">R$44</div>
+            <div class="prod-badge badge-optional">Opcional</div>
+          </div>
+        </div>
+        <div class="prod-item">
+          <div class="prod-icon">🌿</div>
+          <div class="prod-info">
+            <div class="prod-name">Co-wash Hidratação</div>
+            <div class="prod-brand">Alternativo · Wella</div>
+            <div class="prod-use">Lavagem leve · entre lavagens</div>
+          </div>
+          <div class="prod-right">
+            <div class="prod-price">R$29</div>
+            <div class="prod-badge badge-eco">Econômico</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tip -->
+      <div class="tip-block">
+        <div class="tip-eyebrow">💡 Da Juliane para você</div>
+        <div class="tip-text">Com cabelo de alta porosidade e mechas, priorize sempre hidratação antes de nutrição. Evite proteínas nas primeiras 4 semanas para não endurecer os fios.</div>
+      </div>
+
+    </div>
+
+    <!-- Tab bar -->
+    <div class="tab-bar">
+      <div class="tab"><div class="tab-icon">🏠</div><div class="tab-label">Início</div></div>
+      <div class="tab"><div class="tab-icon">📅</div><div class="tab-label">Agenda</div></div>
+      <div class="tab active"><div class="tab-icon">📋</div><div class="tab-label" style="color:#C4607A">Meu Plano</div></div>
+      <div class="tab"><div class="tab-icon">📈</div><div class="tab-label">Evolução</div></div>
+      <div class="tab"><div class="tab-icon">👤</div><div class="tab-label">Perfil</div></div>
+    </div>
+
+  </div>
+</body>
+</html>

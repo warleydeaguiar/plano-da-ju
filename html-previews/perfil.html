@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Plano da Ju — Perfil</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    :root {
+      --accent: #C4607A;
+      --accent2: #9B4A6A;
+      --bg: #F2F2F7;
+      --surface: #FFFFFF;
+      --dark: #1C1C1E;
+      --mid: #48484A;
+      --sub: #8E8E93;
+      --sep: #E5E5EA;
+      --green: #34C759;
+      --gold: #FF9500;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', sans-serif;
+      background: #E8E8EE;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .phone {
+      width: 390px;
+      height: 844px;
+      background: var(--bg);
+      border-radius: 54px;
+      overflow: hidden;
+      box-shadow: 0 50px 100px rgba(0,0,0,0.3), 0 0 0 1px rgba(0,0,0,0.06), inset 0 0 0 1px rgba(255,255,255,0.6);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .status {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 28px 0;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 2;
+    }
+    .status-time {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+      color: white;
+    }
+    .status-icons {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .signal {
+      display: flex;
+      gap: 1.5px;
+      align-items: flex-end;
+      height: 10px;
+    }
+    .signal span {
+      width: 3px;
+      background: white;
+      border-radius: 1px;
+    }
+    .wifi-icon, .battery-icon {
+      font-size: 13px;
+      color: white;
+    }
+
+    .scroll {
+      flex: 1;
+      overflow-y: auto;
+      scrollbar-width: none;
+      padding-bottom: 90px;
+      margin-top: -46px;
+    }
+    .scroll::-webkit-scrollbar { display: none; }
+
+    .hero {
+      background: linear-gradient(160deg, var(--accent2) 0%, var(--accent) 100%);
+      padding: 56px 20px 28px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::after {
+      content: '';
+      position: absolute;
+      top: -60px; right: -60px;
+      width: 180px; height: 180px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 50%;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      bottom: -30px; left: -30px;
+      width: 120px; height: 120px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 50%;
+    }
+    .hero-avatar {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.25);
+      border: 3px solid rgba(255,255,255,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      font-weight: 700;
+      color: white;
+      position: relative;
+      z-index: 1;
+    }
+    .hero-name {
+      font-size: 20px;
+      font-weight: 700;
+      color: white;
+      letter-spacing: -0.3px;
+      position: relative;
+      z-index: 1;
+    }
+    .hero-email {
+      font-size: 13px;
+      color: rgba(255,255,255,0.65);
+      margin-top: -6px;
+      position: relative;
+      z-index: 1;
+    }
+    .hero-badge {
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.35);
+      border-radius: 20px;
+      padding: 5px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: white;
+      position: relative;
+      z-index: 1;
+      margin-top: 2px;
+    }
+
+    .content-area {
+      padding: 16px 0;
+    }
+
+    .card {
+      margin: 0 16px 12px;
+      background: var(--surface);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+    }
+    .card-title {
+      padding: 14px 16px 10px;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--dark);
+      letter-spacing: -0.2px;
+      border-bottom: 1px solid var(--sep);
+    }
+
+    .hair-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+    .hair-item {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--sep);
+      border-right: 1px solid var(--sep);
+    }
+    .hair-item:nth-child(2n) { border-right: none; }
+    .hair-item:nth-child(3), .hair-item:nth-child(4) { border-bottom: none; }
+    .hair-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--sub);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-bottom: 3px;
+    }
+    .hair-value {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--dark);
+    }
+    .hair-value span {
+      font-size: 13px;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .sub-card {
+      margin: 0 16px 12px;
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+    }
+    .sub-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .sub-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--dark);
+      letter-spacing: -0.3px;
+    }
+    .sub-active {
+      background: #EDFBF1;
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+    .sub-renewal {
+      font-size: 13px;
+      color: var(--sub);
+      margin-bottom: 4px;
+    }
+    .sub-price {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--dark);
+      letter-spacing: -0.5px;
+      margin-bottom: 14px;
+    }
+    .sub-price span {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--sub);
+    }
+    .sub-btn {
+      width: 100%;
+      padding: 11px 0;
+      border: 1.5px solid var(--accent);
+      border-radius: 12px;
+      background: transparent;
+      color: var(--accent);
+      font-size: 14px;
+      font-weight: 600;
+      text-align: center;
+      cursor: pointer;
+      letter-spacing: -0.1px;
+    }
+
+    .settings-group {
+      margin: 0 16px 12px;
+      background: var(--surface);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+    }
+    .settings-row {
+      display: flex;
+      align-items: center;
+      padding: 13px 16px;
+      gap: 12px;
+      border-bottom: 1px solid var(--sep);
+      cursor: pointer;
+    }
+    .settings-row:last-child { border-bottom: none; }
+    .settings-icon {
+      font-size: 20px;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      flex-shrink: 0;
+    }
+    .icon-blue { background: #EEF3FF; }
+    .icon-red { background: #FFF0F0; }
+    .icon-purple { background: #F3EEFF; }
+    .icon-gray { background: #F2F2F7; }
+    .settings-label {
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--dark);
+      flex: 1;
+    }
+    .settings-chevron {
+      font-size: 16px;
+      color: #C7C7CC;
+    }
+
+    .danger-zone {
+      padding: 8px 0 20px;
+      text-align: center;
+    }
+    .danger-btn {
+      font-size: 15px;
+      font-weight: 500;
+      color: #FF3B30;
+      cursor: pointer;
+      padding: 8px 20px;
+    }
+
+    .tab-bar {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 82px;
+      background: rgba(242,242,247,0.92);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 0.5px solid rgba(0,0,0,0.12);
+      display: flex;
+      align-items: flex-start;
+      padding-top: 8px;
+    }
+    .tab {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      cursor: pointer;
+    }
+    .tab-icon { font-size: 25px; }
+    .tab-label { font-size: 10px; font-weight: 500; color: var(--sub); letter-spacing: 0.1px; }
+    .tab.active .tab-label { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="phone">
+
+    <div class="status">
+      <span class="status-time">9:41</span>
+      <div class="status-icons">
+        <div class="signal">
+          <span style="height:4px"></span>
+          <span style="height:6px"></span>
+          <span style="height:8px"></span>
+          <span style="height:10px"></span>
+        </div>
+        <span class="wifi-icon">▾▴</span>
+        <span class="battery-icon">▭</span>
+      </div>
+    </div>
+
+    <div class="scroll">
+
+      <div class="hero">
+        <div class="hero-avatar">M</div>
+        <div class="hero-name">Maria Santos</div>
+        <div class="hero-email">maria@email.com</div>
+        <div class="hero-badge">✨ Plano Ativo</div>
+      </div>
+
+      <div class="content-area">
+
+        <div class="card">
+          <div class="card-title">Seu Perfil Capilar</div>
+          <div class="hair-grid">
+            <div class="hair-item">
+              <div class="hair-label">Tipo</div>
+              <div class="hair-value">Ondulado</div>
+            </div>
+            <div class="hair-item">
+              <div class="hair-label">Cor</div>
+              <div class="hair-value">Castanho escuro</div>
+            </div>
+            <div class="hair-item">
+              <div class="hair-label">Porosidade</div>
+              <div class="hair-value">Alta</div>
+            </div>
+            <div class="hair-item">
+              <div class="hair-label">Problema</div>
+              <div class="hair-value">Ressecamento</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sub-card">
+          <div class="sub-top">
+            <div class="sub-name">Plano da Ju</div>
+            <div class="sub-active">Ativo</div>
+          </div>
+          <div class="sub-renewal">Próxima renovação: 21/05/2026</div>
+          <div class="sub-price">R$ 14,90 <span>/mês</span></div>
+          <button class="sub-btn">Gerenciar assinatura</button>
+        </div>
+
+        <div class="settings-group">
+          <div class="settings-row">
+            <div class="settings-icon icon-blue">🔔</div>
+            <div class="settings-label">Notificações</div>
+            <div class="settings-chevron">›</div>
+          </div>
+          <div class="settings-row">
+            <div class="settings-icon icon-gray">📷</div>
+            <div class="settings-label">Privacidade de fotos</div>
+            <div class="settings-chevron">›</div>
+          </div>
+          <div class="settings-row">
+            <div class="settings-icon icon-purple">🎨</div>
+            <div class="settings-label">Aparência</div>
+            <div class="settings-chevron">›</div>
+          </div>
+          <div class="settings-row">
+            <div class="settings-icon icon-blue">❓</div>
+            <div class="settings-label">Central de ajuda</div>
+            <div class="settings-chevron">›</div>
+          </div>
+          <div class="settings-row">
+            <div class="settings-icon icon-gray">📄</div>
+            <div class="settings-label">Termos de uso</div>
+            <div class="settings-chevron">›</div>
+          </div>
+        </div>
+
+        <div class="danger-zone">
+          <div class="danger-btn">Sair da conta</div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="tab-bar">
+      <div class="tab">
+        <div class="tab-icon">🏠</div>
+        <div class="tab-label">Início</div>
+      </div>
+      <div class="tab">
+        <div class="tab-icon">📅</div>
+        <div class="tab-label">Agenda</div>
+      </div>
+      <div class="tab">
+        <div class="tab-icon">📋</div>
+        <div class="tab-label">Meu Plano</div>
+      </div>
+      <div class="tab">
+        <div class="tab-icon">📈</div>
+        <div class="tab-label">Evolução</div>
+      </div>
+      <div class="tab active">
+        <div class="tab-icon">👤</div>
+        <div class="tab-label" style="color: var(--accent)">Perfil</div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

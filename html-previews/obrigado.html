@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Compra Confirmada — Plano da Ju</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    :root {
+      --rose: #C4607A; --rose-deep: #8B3A6E; --rose-pale: #FDE8EE;
+      --rose-light: #F2B8C6; --dark: #2D1B2E; --mid: #6B5370;
+      --light: #9B8AA0; --bg: #F5EFF9;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+    .page-wrap { width: 100%; max-width: 480px; min-height: 100vh; background: white; display: flex; flex-direction: column; }
+
+    .hero { background: linear-gradient(160deg, #3D1040 0%, #6B2060 45%, #9B4070 75%, var(--rose) 100%); padding: 52px 28px 40px; display: flex; flex-direction: column; align-items: center; text-align: center; position: relative; overflow: hidden; }
+    .hero::before { content:''; position:absolute; top:-80px; right:-80px; width:220px; height:220px; background:rgba(255,255,255,0.05); border-radius:50%; }
+    .hero::after { content:''; position:absolute; bottom:-60px; left:-60px; width:180px; height:180px; background:rgba(255,255,255,0.04); border-radius:50%; }
+    .check-circle { width: 80px; height: 80px; border-radius: 50%; background: white; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; position: relative; z-index: 1; box-shadow: 0 8px 32px rgba(0,0,0,0.18); }
+    .check-mark { font-size: 36px; color: #22C55E; font-weight: 900; line-height: 1; }
+    .hero h1 { font-size: 26px; font-weight: 900; color: white; line-height: 1.2; margin-bottom: 10px; letter-spacing: -0.4px; position: relative; z-index: 1; }
+    .hero-sub { font-size: 14px; color: rgba(255,255,255,0.8); line-height: 1.6; margin-bottom: 20px; max-width: 300px; position: relative; z-index: 1; }
+    .order-pill { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.28); border-radius: 30px; padding: 8px 20px; font-size: 13px; font-weight: 700; color: white; position: relative; z-index: 1; }
+
+    .body-section { background: white; padding: 28px 24px; flex: 1; }
+
+    .sec-title { font-size: 18px; font-weight: 800; color: var(--dark); margin-bottom: 16px; letter-spacing: -0.3px; }
+
+    .steps-card { background: white; border: 1px solid #EDE6F2; border-radius: 16px; overflow: hidden; margin-bottom: 28px; }
+    .step-row { display: flex; align-items: flex-start; gap: 14px; padding: 16px 18px; border-bottom: 1px solid #EDE6F2; }
+    .step-row:last-child { border-bottom: none; }
+    .step-num { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, var(--rose-deep), var(--rose)); display: flex; align-items: center; justify-content: center; color: white; font-weight: 800; font-size: 14px; flex-shrink: 0; }
+    .step-ic-wrap { font-size: 22px; flex-shrink: 0; }
+    .step-body { flex: 1; }
+    .step-name { font-size: 14px; font-weight: 700; color: var(--dark); margin-bottom: 3px; }
+    .step-desc { font-size: 12px; color: var(--light); line-height: 1.4; }
+
+    .divider { height: 1px; background: #EDE6F2; margin: 24px 0; }
+
+    .app-section { margin-bottom: 28px; }
+    .app-title { font-size: 16px; font-weight: 800; color: var(--dark); margin-bottom: 14px; text-align: center; }
+    .app-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .app-btn { background: #1A1A2E; color: white; border: none; border-radius: 14px; padding: 14px 16px; display: flex; align-items: center; gap: 10px; cursor: pointer; text-decoration: none; transition: opacity 0.2s; }
+    .app-btn:active { opacity: 0.85; }
+    .app-btn-ic { font-size: 22px; flex-shrink: 0; }
+    .app-btn-txt { text-align: left; }
+    .app-store-sub { font-size: 10px; color: rgba(255,255,255,0.6); font-weight: 500; }
+    .app-store-name { font-size: 14px; font-weight: 700; color: white; }
+
+    .inc-list { margin-bottom: 28px; }
+    .inc-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid #EDE6F2; }
+    .inc-item:last-child { border-bottom: none; }
+    .inc-ic { font-size: 20px; flex-shrink: 0; }
+    .inc-name { font-size: 14px; font-weight: 700; color: var(--dark); line-height: 1.4; }
+
+    .share-section { margin-bottom: 24px; text-align: center; }
+    .share-title { font-size: 18px; font-weight: 800; color: var(--dark); margin-bottom: 6px; }
+    .share-sub { font-size: 13px; color: var(--mid); line-height: 1.5; margin-bottom: 16px; }
+    .share-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .share-btn { border: none; border-radius: 14px; padding: 14px 12px; font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; transition: opacity 0.2s; }
+    .share-btn:active { opacity: 0.85; }
+    .share-wa { background: #22C55E; color: white; }
+    .share-ig { background: linear-gradient(135deg, #833AB4, #FD1D1D, #F77737); color: white; }
+
+    .community-card { background: var(--rose-pale); border: 1.5px solid var(--rose-light); border-radius: 18px; padding: 22px 20px; text-align: center; margin-bottom: 28px; }
+    .comm-title { font-size: 16px; font-weight: 800; color: var(--dark); margin-bottom: 6px; }
+    .comm-desc { font-size: 13px; color: var(--mid); line-height: 1.5; margin-bottom: 16px; }
+    .comm-btn { display: inline-block; background: var(--rose-deep); color: white; border: none; border-radius: 12px; padding: 13px 28px; font-size: 14px; font-weight: 700; cursor: pointer; text-decoration: none; transition: opacity 0.2s; }
+    .comm-btn:active { opacity: 0.85; }
+
+    .page-footer { text-align: center; padding: 20px 24px 36px; border-top: 1px solid #EDE6F2; background: #FAFAFA; }
+    .footer-logo { font-size: 16px; font-weight: 800; color: var(--dark); margin-bottom: 6px; }
+    .footer-txt { font-size: 11px; color: var(--light); line-height: 1.7; }
+    .footer-txt a { color: var(--rose); text-decoration: none; }
+  </style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <div class="hero">
+    <div class="check-circle">
+      <span class="check-mark">✓</span>
+    </div>
+    <h1>Parabéns, Maria! 🎉</h1>
+    <p class="hero-sub">Sua compra foi confirmada. Seu Plano Capilar está pronto!</p>
+    <div class="order-pill">Plano da Ju — R$ 34,90</div>
+  </div>
+
+  <div class="body-section">
+
+    <div class="sec-title">Próximos passos</div>
+    <div class="steps-card">
+      <div class="step-row">
+        <div class="step-num">1</div>
+        <div class="step-ic-wrap">✉️</div>
+        <div class="step-body">
+          <div class="step-name">Verifique seu e-mail</div>
+          <div class="step-desc">Enviamos o link de acesso para maria@email.com</div>
+        </div>
+      </div>
+      <div class="step-row">
+        <div class="step-num">2</div>
+        <div class="step-ic-wrap">📱</div>
+        <div class="step-body">
+          <div class="step-name">Baixe o app</div>
+          <div class="step-desc">Disponível para iOS e Android</div>
+        </div>
+      </div>
+      <div class="step-row">
+        <div class="step-num">3</div>
+        <div class="step-ic-wrap">🎯</div>
+        <div class="step-body">
+          <div class="step-name">Acesse seu plano</div>
+          <div class="step-desc">Faça login e veja seu cronograma personalizado</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="app-section">
+      <div class="app-title">Baixe agora o app Plano da Ju</div>
+      <div class="app-btns">
+        <a href="#" class="app-btn">
+          <span class="app-btn-ic">🍎</span>
+          <div class="app-btn-txt">
+            <div class="app-store-sub">Download na</div>
+            <div class="app-store-name">App Store</div>
+          </div>
+        </a>
+        <a href="#" class="app-btn">
+          <span class="app-btn-ic">🤖</span>
+          <div class="app-btn-txt">
+            <div class="app-store-sub">Disponível no</div>
+            <div class="app-store-name">Google Play</div>
+          </div>
+        </a>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="sec-title">O que está incluído no seu plano</div>
+    <div class="inc-list">
+      <div class="inc-item">
+        <div class="inc-ic">📋</div>
+        <div class="inc-name">Cronograma das 52 semanas</div>
+      </div>
+      <div class="inc-item">
+        <div class="inc-ic">🧴</div>
+        <div class="inc-name">Lista de produtos para ondulado + alta porosidade</div>
+      </div>
+      <div class="inc-item">
+        <div class="inc-ic">💧</div>
+        <div class="inc-name">Cronograma H/N/R personalizado</div>
+      </div>
+      <div class="inc-item">
+        <div class="inc-ic">📱</div>
+        <div class="inc-name">App Plano da Ju (iOS + Android)</div>
+      </div>
+      <div class="inc-item">
+        <div class="inc-ic">🎯</div>
+        <div class="inc-name">Diagnóstico capilar completo</div>
+      </div>
+      <div class="inc-item">
+        <div class="inc-ic">📈</div>
+        <div class="inc-name">Acompanhamento de progresso</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="share-section">
+      <div class="share-title">Compartilhe com suas amigas! 💆‍♀️</div>
+      <div class="share-sub">Ajude outras mulheres a transformarem o cabelo</div>
+      <div class="share-btns">
+        <a href="#" class="share-btn share-wa">📱 WhatsApp</a>
+        <a href="#" class="share-btn share-ig">📸 Instagram</a>
+      </div>
+    </div>
+
+    <div class="community-card">
+      <div class="comm-title">Junte-se à comunidade</div>
+      <div class="comm-desc">Entre no grupo VIP no WhatsApp e receba dicas exclusivas da Juliane</div>
+      <a href="#" class="comm-btn">Entrar no grupo →</a>
+    </div>
+
+  </div>
+
+  <div class="page-footer">
+    <div class="footer-logo">Plano da Ju</div>
+    <div class="footer-txt">Dúvidas? <a href="mailto:contato@planodaju.com.br">contato@planodaju.com.br</a></div>
+  </div>
+
+</div>
+</body>
+</html>

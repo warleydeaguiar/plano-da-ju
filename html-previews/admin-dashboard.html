@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Admin Plano da Ju</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #F5F5F7;
+    color: #2D1B2E;
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .sidebar {
+    width: 220px;
+    min-width: 220px;
+    background: #1C1C1E;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    position: fixed;
+    left: 0;
+    top: 0;
+  }
+
+  .sidebar-logo {
+    padding: 28px 20px 24px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+  }
+
+  .sidebar-logo .name {
+    font-size: 17px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.3px;
+  }
+
+  .sidebar-logo .role {
+    font-size: 11px;
+    font-weight: 500;
+    color: #C4607A;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .sidebar-nav {
+    flex: 1;
+    padding: 16px 0;
+    overflow-y: auto;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.55);
+    cursor: pointer;
+    border-radius: 0;
+    transition: color 0.15s, background 0.15s;
+    text-decoration: none;
+    position: relative;
+  }
+
+  .nav-item:hover {
+    color: rgba(255,255,255,0.85);
+    background: rgba(255,255,255,0.05);
+  }
+
+  .nav-item.active {
+    color: #C4607A;
+    background: rgba(196,96,122,0.1);
+  }
+
+  .nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 20px;
+    background: #C4607A;
+    border-radius: 0 2px 2px 0;
+  }
+
+  .nav-icon {
+    font-size: 15px;
+    width: 18px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .sidebar-footer {
+    padding: 16px 20px;
+    border-top: 1px solid rgba(255,255,255,0.07);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #C4607A;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+  }
+
+  .footer-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .footer-name {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.85);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .footer-action {
+    font-size: 11px;
+    color: rgba(255,255,255,0.35);
+    cursor: pointer;
+  }
+
+  .footer-action:hover { color: rgba(255,255,255,0.6); }
+
+  .main {
+    margin-left: 220px;
+    flex: 1;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+
+  .page-header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    color: #2D1B2E;
+    letter-spacing: -0.4px;
+  }
+
+  .page-header .date {
+    font-size: 13px;
+    color: #8A8A8E;
+    margin-top: 3px;
+    font-weight: 400;
+  }
+
+  .btn-alert {
+    background: #fff;
+    border: 1px solid #E5E5EA;
+    color: #2D1B2E;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: box-shadow 0.15s;
+  }
+
+  .btn-alert:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+
+  .alert-dot {
+    width: 8px;
+    height: 8px;
+    background: #FF9500;
+    border-radius: 50%;
+  }
+
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+
+  .stat-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  }
+
+  .stat-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #8A8A8E;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #2D1B2E;
+    margin: 8px 0 4px;
+    letter-spacing: -0.8px;
+  }
+
+  .stat-value.orange { color: #FF9500; }
+
+  .stat-sub {
+    font-size: 12px;
+    color: #8A8A8E;
+    font-weight: 400;
+  }
+
+  .stat-sub.green { color: #34C759; font-weight: 500; }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 60fr 40fr;
+    gap: 16px;
+    align-items: start;
+  }
+
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    overflow: hidden;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid #F2F2F7;
+  }
+
+  .card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #2D1B2E;
+  }
+
+  .card-link {
+    font-size: 12.5px;
+    color: #C4607A;
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .card-link:hover { text-decoration: underline; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  thead th {
+    font-size: 11px;
+    font-weight: 600;
+    color: #8A8A8E;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    padding: 10px 20px;
+    text-align: left;
+    background: #FAFAFA;
+    border-bottom: 1px solid #F2F2F7;
+  }
+
+  tbody tr:nth-child(even) { background: #FAFAFA; }
+  tbody tr:hover { background: #F5F5F7; }
+
+  td {
+    padding: 11px 20px;
+    font-size: 13px;
+    color: #2D1B2E;
+    border-bottom: 1px solid #F2F2F7;
+  }
+
+  td:last-child { border-bottom: none; }
+  tr:last-child td { border-bottom: none; }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11.5px;
+    font-weight: 500;
+    padding: 3px 8px;
+    border-radius: 20px;
+  }
+
+  .badge-pending {
+    background: rgba(255,149,0,0.1);
+    color: #FF9500;
+  }
+
+  .badge-approved {
+    background: rgba(52,199,89,0.1);
+    color: #34C759;
+  }
+
+  .btn-table {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    border: none;
+    transition: opacity 0.15s;
+  }
+
+  .btn-table:hover { opacity: 0.8; }
+
+  .btn-revisar {
+    background: #C4607A;
+    color: #fff;
+  }
+
+  .btn-ver {
+    background: #F2F2F7;
+    color: #2D1B2E;
+  }
+
+  .right-col {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .checkin-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 20px;
+    border-bottom: 1px solid #F2F2F7;
+  }
+
+  .checkin-item:last-child { border-bottom: none; }
+
+  .checkin-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #C4607A, #9B4560);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+  }
+
+  .checkin-avatar.green { background: linear-gradient(135deg, #34C759, #28A745); }
+  .checkin-avatar.blue { background: linear-gradient(135deg, #007AFF, #0056CC); }
+  .checkin-avatar.purple { background: linear-gradient(135deg, #AF52DE, #8B3DB8); }
+  .checkin-avatar.orange { background: linear-gradient(135deg, #FF9500, #CC7700); }
+
+  .checkin-info { flex: 1; }
+
+  .checkin-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #2D1B2E;
+  }
+
+  .checkin-time {
+    font-size: 11.5px;
+    color: #8A8A8E;
+    margin-top: 1px;
+  }
+
+  .checkin-emoji {
+    font-size: 18px;
+  }
+
+  .churn-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 20px;
+    border-bottom: 1px solid #F2F2F7;
+  }
+
+  .churn-item:last-child { border-bottom: none; }
+
+  .churn-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #FF3B30;
+    margin-top: 5px;
+    flex-shrink: 0;
+  }
+
+  .churn-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #2D1B2E;
+  }
+
+  .churn-reason {
+    font-size: 11.5px;
+    color: #8A8A8E;
+    margin-top: 1px;
+  }
+
+  .churn-stat {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 20px;
+    border-bottom: 1px solid #F2F2F7;
+  }
+
+  .churn-count {
+    font-size: 22px;
+    font-weight: 700;
+    color: #FF3B30;
+    letter-spacing: -0.5px;
+  }
+
+  .churn-label {
+    font-size: 13px;
+    color: #8A8A8E;
+  }
+
+  .chart-section {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    padding: 20px;
+  }
+
+  .chart-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #2D1B2E;
+    margin-bottom: 20px;
+  }
+
+  .chart-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    height: 80px;
+  }
+
+  .chart-bar-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+  }
+
+  .chart-bar {
+    width: 100%;
+    background: rgba(196,96,122,0.15);
+    border-radius: 4px 4px 0 0;
+    position: relative;
+    min-height: 4px;
+    transition: background 0.2s;
+  }
+
+  .chart-bar:hover { background: #C4607A; }
+
+  .chart-bar-fill {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #C4607A;
+    border-radius: 4px 4px 0 0;
+  }
+
+  .chart-val {
+    font-size: 11px;
+    font-weight: 600;
+    color: #2D1B2E;
+  }
+
+  .chart-day {
+    font-size: 11px;
+    color: #8A8A8E;
+  }
+
+  .chart-bar-wrap.today .chart-bar { background: rgba(196,96,122,0.3); }
+  .chart-bar-wrap.today .chart-day { color: #C4607A; font-weight: 600; }
+
+  .live-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background: #34C759;
+    border-radius: 50%;
+    margin-right: 5px;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="name">Plano da Ju</div>
+    <div class="role">Admin</div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <a class="nav-item active" href="#">
+      <span class="nav-icon">📊</span> Dashboard
+    </a>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">🔍</span> Revisão de Planos
+    </a>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">👥</span> Usuárias
+    </a>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">💳</span> Assinaturas
+    </a>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">📊</span> Analytics
+    </a>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">⚙️</span> Configurações
+    </a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="avatar">JC</div>
+    <div class="footer-info">
+      <div class="footer-name">Juliane Cost</div>
+      <div class="footer-action">Sair</div>
+    </div>
+  </div>
+</aside>
+
+<main class="main">
+
+  <div class="page-header">
+    <div>
+      <h1>Bom dia, Juliane 👋</h1>
+      <div class="date">Segunda, 21 de Abril de 2026</div>
+    </div>
+    <button class="btn-alert">
+      <span class="alert-dot"></span>
+      Ver alertas (3)
+    </button>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label"><span>👥</span> Assinantes Ativas</div>
+      <div class="stat-value">1.247</div>
+      <div class="stat-sub green">↑ +23 esta semana</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label"><span>📝</span> Planos para Revisar</div>
+      <div class="stat-value orange">8</div>
+      <div class="stat-sub">Aguardando sua aprovação</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label"><span>💰</span> Receita Mensal</div>
+      <div class="stat-value">R$ 18.580</div>
+      <div class="stat-sub green">↑ +R$ 1.120 vs mês anterior</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label"><span>📊</span> Check-ins Hoje</div>
+      <div class="stat-value">342</div>
+      <div class="stat-sub">de 1.247 usuárias ativas</div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Planos Aguardando Revisão</span>
+        <a class="card-link" href="#">Ver todos →</a>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Usuária</th>
+            <th>Tipo</th>
+            <th>Criado</th>
+            <th>Status</th>
+            <th>Ação</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="font-weight:600;">Fernanda S.</td>
+            <td>Cacheado 3B</td>
+            <td style="color:#8A8A8E;">Hoje 14:23</td>
+            <td><span class="badge badge-pending">🟡 Pendente</span></td>
+            <td><button class="btn-table btn-revisar">Revisar</button></td>
+          </tr>
+          <tr>
+            <td style="font-weight:600;">Ana Beatriz</td>
+            <td>Liso tingido</td>
+            <td style="color:#8A8A8E;">Hoje 11:05</td>
+            <td><span class="badge badge-pending">🟡 Pendente</span></td>
+            <td><button class="btn-table btn-revisar">Revisar</button></td>
+          </tr>
+          <tr>
+            <td style="font-weight:600;">Carolina M.</td>
+            <td>Crespo 4C</td>
+            <td style="color:#8A8A8E;">Ontem 18:40</td>
+            <td><span class="badge badge-pending">🟡 Pendente</span></td>
+            <td><button class="btn-table btn-revisar">Revisar</button></td>
+          </tr>
+          <tr>
+            <td style="font-weight:600;">Larissa T.</td>
+            <td>Ondulado 2C</td>
+            <td style="color:#8A8A8E;">Ontem 15:22</td>
+            <td><span class="badge badge-approved">✅ Aprovado</span></td>
+            <td><button class="btn-table btn-ver">Ver</button></td>
+          </tr>
+          <tr>
+            <td style="font-weight:600;">Mariana F.</td>
+            <td>Cacheado 3A</td>
+            <td style="color:#8A8A8E;">Ontem 09:10</td>
+            <td><span class="badge badge-approved">✅ Aprovado</span></td>
+            <td><button class="btn-table btn-ver">Ver</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="right-col">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title"><span class="live-dot"></span>Check-ins Recentes</span>
+        </div>
+        <div class="checkin-item">
+          <div class="checkin-avatar">RS</div>
+          <div class="checkin-info">
+            <div class="checkin-name">Renata S.</div>
+            <div class="checkin-time">há 3 min</div>
+          </div>
+          <span class="checkin-emoji">😍</span>
+        </div>
+        <div class="checkin-item">
+          <div class="checkin-avatar green">PL</div>
+          <div class="checkin-info">
+            <div class="checkin-name">Patrícia L.</div>
+            <div class="checkin-time">há 11 min</div>
+          </div>
+          <span class="checkin-emoji">💆‍♀️</span>
+        </div>
+        <div class="checkin-item">
+          <div class="checkin-avatar blue">TA</div>
+          <div class="checkin-info">
+            <div class="checkin-name">Thamires A.</div>
+            <div class="checkin-time">há 18 min</div>
+          </div>
+          <span class="checkin-emoji">✨</span>
+        </div>
+        <div class="checkin-item">
+          <div class="checkin-avatar purple">BM</div>
+          <div class="checkin-info">
+            <div class="checkin-name">Bruna M.</div>
+            <div class="checkin-time">há 26 min</div>
+          </div>
+          <span class="checkin-emoji">😊</span>
+        </div>
+        <div class="checkin-item">
+          <div class="checkin-avatar orange">JF</div>
+          <div class="checkin-info">
+            <div class="checkin-name">Juliana F.</div>
+            <div class="checkin-time">há 34 min</div>
+          </div>
+          <span class="checkin-emoji">🌿</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Churn esta semana</span>
+        </div>
+        <div class="churn-stat">
+          <span class="churn-count">3</span>
+          <span class="churn-label">cancelamentos</span>
+        </div>
+        <div class="churn-item">
+          <div class="churn-dot"></div>
+          <div>
+            <div class="churn-name">Débora C.</div>
+            <div class="churn-reason">Motivo: Preço</div>
+          </div>
+        </div>
+        <div class="churn-item">
+          <div class="churn-dot"></div>
+          <div>
+            <div class="churn-name">Samara R.</div>
+            <div class="churn-reason">Motivo: Resultados esperados</div>
+          </div>
+        </div>
+        <div class="churn-item">
+          <div class="churn-dot"></div>
+          <div>
+            <div class="churn-name">Viviane T.</div>
+            <div class="churn-reason">Motivo: Falta de tempo</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="chart-section">
+    <div class="chart-title">Novos planos por dia</div>
+    <div class="chart-bars">
+      <div class="chart-bar-wrap">
+        <div class="chart-val">12</div>
+        <div class="chart-bar" style="height:60px;">
+          <div class="chart-bar-fill" style="height:100%;"></div>
+        </div>
+        <div class="chart-day">Seg</div>
+      </div>
+      <div class="chart-bar-wrap">
+        <div class="chart-val">8</div>
+        <div class="chart-bar" style="height:40px;">
+          <div class="chart-bar-fill" style="height:100%;"></div>
+        </div>
+        <div class="chart-day">Ter</div>
+      </div>
+      <div class="chart-bar-wrap">
+        <div class="chart-val">17</div>
+        <div class="chart-bar" style="height:80px;">
+          <div class="chart-bar-fill" style="height:100%;"></div>
+        </div>
+        <div class="chart-day">Qua</div>
+      </div>
+      <div class="chart-bar-wrap">
+        <div class="chart-val">14</div>
+        <div class="chart-bar" style="height:70px;">
+          <div class="chart-bar-fill" style="height:100%;"></div>
+        </div>
+        <div class="chart-day">Qui</div>
+      </div>
+      <div class="chart-bar-wrap">
+        <div class="chart-val">21</div>
+        <div class="chart-bar" style="height:80px;">
+          <div class="chart-bar-fill" style="height:100%;"></div>
+        </div>
+        <div class="chart-day">Sex</div>
+      </div>
+      <div class="chart-bar-wrap">
+        <div class="chart-val">9</div>
+        <div class="chart-bar" style="height:45px;">
+          <div class="chart-bar-fill" style="height:100%;"></div>
+        </div>
+        <div class="chart-day">Sáb</div>
+      </div>
+      <div class="chart-bar-wrap today">
+        <div class="chart-val" style="color:#C4607A;">6</div>
+        <div class="chart-bar" style="height:30px; background:rgba(196,96,122,0.25);">
+          <div class="chart-bar-fill" style="height:100%;"></div>
+        </div>
+        <div class="chart-day">Hj</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+</body>
+</html>
