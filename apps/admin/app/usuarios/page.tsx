@@ -2,7 +2,7 @@ import { createAdminClient } from '../../lib/supabase'
 import Sidebar from '../components/Sidebar'
 import UsuariasClient from './UsuariasClient'
 
-export const dynamic = 'force-dynamic'
+export const revalidate = 30
 export const metadata = { title: 'Usuárias — Admin Plano da Ju' }
 
 export default async function UsuariasPage() {

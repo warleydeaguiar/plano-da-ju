@@ -2,7 +2,7 @@ import { createAdminClient } from '../../lib/supabase'
 import Sidebar from '../components/Sidebar'
 import Link from 'next/link'
 
-export const dynamic = 'force-dynamic'
+export const revalidate = 60
 export const metadata = { title: 'Assinaturas — Admin Plano da Ju' }
 
 const accent  = '#C4607A'

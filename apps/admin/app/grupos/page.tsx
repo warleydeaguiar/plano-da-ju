@@ -1,10 +1,15 @@
 import { createAdminClient } from '@/lib/supabase'
-const supabase = createAdminClient()
+import { getInstanceStatus } from '@/lib/evolution-grupos'
 import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
+const EVOLUTION_MANAGER_URL = process.env.EVOLUTION_GRUPOS_URL
+  ? process.env.EVOLUTION_GRUPOS_URL.replace(/\/+$/, '').replace(':8080', '') + '/manager'
+  : 'http://automacao.julianecost.com/manager'
+
 async function getGruposStats() {
+  const supabase = createAdminClient()
   const [groupsRes, clicksRes, broadcastsRes] = await Promise.all([
     supabase.from('wg_groups' as any).select('*').neq('status', 'archived'),
     supabase
@@ -32,6 +37,16 @@ async function getGruposStats() {
     totalGroups:  groups.length,
     clicksToday,
     recentBroadcasts: (broadcastsRes.data ?? []) as any[],
+  }
+}
+
+async function getEvolutionStatus(): Promise<{ connected: boolean; state: string }> {
+  try {
+    const res = await getInstanceStatus()
+    const state: string = res?.instance?.state ?? res?.state ?? 'unknown'
+    return { connected: state === 'open', state }
+  } catch {
+    return { connected: false, state: 'error' }
   }
 }
 
@@ -67,19 +82,26 @@ function statusBadge(g: any) {
 }
 
 export default async function GruposPage() {
-  const { groups, totalMembers, activeCount, fullCount, totalGroups, clicksToday, recentBroadcasts } = await getGruposStats()
+  const [stats, evoStatus] = await Promise.all([
+    getGruposStats(),
+    getEvolutionStatus(),
+  ])
+  const { groups, totalMembers, activeCount, fullCount, totalGroups, clicksToday, recentBroadcasts } = stats
+
+  const evoColor = evoStatus.connected ? green : (evoStatus.state === 'connecting' ? orange : red)
+  const evoLabel = evoStatus.connected ? 'Conectado' : (evoStatus.state === 'connecting' ? 'Conectando…' : 'Desconectado')
 
   return (
     <div style={{ padding: '32px 40px', maxWidth: 1100 }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 32 }}>
         <div>
           <div style={{ fontSize: 22, fontWeight: 700, color: '#2D1B2E' }}>Grupos de Promoções</div>
           <div style={{ fontSize: 14, color: '#8A8A8E', marginTop: 4 }}>
             Distribuição proporcional via link único — <code style={{ background: '#F5F5F7', padding: '2px 6px', borderRadius: 4, fontSize: 12 }}>plano.julianecost.com/g/entrar</code>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <Link href="/grupos/broadcast" style={{
             background: '#F5F5F7', color: '#2D1B2E', padding: '9px 18px',
             borderRadius: 10, fontSize: 14, fontWeight: 600, textDecoration: 'none',
@@ -93,6 +115,52 @@ export default async function GruposPage() {
             ⚙️ Gerenciar
           </Link>
         </div>
+      </div>
+
+      {/* Evolution API status + atalho */}
+      <div style={{
+        background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)',
+        padding: '16px 24px', marginBottom: 24,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <span style={{ fontSize: 22 }}>📱</span>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E' }}>Evolution API — WhatsApp</div>
+            <div style={{ fontSize: 12, color: '#8A8A8E', marginTop: 2 }}>
+              Instância: <code style={{ background: '#F5F5F7', padding: '1px 5px', borderRadius: 4 }}>
+                {process.env.EVOLUTION_GRUPOS_INSTANCE ?? 'grupos-promo'}
+              </code>
+            </div>
+          </div>
+          {/* Status pill */}
+          <span style={{
+            fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 20,
+            background: evoColor + '18', color: evoColor,
+            display: 'flex', alignItems: 'center', gap: 5,
+          }}>
+            <span style={{
+              display: 'inline-block', width: 7, height: 7, borderRadius: '50%',
+              background: evoColor,
+              boxShadow: evoStatus.connected ? `0 0 0 2px ${evoColor}40` : 'none',
+            }} />
+            {evoLabel}
+          </span>
+        </div>
+        <a
+          href={EVOLUTION_MANAGER_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'flex', alignItems: 'center', gap: 7,
+            background: '#2D1B2E', color: '#fff',
+            padding: '8px 16px', borderRadius: 10,
+            fontSize: 13, fontWeight: 600, textDecoration: 'none',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Abrir Evolution Manager ↗
+        </a>
       </div>
 
       {/* KPIs */}

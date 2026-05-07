@@ -1,7 +1,7 @@
 import { createAdminClient } from '../../lib/supabase'
 import Sidebar from '../components/Sidebar'
 
-export const dynamic = 'force-dynamic'
+export const revalidate = 60
 export const metadata = { title: 'Analytics — Admin Plano da Ju' }
 
 const accent = '#C4607A'
