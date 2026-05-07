@@ -1,4 +1,5 @@
 import Sidebar from '../components/Sidebar'
+import AdminUsersSection from './AdminUsersSection'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Configurações — Admin Plano da Ju' }
@@ -124,6 +125,10 @@ export default function ConfiguracoesPage() {
               <li><code>subscription.canceled</code> — marca como cancelada</li>
             </ul>
           </div>
+        </Section>
+
+        <Section title="👤 Administradores do sistema">
+          <AdminUsersSection />
         </Section>
 
         <Section title="⚙️ Variáveis de ambiente — checklist">
