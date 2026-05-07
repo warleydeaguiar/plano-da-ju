@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
-const supabase = createAdminClient()
 
 export const dynamic = 'force-dynamic'
 
@@ -9,6 +8,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const supabase = createAdminClient()
   const { id } = await params
   const body = await req.json()
 
@@ -28,6 +28,7 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const supabase = createAdminClient()
   const { id } = await params
 
   const { error } = await supabase

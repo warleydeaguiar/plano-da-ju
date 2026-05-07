@@ -2,14 +2,13 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { syncGroupMemberCounts } from '@/lib/evolution-grupos'
 
-const supabase = createAdminClient()
-
 export const dynamic = 'force-dynamic'
 
 const CAPACITY = 1024
 
 /** POST /api/grupos/sync — atualiza member_count via Evolution API */
 export async function POST() {
+  const supabase = createAdminClient()
   const { data: groups, error } = await supabase
     .from('wg_groups' as any)
     .select('id, jid, member_count, name, status')

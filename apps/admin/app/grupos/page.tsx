@@ -1,12 +1,13 @@
 import { createAdminClient } from '@/lib/supabase'
-import { getInstanceStatus } from '@/lib/evolution-grupos'
+import { fetchAllInstances } from '@/lib/evolution-grupos'
 import Link from 'next/link'
+import GruposChartsSection from './GruposChartsSection'
 
 export const dynamic = 'force-dynamic'
 
 const EVOLUTION_MANAGER_URL = process.env.EVOLUTION_GRUPOS_URL
   ? process.env.EVOLUTION_GRUPOS_URL.replace(/\/+$/, '').replace(':8080', '') + '/manager'
-  : 'http://automacao.julianecost.com/manager'
+  : 'https://automacao.julianecost.com/manager'
 
 async function getGruposStats() {
   const supabase = createAdminClient()
@@ -18,7 +19,7 @@ async function getGruposStats() {
       .gte('created_at', new Date(Date.now() - 86400000).toISOString()),
     supabase
       .from('wg_broadcasts' as any)
-      .select('id, title, message, sent_at, success_count, fail_count, total_groups, status')
+      .select('id, title, message, sent_at, success_count, fail_count, total_groups, status, scheduled_at, instance_name')
       .order('created_at', { ascending: false })
       .limit(5),
   ])
@@ -27,7 +28,6 @@ async function getGruposStats() {
   const totalMembers = groups.reduce((s: number, g: any) => s + (g.member_count ?? 0), 0)
   const activeGroups = groups.filter((g: any) => g.status === 'active' && g.is_receiving)
   const fullGroups   = groups.filter((g: any) => g.status === 'full')
-  const clicksToday  = clicksRes.count ?? 0
 
   return {
     groups,
@@ -35,18 +35,8 @@ async function getGruposStats() {
     activeCount:  activeGroups.length,
     fullCount:    fullGroups.length,
     totalGroups:  groups.length,
-    clicksToday,
+    clicksToday:  clicksRes.count ?? 0,
     recentBroadcasts: (broadcastsRes.data ?? []) as any[],
-  }
-}
-
-async function getEvolutionStatus(): Promise<{ connected: boolean; state: string }> {
-  try {
-    const res = await getInstanceStatus()
-    const state: string = res?.instance?.state ?? res?.state ?? 'unknown'
-    return { connected: state === 'open', state }
-  } catch {
-    return { connected: false, state: 'error' }
   }
 }
 
@@ -54,42 +44,53 @@ const accent = '#C4607A'
 const green  = '#34C759'
 const orange = '#FF9500'
 const red    = '#FF3B30'
+const gray   = '#8A8A8E'
 
 function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) {
   return (
-    <div style={{
-      background: '#fff',
-      borderRadius: 14,
-      padding: '20px 24px',
-      border: '1px solid rgba(0,0,0,0.06)',
-    }}>
-      <div style={{ fontSize: 13, color: '#8A8A8E', fontWeight: 500, marginBottom: 8 }}>{label}</div>
+    <div style={{ background: '#fff', borderRadius: 14, padding: '20px 24px', border: '1px solid rgba(0,0,0,0.06)' }}>
+      <div style={{ fontSize: 13, color: gray, fontWeight: 500, marginBottom: 8 }}>{label}</div>
       <div style={{ fontSize: 28, fontWeight: 700, color: color ?? '#2D1B2E', lineHeight: 1 }}>{value}</div>
-      {sub && <div style={{ fontSize: 12, color: '#8A8A8E', marginTop: 6 }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 12, color: gray, marginTop: 6 }}>{sub}</div>}
     </div>
   )
 }
 
 function pct(count: number, capacity: number) {
-  return Math.round((count / capacity) * 100)
+  return Math.round((count / Math.max(capacity, 1)) * 100)
 }
 
 function statusBadge(g: any) {
   if (g.status === 'full')     return { label: 'Cheio', color: red }
-  if (g.status === 'archived') return { label: 'Arquivado', color: '#8A8A8E' }
+  if (g.status === 'archived') return { label: 'Arquivado', color: gray }
   if (g.is_receiving)          return { label: 'Recebendo', color: green }
   return { label: 'Pausado', color: orange }
 }
 
+function instanceStatusColor(status: string) {
+  if (status === 'open')       return green
+  if (status === 'connecting') return orange
+  return red
+}
+function instanceStatusLabel(status: string) {
+  if (status === 'open')       return 'Conectado'
+  if (status === 'connecting') return 'Conectando…'
+  return 'Desconectado'
+}
+
 export default async function GruposPage() {
-  const [stats, evoStatus] = await Promise.all([
+  const [stats, instances] = await Promise.all([
     getGruposStats(),
-    getEvolutionStatus(),
+    fetchAllInstances().catch(() => []),
   ])
   const { groups, totalMembers, activeCount, fullCount, totalGroups, clicksToday, recentBroadcasts } = stats
 
-  const evoColor = evoStatus.connected ? green : (evoStatus.state === 'connecting' ? orange : red)
-  const evoLabel = evoStatus.connected ? 'Conectado' : (evoStatus.state === 'connecting' ? 'Conectando…' : 'Desconectado')
+  // Filtra apenas instâncias de grupos (exclui "plano capilar")
+  const grupoInstances = instances.filter(i =>
+    i.name.toLowerCase().includes('grupo') ||
+    i.name.toLowerCase().includes('promo') ||
+    i.name.toLowerCase().includes('ybera')
+  )
 
   return (
     <div style={{ padding: '32px 40px', maxWidth: 1100 }}>
@@ -97,8 +98,11 @@ export default async function GruposPage() {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 32 }}>
         <div>
           <div style={{ fontSize: 22, fontWeight: 700, color: '#2D1B2E' }}>Grupos de Promoções</div>
-          <div style={{ fontSize: 14, color: '#8A8A8E', marginTop: 4 }}>
-            Distribuição proporcional via link único — <code style={{ background: '#F5F5F7', padding: '2px 6px', borderRadius: 4, fontSize: 12 }}>plano.julianecost.com/g/entrar</code>
+          <div style={{ fontSize: 14, color: gray, marginTop: 4 }}>
+            Distribuição proporcional via link único —{' '}
+            <code style={{ background: '#F5F5F7', padding: '2px 6px', borderRadius: 4, fontSize: 12 }}>
+              plano.julianecost.com/g/entrar
+            </code>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
@@ -106,7 +110,7 @@ export default async function GruposPage() {
             background: '#F5F5F7', color: '#2D1B2E', padding: '9px 18px',
             borderRadius: 10, fontSize: 14, fontWeight: 600, textDecoration: 'none',
           }}>
-            📢 Broadcast
+            📢 Enviar mensagem
           </Link>
           <Link href="/grupos/gerenciar" style={{
             background: accent, color: '#fff', padding: '9px 18px',
@@ -117,79 +121,114 @@ export default async function GruposPage() {
         </div>
       </div>
 
-      {/* Evolution API status + atalho */}
+      {/* Números conectados (todas as instâncias) */}
       <div style={{
         background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)',
-        padding: '16px 24px', marginBottom: 24,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+        padding: '18px 24px', marginBottom: 24,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <span style={{ fontSize: 22 }}>📱</span>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E' }}>Evolution API — WhatsApp</div>
-            <div style={{ fontSize: 12, color: '#8A8A8E', marginTop: 2 }}>
-              Instância: <code style={{ background: '#F5F5F7', padding: '1px 5px', borderRadius: 4 }}>
-                {process.env.EVOLUTION_GRUPOS_INSTANCE ?? 'grupos-promo'}
-              </code>
-            </div>
-          </div>
-          {/* Status pill */}
-          <span style={{
-            fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 20,
-            background: evoColor + '18', color: evoColor,
-            display: 'flex', alignItems: 'center', gap: 5,
-          }}>
-            <span style={{
-              display: 'inline-block', width: 7, height: 7, borderRadius: '50%',
-              background: evoColor,
-              boxShadow: evoStatus.connected ? `0 0 0 2px ${evoColor}40` : 'none',
-            }} />
-            {evoLabel}
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#2D1B2E' }}>📱 Números WhatsApp</div>
+          <a
+            href={EVOLUTION_MANAGER_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              background: '#2D1B2E', color: '#fff', padding: '7px 14px', borderRadius: 9,
+              fontSize: 12, fontWeight: 600, textDecoration: 'none',
+            }}
+          >
+            Abrir Evolution Manager ↗
+          </a>
         </div>
-        <a
-          href={EVOLUTION_MANAGER_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            display: 'flex', alignItems: 'center', gap: 7,
-            background: '#2D1B2E', color: '#fff',
-            padding: '8px 16px', borderRadius: 10,
-            fontSize: 13, fontWeight: 600, textDecoration: 'none',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          Abrir Evolution Manager ↗
-        </a>
+
+        {instances.length === 0 ? (
+          <div style={{ fontSize: 13, color: gray }}>Não foi possível conectar ao Evolution API.</div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+            {instances.map((inst) => {
+              const color = instanceStatusColor(inst.connectionStatus)
+              const label = instanceStatusLabel(inst.connectionStatus)
+              return (
+                <div key={inst.name} style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '12px 16px', borderRadius: 12,
+                  background: inst.connectionStatus === 'open' ? green + '08' : '#F9F9FC',
+                  border: `1px solid ${color}22`,
+                }}>
+                  {/* Avatar */}
+                  <div style={{
+                    width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
+                    background: inst.profilePicUrl ? 'transparent' : color + '20',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    overflow: 'hidden',
+                    border: `2px solid ${color}40`,
+                  }}>
+                    {inst.profilePicUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={inst.profilePicUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <span style={{ fontSize: 18 }}>📱</span>
+                    )}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#2D1B2E', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {inst.profileName ?? inst.name}
+                    </div>
+                    <div style={{ fontSize: 11, color: gray, marginTop: 1 }}>
+                      {inst.ownerJid
+                        ? inst.ownerJid.replace('@s.whatsapp.net', '').replace(/(\d{2})(\d{2})(\d{5})(\d{4})/, '+$1 ($2) $3-$4')
+                        : inst.name}
+                    </div>
+                  </div>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, flexShrink: 0,
+                    background: color + '18', color,
+                    display: 'flex', alignItems: 'center', gap: 4,
+                  }}>
+                    <span style={{
+                      display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: color,
+                      boxShadow: inst.connectionStatus === 'open' ? `0 0 0 2px ${color}40` : 'none',
+                    }} />
+                    {label}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 32 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         <StatCard label="Total de membros" value={totalMembers.toLocaleString('pt-BR')} sub={`em ${totalGroups} grupos`} />
         <StatCard label="Recebendo agora" value={activeCount} sub="grupos ativos" color={green} />
         <StatCard label="Grupos cheios" value={fullCount} sub="capacity 1.024" color={fullCount > 0 ? red : '#2D1B2E'} />
         <StatCard label="Cliques hoje" value={clicksToday} sub="redirecionamentos" color={accent} />
       </div>
 
+      {/* Charts */}
+      <GruposChartsSection />
+
       {/* Lista de grupos */}
       <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', marginBottom: 28 }}>
         <div style={{ padding: '18px 24px', borderBottom: '1px solid #F0F0F5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: '#2D1B2E' }}>Grupos cadastrados</div>
           <Link href="/grupos/gerenciar" style={{ fontSize: 13, color: accent, fontWeight: 600, textDecoration: 'none' }}>
-            Ver todos →
+            Gerenciar →
           </Link>
         </div>
 
         {groups.length === 0 ? (
-          <div style={{ padding: '40px 24px', textAlign: 'center', color: '#8A8A8E', fontSize: 14 }}>
-            Nenhum grupo cadastrado. <Link href="/grupos/gerenciar" style={{ color: accent }}>Adicione o primeiro →</Link>
+          <div style={{ padding: '40px 24px', textAlign: 'center', color: gray, fontSize: 14 }}>
+            Nenhum grupo cadastrado.{' '}
+            <Link href="/grupos/gerenciar" style={{ color: accent }}>Adicione ou descubra grupos →</Link>
           </div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid #F0F0F5' }}>
                 {['Grupo', 'Membros', 'Ocupação', 'Status', 'Último sync'].map((h) => (
-                  <th key={h} style={{ padding: '10px 24px', textAlign: 'left', fontSize: 12, color: '#8A8A8E', fontWeight: 600 }}>{h}</th>
+                  <th key={h} style={{ padding: '10px 24px', textAlign: 'left', fontSize: 12, color: gray, fontWeight: 600 }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -201,21 +240,20 @@ export default async function GruposPage() {
                   <tr key={g.id} style={{ borderBottom: '1px solid #F9F9FC' }}>
                     <td style={{ padding: '14px 24px' }}>
                       <div style={{ fontSize: 14, fontWeight: 600, color: '#2D1B2E' }}>{g.name}</div>
-                      {g.jid && <div style={{ fontSize: 11, color: '#8A8A8E', marginTop: 2 }}>{g.jid}</div>}
+                      {g.jid && <div style={{ fontSize: 11, color: gray, marginTop: 2 }}>{g.jid}</div>}
                     </td>
                     <td style={{ padding: '14px 24px', fontSize: 14, fontWeight: 600, color: '#2D1B2E' }}>
-                      {g.member_count} <span style={{ color: '#8A8A8E', fontWeight: 400 }}>/ {g.capacity ?? 1024}</span>
+                      {g.member_count} <span style={{ color: gray, fontWeight: 400 }}>/ {g.capacity ?? 1024}</span>
                     </td>
                     <td style={{ padding: '14px 24px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div style={{ flex: 1, height: 6, background: '#F0F0F5', borderRadius: 3, minWidth: 80 }}>
                           <div style={{
-                            height: '100%', borderRadius: 3,
-                            width: `${Math.min(fill, 100)}%`,
+                            height: '100%', borderRadius: 3, width: `${Math.min(fill, 100)}%`,
                             background: fill >= 95 ? red : fill >= 80 ? orange : green,
                           }} />
                         </div>
-                        <span style={{ fontSize: 12, color: '#8A8A8E', minWidth: 32 }}>{fill}%</span>
+                        <span style={{ fontSize: 12, color: gray, minWidth: 32 }}>{fill}%</span>
                       </div>
                     </td>
                     <td style={{ padding: '14px 24px' }}>
@@ -224,7 +262,7 @@ export default async function GruposPage() {
                         background: badge.color + '18', color: badge.color,
                       }}>{badge.label}</span>
                     </td>
-                    <td style={{ padding: '14px 24px', fontSize: 12, color: '#8A8A8E' }}>
+                    <td style={{ padding: '14px 24px', fontSize: 12, color: gray }}>
                       {g.last_synced_at
                         ? new Date(g.last_synced_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
                         : '—'}
@@ -241,9 +279,9 @@ export default async function GruposPage() {
       {recentBroadcasts.length > 0 && (
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)' }}>
           <div style={{ padding: '18px 24px', borderBottom: '1px solid #F0F0F5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#2D1B2E' }}>Broadcasts recentes</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#2D1B2E' }}>Mensagens recentes</div>
             <Link href="/grupos/broadcast" style={{ fontSize: 13, color: accent, fontWeight: 600, textDecoration: 'none' }}>
-              Enviar novo →
+              Enviar nova →
             </Link>
           </div>
           <div style={{ padding: '8px 0' }}>
@@ -253,16 +291,23 @@ export default async function GruposPage() {
                   <div style={{ fontSize: 14, fontWeight: 600, color: '#2D1B2E', marginBottom: 2 }}>
                     {b.title || b.message.slice(0, 60) + (b.message.length > 60 ? '…' : '')}
                   </div>
-                  <div style={{ fontSize: 12, color: '#8A8A8E' }}>
-                    {b.sent_at ? new Date(b.sent_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}
-                    {' · '}{b.success_count}/{b.total_groups} grupos entregues
+                  <div style={{ fontSize: 12, color: gray }}>
+                    {b.status === 'scheduled' && b.scheduled_at
+                      ? `Agendado para ${new Date(b.scheduled_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`
+                      : b.sent_at
+                        ? new Date(b.sent_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+                        : '—'}
+                    {b.status !== 'scheduled' && ` · ${b.success_count}/${b.total_groups} grupos`}
+                    {b.instance_name && ` · via ${b.instance_name}`}
                   </div>
                 </div>
                 <span style={{
                   fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 20,
-                  background: b.status === 'done' ? green + '18' : orange + '18',
-                  color: b.status === 'done' ? green : orange,
-                }}>{b.status === 'done' ? 'Enviado' : b.status}</span>
+                  background: b.status === 'done' ? green + '18' : b.status === 'scheduled' ? accent + '18' : orange + '18',
+                  color: b.status === 'done' ? green : b.status === 'scheduled' ? accent : orange,
+                }}>
+                  {b.status === 'done' ? 'Enviado' : b.status === 'scheduled' ? '🕐 Agendado' : b.status}
+                </span>
               </div>
             ))}
           </div>

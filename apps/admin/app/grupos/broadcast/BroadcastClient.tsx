@@ -1,11 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 
 const accent = '#C4607A'
 const green  = '#34C759'
 const orange = '#FF9500'
 const red    = '#FF3B30'
+const gray   = '#8A8A8E'
+
+type EvoInstance = {
+  name: string
+  connectionStatus: string
+  ownerJid: string | null
+  profileName: string | null
+}
 
 type Broadcast = {
   id: string
@@ -14,10 +22,12 @@ type Broadcast = {
   media_url: string | null
   media_type: string | null
   status: string
+  scheduled_at: string | null
   sent_at: string | null
   total_groups: number
   success_count: number
   fail_count: number
+  instance_name: string | null
   created_at: string
 }
 
@@ -30,47 +40,148 @@ type Group = {
   member_count: number
 }
 
+type UploadedMedia = {
+  base64: string
+  mimetype: string
+  mediatype: 'image' | 'video' | 'document'
+  filename: string
+  size: number
+  preview?: string   // object URL para preview
+}
+
+function formatBytes(n: number) {
+  if (n < 1024) return `${n} B`
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+
+// Data/hora local no formato de input datetime-local
+function toLocalDatetimeInput(date: Date) {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
 export default function BroadcastClient({
   history,
   groups,
+  instances,
 }: {
   history: Broadcast[]
   groups: Group[]
+  instances: EvoInstance[]
 }) {
-  const [title, setTitle]       = useState('')
-  const [message, setMessage]   = useState('')
-  const [mediaUrl, setMediaUrl] = useState('')
-  const [mediaType, setMediaType] = useState<'' | 'image' | 'video'>('')
-  const [sending, setSending]   = useState(false)
-  const [result, setResult]     = useState<{ ok: boolean; text: string } | null>(null)
+  const [title, setTitle]           = useState('')
+  const [message, setMessage]       = useState('')
+  const [uploadedMedia, setUploadedMedia] = useState<UploadedMedia | null>(null)
+  const [mediaUrl, setMediaUrl]     = useState('')       // URL manual
+  const [mediaType, setMediaType]   = useState<'' | 'image' | 'video' | 'document'>('')
+  const [mediaTab, setMediaTab]     = useState<'none' | 'upload' | 'url'>('none')
+
+  const [instanceName, setInstanceName] = useState('')    // '' = auto
+  const [scheduleMode, setScheduleMode] = useState(false)
+  const [scheduledAt, setScheduledAt]   = useState('')    // datetime-local value
+
+  const [sending, setSending]       = useState(false)
+  const [result, setResult]         = useState<{ ok: boolean; text: string } | null>(null)
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>(history)
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null)
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const activeGroups = groups.filter(g => g.jid)
+  const openInstances = instances.filter(i => i.connectionStatus === 'open')
 
+  // Defaults para o agendamento: próxima hora cheia
+  const defaultSchedule = () => {
+    const d = new Date()
+    d.setHours(d.getHours() + 1, 0, 0, 0)
+    return toLocalDatetimeInput(d)
+  }
+
+  // ── Upload de arquivo ──
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadProgress('Processando…')
+    setUploadedMedia(null)
+
+    const formData = new FormData()
+    formData.append('file', file)
+    try {
+      const res = await fetch('/api/grupos/upload', { method: 'POST', body: formData })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      const preview = file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined
+      setUploadedMedia({ ...data, preview })
+      setMediaType(data.mediatype)
+      setUploadProgress(null)
+    } catch (err: any) {
+      setUploadProgress('✗ Erro: ' + err.message)
+    }
+  }
+
+  function removeMedia() {
+    if (uploadedMedia?.preview) URL.revokeObjectURL(uploadedMedia.preview)
+    setUploadedMedia(null)
+    setMediaType('')
+    setMediaUrl('')
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  // ── Enviar ──
   async function send() {
     if (!message.trim()) return
-    if (!confirm(`Enviar para ${activeGroups.length} grupos ativos?`)) return
+
+    const targetCount = activeGroups.length
+    const actionLabel = scheduleMode
+      ? `Agendar para ${new Date(scheduledAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} para ${targetCount} grupos?`
+      : `Enviar agora para ${targetCount} grupos?`
+
+    if (!confirm(actionLabel)) return
     setSending(true)
     setResult(null)
+
     try {
+      const body: Record<string, any> = {
+        title: title.trim() || undefined,
+        message: message.trim(),
+        instance_name: instanceName || undefined,
+        scheduled_at: scheduleMode && scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
+      }
+
+      if (mediaTab === 'upload' && uploadedMedia) {
+        body.media_base64 = uploadedMedia.base64
+        body.media_type   = uploadedMedia.mediatype
+        body.mimetype     = uploadedMedia.mimetype
+      } else if (mediaTab === 'url' && mediaUrl.trim()) {
+        body.media_url  = mediaUrl.trim()
+        body.media_type = mediaType || 'image'
+      }
+
       const res = await fetch('/api/grupos/broadcast', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: title.trim() || undefined,
-          message: message.trim(),
-          media_url: mediaUrl.trim() || undefined,
-          media_type: mediaType || undefined,
-        }),
+        body: JSON.stringify(body),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      setResult({ ok: true, text: `✓ Enviado para ${data.success} grupos${data.fail > 0 ? ` (${data.fail} falharam)` : ''}` })
+
+      if (data.scheduled) {
+        setResult({ ok: true, text: `✓ Agendado para ${formatDate(data.scheduled_at)}` })
+      } else {
+        setResult({ ok: true, text: `✓ Enviado para ${data.success} grupos${data.fail > 0 ? ` (${data.fail} falharam)` : ''}` })
+      }
+
       setTitle('')
       setMessage('')
-      setMediaUrl('')
-      setMediaType('')
-      // Reload history
+      removeMedia()
+      setScheduleMode(false)
+      setScheduledAt('')
+
       const h2 = await fetch('/api/grupos/broadcast')
       const updated = await h2.json()
       if (Array.isArray(updated)) setBroadcasts(updated)
@@ -81,15 +192,35 @@ export default function BroadcastClient({
     }
   }
 
+  // ── Cancelar agendado ──
+  async function cancelScheduled(b: Broadcast) {
+    if (!confirm('Cancelar esse broadcast agendado?')) return
+    const res = await fetch(`/api/grupos/broadcast/${b.id}`, { method: 'DELETE' })
+    if (res.ok) {
+      setBroadcasts(prev => prev.map(x => x.id === b.id ? { ...x, status: 'cancelled' } : x))
+    }
+  }
+
+  const scheduled = broadcasts.filter(b => b.status === 'scheduled')
+  const sent      = broadcasts.filter(b => b.status !== 'scheduled')
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '10px 14px', borderRadius: 10, fontSize: 14,
+    border: '1px solid #E0E0E8', outline: 'none', boxSizing: 'border-box',
+    fontFamily: 'inherit',
+  }
+
   return (
-    <div style={{ padding: '32px 40px', maxWidth: 900 }}>
-      <div style={{ fontSize: 22, fontWeight: 700, color: '#2D1B2E', marginBottom: 4 }}>Broadcast</div>
-      <div style={{ fontSize: 14, color: '#8A8A8E', marginBottom: 28 }}>
-        Envia mensagem para todos os grupos ativos com JID cadastrado
+    <div style={{ padding: '32px 40px', maxWidth: 980 }}>
+      <div style={{ fontSize: 22, fontWeight: 700, color: '#2D1B2E', marginBottom: 4 }}>
+        Enviar mensagem nos grupos
+      </div>
+      <div style={{ fontSize: 14, color: gray, marginBottom: 28 }}>
+        Envia ou agenda mensagem para todos os grupos ativos
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 24, alignItems: 'start' }}>
-        {/* Form */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 290px', gap: 24, alignItems: 'start' }}>
+        {/* ── Formulário ── */}
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '24px' }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: '#2D1B2E', marginBottom: 20 }}>Nova mensagem</div>
 
@@ -98,148 +229,366 @@ export default function BroadcastClient({
               padding: '10px 16px', borderRadius: 10, marginBottom: 20,
               background: result.ok ? green + '15' : red + '15',
               color: result.ok ? green : red, fontSize: 13, fontWeight: 600,
-            }}>
-              {result.text}
-            </div>
+            }}>{result.text}</div>
           )}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            {/* Título */}
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#8A8A8E', display: 'block', marginBottom: 6 }}>TÍTULO (opcional)</label>
-              <input
-                value={title}
-                onChange={e => setTitle(e.target.value)}
-                placeholder="Ex: Promoção especial de maio"
-                style={{ width: '100%', padding: '10px 14px', borderRadius: 10, fontSize: 14, border: '1px solid #E0E0E8', outline: 'none', boxSizing: 'border-box' }}
-              />
+              <label style={{ fontSize: 12, fontWeight: 600, color: gray, display: 'block', marginBottom: 6 }}>TÍTULO (opcional)</label>
+              <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Ex: Promoção especial de maio" style={inputStyle} />
             </div>
 
+            {/* Mensagem */}
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#8A8A8E', display: 'block', marginBottom: 6 }}>MENSAGEM *</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: gray, display: 'block', marginBottom: 6 }}>MENSAGEM *</label>
               <textarea
                 value={message}
                 onChange={e => setMessage(e.target.value)}
                 placeholder="Digite a mensagem que será enviada para todos os grupos..."
                 rows={5}
-                style={{ width: '100%', padding: '10px 14px', borderRadius: 10, fontSize: 14, border: '1px solid #E0E0E8', outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                style={{ ...inputStyle, resize: 'vertical' }}
               />
-              <div style={{ fontSize: 11, color: '#8A8A8E', textAlign: 'right', marginTop: 4 }}>{message.length} caracteres</div>
+              <div style={{ fontSize: 11, color: gray, textAlign: 'right', marginTop: 4 }}>{message.length} caracteres</div>
             </div>
 
+            {/* ── Mídia ── */}
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#8A8A8E', display: 'block', marginBottom: 6 }}>MÍDIA (opcional)</label>
-              <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                {(['', 'image', 'video'] as const).map(t => (
+              <label style={{ fontSize: 12, fontWeight: 600, color: gray, display: 'block', marginBottom: 8 }}>MÍDIA (opcional)</label>
+
+              {/* Tabs */}
+              <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                {([['none', 'Sem mídia'], ['upload', '📎 Upload'], ['url', '🔗 URL']] as const).map(([k, l]) => (
                   <button
-                    key={t}
-                    onClick={() => setMediaType(t)}
+                    key={k}
+                    onClick={() => { setMediaTab(k); if (k !== 'upload') removeMedia() }}
                     style={{
                       padding: '6px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer',
-                      background: mediaType === t ? accent : '#F5F5F7',
-                      color: mediaType === t ? '#fff' : '#2D1B2E',
+                      background: mediaTab === k ? accent : '#F5F5F7',
+                      color: mediaTab === k ? '#fff' : '#2D1B2E',
                     }}
-                  >
-                    {t === '' ? 'Sem mídia' : t === 'image' ? '🖼 Imagem' : '🎥 Vídeo'}
-                  </button>
+                  >{l}</button>
                 ))}
               </div>
-              {mediaType !== '' && (
-                <input
-                  value={mediaUrl}
-                  onChange={e => setMediaUrl(e.target.value)}
-                  placeholder="URL pública da mídia (https://...)"
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: 10, fontSize: 14, border: '1px solid #E0E0E8', outline: 'none', boxSizing: 'border-box' }}
-                />
+
+              {/* Upload */}
+              {mediaTab === 'upload' && (
+                <div>
+                  {!uploadedMedia ? (
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      style={{
+                        border: `2px dashed ${accent}50`, borderRadius: 12, padding: '24px',
+                        textAlign: 'center', cursor: 'pointer', background: accent + '05',
+                      }}
+                    >
+                      <div style={{ fontSize: 28, marginBottom: 8 }}>📁</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#2D1B2E', marginBottom: 4 }}>
+                        Clique para selecionar imagem ou vídeo
+                      </div>
+                      <div style={{ fontSize: 12, color: gray }}>JPG, PNG, GIF, MP4, MOV — máximo 30 MB</div>
+                      {uploadProgress && (
+                        <div style={{ marginTop: 10, fontSize: 12, color: uploadProgress.startsWith('✗') ? red : accent, fontWeight: 600 }}>
+                          {uploadProgress}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{
+                      border: `1px solid ${green}40`, borderRadius: 12, padding: '14px 16px',
+                      background: green + '06', display: 'flex', alignItems: 'center', gap: 14,
+                    }}>
+                      {uploadedMedia.preview ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={uploadedMedia.preview} alt="" style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
+                      ) : (
+                        <div style={{ width: 64, height: 64, borderRadius: 8, background: '#F0F0F5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0 }}>
+                          {uploadedMedia.mediatype === 'video' ? '🎥' : '📄'}
+                        </div>
+                      )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#2D1B2E', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {uploadedMedia.filename}
+                        </div>
+                        <div style={{ fontSize: 12, color: gray }}>{formatBytes(uploadedMedia.size)} · {uploadedMedia.mimetype}</div>
+                      </div>
+                      <button
+                        onClick={removeMedia}
+                        style={{ background: red + '15', color: red, border: 'none', cursor: 'pointer', padding: '5px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, flexShrink: 0 }}
+                      >
+                        Remover
+                      </button>
+                    </div>
+                  )}
+                  <input ref={fileInputRef} type="file" accept="image/*,video/*" style={{ display: 'none' }} onChange={handleFileSelect} />
+                </div>
+              )}
+
+              {/* URL */}
+              {mediaTab === 'url' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {(['image', 'video'] as const).map(t => (
+                      <button
+                        key={t}
+                        onClick={() => setMediaType(t)}
+                        style={{
+                          padding: '5px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer',
+                          background: mediaType === t ? accent : '#F5F5F7',
+                          color: mediaType === t ? '#fff' : '#2D1B2E',
+                        }}
+                      >{t === 'image' ? '🖼 Imagem' : '🎥 Vídeo'}</button>
+                    ))}
+                  </div>
+                  <input
+                    value={mediaUrl}
+                    onChange={e => setMediaUrl(e.target.value)}
+                    placeholder="https://exemplo.com/imagem.jpg"
+                    style={inputStyle}
+                  />
+                </div>
               )}
             </div>
 
+            {/* ── Número de envio ── */}
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: gray, display: 'block', marginBottom: 6 }}>
+                NÚMERO DE ENVIO
+              </label>
+              <select
+                value={instanceName}
+                onChange={e => setInstanceName(e.target.value)}
+                style={{ ...inputStyle, background: '#fff', cursor: 'pointer' }}
+              >
+                <option value="">Automático (primeiro conectado)</option>
+                {instances.map(i => (
+                  <option key={i.name} value={i.name} disabled={i.connectionStatus !== 'open'}>
+                    {i.profileName ?? i.name}
+                    {i.ownerJid ? ` — ${i.ownerJid.replace('@s.whatsapp.net', '')}` : ''}
+                    {i.connectionStatus !== 'open' ? ' (desconectado)' : ''}
+                  </option>
+                ))}
+              </select>
+              {openInstances.length === 0 && (
+                <div style={{ fontSize: 12, color: orange, marginTop: 6 }}>
+                  ⚠️ Nenhum número conectado. Configure no Evolution Manager.
+                </div>
+              )}
+            </div>
+
+            {/* ── Agendamento ── */}
+            <div style={{
+              background: scheduleMode ? accent + '08' : '#F9F9FC',
+              border: `1px solid ${scheduleMode ? accent + '30' : '#E5E5EA'}`,
+              borderRadius: 12, padding: '14px 16px',
+            }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                <div
+                  onClick={() => {
+                    const next = !scheduleMode
+                    setScheduleMode(next)
+                    if (next && !scheduledAt) setScheduledAt(defaultSchedule())
+                  }}
+                  style={{
+                    width: 44, height: 24, borderRadius: 12, cursor: 'pointer', transition: 'background .2s',
+                    background: scheduleMode ? accent : '#D0D0D8', position: 'relative', flexShrink: 0,
+                  }}
+                >
+                  <div style={{
+                    position: 'absolute', top: 3, left: scheduleMode ? 22 : 3,
+                    width: 18, height: 18, borderRadius: '50%', background: '#fff',
+                    transition: 'left .2s', boxShadow: '0 1px 3px rgba(0,0,0,.2)',
+                  }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#2D1B2E' }}>Agendar envio</div>
+                  <div style={{ fontSize: 11, color: gray }}>Mensagem será enviada automaticamente no horário definido</div>
+                </div>
+              </label>
+
+              {scheduleMode && (
+                <div style={{ marginTop: 14 }}>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: gray, display: 'block', marginBottom: 6 }}>DATA E HORA DE ENVIO</label>
+                  <input
+                    type="datetime-local"
+                    value={scheduledAt}
+                    onChange={e => setScheduledAt(e.target.value)}
+                    min={toLocalDatetimeInput(new Date())}
+                    style={{ ...inputStyle, width: 'auto' }}
+                  />
+                  {scheduledAt && (
+                    <div style={{ fontSize: 12, color: accent, marginTop: 6, fontWeight: 500 }}>
+                      📅 Será enviado {formatDate(new Date(scheduledAt).toISOString())}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Botão enviar */}
             <button
               onClick={send}
-              disabled={sending || !message.trim() || activeGroups.length === 0}
+              disabled={sending || !message.trim() || activeGroups.length === 0 || (scheduleMode && !scheduledAt)}
               style={{
-                background: accent, color: '#fff', border: 'none', cursor: sending || !message.trim() ? 'default' : 'pointer',
-                padding: '12px 24px', borderRadius: 10, fontSize: 15, fontWeight: 700,
-                opacity: sending || !message.trim() ? 0.6 : 1,
+                background: accent, color: '#fff', border: 'none',
+                cursor: sending || !message.trim() ? 'default' : 'pointer',
+                padding: '13px 24px', borderRadius: 10, fontSize: 15, fontWeight: 700,
+                opacity: sending || !message.trim() || activeGroups.length === 0 ? 0.6 : 1,
               }}
             >
-              {sending ? '⏳ Enviando…' : `📢 Enviar para ${activeGroups.length} grupos`}
+              {sending
+                ? '⏳ Processando…'
+                : scheduleMode
+                  ? `📅 Agendar para ${activeGroups.length} grupos`
+                  : `📢 Enviar agora para ${activeGroups.length} grupos`}
             </button>
           </div>
         </div>
 
-        {/* Grupos alvo */}
-        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '20px' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E', marginBottom: 14 }}>
-            Grupos que receberão
-          </div>
-          {activeGroups.length === 0 ? (
-            <div style={{ fontSize: 13, color: '#8A8A8E', textAlign: 'center', padding: '20px 0' }}>
-              Nenhum grupo com JID. Configure no Gerenciar.
+        {/* ── Sidebar: grupos e instâncias ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Grupos alvo */}
+          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '20px' }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E', marginBottom: 14 }}>
+              Grupos que receberão
             </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {activeGroups.map(g => (
-                <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{
-                    width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-                    background: g.is_receiving ? green : orange,
-                  }} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#2D1B2E' }}>{g.name}</div>
-                    <div style={{ fontSize: 11, color: '#8A8A8E' }}>{g.member_count} membros</div>
+            {activeGroups.length === 0 ? (
+              <div style={{ fontSize: 13, color: gray, textAlign: 'center', padding: '16px 0' }}>
+                Nenhum grupo com JID. Configure no Gerenciar.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {activeGroups.map(g => (
+                  <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: g.is_receiving ? green : orange }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#2D1B2E' }}>{g.name}</div>
+                      <div style={{ fontSize: 11, color: gray }}>{g.member_count.toLocaleString('pt-BR')} membros</div>
+                    </div>
                   </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Números conectados */}
+          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '20px' }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E', marginBottom: 14 }}>Números</div>
+            {instances.map(i => {
+              const c = i.connectionStatus === 'open' ? green : i.connectionStatus === 'connecting' ? orange : red
+              return (
+                <div key={i.name} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: c, flexShrink: 0, display: 'inline-block' }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#2D1B2E' }}>{i.profileName ?? i.name}</div>
+                    {i.ownerJid && <div style={{ fontSize: 10, color: gray }}>{i.ownerJid.replace('@s.whatsapp.net', '')}</div>}
+                  </div>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: c }}>
+                    {i.connectionStatus === 'open' ? '● OK' : i.connectionStatus === 'connecting' ? '● …' : '● Off'}
+                  </span>
                 </div>
-              ))}
-              {groups.filter(g => !g.jid).length > 0 && (
-                <div style={{ fontSize: 11, color: '#8A8A8E', marginTop: 8, paddingTop: 8, borderTop: '1px solid #F0F0F5' }}>
-                  {groups.filter(g => !g.jid).length} grupos sem JID (precisam de sync)
-                </div>
-              )}
-            </div>
-          )}
+              )
+            })}
+          </div>
         </div>
       </div>
 
-      {/* Histórico */}
-      {broadcasts.length > 0 && (
-        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', marginTop: 28 }}>
-          <div style={{ padding: '18px 24px', borderBottom: '1px solid #F0F0F5', fontSize: 15, fontWeight: 700, color: '#2D1B2E' }}>
-            Histórico de broadcasts
+      {/* ── Agendados ── */}
+      {scheduled.length > 0 && (
+        <div style={{ background: '#fff', borderRadius: 14, border: `1px solid ${accent}20`, marginTop: 28 }}>
+          <div style={{ padding: '18px 24px', borderBottom: '1px solid #F0F0F5', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#2D1B2E' }}>🕐 Mensagens agendadas</div>
+            <span style={{ fontSize: 12, fontWeight: 700, background: accent + '18', color: accent, padding: '2px 9px', borderRadius: 20 }}>
+              {scheduled.length}
+            </span>
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid #F0F0F5' }}>
-                {['Mensagem', 'Enviado em', 'Resultado', 'Status'].map(h => (
-                  <th key={h} style={{ padding: '10px 20px', textAlign: 'left', fontSize: 12, color: '#8A8A8E', fontWeight: 600 }}>{h}</th>
+                {['Mensagem', 'Agendado para', 'Número', 'Grupos', ''].map(h => (
+                  <th key={h} style={{ padding: '10px 20px', textAlign: 'left', fontSize: 12, color: gray, fontWeight: 600 }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {broadcasts.map(b => (
+              {scheduled.map(b => (
                 <tr key={b.id} style={{ borderBottom: '1px solid #F9F9FC' }}>
                   <td style={{ padding: '12px 20px' }}>
                     {b.title && <div style={{ fontSize: 13, fontWeight: 700, color: '#2D1B2E', marginBottom: 2 }}>{b.title}</div>}
-                    <div style={{ fontSize: 13, color: '#555', maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ fontSize: 13, color: '#555', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {b.message}
                     </div>
                   </td>
-                  <td style={{ padding: '12px 20px', fontSize: 12, color: '#8A8A8E', whiteSpace: 'nowrap' }}>
-                    {b.sent_at
-                      ? new Date(b.sent_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
-                      : '—'}
+                  <td style={{ padding: '12px 20px', fontSize: 12, color: '#2D1B2E', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                    {b.scheduled_at ? formatDate(b.scheduled_at) : '—'}
+                  </td>
+                  <td style={{ padding: '12px 20px', fontSize: 12, color: gray }}>
+                    {b.instance_name ?? '—'}
+                  </td>
+                  <td style={{ padding: '12px 20px', fontSize: 12, color: '#2D1B2E' }}>
+                    {b.total_groups} grupos
+                  </td>
+                  <td style={{ padding: '12px 20px' }}>
+                    <button
+                      onClick={() => cancelScheduled(b)}
+                      style={{ fontSize: 12, color: red, background: red + '12', border: 'none', cursor: 'pointer', padding: '4px 10px', borderRadius: 7, fontWeight: 600 }}
+                    >
+                      Cancelar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ── Histórico ── */}
+      {sent.length > 0 && (
+        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', marginTop: 28 }}>
+          <div style={{ padding: '18px 24px', borderBottom: '1px solid #F0F0F5', fontSize: 15, fontWeight: 700, color: '#2D1B2E' }}>
+            Histórico de envios
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid #F0F0F5' }}>
+                {['Mensagem', 'Enviado em', 'Número', 'Resultado', 'Status'].map(h => (
+                  <th key={h} style={{ padding: '10px 20px', textAlign: 'left', fontSize: 12, color: gray, fontWeight: 600 }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {sent.map(b => (
+                <tr key={b.id} style={{ borderBottom: '1px solid #F9F9FC' }}>
+                  <td style={{ padding: '12px 20px' }}>
+                    {b.title && <div style={{ fontSize: 13, fontWeight: 700, color: '#2D1B2E', marginBottom: 2 }}>{b.title}</div>}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {b.media_type && (
+                        <span style={{ fontSize: 13 }}>{b.media_type === 'image' ? '🖼' : b.media_type === 'video' ? '🎥' : '📎'}</span>
+                      )}
+                      <div style={{ fontSize: 13, color: '#555', maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {b.message}
+                      </div>
+                    </div>
+                  </td>
+                  <td style={{ padding: '12px 20px', fontSize: 12, color: gray, whiteSpace: 'nowrap' }}>
+                    {b.sent_at ? formatDate(b.sent_at) : '—'}
+                  </td>
+                  <td style={{ padding: '12px 20px', fontSize: 12, color: gray }}>
+                    {b.instance_name ?? '—'}
                   </td>
                   <td style={{ padding: '12px 20px', fontSize: 13 }}>
                     <span style={{ color: green, fontWeight: 600 }}>{b.success_count}</span>
-                    <span style={{ color: '#8A8A8E' }}> / {b.total_groups}</span>
+                    <span style={{ color: gray }}> / {b.total_groups}</span>
                     {b.fail_count > 0 && <span style={{ color: red, marginLeft: 4 }}>({b.fail_count} falhas)</span>}
                   </td>
                   <td style={{ padding: '12px 20px' }}>
                     <span style={{
                       fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 20,
-                      background: b.status === 'done' ? green + '18' : b.status === 'sending' ? orange + '18' : red + '18',
-                      color: b.status === 'done' ? green : b.status === 'sending' ? orange : red,
+                      background: b.status === 'done' ? green + '18' : b.status === 'cancelled' ? gray + '18' : orange + '18',
+                      color: b.status === 'done' ? green : b.status === 'cancelled' ? gray : orange,
                     }}>
-                      {b.status === 'done' ? 'Enviado' : b.status === 'sending' ? 'Enviando' : b.status}
+                      {b.status === 'done' ? 'Enviado' : b.status === 'cancelled' ? 'Cancelado' : b.status === 'sending' ? 'Enviando…' : b.status}
                     </span>
                   </td>
                 </tr>
