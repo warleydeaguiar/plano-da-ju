@@ -4,9 +4,9 @@ import { createAdminClient } from '@/lib/supabase'
 export const dynamic = 'force-dynamic'
 
 /** DELETE /api/grupos/broadcast/[id] — cancela broadcast agendado */
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const supabase = createAdminClient()
-  const { id } = params
+  const { id } = await params
 
   const { data: broadcast } = await supabase
     .from('wg_broadcasts' as any)
