@@ -18,7 +18,7 @@ export async function POST() {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   if (!groups?.length) {
-    return NextResponse.json({ ok: true, synced: 0, message: 'Nenhum grupo com JID para sincronizar' })
+    return NextResponse.json({ ok: true, synced: 0, total: 0, message: 'Nenhum grupo com JID para sincronizar' })
   }
 
   const jids = (groups as any[]).map((g) => g.jid).filter(Boolean)

@@ -1,10 +1,10 @@
 import GerenciarClient from './GerenciarClient'
 import { createAdminClient } from '@/lib/supabase'
-const supabase = createAdminClient()
 
 export const dynamic = 'force-dynamic'
 
 export default async function GerenciarPage() {
+  const supabase = createAdminClient()
   const { data } = await supabase
     .from('wg_groups' as any)
     .select('*')
