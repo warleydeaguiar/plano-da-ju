@@ -11,6 +11,7 @@ const NAV = [
   { icon: '💬', label: 'Grupos de Promoções', href: '/grupos' },
   { icon: '🎧', label: 'Suporte Plano Capilar', href: '/suporte' },
   { icon: '🌿', label: 'Ybera', href: '/ybera' },
+  { icon: '👥', label: 'Equipe', href: '/funcionarios' },
   { icon: '📈', label: 'Analytics', href: '/analytics' },
   { icon: '⚙️', label: 'Configurações', href: '/configuracoes' },
 ];
