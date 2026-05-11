@@ -1,29 +1,52 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 
+// ─── Design tokens ───────────────────────────────────────────
 const T = {
-  accent:  '#C4607A',
-  pink:    '#EC4899',
-  pinkDeep:'#BE185D',
-  green:   '#22C55E',
-  whatsapp:'#25D366',
-  orange:  '#F97316',
-  red:     '#EF4444',
-  gray:    '#8A8A8E',
-  ink:     '#2D1B2E',
-  inkSoft: '#6B7280',
-  border:  'rgba(0,0,0,0.06)',
-  bg:      '#F5F5F7',
+  bg:        '#F9FAFB',
+  card:      '#FFFFFF',
+  ink:       '#0F172A',
+  inkSoft:   '#64748B',
+  inkMuted:  '#94A3B8',
+  border:    '#E5E7EB',
+  borderSoft:'#F1F5F9',
+  whatsapp:  '#22C55E',
+  whatsappDeep: '#16A34A',
+  bgWhats:   '#F0FDF4',
+
+  red:       '#EF4444',
+  redSoft:   '#FEE2E2',
+  redBg:     '#FEF2F2',
+
+  orange:    '#F97316',
+  orangeSoft:'#FFEDD5',
+  orangeBg:  '#FFF7ED',
+
+  blue:      '#3B82F6',
+  blueSoft:  '#DBEAFE',
+  blueBg:    '#EFF6FF',
+
+  yellow:    '#F59E0B',
+  yellowSoft:'#FEF3C7',
+  yellowBg:  '#FFFBEB',
+
+  purple:    '#A855F7',
+  purpleSoft:'#F3E8FF',
+  purpleBg:  '#FAF5FF',
+
+  gray:      '#94A3B8',
+  graySoft:  '#F1F5F9',
 }
 
 type Rule = 20 | 60 | 120
-type Tab = 20 | 60 | 120 | 'history' | 'templates'
+type RuleFilter = 'todos' | 20 | 60 | 120
+type View = 'kanban' | 'history' | 'templates'
 
-const RULE_META: Record<Rule, { label: string; color: string; emoji: string; subtitle: string }> = {
-  20:  { label: '20 dias',  color: '#F59E0B', emoji: '🟡', subtitle: 'Primeiro followup' },
-  60:  { label: '60 dias',  color: '#F97316', emoji: '🟠', subtitle: 'Reativação' },
-  120: { label: '120 dias', color: '#EF4444', emoji: '🔴', subtitle: 'Última tentativa' },
+const RULE_META: Record<Rule, { label: string; bg: string; text: string; dot: string }> = {
+  20:  { label: '20 dias',  bg: T.yellowSoft, text: '#B45309', dot: T.yellow },
+  60:  { label: '60 dias',  bg: T.orangeSoft, text: '#9A3412', dot: T.orange },
+  120: { label: '120 dias', bg: T.redSoft,    text: '#991B1B', dot: T.red    },
 }
 
 interface Lead {
@@ -35,13 +58,14 @@ interface Lead {
   utm_campaign: string | null
   created_at: string
   days_since: number
-  rule_days?: number
+  rule_days: Rule
+  status?: 'atrasados' | 'hoje' | 'amanha'
+  days_overdue?: number
   contacted_at?: string
   notes?: string | null
-  outcome?: string | null
-  followup_id?: string
   instance_used?: string | null
   send_method?: string | null
+  followup_id?: string
 }
 
 interface Template {
@@ -55,300 +79,383 @@ interface Template {
 interface EvoInstance {
   name: string
   connectionStatus: string
-  profileName?: string
-  ownerJid?: string
 }
 
+// ─── Helpers ─────────────────────────────────────────────────
 function formatPhone(p: string | null) {
   if (!p) return '—'
   const d = p.replace(/\D/g, '')
-  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
-  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`
+  if (d.length === 13 && d.startsWith('55')) {
+    return `+55 (${d.slice(2, 4)}) ${d.slice(4, 9)}-${d.slice(9)}`
+  }
+  if (d.length === 11) return `+55 (${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
+  if (d.length === 10) return `+55 (${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`
   return p
 }
-
 function whatsappLink(phone: string | null, message: string) {
   if (!phone) return '#'
   let d = phone.replace(/\D/g, '')
-  // Adiciona 55 (BR) se ainda não tiver
   if (d.length === 10 || d.length === 11) d = '55' + d
   return `https://wa.me/${d}?text=${encodeURIComponent(message)}`
 }
-
 function fillTemplate(tpl: string, lead: Lead) {
   const firstName = (lead.name ?? '').split(' ')[0] || 'amiga'
   return tpl.replace(/\{nome\}/g, firstName).replace(/\{name\}/g, firstName)
 }
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('pt-BR', {
-    day: '2-digit', month: '2-digit', year: '2-digit',
-  })
-}
-
 function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString('pt-BR', {
     day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
   })
 }
 
-// ─── KPI Card ────────────────────────────────────────────────
-function KpiCard({ rule, count, active, onClick }: {
-  rule: Rule; count: number; active: boolean; onClick: () => void
-}) {
-  const m = RULE_META[rule]
-  return (
-    <button onClick={onClick} style={{
-      flex: 1, background: active ? '#fff' : 'rgba(255,255,255,0.6)',
-      border: active ? `2px solid ${m.color}` : `1px solid ${T.border}`,
-      borderRadius: 14, padding: '16px 20px', cursor: 'pointer',
-      textAlign: 'left', transition: 'all 0.2s', fontFamily: 'inherit',
-      boxShadow: active ? `0 8px 20px ${m.color}22` : 'none',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 4 }}>
-        <span style={{ fontSize: 28, fontWeight: 700, color: active ? m.color : T.ink, lineHeight: 1 }}>
-          {count}
-        </span>
-        <span style={{ fontSize: 16 }}>{m.emoji}</span>
-      </div>
-      <div style={{ fontSize: 13, fontWeight: 600, color: T.ink, marginTop: 6 }}>{m.label}</div>
-      <div style={{ fontSize: 11, color: T.gray, marginTop: 2 }}>{m.subtitle}</div>
-    </button>
-  )
-}
-
-// ─── Lead Card (pending) ──────────────────────────────────────
-function LeadRow({ lead, rule, template, instances, onMark, onUndo, onSend }: {
+// ─── Card ────────────────────────────────────────────────────
+function FollowupCard({ lead, template, instances, onSend, onMark, onUndo, isHistory }: {
   lead: Lead
-  rule: Rule | null
   template: Template | undefined
   instances: EvoInstance[]
-  onMark: (leadId: string, ruleDays: number, notes?: string) => Promise<void>
-  onUndo?: (leadId: string, ruleDays: number) => Promise<void>
-  onSend: (leadId: string, ruleDays: number, instanceName: string) => Promise<{ ok: boolean; error?: string }>
+  onSend: (leadId: string, rule: Rule, instance: string) => Promise<{ ok: boolean; error?: string }>
+  onMark: (leadId: string, rule: Rule) => Promise<void>
+  onUndo?: (leadId: string, rule: Rule) => Promise<void>
+  isHistory?: boolean
 }) {
-  const [marking, setMarking] = useState(false)
   const [sending, setSending] = useState(false)
-  const [sendError, setSendError] = useState<string | null>(null)
-  const [showNotes, setShowNotes] = useState(false)
-  const [notes, setNotes] = useState('')
+  const [marking, setMarking] = useState(false)
+  const [copied, setCopied] = useState(false)
   const [pickedInstance, setPickedInstance] = useState<string>(
-    template?.default_instance ?? instances[0]?.name ?? ''
+    template?.default_instance ?? instances.find(i => i.connectionStatus === 'open')?.name ?? instances[0]?.name ?? ''
   )
+  const [showInstanceDropdown, setShowInstanceDropdown] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
 
-  // Sync instância default quando template muda
   useEffect(() => {
-    if (template?.default_instance) setPickedInstance(template.default_instance)
-    else if (!pickedInstance && instances[0]) setPickedInstance(instances[0].name)
-  }, [template?.default_instance, instances]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (template?.default_instance && !pickedInstance) setPickedInstance(template.default_instance)
+  }, [template?.default_instance]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const isHistory = !!lead.followup_id
-  const effectiveRule = (lead.rule_days ?? rule ?? 20) as Rule
-  const m = RULE_META[effectiveRule]
-  const tplMessage = template ? fillTemplate(template.message, lead) : ''
-  const waLink = whatsappLink(lead.phone, tplMessage)
+  const rule = lead.rule_days
+  const meta = RULE_META[rule]
+  const message = template ? fillTemplate(template.message, lead) : ''
+  const waLink = whatsappLink(lead.phone, message)
 
-  const doMark = async () => {
-    setMarking(true)
-    await onMark(lead.id, effectiveRule, notes.trim() || undefined)
-    setMarking(false)
-    setShowNotes(false)
-    setNotes('')
-  }
+  const statusText = isHistory
+    ? `Contatado em ${lead.contacted_at ? formatDateTime(lead.contacted_at) : '—'}`
+    : lead.status === 'atrasados'
+      ? `${meta.label} — atrasado ${lead.days_overdue} ${lead.days_overdue === 1 ? 'dia' : 'dias'}`
+      : lead.status === 'hoje'
+        ? `${meta.label} — hoje`
+        : `${meta.label} — amanhã`
 
-  const doSend = async () => {
-    setSending(true)
-    setSendError(null)
-    const res = await onSend(lead.id, effectiveRule, pickedInstance)
-    if (!res.ok) setSendError(res.error ?? 'Erro ao enviar')
+  const handleSend = async () => {
+    setSending(true); setSendError(null)
+    const res = await onSend(lead.id, rule, pickedInstance)
+    if (!res.ok) setSendError(res.error ?? 'Erro')
     setSending(false)
+  }
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(message)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1800)
+    } catch {}
+  }
+  const handleMark = async () => {
+    setMarking(true)
+    await onMark(lead.id, rule)
+    setMarking(false)
   }
 
   return (
     <div style={{
-      background: '#fff', border: `1px solid ${T.border}`, borderRadius: 12,
-      padding: '14px 16px', marginBottom: 10,
-      display: 'flex', flexDirection: 'column', gap: 10,
+      background: T.card,
+      border: `1px solid ${T.border}`,
+      borderRadius: 16,
+      padding: '18px 18px 16px',
+      marginBottom: 12,
+      boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03)',
     }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-        {/* Avatar */}
-        <div style={{
-          width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
-          background: `linear-gradient(135deg, ${m.color}, ${T.pinkDeep})`,
-          color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 16, fontWeight: 700,
-        }}>
-          {(lead.name ?? '?').charAt(0).toUpperCase()}
-        </div>
-
-        {/* Info */}
+      {/* Top row: name + phone + badge */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 14, fontWeight: 700, color: T.ink }}>{lead.name ?? '—'}</span>
-            {lead.utm_source && (
-              <span style={{
-                fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 99,
-                background: '#F0F0F5', color: T.gray, textTransform: 'uppercase', letterSpacing: 0.4,
-              }}>{lead.utm_source}</span>
-            )}
-            {isHistory && (
-              <span style={{
-                fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99,
-                background: m.color + '20', color: m.color,
-              }}>{m.label}</span>
-            )}
+          <div style={{
+            fontSize: 16, fontWeight: 700, color: T.ink,
+            lineHeight: 1.2, marginBottom: 4,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            {lead.name ?? '— sem nome —'}
           </div>
-          {lead.email && (
-            <div style={{ fontSize: 12, color: T.gray, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis' }}>{lead.email}</div>
-          )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4, fontSize: 12, color: T.inkSoft }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'monospace' }}>📱 {formatPhone(lead.phone)}</span>
-            <span>•</span>
-            <span>1º contato: {formatDate(lead.created_at)}</span>
+          <div style={{ fontSize: 13, color: T.inkSoft, fontFamily: 'ui-monospace, monospace' }}>
+            {formatPhone(lead.phone)}
           </div>
-          {isHistory && lead.contacted_at && (
-            <div style={{ fontSize: 11, color: T.gray, marginTop: 4 }}>
-              ✓ Contatado em {formatDateTime(lead.contacted_at)}
-              {lead.instance_used && (
-                <> · via <strong style={{ color: T.whatsapp }}>📱 {lead.instance_used}</strong></>
-              )}
-              {lead.send_method === 'evolution' && <> 🚀</>}
-              {lead.notes && <> · <em>"{lead.notes}"</em></>}
-            </div>
-          )}
         </div>
-
-        {/* Days badge */}
+        {/* Rule badge */}
         <div style={{
-          flexShrink: 0, textAlign: 'center', padding: '6px 10px',
-          background: m.color + '15', borderRadius: 10,
-          minWidth: 64,
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+          background: meta.bg, color: meta.text,
+          padding: '4px 10px', borderRadius: 99,
+          fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap',
+          flexShrink: 0,
         }}>
-          <div style={{ fontSize: 20, fontWeight: 700, color: m.color, lineHeight: 1 }}>{lead.days_since}</div>
-          <div style={{ fontSize: 9, color: m.color, fontWeight: 600, letterSpacing: 0.3, marginTop: 2 }}>DIAS</div>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: meta.dot }} />
+          {meta.label}
         </div>
       </div>
 
-      {/* Actions */}
-      {!isHistory && (
-        <>
-          {/* Linha 1: Seletor de número + Enviar via Evolution */}
-          <div style={{
-            display: 'flex', gap: 8, alignItems: 'stretch',
-            background: '#F9F9FC', padding: 8, borderRadius: 10,
-            border: `1px solid ${T.border}`,
-          }}>
+      {/* Status pill */}
+      <div style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        background: isHistory ? T.bgWhats : meta.bg,
+        color: isHistory ? T.whatsappDeep : meta.text,
+        padding: '5px 12px', borderRadius: 99,
+        fontSize: 12, fontWeight: 600,
+        marginBottom: 12,
+      }}>
+        <span style={{ fontSize: 11 }}>{isHistory ? '✓' : '📅'}</span>
+        {statusText}
+      </div>
+
+      {/* Notes/instance for history */}
+      {isHistory && (
+        <div style={{ fontSize: 12, color: T.inkSoft, marginBottom: 12, lineHeight: 1.5 }}>
+          {lead.instance_used && (
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              background: T.bgWhats, color: T.whatsappDeep,
+              padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 600,
+              marginRight: 6,
+            }}>
+              📱 {lead.instance_used} {lead.send_method === 'evolution' && '🚀'}
+            </span>
+          )}
+          {lead.notes && <em>"{lead.notes}"</em>}
+        </div>
+      )}
+
+      {/* Message preview */}
+      {!isHistory && message && (
+        <div style={{
+          background: T.purpleBg, border: `1px solid ${T.purpleSoft}`,
+          borderRadius: 10, padding: '10px 14px',
+          fontSize: 13, color: T.ink, lineHeight: 1.5, marginBottom: 12,
+          whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+          maxHeight: 90, overflow: 'hidden', position: 'relative',
+        }}>
+          {message.slice(0, 200)}{message.length > 200 ? '…' : ''}
+        </div>
+      )}
+
+      {/* Instance selector (compact) */}
+      {!isHistory && instances.length > 0 && (
+        <div style={{ marginBottom: 10 }}>
+          {showInstanceDropdown ? (
             <select
               value={pickedInstance}
-              onChange={e => setPickedInstance(e.target.value)}
-              disabled={sending || instances.length === 0}
+              onChange={e => { setPickedInstance(e.target.value); setShowInstanceDropdown(false) }}
+              onBlur={() => setShowInstanceDropdown(false)}
+              autoFocus
               style={{
-                flex: 1, padding: '10px 12px', fontSize: 13,
-                border: `1px solid ${T.border}`, borderRadius: 8, outline: 'none',
-                background: '#fff', fontFamily: 'inherit', cursor: 'pointer',
+                width: '100%', padding: '8px 10px', fontSize: 12,
+                border: `1px solid ${T.border}`, borderRadius: 8,
+                background: '#fff', fontFamily: 'inherit', outline: 'none',
               }}
             >
-              {instances.length === 0 && <option value="">— sem instâncias conectadas —</option>}
               {instances.map(i => (
                 <option key={i.name} value={i.name}>
                   📱 {i.name}{i.connectionStatus !== 'open' ? ' (offline)' : ''}
                 </option>
               ))}
             </select>
+          ) : (
             <button
-              onClick={doSend}
-              disabled={sending || !pickedInstance}
+              onClick={() => setShowInstanceDropdown(true)}
               style={{
-                background: sending ? '#A7F3D0' : T.whatsapp, color: '#fff',
-                border: 'none', padding: '10px 16px', borderRadius: 8,
-                fontSize: 13, fontWeight: 700,
-                cursor: sending || !pickedInstance ? 'default' : 'pointer',
-                whiteSpace: 'nowrap',
+                background: 'transparent', border: 'none', padding: 0,
+                fontSize: 11, color: T.inkSoft, cursor: 'pointer',
+                fontFamily: 'inherit',
               }}
             >
-              {sending ? '⏳ Enviando…' : '🚀 Enviar via Evolution'}
+              📱 Enviar via: <strong style={{ color: T.whatsappDeep }}>{pickedInstance || '—'}</strong> <span style={{ textDecoration: 'underline' }}>trocar</span>
             </button>
-          </div>
-          {sendError && (
-            <div style={{
-              fontSize: 12, color: T.red, padding: '8px 12px',
-              background: '#FEF2F2', borderRadius: 8, border: '1px solid #FECACA',
-            }}>
-              ✗ {sendError}
-            </div>
           )}
+        </div>
+      )}
 
-          {/* Linha 2: WhatsApp manual + marcar manualmente */}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <a
-              href={waLink}
-              target="_blank"
-              rel="noopener noreferrer"
+      {sendError && (
+        <div style={{
+          fontSize: 12, color: T.red, padding: '6px 10px',
+          background: T.redBg, borderRadius: 8,
+          border: `1px solid ${T.redSoft}`, marginBottom: 10,
+        }}>
+          ✗ {sendError}
+        </div>
+      )}
+
+      {/* Actions */}
+      {isHistory ? (
+        <div style={{ display: 'flex', gap: 8 }}>
+          <a
+            href={waLink} target="_blank" rel="noopener noreferrer"
+            style={{
+              flex: 1, background: T.bgWhats, color: T.whatsappDeep,
+              border: `1px solid ${T.whatsapp}40`, borderRadius: 10,
+              padding: '10px 12px', fontSize: 13, fontWeight: 700,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              textDecoration: 'none', cursor: 'pointer',
+            }}
+          >
+            💬 Reabrir WhatsApp
+          </a>
+          {onUndo && (
+            <button
+              onClick={() => onUndo(lead.id, rule)}
               style={{
-                flex: 1, minWidth: 0,
-                background: 'transparent', color: T.ink,
-                padding: '8px 12px', borderRadius: 10,
-                fontSize: 12, fontWeight: 600, textDecoration: 'none',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                border: `1px solid ${T.border}`, cursor: 'pointer',
+                background: T.graySoft, color: T.inkSoft,
+                border: `1px solid ${T.border}`, borderRadius: 10,
+                padding: '10px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                fontFamily: 'inherit',
               }}
             >
-              💬 Abrir wa.me (manual)
-            </a>
-            {showNotes ? (
-              <>
-                <button onClick={doMark} disabled={marking} style={{
-                  flex: 1, background: T.green, color: '#fff', border: 'none',
-                  padding: '8px 12px', borderRadius: 10, fontSize: 12, fontWeight: 700,
-                  cursor: marking ? 'default' : 'pointer', opacity: marking ? 0.6 : 1,
-                }}>
-                  {marking ? 'Salvando…' : '✓ Confirmar'}
-                </button>
-                <button onClick={() => setShowNotes(false)} style={{
-                  background: '#F5F5F7', color: T.ink, border: 'none',
-                  padding: '8px 12px', borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                }}>
-                  Cancelar
-                </button>
-              </>
-            ) : (
-              <button onClick={() => setShowNotes(true)} style={{
-                flex: 1,
-                background: 'transparent', color: T.inkSoft, border: `1px solid ${T.border}`,
-                padding: '8px 12px', borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-              }}>
-                ✓ Marcar como contatado (manual)
-              </button>
-            )}
-          </div>
-        </>
-      )}
-      {showNotes && !isHistory && (
-        <input
-          type="text"
-          placeholder="Notas opcionais sobre o contato (ex: respondeu, comprou…)"
-          value={notes}
-          onChange={e => setNotes(e.target.value)}
-          autoFocus
-          style={{
-            width: '100%', padding: '10px 14px', fontSize: 13,
-            border: `1px solid ${T.border}`, borderRadius: 10, outline: 'none',
-            fontFamily: 'inherit', boxSizing: 'border-box',
-          }}
-        />
-      )}
-
-      {isHistory && onUndo && (
-        <div>
-          <button onClick={() => onUndo(lead.id, effectiveRule)} style={{
-            background: 'transparent', color: T.gray, border: `1px solid ${T.border}`,
-            padding: '6px 12px', borderRadius: 8, fontSize: 12, cursor: 'pointer',
-          }}>
-            ↶ Desfazer contato
+              ↶ Desfazer
+            </button>
+          )}
+        </div>
+      ) : (
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={handleSend}
+            disabled={sending || !pickedInstance}
+            style={{
+              flex: 1, background: sending ? '#A7F3D0' : T.whatsapp, color: '#fff',
+              border: 'none', borderRadius: 10, padding: '10px 12px',
+              fontSize: 13, fontWeight: 700, fontFamily: 'inherit',
+              cursor: sending || !pickedInstance ? 'default' : 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              boxShadow: sending ? 'none' : `0 2px 6px ${T.whatsapp}55`,
+            }}
+          >
+            <span style={{ fontSize: 14 }}>💬</span>
+            {sending ? 'Enviando…' : 'WhatsApp'}
+          </button>
+          <button
+            onClick={handleCopy}
+            style={{
+              flex: 1, background: copied ? T.bgWhats : T.graySoft,
+              color: copied ? T.whatsappDeep : T.ink,
+              border: `1px solid ${copied ? T.whatsapp + '40' : T.border}`,
+              borderRadius: 10, padding: '10px 12px',
+              fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              fontFamily: 'inherit',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              transition: 'all 0.2s',
+            }}
+          >
+            <span style={{ fontSize: 14 }}>{copied ? '✓' : '📋'}</span>
+            {copied ? 'Copiado!' : 'Copiar'}
+          </button>
+          <button
+            onClick={handleMark}
+            disabled={marking}
+            title="Marcar como contatado (sem enviar)"
+            style={{
+              width: 42, background: T.graySoft, color: T.inkSoft,
+              border: `1px solid ${T.border}`, borderRadius: 10,
+              fontSize: 16, cursor: marking ? 'default' : 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontFamily: 'inherit',
+            }}
+          >
+            ✓
           </button>
         </div>
       )}
     </div>
+  )
+}
+
+// ─── Column ──────────────────────────────────────────────────
+function KanbanColumn({ title, count, icon, iconColor, iconBg, accentColor, children, collapsible, collapsed, onToggleCollapse }: {
+  title: string
+  count: number
+  icon: string
+  iconColor: string
+  iconBg: string
+  accentColor: string
+  children: React.ReactNode
+  collapsible?: boolean
+  collapsed?: boolean
+  onToggleCollapse?: () => void
+}) {
+  return (
+    <div style={{ flex: 1, minWidth: 0 }}>
+      <button
+        onClick={onToggleCollapse}
+        disabled={!collapsible}
+        style={{
+          width: '100%',
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '12px 14px', marginBottom: 14,
+          background: '#fff', border: `1px solid ${T.border}`,
+          borderRadius: 12, cursor: collapsible ? 'pointer' : 'default',
+          fontFamily: 'inherit',
+        }}
+      >
+        <div style={{
+          width: 26, height: 26, borderRadius: 8,
+          background: iconBg, color: iconColor,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 14, fontWeight: 700, flexShrink: 0,
+        }}>
+          {icon}
+        </div>
+        <span style={{ fontSize: 15, fontWeight: 700, color: T.ink, flex: 1, textAlign: 'left' }}>
+          {title}
+        </span>
+        <span style={{
+          background: T.graySoft, color: T.inkSoft,
+          padding: '3px 10px', borderRadius: 99,
+          fontSize: 12, fontWeight: 700, minWidth: 26, textAlign: 'center',
+        }}>
+          {count}
+        </span>
+      </button>
+      {!collapsed && <div>{children}</div>}
+    </div>
+  )
+}
+
+// ─── Pill filter ─────────────────────────────────────────────
+function FilterPill({ label, active, onClick, icon, count }: {
+  label: string
+  active: boolean
+  onClick: () => void
+  icon?: string
+  count?: number
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        background: active ? '#fff' : 'transparent',
+        color: T.ink, border: 'none',
+        padding: '8px 16px', borderRadius: 10,
+        fontSize: 13, fontWeight: 600, cursor: 'pointer',
+        fontFamily: 'inherit',
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        boxShadow: active ? '0 1px 2px rgba(0,0,0,0.06), 0 2px 6px rgba(0,0,0,0.04)' : 'none',
+        transition: 'all 0.18s',
+      }}
+    >
+      {icon && <span style={{ fontSize: 13 }}>{icon}</span>}
+      {label}
+      {count !== undefined && count > 0 && (
+        <span style={{
+          background: active ? T.graySoft : 'rgba(15,23,42,0.08)',
+          color: T.inkSoft,
+          padding: '1px 8px', borderRadius: 99,
+          fontSize: 11, fontWeight: 700,
+        }}>
+          {count}
+        </span>
+      )}
+    </button>
   )
 }
 
@@ -357,17 +464,16 @@ function TemplatesPanel({ templates, instances, onUpdate, onUpdateInstance }: {
   templates: Template[]
   instances: EvoInstance[]
   onUpdate: (rule: number, message: string) => Promise<void>
-  onUpdateInstance: (rule: number, instanceName: string) => Promise<void>
+  onUpdateInstance: (rule: number, instance: string) => Promise<void>
 }) {
   const [editing, setEditing] = useState<Record<number, string>>({})
   const [saving, setSaving] = useState<number | null>(null)
-  const [savingInst, setSavingInst] = useState<number | null>(null)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 720 }}>
       <div style={{
-        padding: 14, background: '#FEF9C3', borderRadius: 10,
-        border: '1px solid #FDE68A', fontSize: 13, color: '#713F12',
+        padding: '12px 16px', background: T.yellowBg, borderRadius: 10,
+        border: `1px solid ${T.yellowSoft}`, fontSize: 13, color: '#713F12',
       }}>
         💡 Use <code style={{ background: '#fff', padding: '1px 5px', borderRadius: 4, fontSize: 12 }}>{'{nome}'}</code> para inserir o primeiro nome do lead automaticamente.
       </div>
@@ -378,39 +484,33 @@ function TemplatesPanel({ templates, instances, onUpdate, onUpdateInstance }: {
         const isSaving = saving === tpl.rule_days
         return (
           <div key={tpl.rule_days} style={{
-            background: '#fff', border: `1px solid ${T.border}`, borderRadius: 12,
-            padding: '16px 18px',
+            background: '#fff', border: `1px solid ${T.border}`, borderRadius: 14,
+            padding: '18px 20px',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
               <div style={{
-                fontSize: 14, fontWeight: 700, color: m.color,
-                padding: '4px 12px', background: m.color + '15', borderRadius: 99,
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                fontSize: 13, fontWeight: 700, color: m.text,
+                padding: '5px 12px', background: m.bg, borderRadius: 99,
               }}>
-                {m.emoji} {m.label}
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: m.dot }} />
+                {m.label}
               </div>
-              <div style={{ fontSize: 12, color: T.gray }}>{m.subtitle}</div>
               <div style={{ flex: 1 }} />
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 11, color: T.gray, fontWeight: 600 }}>Número default:</span>
+                <span style={{ fontSize: 11, color: T.inkSoft, fontWeight: 600 }}>Número default:</span>
                 <select
                   value={tpl.default_instance ?? ''}
-                  disabled={savingInst === tpl.rule_days}
-                  onChange={async e => {
-                    setSavingInst(tpl.rule_days)
-                    await onUpdateInstance(tpl.rule_days, e.target.value)
-                    setSavingInst(null)
-                  }}
+                  onChange={e => onUpdateInstance(tpl.rule_days, e.target.value)}
                   style={{
-                    padding: '5px 9px', fontSize: 12, borderRadius: 6,
+                    padding: '6px 10px', fontSize: 12, borderRadius: 8,
                     border: `1px solid ${T.border}`, background: '#fff',
                     fontFamily: 'inherit', cursor: 'pointer',
                   }}
                 >
                   <option value="">— escolher na hora —</option>
                   {instances.map(i => (
-                    <option key={i.name} value={i.name}>
-                      📱 {i.name}
-                    </option>
+                    <option key={i.name} value={i.name}>📱 {i.name}</option>
                   ))}
                 </select>
               </div>
@@ -429,11 +529,9 @@ function TemplatesPanel({ templates, instances, onUpdate, onUpdateInstance }: {
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
               {dirty && (
                 <button onClick={() => setEditing(e => { const n = { ...e }; delete n[tpl.rule_days]; return n })} style={{
-                  background: '#F5F5F7', color: T.ink, border: 'none',
-                  padding: '8px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                }}>
-                  Cancelar
-                </button>
+                  background: T.graySoft, color: T.ink, border: 'none',
+                  padding: '8px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                }}>Cancelar</button>
               )}
               <button
                 disabled={!dirty || isSaving}
@@ -444,9 +542,10 @@ function TemplatesPanel({ templates, instances, onUpdate, onUpdateInstance }: {
                   setSaving(null)
                 }}
                 style={{
-                  background: dirty ? T.accent : '#E5E5E8',
+                  background: dirty ? T.whatsapp : '#E5E7EB',
                   color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 8,
                   fontSize: 12, fontWeight: 700, cursor: dirty && !isSaving ? 'pointer' : 'default',
+                  fontFamily: 'inherit',
                 }}
               >
                 {isSaving ? 'Salvando…' : '💾 Salvar'}
@@ -460,16 +559,23 @@ function TemplatesPanel({ templates, instances, onUpdate, onUpdateInstance }: {
 }
 
 // ╔══════════════════════════════════════════════════════════╗
-// ║                     Main                                 ║
+// ║                Main                                      ║
 // ╚══════════════════════════════════════════════════════════╝
 export default function FollowupClient() {
-  const [tab, setTab] = useState<Tab>(20)
-  const [leads, setLeads] = useState<Lead[]>([])
-  const [counts, setCounts] = useState<Record<string, number>>({ '20': 0, '60': 0, '120': 0 })
+  const [view, setView] = useState<View>('kanban')
+  const [ruleFilter, setRuleFilter] = useState<RuleFilter>('todos')
+  const [kanban, setKanban] = useState<{ atrasados: Lead[]; hoje: Lead[]; amanha: Lead[] }>({
+    atrasados: [], hoje: [], amanha: [],
+  })
+  const [counts, setCounts] = useState<{ atrasados: number; hoje: number; amanha: number; total: number }>({
+    atrasados: 0, hoje: 0, amanha: 0, total: 0,
+  })
+  const [ruleCounts, setRuleCounts] = useState<Record<string, number>>({ '20': 0, '60': 0, '120': 0 })
+  const [history, setHistory] = useState<Lead[]>([])
   const [templates, setTemplates] = useState<Template[]>([])
   const [instances, setInstances] = useState<EvoInstance[]>([])
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
+  const [collapsedAmanha, setCollapsedAmanha] = useState(false)
 
   const templateMap = useMemo(() => {
     const m = new Map<number, Template>()
@@ -477,16 +583,34 @@ export default function FollowupClient() {
     return m
   }, [templates])
 
-  const loadLeads = useCallback(async (currentTab: Tab) => {
+  const loadKanban = useCallback(async () => {
     setLoading(true)
-    const rule = currentTab === 'templates' ? '20' : (currentTab === 'history' ? 'history' : String(currentTab))
     try {
-      const res = await fetch(`/api/followup?rule=${rule}`)
+      const ruleQuery = ruleFilter !== 'todos' ? `&rule=${ruleFilter}` : ''
+      const res = await fetch(`/api/followup?mode=kanban${ruleQuery}`)
       const data = await res.json()
-      setLeads(data.leads ?? [])
-      if (data.counts) setCounts(data.counts)
-    } catch (err) {
-      setLeads([])
+      setKanban({
+        atrasados: data.atrasados ?? [],
+        hoje: data.hoje ?? [],
+        amanha: data.amanha ?? [],
+      })
+      setCounts(data.counts ?? { atrasados: 0, hoje: 0, amanha: 0, total: 0 })
+      setRuleCounts(data.ruleCounts ?? {})
+    } catch {
+      setKanban({ atrasados: [], hoje: [], amanha: [] })
+    } finally {
+      setLoading(false)
+    }
+  }, [ruleFilter])
+
+  const loadHistory = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/followup?mode=history')
+      const data = await res.json()
+      setHistory(data.leads ?? [])
+    } catch {
+      setHistory([])
     } finally {
       setLoading(false)
     }
@@ -505,7 +629,6 @@ export default function FollowupClient() {
       const res = await fetch('/api/grupos/instances')
       const data = await res.json()
       if (Array.isArray(data)) {
-        // Prioriza instâncias conectadas
         const sorted = [...data].sort((a, b) => {
           if (a.connectionStatus === 'open' && b.connectionStatus !== 'open') return -1
           if (b.connectionStatus === 'open' && a.connectionStatus !== 'open') return 1
@@ -517,23 +640,45 @@ export default function FollowupClient() {
   }, [])
 
   useEffect(() => { loadTemplates(); loadInstances() }, [loadTemplates, loadInstances])
-  useEffect(() => { loadLeads(tab) }, [tab, loadLeads])
+  useEffect(() => {
+    if (view === 'kanban') loadKanban()
+    else if (view === 'history') loadHistory()
+    else loadTemplates()
+  }, [view, loadKanban, loadHistory, loadTemplates])
+  useEffect(() => {
+    if (view === 'kanban') loadKanban()
+  }, [ruleFilter, view, loadKanban])
 
-  const handleMark = useCallback(async (leadId: string, ruleDays: number, notes?: string) => {
+  const handleSend = useCallback(async (leadId: string, rule: Rule, instance: string) => {
+    try {
+      const res = await fetch('/api/followup/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lead_id: leadId, rule_days: rule, instance_name: instance }),
+      })
+      const data = await res.json()
+      if (!res.ok) return { ok: false, error: data.error ?? 'Erro' }
+      await loadKanban()
+      return { ok: true }
+    } catch (err: any) {
+      return { ok: false, error: err?.message ?? 'Erro de rede' }
+    }
+  }, [loadKanban])
+
+  const handleMark = useCallback(async (leadId: string, rule: Rule) => {
     const res = await fetch('/api/followup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lead_id: leadId, rule_days: ruleDays, notes }),
+      body: JSON.stringify({ lead_id: leadId, rule_days: rule }),
     })
-    if (res.ok) await loadLeads(tab)
-  }, [tab, loadLeads])
+    if (res.ok) await loadKanban()
+  }, [loadKanban])
 
-  const handleUndo = useCallback(async (leadId: string, ruleDays: number) => {
-    const ok = confirm('Desfazer o registro deste contato? O lead voltará para a régua pendente.')
-    if (!ok) return
-    const res = await fetch(`/api/followup?lead_id=${leadId}&rule_days=${ruleDays}`, { method: 'DELETE' })
-    if (res.ok) await loadLeads(tab)
-  }, [tab, loadLeads])
+  const handleUndo = useCallback(async (leadId: string, rule: Rule) => {
+    if (!confirm('Desfazer este contato? O lead voltará para a fila pendente.')) return
+    const res = await fetch(`/api/followup?lead_id=${leadId}&rule_days=${rule}`, { method: 'DELETE' })
+    if (res.ok) await loadHistory()
+  }, [loadHistory])
 
   const handleUpdateTemplate = useCallback(async (rule: number, message: string) => {
     await fetch('/api/followup/templates', {
@@ -544,155 +689,207 @@ export default function FollowupClient() {
     await loadTemplates()
   }, [loadTemplates])
 
-  const handleUpdateTemplateInstance = useCallback(async (rule: number, instanceName: string) => {
+  const handleUpdateTemplateInstance = useCallback(async (rule: number, instance: string) => {
     await fetch('/api/followup/templates', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rule_days: rule, default_instance: instanceName }),
+      body: JSON.stringify({ rule_days: rule, default_instance: instance }),
     })
     await loadTemplates()
   }, [loadTemplates])
 
-  const handleSend = useCallback(async (leadId: string, ruleDays: number, instanceName: string) => {
-    try {
-      const res = await fetch('/api/followup/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lead_id: leadId, rule_days: ruleDays, instance_name: instanceName }),
-      })
-      const data = await res.json()
-      if (!res.ok) return { ok: false, error: data.error ?? 'Erro desconhecido' }
-      await loadLeads(tab)
-      return { ok: true }
-    } catch (err: any) {
-      return { ok: false, error: err?.message ?? 'Erro de rede' }
-    }
-  }, [tab, loadLeads])
-
-  const filteredLeads = useMemo(() => {
-    if (!search.trim()) return leads
-    const s = search.toLowerCase()
-    return leads.filter(l =>
-      (l.name ?? '').toLowerCase().includes(s) ||
-      (l.email ?? '').toLowerCase().includes(s) ||
-      (l.phone ?? '').replace(/\D/g, '').includes(s.replace(/\D/g, ''))
-    )
-  }, [leads, search])
-
-  const totalPending = counts['20'] + counts['60'] + counts['120']
-  const currentRule = (tab === 'templates' || tab === 'history') ? null : tab
-
   return (
-    <div style={{ padding: '32px 40px', maxWidth: 980 }}>
+    <div style={{ padding: '32px 36px', maxWidth: 1320, minHeight: '100%', background: T.bg }}>
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 22, fontWeight: 700, color: T.ink, marginBottom: 4 }}>
-          📞 Followup de Leads
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12,
+          fontSize: 28, fontWeight: 800, color: T.ink, marginBottom: 4,
+        }}>
+          <span style={{
+            width: 40, height: 40, borderRadius: 12,
+            background: T.blueBg, color: T.blue,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 20,
+          }}>
+            🔔
+          </span>
+          Follow-up
         </div>
-        <div style={{ fontSize: 14, color: T.gray }}>
-          Régua de relacionamento — contate os leads do quiz Fashion Gold após 20, 60 e 120 dias do primeiro contato.
+        <div style={{ fontSize: 14, color: T.inkSoft, paddingLeft: 52 }}>
+          Juliane · <strong style={{ color: T.ink }}>{counts.total}</strong> {counts.total === 1 ? 'tarefa pendente' : 'tarefas pendentes'}
         </div>
       </div>
 
-      {/* KPI cards */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
-        {([20, 60, 120] as Rule[]).map(r => (
-          <KpiCard
-            key={r}
-            rule={r}
-            count={counts[String(r)] ?? 0}
-            active={tab === r}
-            onClick={() => setTab(r)}
-          />
-        ))}
-        <button onClick={() => setTab('history')} style={{
-          flex: 1, background: tab === 'history' ? '#fff' : 'rgba(255,255,255,0.6)',
-          border: tab === 'history' ? `2px solid ${T.accent}` : `1px solid ${T.border}`,
-          borderRadius: 14, padding: '16px 20px', cursor: 'pointer',
-          textAlign: 'left', transition: 'all 0.2s', fontFamily: 'inherit',
-          boxShadow: tab === 'history' ? `0 8px 20px ${T.accent}22` : 'none',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 4 }}>
-            <span style={{ fontSize: 28, fontWeight: 700, color: tab === 'history' ? T.accent : T.ink, lineHeight: 1 }}>
-              {totalPending}
-            </span>
-            <span style={{ fontSize: 16 }}>📋</span>
+      {/* Filter bar */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        marginBottom: 22, flexWrap: 'wrap',
+      }}>
+        {view === 'kanban' && (
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            background: T.graySoft, padding: 4, borderRadius: 12,
+          }}>
+            <FilterPill label="Todos" icon="🎯" active={ruleFilter === 'todos'} onClick={() => setRuleFilter('todos')} />
+            <FilterPill label="20 dias" active={ruleFilter === 20} onClick={() => setRuleFilter(20)} count={ruleCounts['20']} />
+            <FilterPill label="60 dias" active={ruleFilter === 60} onClick={() => setRuleFilter(60)} count={ruleCounts['60']} />
+            <FilterPill label="120 dias" active={ruleFilter === 120} onClick={() => setRuleFilter(120)} count={ruleCounts['120']} />
           </div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: T.ink, marginTop: 6 }}>Histórico</div>
-          <div style={{ fontSize: 11, color: T.gray, marginTop: 2 }}>Já contatados</div>
-        </button>
-      </div>
+        )}
 
-      {/* Templates tab button */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
-        <button onClick={() => setTab('templates')} style={{
-          background: tab === 'templates' ? T.accent : 'transparent',
-          color: tab === 'templates' ? '#fff' : T.accent,
-          border: `1px solid ${T.accent}`, padding: '6px 14px', borderRadius: 99,
-          fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+        <div style={{ flex: 1 }} />
+
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+          background: T.graySoft, padding: 4, borderRadius: 12,
         }}>
-          ✏️ Editar mensagens
-        </button>
-      </div>
-
-      {/* Search bar */}
-      {tab !== 'templates' && (
-        <div style={{ marginBottom: 14 }}>
-          <input
-            type="text"
-            placeholder="🔍 Buscar por nome, e-mail ou telefone…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{
-              width: '100%', padding: '12px 16px', fontSize: 14,
-              border: `1px solid ${T.border}`, borderRadius: 10, outline: 'none',
-              fontFamily: 'inherit', background: '#fff', boxSizing: 'border-box',
-            }}
-          />
+          <FilterPill label="Kanban" icon="📋" active={view === 'kanban'} onClick={() => setView('kanban')} />
+          <FilterPill label="Histórico" icon="🕓" active={view === 'history'} onClick={() => setView('history')} />
+          <FilterPill label="Mensagens" icon="✏️" active={view === 'templates'} onClick={() => setView('templates')} />
         </div>
-      )}
+      </div>
 
       {/* Content */}
-      {tab === 'templates' ? (
+      {loading && view !== 'templates' ? (
+        <div style={{ padding: '60px 20px', textAlign: 'center', color: T.inkSoft }}>
+          Carregando…
+        </div>
+      ) : view === 'templates' ? (
         <TemplatesPanel
           templates={templates}
           instances={instances}
           onUpdate={handleUpdateTemplate}
           onUpdateInstance={handleUpdateTemplateInstance}
         />
-      ) : loading ? (
-        <div style={{ padding: '40px 20px', textAlign: 'center', color: T.gray }}>Carregando…</div>
-      ) : filteredLeads.length === 0 ? (
-        <div style={{
-          padding: '60px 24px', textAlign: 'center', color: T.gray,
-          background: '#fff', borderRadius: 14, border: `1px solid ${T.border}`,
-        }}>
-          {tab === 'history'
-            ? 'Nenhum followup registrado ainda. Marque um lead como contatado para começar.'
-            : `Nenhum lead na régua de ${tab} dias pendente. ✨`}
-        </div>
-      ) : (
-        <div>
-          <div style={{ fontSize: 12, color: T.gray, marginBottom: 10, fontWeight: 600 }}>
-            {filteredLeads.length} {filteredLeads.length === 1 ? 'lead' : 'leads'}
-            {tab !== 'history' && currentRule && (
-              <> · ordenados por dias desde primeiro contato</>
-            )}
+      ) : view === 'history' ? (
+        history.length === 0 ? (
+          <EmptyState
+            icon="🕓"
+            title="Nenhum followup registrado ainda"
+            subtitle="Os contatos feitos aparecerão aqui com data, número usado e notas."
+          />
+        ) : (
+          <div style={{ maxWidth: 720 }}>
+            {history.map(lead => (
+              <FollowupCard
+                key={lead.followup_id}
+                lead={lead}
+                template={templateMap.get(lead.rule_days)}
+                instances={instances}
+                onSend={handleSend}
+                onMark={handleMark}
+                onUndo={handleUndo}
+                isHistory
+              />
+            ))}
           </div>
-          {filteredLeads.map((lead, i) => (
-            <LeadRow
-              key={lead.followup_id ?? `${lead.id}-${tab}`}
-              lead={lead}
-              rule={currentRule}
-              template={currentRule ? templateMap.get(currentRule) : (lead.rule_days ? templateMap.get(lead.rule_days) : undefined)}
-              instances={instances}
-              onMark={handleMark}
-              onUndo={tab === 'history' ? handleUndo : undefined}
-              onSend={handleSend}
-            />
-          ))}
+        )
+      ) : (
+        <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+          {/* Atrasados */}
+          <KanbanColumn
+            title="Atrasados"
+            count={kanban.atrasados.length}
+            icon="!"
+            iconColor={T.red}
+            iconBg={T.redSoft}
+            accentColor={T.red}
+          >
+            {kanban.atrasados.length === 0 ? (
+              <ColumnEmpty text="Nenhum atrasado ✨" />
+            ) : (
+              kanban.atrasados.map(lead => (
+                <FollowupCard
+                  key={`${lead.id}-${lead.rule_days}`}
+                  lead={lead}
+                  template={templateMap.get(lead.rule_days)}
+                  instances={instances}
+                  onSend={handleSend}
+                  onMark={handleMark}
+                />
+              ))
+            )}
+          </KanbanColumn>
+
+          {/* Hoje */}
+          <KanbanColumn
+            title="Hoje"
+            count={kanban.hoje.length}
+            icon="📅"
+            iconColor={T.orange}
+            iconBg={T.orangeSoft}
+            accentColor={T.orange}
+          >
+            {kanban.hoje.length === 0 ? (
+              <ColumnEmpty text="Nada pra hoje" />
+            ) : (
+              kanban.hoje.map(lead => (
+                <FollowupCard
+                  key={`${lead.id}-${lead.rule_days}`}
+                  lead={lead}
+                  template={templateMap.get(lead.rule_days)}
+                  instances={instances}
+                  onSend={handleSend}
+                  onMark={handleMark}
+                />
+              ))
+            )}
+          </KanbanColumn>
+
+          {/* Amanhã */}
+          <KanbanColumn
+            title="Amanhã"
+            count={kanban.amanha.length}
+            icon={collapsedAmanha ? '▸' : '▾'}
+            iconColor={T.blue}
+            iconBg={T.blueSoft}
+            accentColor={T.blue}
+            collapsible
+            collapsed={collapsedAmanha}
+            onToggleCollapse={() => setCollapsedAmanha(c => !c)}
+          >
+            {kanban.amanha.length === 0 ? (
+              <ColumnEmpty text="Calmaria por aqui" />
+            ) : (
+              kanban.amanha.map(lead => (
+                <FollowupCard
+                  key={`${lead.id}-${lead.rule_days}`}
+                  lead={lead}
+                  template={templateMap.get(lead.rule_days)}
+                  instances={instances}
+                  onSend={handleSend}
+                  onMark={handleMark}
+                />
+              ))
+            )}
+          </KanbanColumn>
         </div>
       )}
+    </div>
+  )
+}
+
+function ColumnEmpty({ text }: { text: string }) {
+  return (
+    <div style={{
+      background: '#fff', border: `1px dashed ${T.border}`, borderRadius: 12,
+      padding: '24px 16px', textAlign: 'center', fontSize: 13, color: T.inkMuted,
+    }}>
+      {text}
+    </div>
+  )
+}
+
+function EmptyState({ icon, title, subtitle }: { icon: string; title: string; subtitle: string }) {
+  return (
+    <div style={{
+      background: '#fff', border: `1px solid ${T.border}`, borderRadius: 16,
+      padding: '60px 24px', textAlign: 'center', maxWidth: 720,
+    }}>
+      <div style={{ fontSize: 40, marginBottom: 10 }}>{icon}</div>
+      <div style={{ fontSize: 16, fontWeight: 700, color: T.ink, marginBottom: 6 }}>{title}</div>
+      <div style={{ fontSize: 13, color: T.inkSoft, maxWidth: 360, margin: '0 auto', lineHeight: 1.5 }}>{subtitle}</div>
     </div>
   )
 }
