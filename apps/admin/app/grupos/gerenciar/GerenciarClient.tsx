@@ -6,8 +6,8 @@ type Group = {
   id: string
   name: string
   jid: string | null
-  invite_link: string
-  invite_code: string
+  invite_link: string | null
+  invite_code: string | null
   member_count: number
   capacity: number
   status: 'active' | 'full' | 'archived'
@@ -45,8 +45,38 @@ export default function GerenciarClient({ initialGroups }: { initialGroups: Grou
   const [adding, setAdding]             = useState(false)
   const [syncing, setSyncing]           = useState(false)
   const [syncResult, setSyncResult]     = useState<string | null>(null)
+  const [bulkResult, setBulkResult]     = useState<string | null>(null)
+  const [bulking, setBulking]           = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [, startTransition]             = useTransition()
+
+  // Edição inline de invite_link
+  const [editingLinkId, setEditingLinkId]   = useState<string | null>(null)
+  const [editingLinkVal, setEditingLinkVal] = useState('')
+  const [savingLink, setSavingLink]         = useState(false)
+
+  async function saveInviteLink(g: Group) {
+    const raw = editingLinkVal.trim()
+    if (!raw) return
+    setSavingLink(true)
+    try {
+      const match = raw.match(/chat\.whatsapp\.com\/([A-Za-z0-9]+)/)
+      const invite_code = match?.[1] ?? null
+      const invite_link = raw.startsWith('http') ? raw : `https://chat.whatsapp.com/${raw}`
+      const res = await fetch(`/api/grupos/${g.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invite_link, invite_code }),
+      })
+      if (!res.ok) throw new Error('Erro ao salvar')
+      setGroups(prev => prev.map(x => x.id === g.id ? { ...x, invite_link, invite_code } : x))
+      setEditingLinkId(null)
+    } catch (err: any) {
+      alert(err.message)
+    } finally {
+      setSavingLink(false)
+    }
+  }
 
   // Discover
   const [discovering, setDiscovering]       = useState(false)
@@ -80,20 +110,31 @@ export default function GerenciarClient({ initialGroups }: { initialGroups: Grou
     }
   }
 
+  // ID do grupo sendo toggled (evita double-click race condition)
+  const [togglingId, setTogglingId] = useState<string | null>(null)
+
   // ── Toggle recebendo ──
   async function toggleReceiving(g: Group) {
+    if (togglingId === g.id) return  // já em andamento
     const next = !g.is_receiving
+    setTogglingId(g.id)
     startTransition(() => {
       setGroups(prev => prev.map(x => x.id === g.id ? { ...x, is_receiving: next } : x))
     })
-    const res = await fetch(`/api/grupos/${g.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_receiving: next }),
-    })
-    if (!res.ok) {
-      setGroups(prev => prev.map(x => x.id === g.id ? { ...x, is_receiving: !next } : x))
-      alert('Erro ao atualizar grupo')
+    try {
+      const res = await fetch(`/api/grupos/${g.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_receiving: next }),
+      })
+      if (!res.ok) {
+        startTransition(() => {
+          setGroups(prev => prev.map(x => x.id === g.id ? { ...x, is_receiving: !next } : x))
+        })
+        alert('Erro ao atualizar grupo')
+      }
+    } finally {
+      setTogglingId(null)
     }
   }
 
@@ -103,7 +144,14 @@ export default function GerenciarClient({ initialGroups }: { initialGroups: Grou
     startTransition(() => {
       setGroups(prev => prev.map(x => x.id === g.id ? { ...x, status: 'archived', is_receiving: false } : x))
     })
-    await fetch(`/api/grupos/${g.id}`, { method: 'DELETE' })
+    const res = await fetch(`/api/grupos/${g.id}`, { method: 'DELETE' })
+    if (!res.ok) {
+      // Reverte o estado otimista se a requisição falhou
+      startTransition(() => {
+        setGroups(prev => prev.map(x => x.id === g.id ? { ...x, status: g.status, is_receiving: g.is_receiving } : x))
+      })
+      alert('Erro ao arquivar grupo. Tente novamente.')
+    }
   }
 
   // ── Sincronizar contagens ──
@@ -122,6 +170,29 @@ export default function GerenciarClient({ initialGroups }: { initialGroups: Grou
       setSyncResult('✗ ' + err.message)
     } finally {
       setSyncing(false)
+    }
+  }
+
+  // ── Ativar / desativar todos ──
+  async function bulkActivate(activate: boolean) {
+    setBulking(true)
+    setBulkResult(null)
+    try {
+      const res = await fetch('/api/grupos/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: activate ? 'activate_all' : 'deactivate_all' }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setGroups(prev => prev.map(g =>
+        g.status === 'active' ? { ...g, is_receiving: activate } : g
+      ))
+      setBulkResult(`✓ ${data.updated} grupos ${activate ? 'ativados' : 'pausados'}`)
+    } catch (err: any) {
+      setBulkResult('✗ ' + err.message)
+    } finally {
+      setBulking(false)
     }
   }
 
@@ -184,9 +255,7 @@ export default function GerenciarClient({ initialGroups }: { initialGroups: Grou
     setImporting(false)
   }
 
-  const publicLink = typeof window !== 'undefined' && window.location.origin
-    ? `${window.location.origin.replace('admin.', 'plano.')}/g/entrar`
-    : 'plano.julianecost.com/g/entrar'
+  const publicLink = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://planodaju.julianecost.com'}/g/entrar`
 
   return (
     <div style={{ padding: '32px 40px', maxWidth: 980 }}>
@@ -220,6 +289,17 @@ export default function GerenciarClient({ initialGroups }: { initialGroups: Grou
             {syncing ? '⏳ Sincronizando…' : '🔄 Sincronizar'}
           </button>
           <button
+            onClick={() => bulkActivate(true)}
+            disabled={bulking}
+            style={{
+              background: green + '18', color: green, border: `1px solid ${green}40`,
+              cursor: bulking ? 'default' : 'pointer',
+              padding: '9px 18px', borderRadius: 10, fontSize: 14, fontWeight: 600, opacity: bulking ? 0.6 : 1,
+            }}
+          >
+            {bulking ? '⏳ Ativando…' : '✅ Ativar todos'}
+          </button>
+          <button
             onClick={() => setShowForm(true)}
             style={{ background: accent, color: '#fff', border: 'none', cursor: 'pointer', padding: '9px 18px', borderRadius: 10, fontSize: 14, fontWeight: 600 }}
           >
@@ -231,11 +311,21 @@ export default function GerenciarClient({ initialGroups }: { initialGroups: Grou
       {/* Sync result */}
       {syncResult && (
         <div style={{
-          padding: '10px 16px', borderRadius: 10, marginBottom: 20,
+          padding: '10px 16px', borderRadius: 10, marginBottom: 12,
           background: syncResult.startsWith('✓') ? green + '15' : red + '15',
           color: syncResult.startsWith('✓') ? green : red,
           fontSize: 13, fontWeight: 600,
         }}>{syncResult}</div>
+      )}
+
+      {/* Bulk result */}
+      {bulkResult && (
+        <div style={{
+          padding: '10px 16px', borderRadius: 10, marginBottom: 20,
+          background: bulkResult.startsWith('✓') ? green + '15' : red + '15',
+          color: bulkResult.startsWith('✓') ? green : red,
+          fontSize: 13, fontWeight: 600,
+        }}>{bulkResult}</div>
       )}
 
       {/* ── Painel Descobrir grupos ── */}
@@ -337,10 +427,10 @@ export default function GerenciarClient({ initialGroups }: { initialGroups: Grou
         <div style={{ fontSize: 20 }}>🔗</div>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: '#2D1B2E', marginBottom: 2 }}>Link público de distribuição</div>
-          <code style={{ fontSize: 13, color: accent }}>plano.julianecost.com/g/entrar</code>
+          <code style={{ fontSize: 13, color: accent }}>planodaju.julianecost.com/g/entrar</code>
         </div>
         <button
-          onClick={() => navigator.clipboard.writeText('https://plano.julianecost.com/g/entrar')}
+          onClick={() => navigator.clipboard.writeText('https://planodaju.julianecost.com/g/entrar')}
           style={{ background: accent, color: '#fff', border: 'none', cursor: 'pointer', padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600 }}
         >
           Copiar
@@ -469,15 +559,47 @@ export default function GerenciarClient({ initialGroups }: { initialGroups: Grou
                         {g.is_receiving ? 'Recebendo' : 'Pausado'}
                       </label>
 
-                      {g.invite_link && (
+                      {g.invite_link ? (
                         <a
                           href={g.invite_link}
                           target="_blank"
                           rel="noopener noreferrer"
                           style={{ fontSize: 12, color: accent, fontWeight: 600, textDecoration: 'none' }}
                         >
-                          Abrir →
+                          🔗 Link →
                         </a>
+                      ) : editingLinkId === g.id ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <input
+                            type="text"
+                            placeholder="https://chat.whatsapp.com/..."
+                            value={editingLinkVal}
+                            onChange={e => setEditingLinkVal(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') saveInviteLink(g); if (e.key === 'Escape') setEditingLinkId(null) }}
+                            autoFocus
+                            style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid #E0E0E8', fontSize: 12, width: 240, outline: 'none' }}
+                          />
+                          <button
+                            onClick={() => saveInviteLink(g)}
+                            disabled={savingLink}
+                            style={{ fontSize: 11, color: '#fff', background: green, border: 'none', cursor: 'pointer', padding: '5px 10px', borderRadius: 8, fontWeight: 700 }}
+                          >
+                            {savingLink ? '…' : '✓'}
+                          </button>
+                          <button
+                            onClick={() => setEditingLinkId(null)}
+                            style={{ fontSize: 11, color: gray, background: '#F5F5F7', border: 'none', cursor: 'pointer', padding: '5px 8px', borderRadius: 8 }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => { setEditingLinkId(g.id); setEditingLinkVal('') }}
+                          style={{ fontSize: 11, color: orange, background: orange + '15', border: `1px dashed ${orange}60`, cursor: 'pointer', padding: '4px 10px', borderRadius: 8, fontWeight: 600 }}
+                        >
+                          + Adicionar link
+                        </button>
                       )}
 
                       <button

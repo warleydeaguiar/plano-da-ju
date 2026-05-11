@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase'
 import { fetchAllInstances } from '@/lib/evolution-grupos'
 import Link from 'next/link'
 import GruposChartsSection from './GruposChartsSection'
+import SyncButton from './SyncButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -101,11 +102,12 @@ export default async function GruposPage() {
           <div style={{ fontSize: 14, color: gray, marginTop: 4 }}>
             Distribuição proporcional via link único —{' '}
             <code style={{ background: '#F5F5F7', padding: '2px 6px', borderRadius: 4, fontSize: 12 }}>
-              plano.julianecost.com/g/entrar
+              planodaju.julianecost.com/g/entrar
             </code>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <SyncButton />
           <Link href="/grupos/broadcast" style={{
             background: '#F5F5F7', color: '#2D1B2E', padding: '9px 18px',
             borderRadius: 10, fontSize: 14, fontWeight: 600, textDecoration: 'none',

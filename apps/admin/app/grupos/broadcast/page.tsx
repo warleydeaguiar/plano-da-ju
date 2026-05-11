@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 export default async function BroadcastPage() {
   const supabase = createAdminClient()
 
-  const [historyRes, groupsRes, instances] = await Promise.all([
+  const [historyRes, groupsRes, instances, savedRes] = await Promise.all([
     supabase
       .from('wg_broadcasts' as any)
       .select('*')
@@ -19,6 +19,11 @@ export default async function BroadcastPage() {
       .eq('status', 'active')
       .order('name'),
     fetchAllInstances().catch(() => []),
+    supabase
+      .from('wg_saved_messages' as any)
+      .select('*')
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: false }),
   ])
 
   return (
@@ -26,6 +31,7 @@ export default async function BroadcastPage() {
       history={(historyRes.data ?? []) as any[]}
       groups={(groupsRes.data ?? []) as any[]}
       instances={instances as any[]}
+      savedMessages={(savedRes.data ?? []) as any[]}
     />
   )
 }

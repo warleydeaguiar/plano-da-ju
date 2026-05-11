@@ -3,12 +3,28 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-const NAV = [
+type NavItem = {
+  icon: string
+  label: string
+  href: string
+  children?: { label: string; href: string }[]
+}
+
+const NAV: NavItem[] = [
   { icon: '📊', label: 'Dashboard', href: '/' },
   { icon: '🔍', label: 'Revisão de Planos', href: '/planos' },
   { icon: '👥', label: 'Usuárias', href: '/usuarios' },
   { icon: '💳', label: 'Assinaturas', href: '/assinaturas' },
   { icon: '💬', label: 'Grupos de Promoções', href: '/grupos' },
+  {
+    icon: '🎯', label: 'Quiz', href: '/quiz',
+    children: [
+      { label: 'Fashion Gold', href: '/quiz/fashion-gold' },
+      { label: 'Plano Capilar', href: '/quiz/plano-capilar' },
+      { label: 'Imagens & Mídia', href: '/quiz/imagens' },
+      { label: 'Depoimentos & Fotos', href: '/quiz/configuracoes' },
+    ],
+  },
   { icon: '🎧', label: 'Suporte Plano Capilar', href: '/suporte' },
   { icon: '🌿', label: 'Ybera', href: '/ybera' },
   { icon: '📈', label: 'Analytics', href: '/analytics' },
@@ -32,22 +48,57 @@ export default function Sidebar() {
       <nav style={{ flex: 1, padding: '16px 0', overflowY: 'auto' }}>
         {NAV.map(item => {
           const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+          const hasChildren = item.children && item.children.length > 0;
+          const isExpanded = hasChildren && isActive;
+
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                padding: '10px 20px', fontSize: 13.5, fontWeight: 500,
-                color: isActive ? '#C4607A' : 'rgba(255,255,255,0.55)',
-                background: isActive ? 'rgba(196,96,122,0.1)' : 'transparent',
-                textDecoration: 'none', position: 'relative', transition: 'color 0.15s',
-                borderLeft: isActive ? '3px solid #C4607A' : '3px solid transparent',
-              }}
-            >
-              <span style={{ fontSize: 15, width: 18, textAlign: 'center', flexShrink: 0 }}>{item.icon}</span>
-              {item.label}
-            </Link>
+            <div key={item.href}>
+              <Link
+                href={item.href}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '10px 20px', fontSize: 13.5, fontWeight: 500,
+                  color: isActive ? '#C4607A' : 'rgba(255,255,255,0.55)',
+                  background: isActive && !hasChildren ? 'rgba(196,96,122,0.1)' : 'transparent',
+                  textDecoration: 'none', transition: 'color 0.15s',
+                  borderLeft: isActive ? '3px solid #C4607A' : '3px solid transparent',
+                }}
+              >
+                <span style={{ fontSize: 15, width: 18, textAlign: 'center', flexShrink: 0 }}>{item.icon}</span>
+                <span style={{ flex: 1 }}>{item.label}</span>
+                {hasChildren && (
+                  <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginRight: -4 }}>
+                    {isExpanded ? '▾' : '▸'}
+                  </span>
+                )}
+              </Link>
+              {/* Submenus */}
+              {isExpanded && item.children && (
+                <div style={{ borderLeft: '3px solid #C4607A20', marginLeft: 20 }}>
+                  {item.children.map(child => {
+                    const childActive = pathname === child.href || pathname.startsWith(child.href + '/')
+                    return (
+                      <Link
+                        key={child.href}
+                        href={child.href}
+                        style={{
+                          display: 'block',
+                          padding: '8px 20px 8px 24px',
+                          fontSize: 12.5, fontWeight: childActive ? 700 : 500,
+                          color: childActive ? '#C4607A' : 'rgba(255,255,255,0.45)',
+                          textDecoration: 'none',
+                          background: childActive ? 'rgba(196,96,122,0.08)' : 'transparent',
+                          borderLeft: childActive ? '2px solid #C4607A' : '2px solid transparent',
+                          marginLeft: -3,
+                        }}
+                      >
+                        {child.label}
+                      </Link>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
           );
         })}
       </nav>

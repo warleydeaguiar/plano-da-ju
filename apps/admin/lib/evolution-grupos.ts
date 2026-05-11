@@ -4,9 +4,15 @@
  */
 
 const BASE_URL = process.env.EVOLUTION_GRUPOS_URL ?? 'https://automacao.julianecost.com'
-const API_KEY  = process.env.EVOLUTION_GRUPOS_KEY!
+// API_KEY lido em runtime (não no topo do módulo) para evitar crash silencioso
 // Instância padrão (fallback se não for passada explicitamente)
 export const DEFAULT_INSTANCE = process.env.EVOLUTION_GRUPOS_INSTANCE ?? 'grupos-promo'
+
+function getApiKey(): string {
+  const key = process.env.EVOLUTION_GRUPOS_KEY
+  if (!key) throw new Error('EVOLUTION_GRUPOS_KEY não configurada nas variáveis de ambiente')
+  return key
+}
 
 export type EvoInstance = {
   name: string
@@ -16,12 +22,12 @@ export type EvoInstance = {
   profilePicUrl: string | null
 }
 
-async function evoFetch(path: string, options?: RequestInit, instance?: string) {
+async function evoFetch(path: string, options?: RequestInit, _instance?: string) {
   const url = `${BASE_URL.replace(/\/+$/, '')}${path}`
   const res = await fetch(url, {
     ...options,
     headers: {
-      apikey: API_KEY,
+      apikey: getApiKey(),
       'Content-Type': 'application/json',
       ...(options?.headers ?? {}),
     },
@@ -29,6 +35,13 @@ async function evoFetch(path: string, options?: RequestInit, instance?: string) 
   })
   if (!res.ok) throw new Error(`Evolution API ${res.status}: ${await res.text()}`)
   return res.json()
+}
+
+/** Normaliza a resposta do fetchAllGroups para sempre retornar um array */
+function parseGroupList(data: unknown): any[] {
+  if (Array.isArray(data)) return data
+  if (data && typeof data === 'object' && Array.isArray((data as any).groups)) return (data as any).groups
+  return []
 }
 
 // ─── Instâncias ──────────────────────────────────────────────────────────────
@@ -86,8 +99,8 @@ export async function discoverGroupsFromAllInstances(): Promise<{
   await Promise.allSettled(
     open.map(async (inst) => {
       try {
-        const groups = await getAllGroupsFromInstance(inst.name)
-        for (const g of Array.isArray(groups) ? groups : []) {
+        const groups = parseGroupList(await getAllGroupsFromInstance(inst.name))
+        for (const g of groups) {
           const jid = g.id ?? g.jid
           if (!jid || seenJids.has(jid)) continue
           seenJids.add(jid)
@@ -147,18 +160,21 @@ export async function sendVideoToGroup(groupJid: string, mediaUrl: string, capti
   return sendMediaToGroup(groupJid, mediaUrl, 'video', 'video/mp4', caption, instanceName)
 }
 
-/** Busca contagem de membros de vários grupos em paralelo */
+/**
+ * Busca contagem de membros de todos os grupos em UMA requisição via fetchAllGroups.
+ * Muito mais eficiente que chamar findGroupInfos individualmente (evita timeout).
+ * Retorna mapa jid → member_count apenas para os JIDs solicitados.
+ */
 export async function syncGroupMemberCounts(jids: string[], instanceName = DEFAULT_INSTANCE): Promise<Record<string, number>> {
   const results: Record<string, number> = {}
-  await Promise.allSettled(
-    jids.map(async (jid) => {
-      try {
-        const data = await getGroupMetadata(jid, instanceName)
-        results[jid] = Array.isArray(data?.participants)
-          ? data.participants.length
-          : (data?.size ?? 0)
-      } catch { /* ignora grupos que falharam */ }
-    })
-  )
+  try {
+    const groups = parseGroupList(await getAllGroupsFromInstance(instanceName))
+    for (const g of groups) {
+      const jid = g.id ?? g.jid
+      if (jid && jids.includes(jid)) {
+        results[jid] = g.size ?? (Array.isArray(g.participants) ? g.participants.length : 0)
+      }
+    }
+  } catch { /* instância offline */ }
   return results
 }
