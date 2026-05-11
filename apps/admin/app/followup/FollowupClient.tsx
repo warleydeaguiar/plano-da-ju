@@ -701,24 +701,27 @@ export default function FollowupClient() {
   return (
     <div style={{ padding: '32px 36px', maxWidth: 1320, minHeight: '100%', background: T.bg }}>
       {/* Header */}
-      <div style={{ marginBottom: 24 }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 12,
-          fontSize: 28, fontWeight: 800, color: T.ink, marginBottom: 4,
-        }}>
-          <span style={{
-            width: 40, height: 40, borderRadius: 12,
-            background: T.blueBg, color: T.blue,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 20,
+      <div style={{ marginBottom: 24, display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 12,
+            fontSize: 28, fontWeight: 800, color: T.ink, marginBottom: 4,
           }}>
-            🔔
-          </span>
-          Follow-up
+            <span style={{
+              width: 40, height: 40, borderRadius: 12,
+              background: T.blueBg, color: T.blue,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 20,
+            }}>
+              🔔
+            </span>
+            Follow-up
+          </div>
+          <div style={{ fontSize: 14, color: T.inkSoft, paddingLeft: 52 }}>
+            Juliane · <strong style={{ color: T.ink }}>{counts.total}</strong> {counts.total === 1 ? 'tarefa pendente' : 'tarefas pendentes'}
+          </div>
         </div>
-        <div style={{ fontSize: 14, color: T.inkSoft, paddingLeft: 52 }}>
-          Juliane · <strong style={{ color: T.ink }}>{counts.total}</strong> {counts.total === 1 ? 'tarefa pendente' : 'tarefas pendentes'}
-        </div>
+        <SyncButton onSynced={() => { loadKanban() }} />
       </div>
 
       {/* Filter bar */}
@@ -877,6 +880,69 @@ function ColumnEmpty({ text }: { text: string }) {
       padding: '24px 16px', textAlign: 'center', fontSize: 13, color: T.inkMuted,
     }}>
       {text}
+    </div>
+  )
+}
+
+function SyncButton({ onSynced }: { onSynced: () => void }) {
+  const [syncing, setSyncing] = useState(false)
+  const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null)
+
+  async function doSync() {
+    if (!confirm('Sincronizar contatos do Evolution Manager?\n\nIsso vai buscar todos os contatos das instâncias conectadas e adicioná-los ao followup.')) return
+    setSyncing(true)
+    setResult(null)
+    try {
+      const res = await fetch('/api/followup/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.ok) throw new Error(data.error ?? 'Erro')
+      setResult({
+        ok: true,
+        text: `✓ ${data.totalInserted} novos · ${data.totalUpdated} atualizados · ${data.totalSkipped} ignorados`,
+      })
+      onSynced()
+      setTimeout(() => setResult(null), 6000)
+    } catch (err: any) {
+      setResult({ ok: false, text: '✗ ' + (err.message ?? 'Erro') })
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+      <button
+        onClick={doSync}
+        disabled={syncing}
+        style={{
+          background: syncing ? T.graySoft : '#fff',
+          color: syncing ? T.inkSoft : T.ink,
+          border: `1px solid ${T.border}`,
+          padding: '10px 16px', borderRadius: 10,
+          fontSize: 13, fontWeight: 700, cursor: syncing ? 'default' : 'pointer',
+          fontFamily: 'inherit',
+          display: 'inline-flex', alignItems: 'center', gap: 8,
+          boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 2px 6px rgba(0,0,0,0.04)',
+        }}
+      >
+        <span style={{ fontSize: 14 }}>{syncing ? '⏳' : '🔄'}</span>
+        {syncing ? 'Sincronizando…' : 'Sincronizar contatos'}
+      </button>
+      {result && (
+        <div style={{
+          fontSize: 11, fontWeight: 600,
+          color: result.ok ? T.whatsappDeep : T.red,
+          padding: '4px 10px', borderRadius: 6,
+          background: result.ok ? T.bgWhats : T.redBg,
+          maxWidth: 320, textAlign: 'right',
+        }}>
+          {result.text}
+        </div>
+      )}
     </div>
   )
 }

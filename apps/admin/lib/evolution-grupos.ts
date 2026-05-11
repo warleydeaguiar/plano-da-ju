@@ -3,7 +3,8 @@
  * Suporta múltiplas instâncias (vários números, todos nos mesmos grupos)
  */
 
-const BASE_URL = process.env.EVOLUTION_GRUPOS_URL ?? 'https://automacao.julianecost.com'
+// Força HTTPS — o servidor faz 301 de http→https e POST vira GET no redirect, perdendo o body
+const BASE_URL = (process.env.EVOLUTION_GRUPOS_URL ?? 'https://automacao.julianecost.com').replace(/^http:\/\//, 'https://')
 // API_KEY lido em runtime (não no topo do módulo) para evitar crash silencioso
 // Instância padrão (fallback se não for passada explicitamente)
 export const DEFAULT_INSTANCE = process.env.EVOLUTION_GRUPOS_INSTANCE ?? 'grupos-promo'
@@ -140,6 +141,88 @@ export async function sendTextToNumber(phone: string, text: string, instanceName
     method: 'POST',
     body: JSON.stringify({ number: d, text, delay: 1200 }),
   })
+}
+
+/**
+ * Busca todos os contatos de uma instância Evolution.
+ * Retorna apenas contatos DM reais (@s.whatsapp.net), ignorando @lid e grupos.
+ */
+export async function fetchInstanceContacts(instanceName: string): Promise<Array<{
+  remoteJid: string
+  phone: string
+  pushName: string | null
+  profilePicUrl: string | null
+  createdAt: string
+  updatedAt: string
+}>> {
+  const data = await evoFetch(`/chat/findContacts/${encodeURIComponent(instanceName)}`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  })
+  const list = Array.isArray(data) ? data : []
+  return list
+    .filter((c: any) => typeof c?.remoteJid === 'string' && c.remoteJid.endsWith('@s.whatsapp.net'))
+    .map((c: any) => ({
+      remoteJid:     c.remoteJid,
+      phone:         c.remoteJid.split('@')[0],
+      pushName:      c.pushName ?? null,
+      profilePicUrl: c.profilePicUrl ?? null,
+      createdAt:     c.createdAt ?? new Date().toISOString(),
+      updatedAt:     c.updatedAt ?? c.createdAt ?? new Date().toISOString(),
+    }))
+}
+
+/**
+ * Varre as mensagens (paginadas) de uma instância e retorna mapa
+ * remoteJid → primeiro messageTimestamp (mais antigo).
+ * Apenas DMs (@s.whatsapp.net), ignora grupos e @lid.
+ *
+ * Útil para descobrir a DATA REAL do primeiro contato de cada lead
+ * (em vez de usar contact.createdAt, que é quando o Evolution sincronizou).
+ */
+export async function fetchFirstContactDates(
+  instanceName: string,
+  options: { pageSize?: number; maxPages?: number } = {}
+): Promise<Record<string, number>> {
+  const pageSize = options.pageSize ?? 50
+  const maxPages = options.maxPages ?? 100
+  const firstByJid: Record<string, number> = {}
+
+  // Pega o total primeiro
+  const first = await evoFetch(`/chat/findMessages/${encodeURIComponent(instanceName)}`, {
+    method: 'POST',
+    body: JSON.stringify({ limit: pageSize, page: 1 }),
+  })
+  const total = first?.messages?.total ?? 0
+  const totalPages = Math.min(maxPages, Math.ceil(total / pageSize))
+  if (totalPages === 0) return firstByJid
+
+  const handlePage = (records: any[]) => {
+    for (const m of records ?? []) {
+      const jid = m?.key?.remoteJid
+      const ts = m?.messageTimestamp
+      if (!jid || !ts) continue
+      if (!jid.endsWith('@s.whatsapp.net')) continue
+      if (!firstByJid[jid] || ts < firstByJid[jid]) {
+        firstByJid[jid] = ts
+      }
+    }
+  }
+  handlePage(first?.messages?.records ?? [])
+
+  for (let page = 2; page <= totalPages; page++) {
+    try {
+      const data = await evoFetch(`/chat/findMessages/${encodeURIComponent(instanceName)}`, {
+        method: 'POST',
+        body: JSON.stringify({ limit: pageSize, page }),
+      })
+      handlePage(data?.messages?.records ?? [])
+    } catch {
+      // se uma página falha, continua
+    }
+  }
+
+  return firstByJid
 }
 
 export async function sendTextToGroup(
