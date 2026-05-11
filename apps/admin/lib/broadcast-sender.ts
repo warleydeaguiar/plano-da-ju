@@ -1,4 +1,4 @@
-import { sendTextToGroup, sendMediaToGroup, findGroupsWhereInstanceIsNotMember } from './evolution-grupos'
+import { sendTextToGroup, sendMediaToGroup } from './evolution-grupos'
 import { createAdminClient } from './supabase'
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
@@ -52,54 +52,23 @@ export async function executeBroadcast(broadcastId: string) {
   const instanceName: string = broadcast.instance_name ?? 'grupos-promo'
   const mentionAll: boolean = !!broadcast.mention_all
 
-  // 4. PRE-CHECK: verifica se a instância é membro dos grupos.
-  // Se NÃO for, Evolution trava por minutos sem retornar erro — então abortamos antes.
-  let nonMemberSet = new Set<string>()
-  try {
-    const missing = await findGroupsWhereInstanceIsNotMember(instanceName, list.map(g => g.jid))
-    nonMemberSet = new Set(missing)
-  } catch {
-    // se a verificação falhar, prossegue (não bloqueia)
-  }
-  if (nonMemberSet.size === list.length) {
-    // Instância não está em NENHUM grupo — aborta com mensagem clara
-    await sb.from('wg_broadcasts' as any)
-      .update({
-        status: 'failed',
-        sent_at: new Date().toISOString(),
-        fail_count: list.length,
-      })
-      .eq('id', broadcastId)
-    // Registra um erro genérico em broadcast_results pra cada grupo
-    await sb.from('wg_broadcast_results' as any).insert(
-      list.map(g => ({
-        broadcast_id: broadcastId,
-        group_id: g.id,
-        status: 'failed',
-        error: `Instância "${instanceName}" não é membro deste grupo — reconecte a instância correta no Evolution Manager.`,
-      }))
-    )
-    return {
-      ok: false,
-      error: `Instância "${instanceName}" não está em nenhum dos ${list.length} grupos. Conecte a instância correta (que tem permissão nos grupos) no Evolution Manager.`,
-    }
-  }
-
-  // 5. Envia para cada grupo
+  // 4. Envia para cada grupo (com timeout via evoFetch)
   let success = 0
   let fail = 0
-  let skipped = 0
+  let timeoutFails = 0
+  // Se 3 grupos seguidos derem timeout, aborta (instância provavelmente bloqueada pelo WhatsApp)
+  let consecutiveTimeouts = 0
 
   for (const group of list) {
-    // Pula grupos onde a instância não é membro
-    if (nonMemberSet.has(group.jid)) {
+    // Circuit breaker: se 3 envios seguidos deram timeout, aborta o resto
+    if (consecutiveTimeouts >= 3) {
       await sb.from('wg_broadcast_results' as any).insert({
         broadcast_id: broadcastId,
         group_id: group.id,
         status: 'failed',
-        error: `Instância "${instanceName}" não é membro deste grupo`,
+        error: 'Pulado: muitos timeouts seguidos — provável bloqueio do WhatsApp',
       })
-      fail++; skipped++
+      fail++
       continue
     }
     try {
@@ -132,14 +101,19 @@ export async function executeBroadcast(broadcastId: string) {
         sent_at: new Date().toISOString(),
       })
       success++
+      consecutiveTimeouts = 0
     } catch (err) {
+      const errStr = String(err)
+      const isTimeout = errStr.includes('timeout') || errStr.includes('Timeout')
       await sb.from('wg_broadcast_results' as any).insert({
         broadcast_id: broadcastId,
         group_id: group.id,
         status: 'failed',
-        error: String(err),
+        error: errStr,
       })
       fail++
+      if (isTimeout) { consecutiveTimeouts++; timeoutFails++ }
+      else consecutiveTimeouts = 0
     }
   }
 
@@ -153,5 +127,11 @@ export async function executeBroadcast(broadcastId: string) {
     })
     .eq('id', broadcastId)
 
-  return { ok: true, success, fail, total: list.length }
+  // Detecta padrão de bloqueio do WhatsApp
+  let warning: string | undefined
+  if (success === 0 && timeoutFails > 0) {
+    warning = `Todos os envios deram timeout. A conta "${instanceName}" provavelmente foi bloqueada temporariamente pelo WhatsApp por envio em massa. Aguarde 24-72h ou tente outra instância.`
+  }
+
+  return { ok: success > 0, success, fail, total: list.length, warning }
 }

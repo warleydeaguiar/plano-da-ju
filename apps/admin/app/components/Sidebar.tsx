@@ -15,7 +15,15 @@ const NAV: NavItem[] = [
   { icon: '🔍', label: 'Revisão de Planos', href: '/planos' },
   { icon: '👥', label: 'Usuárias', href: '/usuarios' },
   { icon: '💳', label: 'Assinaturas', href: '/assinaturas' },
-  { icon: '💬', label: 'Grupos de Promoções', href: '/grupos' },
+  {
+    icon: '💬', label: 'Grupos de Promoções', href: '/grupos',
+    children: [
+      { label: 'Lista', href: '/grupos' },
+      { label: 'Broadcast', href: '/grupos/broadcast' },
+      { label: 'Gerenciar', href: '/grupos/gerenciar' },
+      { label: 'Conexões Evolution', href: '/grupos/conexao' },
+    ],
+  },
   { icon: '📞', label: 'Followup', href: '/followup' },
   {
     icon: '🎯', label: 'Quiz', href: '/quiz',
