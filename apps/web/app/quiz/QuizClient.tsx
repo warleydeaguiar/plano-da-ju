@@ -1381,6 +1381,27 @@ export default function QuizClient() {
     }
     setAnswers(finalAnswers)
     try { localStorage.setItem('quiz_answers', JSON.stringify(finalAnswers)) } catch {}
+
+    // Captura lead para follow-up (fire-and-forget — não bloqueia o fluxo)
+    try {
+      const params = new URLSearchParams(window.location.search)
+      fetch('/api/quiz/lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          quiz_slug: 'plano-capilar',
+          name: nameInput.trim(),
+          email: emailInput.trim(),
+          phone: phoneInput.replace(/\D/g, ''),
+          utm_source:   params.get('utm_source'),
+          utm_medium:   params.get('utm_medium'),
+          utm_campaign: params.get('utm_campaign'),
+          utm_content:  params.get('utm_content'),
+          utm_term:     params.get('utm_term'),
+        }),
+      })
+    } catch { /* silencia erros — não impede o avanço do quiz */ }
+
     setSubmitting(false)
     setStepIndex(i => Math.min(total - 1, i + 1))
   }, [answers, nameInput, emailInput, phoneInput, total])

@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 
 const CAPACITY = 1024
 
-const VALID_SLUGS = new Set(['fashion-gold'])
+const VALID_SLUGS = new Set(['fashion-gold', 'plano-capilar'])
 const MAX_LEN = { name: 120, email: 200, phone: 20, slug: 60, utm: 200 }
 
 function adminClient() {
