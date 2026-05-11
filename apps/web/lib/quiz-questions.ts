@@ -1,227 +1,373 @@
+// Quiz Plano Capilar — TODAS as 32 telas exatas conforme screenshots enviados pela cliente
+// Mantém os textos COMO ENVIADOS (não corrigir ortografia/acentuação)
+
 export interface QuizOption {
+  id: string;
   label: string;
-  value: string;
-  icon?: string;
+  /** trecho em **bold** dentro do label (markdown) */
+  /** cor do swatch (apenas para a pergunta 'cor') */
+  color?: string;
 }
 
 export interface QuizStep {
   id: string;
-  type: 'single' | 'multi' | 'scale' | 'text' | 'loading' | 'result';
-  question: string;
+  kind:
+    | 'single'
+    | 'multi'
+    | 'textarea'
+    | 'info'
+    | 'loading'
+    | 'phone'
+    | 'name_email'
+    | 'level'
+    | 'plan_ready'
+    | 'mini_testi';
+  title: string;
+  /** chamada introdutória (com **bold** *italic*) — só na primeira pergunta */
+  intro?: string;
+  /** subtítulo (info / capture / textarea / etc) */
   subtitle?: string;
+  /** texto secundário (info screens longos) */
+  body?: string;
+  /** identificador do conteúdo de mídia (info screens) */
+  media?: 'juliane_video' | 'before_after' | 'juliane_bio' | 'depoimentos';
   options?: QuizOption[];
-  min?: number;
-  max?: number;
+  /** texto do CTA */
+  ctaText?: string;
+  /** placeholder de input (textarea/phone/name_email) */
   placeholder?: string;
 }
 
 export const QUIZ_STEPS: QuizStep[] = [
-  // Step 0 — Hair type (also shown on landing)
+  // ── 0
   {
-    id: 'hair_type',
-    type: 'single',
-    question: 'Qual o seu tipo de cabelo?',
+    id: 'tipo',
+    kind: 'single',
+    title: 'Qual seu tipo de cabelo',
+    intro: 'Descubra o **Plano Ideal** e *personalizado* para Você Recuperar seu cabelo em **90 Dias**',
     options: [
-      { label: 'Crespo', value: 'crespo', icon: '🌀' },
-      { label: 'Cacheado', value: 'cacheado', icon: '🫧' },
-      { label: 'Ondulado', value: 'ondulado', icon: '〜' },
-      { label: 'Liso', value: 'liso', icon: '➖' },
+      { id: 'crespo',   label: 'Crespo' },
+      { id: 'cacheado', label: 'Cacheado' },
+      { id: 'ondulado', label: 'Ondulado' },
+      { id: 'liso',     label: 'Liso' },
     ],
   },
-  // Step 1 — Length
+  // ── 1
   {
-    id: 'hair_length',
-    type: 'single',
-    question: 'Qual o comprimento do seu cabelo?',
+    id: 'cor',
+    kind: 'single',
+    title: 'Qual a cor do seu cabelo?',
     options: [
-      { label: 'Curto (até o queixo)', value: 'curto', icon: '✂️' },
-      { label: 'Médio (ombro)', value: 'medio', icon: '〰️' },
-      { label: 'Longo (abaixo do ombro)', value: 'longo', icon: '💇‍♀️' },
-      { label: 'Muito longo (cintura+)', value: 'muito_longo', icon: '🌿' },
+      { id: 'preto',          label: 'Preto',           color: '#1a1410' },
+      { id: 'castanho_claro', label: 'Castanho claro',  color: '#a07550' },
+      { id: 'castanho_esc',   label: 'Castanho Escuro', color: '#4a2f1f' },
+      { id: 'ruivo',          label: 'Ruivo',           color: '#b04a2a' },
+      { id: 'loiro',          label: 'Loiro',           color: '#d8b878' },
     ],
   },
-  // Step 2 — Texture / volume
+  // ── 2
   {
-    id: 'hair_density',
-    type: 'single',
-    question: 'Seu cabelo é…',
+    id: 'idade',
+    kind: 'single',
+    title: 'Qual sua idade?',
     options: [
-      { label: 'Fino e sem volume', value: 'fino', icon: '🪶' },
-      { label: 'Normal', value: 'normal', icon: '💆‍♀️' },
-      { label: 'Grosso e com volume', value: 'grosso', icon: '💥' },
+      { id: '13_18', label: '13 a 18 anos' },
+      { id: '19_30', label: '19 a 30 anos' },
+      { id: '31_50', label: '31 a 50 anos' },
+      { id: '51',    label: '+ de 51 anos' },
     ],
   },
-  // Step 3 — Porosity
+  // ── 3
   {
-    id: 'porosity',
-    type: 'single',
-    question: 'Como você descreveria a porosidade do seu cabelo?',
-    subtitle: 'Jogue um fio de cabelo num copo d\'água: se afunda rápido = alta; flutua = baixa; fica no meio = normal',
+    id: 'incomoda',
+    kind: 'multi',
+    title: 'O que mais te incomoda no seu cabelo hoje?',
     options: [
-      { label: 'Alta porosidade (absorve tudo)', value: 'alta', icon: '🌊' },
-      { label: 'Média porosidade', value: 'media', icon: '💧' },
-      { label: 'Baixa porosidade (repele água)', value: 'baixa', icon: '🛡️' },
-      { label: 'Não sei', value: 'nao_sei', icon: '🤷‍♀️' },
+      { id: 'pontas', label: 'Pontas Ralas' },
+      { id: 'frizz',  label: 'Frizz' },
+      { id: 'cresc',  label: 'Falta de crescimento' },
+      { id: 'queda',  label: 'Queda de cabelo' },
+      { id: 'volume', label: 'Muito Volume' },
+      { id: 'quebra', label: 'Quebradiços' },
     ],
   },
-  // Step 4 — Chemicals
+  // ── 4
   {
-    id: 'chemical_history',
-    type: 'single',
-    question: 'Seu cabelo tem alguma química?',
+    id: 'quimica',
+    kind: 'multi',
+    title: 'Quais tipos de quimica voce fez nos ultimos 6 meses?',
     options: [
-      { label: 'Não, é virgem', value: 'virgem', icon: '✨' },
-      { label: 'Coloração', value: 'colorida', icon: '🎨' },
-      { label: 'Descoloração / luzes', value: 'descolorida', icon: '⚡' },
-      { label: 'Alisamento / progressiva', value: 'alisada', icon: '💈' },
-      { label: 'Permanente', value: 'permanente', icon: '〰️' },
+      { id: 'progressiva', label: 'Progressiva com formol' },
+      { id: 'descolor',    label: 'Descolorante' },
+      { id: 'tintura',     label: 'Tintura' },
+      { id: 'relax',       label: 'Relaxamento' },
+      { id: 'botox',       label: 'Botox ou Selagem' },
+      { id: 'decap',       label: 'Decapagem' },
+      { id: 'mechas',      label: 'Mechas/Luzes/' },
+      { id: 'nenhuma',     label: 'Nenhuma' },
     ],
   },
-  // Step 5 — Main problems
+  // ── 5 — info
   {
-    id: 'main_problems',
-    type: 'multi',
-    question: 'Quais os maiores problemas do seu cabelo? (pode marcar mais de um)',
+    id: 'info_juliane',
+    kind: 'info',
+    title: 'Planos Personalizados',
+    body: 'Os planos capilares são desenvolvidos pessoalmente por mim **Juliane Cost**.\n\nFormada em Tricologia, e com anos de experiência, e muitos casos de sucesso! Você será a próxima',
+    media: 'juliane_video',
+    ctaText: 'Continuar',
+  },
+  // ── 6 — info
+  {
+    id: 'info_3500',
+    kind: 'info',
+    title: '3500 mulheres já usaram nosso plano capilar',
+    body: 'Já foram avaliadas por nós e conseguiram o cabelo dos seus sonhos',
+    media: 'before_after',
+    ctaText: 'Continuar',
+  },
+  // ── 7
+  {
+    id: 'corte_quimico',
+    kind: 'single',
+    title: 'Já teve corte quimico?',
     options: [
-      { label: 'Ressecamento', value: 'ressecamento', icon: '🏜️' },
-      { label: 'Frizz', value: 'frizz', icon: '⚡' },
-      { label: 'Queda excessiva', value: 'queda', icon: '😢' },
-      { label: 'Falta de brilho', value: 'sem_brilho', icon: '🌑' },
-      { label: 'Quebra / pontas duplas', value: 'quebra', icon: '✂️' },
-      { label: 'Oleosidade', value: 'oleosidade', icon: '💦' },
-      { label: 'Caspa / couro sensível', value: 'caspa', icon: '❄️' },
-      { label: 'Crescimento lento', value: 'crescimento_lento', icon: '🐢' },
+      { id: 'sim', label: 'Sim' },
+      { id: 'nao', label: 'Não' },
     ],
   },
-  // Step 6 — Scalp
+  // ── 8
   {
-    id: 'scalp_type',
-    type: 'single',
-    question: 'Como é seu couro cabeludo?',
+    id: 'espessura',
+    kind: 'single',
+    title: 'Como você descreveria a espessura do seu fio?',
     options: [
-      { label: 'Normal', value: 'normal', icon: '😊' },
-      { label: 'Oleoso', value: 'oleoso', icon: '💦' },
-      { label: 'Seco / com descamação', value: 'seco', icon: '🏜️' },
-      { label: 'Sensível / com coceira', value: 'sensivel', icon: '😬' },
+      { id: 'fino',   label: 'Fino' },
+      { id: 'medio',  label: 'Médio' },
+      { id: 'grosso', label: 'Grosso' },
     ],
   },
-  // Step 7 — Wash frequency
+  // ── 9
   {
-    id: 'wash_frequency',
-    type: 'single',
-    question: 'Com que frequência você lava o cabelo?',
+    id: 'oleosidade',
+    kind: 'single',
+    title: 'Seu cabelo é mais seco, oleoso ou normal?',
     options: [
-      { label: 'Todo dia', value: 'diario', icon: '📅' },
-      { label: 'A cada 2-3 dias', value: '2_3_dias', icon: '📆' },
-      { label: 'Uma vez por semana', value: 'semanal', icon: '🗓️' },
-      { label: 'A cada 10+ dias', value: '10_dias', icon: '⏳' },
+      { id: 'seco',   label: 'Seco' },
+      { id: 'normal', label: 'Normal' },
+      { id: 'oleoso', label: 'Oleoso' },
     ],
   },
-  // Step 8 — Heat usage
+  // ── 10
   {
-    id: 'heat_usage',
-    type: 'single',
-    question: 'Você usa calor no cabelo (secador, chapinha, babyliss)?',
+    id: 'porosidade',
+    kind: 'single',
+    title: 'Você percebe que seu cabelo é poroso?',
     options: [
-      { label: 'Sim, com frequência', value: 'frequente', icon: '🔥' },
-      { label: 'Às vezes', value: 'as_vezes', icon: '♨️' },
-      { label: 'Raramente', value: 'raramente', icon: '❄️' },
-      { label: 'Nunca', value: 'nunca', icon: '🚫' },
+      { id: 'sim_absorve', label: 'Sim, absorve muita água e seca rápido' },
+      { id: 'nao_demora',  label: 'Não, demora para absorver água' },
+      { id: 'nao_sei',     label: 'Não sei' },
     ],
   },
-  // Step 9 — Current routine
+  // ── 11
   {
-    id: 'current_routine',
-    type: 'single',
-    question: 'Você já segue alguma rotina capilar?',
+    id: 'caspa',
+    kind: 'single',
+    title: 'Você tem caspa ou coceira no couro cabeludo?',
     options: [
-      { label: 'Sim, faço rotina completa', value: 'rotina_completa', icon: '✅' },
-      { label: 'Faço parcialmente', value: 'parcial', icon: '🔄' },
-      { label: 'Estou começando agora', value: 'comecando', icon: '🌱' },
-      { label: 'Não faço nenhuma rotina', value: 'nenhuma', icon: '❌' },
+      { id: 'sim_freq', label: 'Sim, frequentemente' },
+      { id: 'as_vezes', label: 'Às vezes' },
+      { id: 'nao',      label: 'Não' },
     ],
   },
-  // Step 10 — Products currently used
+  // ── 12
   {
-    id: 'products_used',
-    type: 'multi',
-    question: 'Quais produtos você já usa? (pode marcar mais de um)',
+    id: 'elasticidade',
+    kind: 'single',
+    title: 'Seus fios estão quebradiços ou elásticos?',
     options: [
-      { label: 'Shampoo comum', value: 'shampoo', icon: '🧴' },
-      { label: 'Condicionador', value: 'condicionador', icon: '💧' },
-      { label: 'Máscara de hidratação', value: 'mascara', icon: '🫙' },
-      { label: 'Leave-in', value: 'leave_in', icon: '✨' },
-      { label: 'Óleo capilar', value: 'oleo', icon: '💛' },
-      { label: 'Finalizador', value: 'finalizador', icon: '💨' },
-      { label: 'Shampoo lowpoo / sem sulfato', value: 'lowpoo', icon: '🌿' },
-      { label: 'Nenhum específico', value: 'nenhum', icon: '❓' },
+      { id: 'quebradicos', label: 'Quebradicos' },
+      { id: 'elasticos',   label: 'Elasticos' },
+      { id: 'normais',     label: 'Normais' },
     ],
   },
-  // Step 11 — Budget
+  // ── 13
   {
-    id: 'budget_range',
-    type: 'single',
-    question: 'Qual seu orçamento mensal para produtos capilares?',
+    id: 'lavagem',
+    kind: 'single',
+    title: 'Com que frequência você lava o cabelo?',
     options: [
-      { label: 'Até R$50', value: 'baixo', icon: '💚' },
-      { label: 'R$50 a R$150', value: 'medio', icon: '💛' },
-      { label: 'Acima de R$150', value: 'alto', icon: '💎' },
+      { id: 'todo_dia', label: 'Todo dia' },
+      { id: '2_3_sem',  label: '2-3 vezes por semana' },
+      { id: 'menos_2',  label: 'Menos de 2 vezes por semana' },
     ],
   },
-  // Step 12 — Goal
+  // ── 14
   {
-    id: 'main_goal',
-    type: 'single',
-    question: 'Qual seu principal objetivo com o cabelo?',
+    id: 'calor',
+    kind: 'multi',
+    title: 'Você utiliza fontes de calor?',
     options: [
-      { label: 'Recuperar a hidratação', value: 'hidratacao', icon: '💧' },
-      { label: 'Reduzir o frizz', value: 'anti_frizz', icon: '✨' },
-      { label: 'Parar a queda', value: 'anti_queda', icon: '🛡️' },
-      { label: 'Crescer mais rápido', value: 'crescimento', icon: '📏' },
-      { label: 'Definir os cachos', value: 'definicao', icon: '🌀' },
-      { label: 'Recuperar o brilho', value: 'brilho', icon: '⭐' },
+      { id: 'secador',  label: 'Secador' },
+      { id: 'chapinha', label: 'Chapinha' },
+      { id: 'babyliss', label: 'Babyliss' },
+      { id: 'nenhum',   label: 'Não, não uso nenhum' },
     ],
   },
-  // Step 13 — Age
+  // ── 15
   {
-    id: 'age_range',
-    type: 'single',
-    question: 'Qual a sua faixa etária?',
+    id: 'cronograma',
+    kind: 'single',
+    title: 'Você faz cronograma capilar?',
     options: [
-      { label: '18–24 anos', value: '18_24', icon: '🌸' },
-      { label: '25–34 anos', value: '25_34', icon: '💫' },
-      { label: '35–44 anos', value: '35_44', icon: '🌺' },
-      { label: '45+ anos', value: '45_mais', icon: '🌟' },
+      { id: 'sim',     label: 'Sim' },
+      { id: 'nao',     label: 'Não' },
+      { id: 'nao_sei', label: 'Não sei o que é' },
     ],
   },
-  // Step 14 — Name
+  // ── 16
   {
-    id: 'name',
-    type: 'text',
-    question: 'Qual é o seu nome?',
-    subtitle: 'Para personalizarmos seu plano',
-    placeholder: 'Seu primeiro nome',
+    id: 'crescimento_desigual',
+    kind: 'single',
+    title: 'Alguma área do cabelo tem crescimento desigual ou falhas?',
+    options: [
+      { id: 'sim', label: 'Sim' },
+      { id: 'nao', label: 'Não' },
+    ],
   },
-  // Step 15 — Email
+  // ── 17
   {
-    id: 'email',
-    type: 'text',
-    question: 'Qual é o seu e-mail?',
-    subtitle: 'Para enviarmos seu plano personalizado',
-    placeholder: 'seu@email.com.br',
+    id: 'sol_piscina',
+    kind: 'single',
+    title: 'Você expõe seu cabelo ao sol, piscina ou mar frequentemente?',
+    options: [
+      { id: 'sim', label: 'Sim' },
+      { id: 'nao', label: 'Não' },
+    ],
   },
-  // Step 16 — Loading / AI analysis
+  // ── 18
+  {
+    id: 'agua',
+    kind: 'single',
+    title: 'Quantos litros de agua você bebe por dia?',
+    options: [
+      { id: '1',  label: '1 Litro' },
+      { id: '2',  label: '2 Litros' },
+      { id: '3',  label: '3 Litros' },
+      { id: '4+', label: '4 litros ou mais' },
+    ],
+  },
+  // ── 19
+  {
+    id: 'protetor',
+    kind: 'single',
+    title: 'Você usa protetor térmico ou solar no cabelo?',
+    options: [
+      { id: 'sim', label: 'Sim' },
+      { id: 'nao', label: 'Não' },
+    ],
+  },
+  // ── 20
+  {
+    id: 'como_plano',
+    kind: 'single',
+    title: 'Como você quer seu plano?',
+    subtitle: 'Isso serve para que a Ju monte o plano do seu jeitinho. Pense na sua parte financeira.',
+    options: [
+      { id: 'sem_dinheiro',  label: 'Não posso comprar nenhum produto novo **(Caso você esteja sem dinheiro para investir)**' },
+      { id: 'aproveitar',    label: 'Quero aproveitar os produtos que tenho e comprar o mínimo possível' },
+      { id: 'trocar_todos',  label: 'Posso trocar todos os meus produtos **(Se a ju achar necessário)**' },
+    ],
+  },
+  // ── 21
+  {
+    id: 'produtos_casa',
+    kind: 'textarea',
+    title: 'Quais produtos voce já tem em casa?',
+    subtitle: 'Liste os produtos',
+    placeholder: 'Produtos que você já tem',
+    ctaText: 'Continuar',
+  },
+  // ── 22
+  {
+    id: 'cortes',
+    kind: 'single',
+    title: 'Com que frequência você faz cortes?',
+    options: [
+      { id: '1_2',         label: 'A cada 1-2 meses' },
+      { id: '3_6',         label: 'A cada 3-6 meses' },
+      { id: 'menos_1_ano', label: 'Menos de uma vez por ano' },
+    ],
+  },
+  // ── 23
+  {
+    id: 'areas',
+    kind: 'multi',
+    title: 'Quais áreas do seu cabelo mais te preocupam?',
+    options: [
+      { id: 'couro',       label: 'Couro cabeludo' },
+      { id: 'comprimento', label: 'Comprimento' },
+      { id: 'pontas',      label: 'Pontas' },
+    ],
+  },
+  // ── 24 — info bio Juliane
+  {
+    id: 'info_bio',
+    kind: 'info',
+    title: 'Quem está por trás do seu plano?',
+    media: 'juliane_bio',
+    ctaText: 'Continuar',
+  },
+  // ── 25 — info depoimentos
+  {
+    id: 'info_depoimentos',
+    kind: 'info',
+    title: 'Resultados de quem aplicou meu plano personalizado',
+    media: 'depoimentos',
+    ctaText: 'Também quero ter resultados',
+  },
+  // ── 26 — loading
   {
     id: 'loading',
-    type: 'loading',
-    question: 'Analisando seu perfil capilar…',
-    subtitle: 'A Juliane está revisando suas respostas',
+    kind: 'loading',
+    title: 'Analisando seu perfil com base em suas respostas',
   },
-  // Step 17 — Result / Offer
+  // ── 27 — telefone
   {
-    id: 'result',
-    type: 'result',
-    question: 'Seu diagnóstico está pronto!',
+    id: 'phone',
+    kind: 'phone',
+    title: 'Para qual número devo enviar seu plano?',
+    subtitle: 'DDD + telefone...',
+    placeholder: 'Digite seu telefone...',
+    ctaText: 'Continuar',
+  },
+  // ── 28 — nome + email
+  {
+    id: 'name_email',
+    kind: 'name_email',
+    title: 'Como devo te chamar?',
+    ctaText: 'Continuar',
+  },
+  // ── 29 — nível resultado
+  {
+    id: 'level',
+    kind: 'level',
+    title: 'O nível de cuidados e rotina com seu cabelo é',
+    ctaText: 'Continuar',
+  },
+  // ── 30 — plano pronto
+  {
+    id: 'plan_ready',
+    kind: 'plan_ready',
+    title: 'Seu Plano está pronto',
+    subtitle: 'Com base nas suas respostas, esperamos que você recupere a saúde dos seus fios, aumente o volume, tenha mais hidratação e menos oleosidade desnecessária',
+    ctaText: 'Continuar',
+  },
+  // ── 31 — mini depoimentos
+  {
+    id: 'mini_testi',
+    kind: 'mini_testi',
+    title: 'Você será a próxima transformação',
+    ctaText: 'Continuar',
   },
 ];
 
