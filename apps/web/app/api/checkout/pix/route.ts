@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { pagarme } from '@/lib/pagarme/client';
 import { createServiceClient } from '@/lib/supabase/server';
+import { resolveAuthUserId } from '@/lib/supabase/auth-resolve';
 import type { PagarMeOrder } from '@/lib/pagarme/types';
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, email, quiz_answers } = await req.json();
+    const { name, email, cpf, quiz_answers } = await req.json();
 
     if (!name || !email) {
       return NextResponse.json({ error: 'Nome e e-mail são obrigatórios' }, { status: 400 });
+    }
+
+    const cleanCpf = (cpf ?? '').replace(/\D/g, '');
+    if (cleanCpf.length !== 11) {
+      return NextResponse.json({ error: 'CPF inválido — obrigatório para pagamento via PIX' }, { status: 400 });
     }
 
     // Create PIX order in PagarMe (R$49,90 — pagamento único)
@@ -17,6 +23,8 @@ export async function POST(req: NextRequest) {
         name,
         email,
         type: 'individual',
+        document: cleanCpf,
+        document_type: 'CPF',
       },
       items: [
         {
@@ -54,10 +62,12 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (!existingUser) {
-      // Usuária não tem conta — salvar lead com quiz_answers para criar conta no webhook
+      // Usuária não tem perfil — criar auth user + profile com mesmo ID (FK)
+      const userId = await resolveAuthUserId(supabase, email);
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase.from('profiles') as any).upsert({
-        id: crypto.randomUUID(),
+        id: userId,
         email,
         full_name: name,
         quiz_answers,
