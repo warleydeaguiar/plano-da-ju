@@ -43,6 +43,7 @@ Thumbs.db
 # Editor
 .vscode/
 .idea/
+.claude/
 
 # Supabase
 supabase/.temp/
