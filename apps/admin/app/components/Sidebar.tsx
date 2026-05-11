@@ -16,6 +16,7 @@ const NAV: NavItem[] = [
   { icon: '👥', label: 'Usuárias', href: '/usuarios' },
   { icon: '💳', label: 'Assinaturas', href: '/assinaturas' },
   { icon: '💬', label: 'Grupos de Promoções', href: '/grupos' },
+  { icon: '📞', label: 'Followup', href: '/followup' },
   {
     icon: '🎯', label: 'Quiz', href: '/quiz',
     children: [
