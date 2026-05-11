@@ -163,6 +163,146 @@ function InstanceCard({ inst, onAction }: { inst: Instance; onAction: () => void
   )
 }
 
+function ScanSessionsPanel({ instances }: { instances: Instance[] }) {
+  const [instance, setInstance] = useState<string>('')
+  const [scanning, setScanning] = useState(false)
+  const [result, setResult] = useState<any>(null)
+
+  useEffect(() => {
+    if (!instance) {
+      const open = instances.find(i => i.state === 'open')
+      if (open) setInstance(open.name)
+    }
+  }, [instances]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function scan() {
+    if (!confirm('Esse scan vai mandar 1 mensagem de teste (oculta) pra cada grupo ativo, e pode levar 2-5 minutos.\n\nContinuar?')) return
+    setScanning(true)
+    setResult(null)
+    try {
+      const res = await fetch('/api/grupos/scan-sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instance }),
+      })
+      const data = await res.json()
+      setResult(data)
+    } catch (err: any) {
+      setResult({ ok: false, error: err?.message ?? 'Erro' })
+    } finally {
+      setScanning(false)
+    }
+  }
+
+  return (
+    <div style={{
+      background: T.card, border: `1px solid ${T.border}`, borderRadius: 14,
+      padding: '20px 22px', marginBottom: 22,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+        <div style={{ fontSize: 16, fontWeight: 700, color: T.ink }}>🔍 Scan de sessões</div>
+        <div style={{ fontSize: 12, color: T.inkSoft }}>
+          Verifica quais grupos têm sessão de criptografia OK no linked-device.
+        </div>
+      </div>
+
+      <div style={{
+        marginBottom: 14, padding: '10px 14px', background: '#FEF9C3',
+        borderRadius: 8, fontSize: 12, color: '#713F12', lineHeight: 1.5,
+      }}>
+        💡 Se aparecer <strong>"No sessions"</strong> em vários grupos, isso significa que o linked-device
+        do Evolution não recebeu as chaves de grupo. <strong>Solução:</strong> envie 1 mensagem manualmente
+        pelo CELULAR em cada grupo afetado (basta um "oi"), aí o WhatsApp propaga a sessão pro Evolution.
+      </div>
+
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 8 }}>
+        <select value={instance} onChange={e => setInstance(e.target.value)} style={{
+          flex: 1, padding: '10px 14px', borderRadius: 10, fontSize: 13,
+          border: `1px solid ${T.border}`, outline: 'none', background: '#fff', cursor: 'pointer',
+          fontFamily: 'inherit',
+        }}>
+          {instances.map(i => (
+            <option key={i.name} value={i.name}>
+              {i.profileName ?? i.name} {i.state === 'open' ? '🟢' : `(${i.state})`}
+            </option>
+          ))}
+        </select>
+        <button onClick={scan} disabled={scanning || !instance} style={{
+          background: scanning ? T.graySoft : T.pink, color: '#fff', border: 'none',
+          padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+          cursor: scanning ? 'default' : 'pointer', fontFamily: 'inherit',
+          whiteSpace: 'nowrap',
+        }}>
+          {scanning ? '⏳ Escaneando…' : '🔍 Escanear todos'}
+        </button>
+      </div>
+
+      {result?.summary && (
+        <div style={{ marginTop: 14 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+            <span style={{ padding: '4px 12px', borderRadius: 99, fontSize: 12, fontWeight: 700, background: T.greenSoft, color: '#15803D' }}>
+              ✓ {result.summary.ok} OK
+            </span>
+            <span style={{ padding: '4px 12px', borderRadius: 99, fontSize: 12, fontWeight: 700, background: T.orangeSoft, color: '#C2410C' }}>
+              ⚠ {result.summary.no_sessions} sem sessão
+            </span>
+            <span style={{ padding: '4px 12px', borderRadius: 99, fontSize: 12, fontWeight: 700, background: T.redSoft, color: '#B91C1C' }}>
+              ⏱ {result.summary.timeout} timeout
+            </span>
+            <span style={{ padding: '4px 12px', borderRadius: 99, fontSize: 12, fontWeight: 700, background: T.graySoft, color: T.inkSoft }}>
+              ✗ {result.summary.other_error} outros erros
+            </span>
+          </div>
+
+          {result.summary.no_sessions > 0 && (
+            <div style={{
+              padding: '12px 14px', background: T.orangeSoft, borderRadius: 10,
+              fontSize: 12, color: '#7C2D12', marginBottom: 12, lineHeight: 1.55,
+            }}>
+              <strong>👉 Próximo passo:</strong> abra o WhatsApp no celular ({instance}) e envie qualquer
+              mensagem (um "oi" ou emoji) nos grupos abaixo marcados como ⚠️. Depois, faça o scan novamente
+              — eles devem virar ✓ OK.
+            </div>
+          )}
+
+          <details>
+            <summary style={{ cursor: 'pointer', fontSize: 12, fontWeight: 600, color: T.inkSoft }}>
+              Detalhe por grupo ({result.results.length})
+            </summary>
+            <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 360, overflowY: 'auto' }}>
+              {result.results.map((r: any) => (
+                <div key={r.jid} style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '6px 10px', background: '#FAFBFC', borderRadius: 8,
+                  fontSize: 12,
+                }}>
+                  <span style={{
+                    width: 22, textAlign: 'center',
+                    color: r.kind === 'ok' ? T.green : r.kind === 'no_sessions' ? T.orange : T.red,
+                  }}>
+                    {r.kind === 'ok' ? '✓' : r.kind === 'no_sessions' ? '⚠' : '✗'}
+                  </span>
+                  <span style={{ flex: 1, color: T.ink, fontWeight: 500 }}>{r.name}</span>
+                  <span style={{ color: T.inkSoft, fontSize: 11 }}>{r.members} membros</span>
+                  <span style={{ color: T.inkSoft, fontSize: 11, fontFamily: 'monospace', minWidth: 50, textAlign: 'right' }}>
+                    {(r.elapsed_ms / 1000).toFixed(1)}s
+                  </span>
+                </div>
+              ))}
+            </div>
+          </details>
+        </div>
+      )}
+
+      {result?.error && (
+        <div style={{ padding: '10px 14px', background: T.redSoft, color: '#B91C1C', borderRadius: 8, fontSize: 12, marginTop: 12 }}>
+          ✗ {result.error}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function TestSendPanel({ instances, groups }: { instances: Instance[]; groups: Group[] }) {
   const [instance, setInstance] = useState<string>('')
   const [groupJid, setGroupJid] = useState<string>('')
@@ -389,6 +529,7 @@ export default function ConexaoClient() {
               <InstanceCard key={inst.name} inst={inst} onAction={load} />
             ))}
           </div>
+          <ScanSessionsPanel instances={instances} />
           <TestSendPanel instances={instances} groups={groups} />
         </>
       )}
