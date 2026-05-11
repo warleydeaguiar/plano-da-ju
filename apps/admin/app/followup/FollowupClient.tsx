@@ -40,13 +40,23 @@ interface Lead {
   notes?: string | null
   outcome?: string | null
   followup_id?: string
+  instance_used?: string | null
+  send_method?: string | null
 }
 
 interface Template {
   rule_days: number
   label: string
   message: string
+  default_instance: string | null
   updated_at: string
+}
+
+interface EvoInstance {
+  name: string
+  connectionStatus: string
+  profileName?: string
+  ownerJid?: string
 }
 
 function formatPhone(p: string | null) {
@@ -108,16 +118,29 @@ function KpiCard({ rule, count, active, onClick }: {
 }
 
 // ─── Lead Card (pending) ──────────────────────────────────────
-function LeadRow({ lead, rule, template, onMark, onUndo }: {
+function LeadRow({ lead, rule, template, instances, onMark, onUndo, onSend }: {
   lead: Lead
   rule: Rule | null
   template: Template | undefined
+  instances: EvoInstance[]
   onMark: (leadId: string, ruleDays: number, notes?: string) => Promise<void>
   onUndo?: (leadId: string, ruleDays: number) => Promise<void>
+  onSend: (leadId: string, ruleDays: number, instanceName: string) => Promise<{ ok: boolean; error?: string }>
 }) {
   const [marking, setMarking] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
   const [showNotes, setShowNotes] = useState(false)
   const [notes, setNotes] = useState('')
+  const [pickedInstance, setPickedInstance] = useState<string>(
+    template?.default_instance ?? instances[0]?.name ?? ''
+  )
+
+  // Sync instância default quando template muda
+  useEffect(() => {
+    if (template?.default_instance) setPickedInstance(template.default_instance)
+    else if (!pickedInstance && instances[0]) setPickedInstance(instances[0].name)
+  }, [template?.default_instance, instances]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const isHistory = !!lead.followup_id
   const effectiveRule = (lead.rule_days ?? rule ?? 20) as Rule
@@ -131,6 +154,14 @@ function LeadRow({ lead, rule, template, onMark, onUndo }: {
     setMarking(false)
     setShowNotes(false)
     setNotes('')
+  }
+
+  const doSend = async () => {
+    setSending(true)
+    setSendError(null)
+    const res = await onSend(lead.id, effectiveRule, pickedInstance)
+    if (!res.ok) setSendError(res.error ?? 'Erro ao enviar')
+    setSending(false)
   }
 
   return (
@@ -178,6 +209,10 @@ function LeadRow({ lead, rule, template, onMark, onUndo }: {
           {isHistory && lead.contacted_at && (
             <div style={{ fontSize: 11, color: T.gray, marginTop: 4 }}>
               ✓ Contatado em {formatDateTime(lead.contacted_at)}
+              {lead.instance_used && (
+                <> · via <strong style={{ color: T.whatsapp }}>📱 {lead.instance_used}</strong></>
+              )}
+              {lead.send_method === 'evolution' && <> 🚀</>}
               {lead.notes && <> · <em>"{lead.notes}"</em></>}
             </div>
           )}
@@ -196,48 +231,97 @@ function LeadRow({ lead, rule, template, onMark, onUndo }: {
 
       {/* Actions */}
       {!isHistory && (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <a
-            href={waLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              flex: 1, minWidth: 0,
-              background: T.whatsapp, color: '#fff',
-              padding: '10px 14px', borderRadius: 10,
-              fontSize: 13, fontWeight: 700, textDecoration: 'none',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              border: 'none', cursor: 'pointer',
-            }}
-          >
-            💬 Abrir WhatsApp
-          </a>
-          {showNotes ? (
-            <>
-              <button onClick={doMark} disabled={marking} style={{
-                flex: 1, background: T.green, color: '#fff', border: 'none',
-                padding: '10px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700,
-                cursor: marking ? 'default' : 'pointer', opacity: marking ? 0.6 : 1,
-              }}>
-                {marking ? 'Salvando…' : '✓ Confirmar'}
-              </button>
-              <button onClick={() => setShowNotes(false)} style={{
-                background: '#F5F5F7', color: T.ink, border: 'none',
-                padding: '10px 14px', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer',
-              }}>
-                Cancelar
-              </button>
-            </>
-          ) : (
-            <button onClick={() => setShowNotes(true)} style={{
-              flex: 1,
-              background: '#F5F5F7', color: T.ink, border: 'none',
-              padding: '10px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer',
-            }}>
-              ✓ Marcar como contatado
+        <>
+          {/* Linha 1: Seletor de número + Enviar via Evolution */}
+          <div style={{
+            display: 'flex', gap: 8, alignItems: 'stretch',
+            background: '#F9F9FC', padding: 8, borderRadius: 10,
+            border: `1px solid ${T.border}`,
+          }}>
+            <select
+              value={pickedInstance}
+              onChange={e => setPickedInstance(e.target.value)}
+              disabled={sending || instances.length === 0}
+              style={{
+                flex: 1, padding: '10px 12px', fontSize: 13,
+                border: `1px solid ${T.border}`, borderRadius: 8, outline: 'none',
+                background: '#fff', fontFamily: 'inherit', cursor: 'pointer',
+              }}
+            >
+              {instances.length === 0 && <option value="">— sem instâncias conectadas —</option>}
+              {instances.map(i => (
+                <option key={i.name} value={i.name}>
+                  📱 {i.name}{i.connectionStatus !== 'open' ? ' (offline)' : ''}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={doSend}
+              disabled={sending || !pickedInstance}
+              style={{
+                background: sending ? '#A7F3D0' : T.whatsapp, color: '#fff',
+                border: 'none', padding: '10px 16px', borderRadius: 8,
+                fontSize: 13, fontWeight: 700,
+                cursor: sending || !pickedInstance ? 'default' : 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {sending ? '⏳ Enviando…' : '🚀 Enviar via Evolution'}
             </button>
+          </div>
+          {sendError && (
+            <div style={{
+              fontSize: 12, color: T.red, padding: '8px 12px',
+              background: '#FEF2F2', borderRadius: 8, border: '1px solid #FECACA',
+            }}>
+              ✗ {sendError}
+            </div>
           )}
-        </div>
+
+          {/* Linha 2: WhatsApp manual + marcar manualmente */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <a
+              href={waLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                flex: 1, minWidth: 0,
+                background: 'transparent', color: T.ink,
+                padding: '8px 12px', borderRadius: 10,
+                fontSize: 12, fontWeight: 600, textDecoration: 'none',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                border: `1px solid ${T.border}`, cursor: 'pointer',
+              }}
+            >
+              💬 Abrir wa.me (manual)
+            </a>
+            {showNotes ? (
+              <>
+                <button onClick={doMark} disabled={marking} style={{
+                  flex: 1, background: T.green, color: '#fff', border: 'none',
+                  padding: '8px 12px', borderRadius: 10, fontSize: 12, fontWeight: 700,
+                  cursor: marking ? 'default' : 'pointer', opacity: marking ? 0.6 : 1,
+                }}>
+                  {marking ? 'Salvando…' : '✓ Confirmar'}
+                </button>
+                <button onClick={() => setShowNotes(false)} style={{
+                  background: '#F5F5F7', color: T.ink, border: 'none',
+                  padding: '8px 12px', borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                }}>
+                  Cancelar
+                </button>
+              </>
+            ) : (
+              <button onClick={() => setShowNotes(true)} style={{
+                flex: 1,
+                background: 'transparent', color: T.inkSoft, border: `1px solid ${T.border}`,
+                padding: '8px 12px', borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              }}>
+                ✓ Marcar como contatado (manual)
+              </button>
+            )}
+          </div>
+        </>
       )}
       {showNotes && !isHistory && (
         <input
@@ -269,12 +353,15 @@ function LeadRow({ lead, rule, template, onMark, onUndo }: {
 }
 
 // ─── Templates editor ────────────────────────────────────────
-function TemplatesPanel({ templates, onUpdate }: {
+function TemplatesPanel({ templates, instances, onUpdate, onUpdateInstance }: {
   templates: Template[]
+  instances: EvoInstance[]
   onUpdate: (rule: number, message: string) => Promise<void>
+  onUpdateInstance: (rule: number, instanceName: string) => Promise<void>
 }) {
   const [editing, setEditing] = useState<Record<number, string>>({})
   const [saving, setSaving] = useState<number | null>(null)
+  const [savingInst, setSavingInst] = useState<number | null>(null)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -294,7 +381,7 @@ function TemplatesPanel({ templates, onUpdate }: {
             background: '#fff', border: `1px solid ${T.border}`, borderRadius: 12,
             padding: '16px 18px',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
               <div style={{
                 fontSize: 14, fontWeight: 700, color: m.color,
                 padding: '4px 12px', background: m.color + '15', borderRadius: 99,
@@ -302,6 +389,31 @@ function TemplatesPanel({ templates, onUpdate }: {
                 {m.emoji} {m.label}
               </div>
               <div style={{ fontSize: 12, color: T.gray }}>{m.subtitle}</div>
+              <div style={{ flex: 1 }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 11, color: T.gray, fontWeight: 600 }}>Número default:</span>
+                <select
+                  value={tpl.default_instance ?? ''}
+                  disabled={savingInst === tpl.rule_days}
+                  onChange={async e => {
+                    setSavingInst(tpl.rule_days)
+                    await onUpdateInstance(tpl.rule_days, e.target.value)
+                    setSavingInst(null)
+                  }}
+                  style={{
+                    padding: '5px 9px', fontSize: 12, borderRadius: 6,
+                    border: `1px solid ${T.border}`, background: '#fff',
+                    fontFamily: 'inherit', cursor: 'pointer',
+                  }}
+                >
+                  <option value="">— escolher na hora —</option>
+                  {instances.map(i => (
+                    <option key={i.name} value={i.name}>
+                      📱 {i.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             <textarea
               value={value}
@@ -355,6 +467,7 @@ export default function FollowupClient() {
   const [leads, setLeads] = useState<Lead[]>([])
   const [counts, setCounts] = useState<Record<string, number>>({ '20': 0, '60': 0, '120': 0 })
   const [templates, setTemplates] = useState<Template[]>([])
+  const [instances, setInstances] = useState<EvoInstance[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
 
@@ -387,7 +500,23 @@ export default function FollowupClient() {
     } catch {}
   }, [])
 
-  useEffect(() => { loadTemplates() }, [loadTemplates])
+  const loadInstances = useCallback(async () => {
+    try {
+      const res = await fetch('/api/grupos/instances')
+      const data = await res.json()
+      if (Array.isArray(data)) {
+        // Prioriza instâncias conectadas
+        const sorted = [...data].sort((a, b) => {
+          if (a.connectionStatus === 'open' && b.connectionStatus !== 'open') return -1
+          if (b.connectionStatus === 'open' && a.connectionStatus !== 'open') return 1
+          return 0
+        })
+        setInstances(sorted)
+      }
+    } catch {}
+  }, [])
+
+  useEffect(() => { loadTemplates(); loadInstances() }, [loadTemplates, loadInstances])
   useEffect(() => { loadLeads(tab) }, [tab, loadLeads])
 
   const handleMark = useCallback(async (leadId: string, ruleDays: number, notes?: string) => {
@@ -414,6 +543,31 @@ export default function FollowupClient() {
     })
     await loadTemplates()
   }, [loadTemplates])
+
+  const handleUpdateTemplateInstance = useCallback(async (rule: number, instanceName: string) => {
+    await fetch('/api/followup/templates', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rule_days: rule, default_instance: instanceName }),
+    })
+    await loadTemplates()
+  }, [loadTemplates])
+
+  const handleSend = useCallback(async (leadId: string, ruleDays: number, instanceName: string) => {
+    try {
+      const res = await fetch('/api/followup/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lead_id: leadId, rule_days: ruleDays, instance_name: instanceName }),
+      })
+      const data = await res.json()
+      if (!res.ok) return { ok: false, error: data.error ?? 'Erro desconhecido' }
+      await loadLeads(tab)
+      return { ok: true }
+    } catch (err: any) {
+      return { ok: false, error: err?.message ?? 'Erro de rede' }
+    }
+  }, [tab, loadLeads])
 
   const filteredLeads = useMemo(() => {
     if (!search.trim()) return leads
@@ -500,7 +654,12 @@ export default function FollowupClient() {
 
       {/* Content */}
       {tab === 'templates' ? (
-        <TemplatesPanel templates={templates} onUpdate={handleUpdateTemplate} />
+        <TemplatesPanel
+          templates={templates}
+          instances={instances}
+          onUpdate={handleUpdateTemplate}
+          onUpdateInstance={handleUpdateTemplateInstance}
+        />
       ) : loading ? (
         <div style={{ padding: '40px 20px', textAlign: 'center', color: T.gray }}>Carregando…</div>
       ) : filteredLeads.length === 0 ? (
@@ -526,8 +685,10 @@ export default function FollowupClient() {
               lead={lead}
               rule={currentRule}
               template={currentRule ? templateMap.get(currentRule) : (lead.rule_days ? templateMap.get(lead.rule_days) : undefined)}
+              instances={instances}
               onMark={handleMark}
               onUndo={tab === 'history' ? handleUndo : undefined}
+              onSend={handleSend}
             />
           ))}
         </div>

@@ -129,6 +129,19 @@ export async function getGroupMetadata(groupJid: string, instanceName = DEFAULT_
 
 // ─── Envio de mensagens ───────────────────────────────────────────────────────
 
+/**
+ * Envia mensagem de texto direto para um número (DM, não grupo).
+ * Aceita phone com ou sem DDI — adiciona 55 (Brasil) se necessário.
+ */
+export async function sendTextToNumber(phone: string, text: string, instanceName = DEFAULT_INSTANCE) {
+  let d = phone.replace(/\D/g, '')
+  if (d.length === 10 || d.length === 11) d = '55' + d
+  return evoFetch(`/message/sendText/${encodeURIComponent(instanceName)}`, {
+    method: 'POST',
+    body: JSON.stringify({ number: d, text, delay: 1200 }),
+  })
+}
+
 export async function sendTextToGroup(groupJid: string, text: string, instanceName = DEFAULT_INSTANCE) {
   return evoFetch(`/message/sendText/${encodeURIComponent(instanceName)}`, {
     method: 'POST',
