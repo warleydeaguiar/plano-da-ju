@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
-import { sendTextToGroup, sendMediaToGroup, getActiveInstance } from '@/lib/evolution-grupos'
+import { sendTextToGroup, sendMediaToGroup, getActiveInstance, findGroupsWhereInstanceIsNotMember } from '@/lib/evolution-grupos'
 
 export const dynamic = 'force-dynamic'
 
@@ -111,10 +111,39 @@ async function sendNow(
     return NextResponse.json({ ok: false, error: 'Nenhum grupo ativo com JID cadastrado' })
   }
 
+  // Pre-check: instância é membro dos grupos?
+  let nonMemberSet = new Set<string>()
+  try {
+    const missing = await findGroupsWhereInstanceIsNotMember(instanceName, groups.map(g => g.jid))
+    nonMemberSet = new Set(missing)
+  } catch {}
+
+  if (nonMemberSet.size === groups.length) {
+    await supabase.from('wg_broadcasts' as any)
+      .update({ status: 'failed', sent_at: new Date().toISOString(), fail_count: groups.length })
+      .eq('id', broadcast.id)
+    return NextResponse.json({
+      ok: false,
+      error: `A instância "${instanceName}" não é membro de NENHUM dos ${groups.length} grupos ativos. Reconecte a instância correta no Evolution Manager (a que tem permissão de postar nos grupos).`,
+    }, { status: 400 })
+  }
+
   let success = 0
   let fail = 0
+  let skipped = 0
 
   for (const group of groups) {
+    // Pula grupos sem permissão
+    if (nonMemberSet.has(group.jid)) {
+      await supabase.from('wg_broadcast_results' as any).insert({
+        broadcast_id: broadcast.id,
+        group_id: group.id,
+        status: 'failed',
+        error: `Instância "${instanceName}" não é membro deste grupo`,
+      })
+      fail++; skipped++
+      continue
+    }
     try {
       // Ordem fixa: IMAGEM PRIMEIRO, depois TEXTO (mensagens separadas)
       if (mediaType && media) {
@@ -160,5 +189,14 @@ async function sendNow(
     .update({ status: 'done', sent_at: new Date().toISOString(), success_count: success, fail_count: fail })
     .eq('id', broadcast.id)
 
-  return NextResponse.json({ ok: true, success, fail, total: groups.length })
+  return NextResponse.json({
+    ok: success > 0,
+    success,
+    fail,
+    skipped,
+    total: groups.length,
+    warning: skipped > 0
+      ? `${skipped} grupos pulados — a instância "${instanceName}" não é membro deles.`
+      : undefined,
+  })
 }

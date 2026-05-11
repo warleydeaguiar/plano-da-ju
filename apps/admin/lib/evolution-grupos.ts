@@ -23,19 +23,32 @@ export type EvoInstance = {
   profilePicUrl: string | null
 }
 
-async function evoFetch(path: string, options?: RequestInit, _instance?: string) {
+async function evoFetch(path: string, options?: RequestInit & { timeoutMs?: number }, _instance?: string) {
   const url = `${BASE_URL.replace(/\/+$/, '')}${path}`
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      apikey: getApiKey(),
-      'Content-Type': 'application/json',
-      ...(options?.headers ?? {}),
-    },
-    next: { revalidate: 0 },
-  })
-  if (!res.ok) throw new Error(`Evolution API ${res.status}: ${await res.text()}`)
-  return res.json()
+  const timeoutMs = options?.timeoutMs ?? 20_000
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const res = await fetch(url, {
+      ...options,
+      headers: {
+        apikey: getApiKey(),
+        'Content-Type': 'application/json',
+        ...(options?.headers ?? {}),
+      },
+      signal: controller.signal,
+      next: { revalidate: 0 },
+    })
+    if (!res.ok) throw new Error(`Evolution API ${res.status}: ${await res.text()}`)
+    return res.json()
+  } catch (err: any) {
+    if (err?.name === 'AbortError') {
+      throw new Error(`Evolution timeout (${timeoutMs}ms) em ${path}`)
+    }
+    throw err
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 /** Normaliza a resposta do fetchAllGroups para sempre retornar um array */
@@ -141,6 +154,58 @@ export async function sendTextToNumber(phone: string, text: string, instanceName
     method: 'POST',
     body: JSON.stringify({ number: d, text, delay: 1200 }),
   })
+}
+
+/**
+ * Verifica se uma instância tem permissão para enviar mensagens nos grupos
+ * informados (ou seja, se o número da instância é participante deles).
+ * Retorna a lista de JIDs em que a instância NÃO é membro.
+ *
+ * Por que: se o número não está no grupo, sendText/sendMedia trava
+ * indefinidamente em vez de retornar erro — então precisamos detectar antes.
+ */
+export async function findGroupsWhereInstanceIsNotMember(
+  instanceName: string,
+  groupJids: string[]
+): Promise<string[]> {
+  if (groupJids.length === 0) return []
+
+  // Pega o ownerJid da instância
+  const instances = await fetchAllInstances()
+  const inst = instances.find(i => i.name === instanceName)
+  const ownerJid = (inst as any)?.ownerJid ?? ''
+  const ownerNumber = ownerJid.split('@')[0]
+  if (!ownerNumber) {
+    // Não conseguimos verificar — devolve vazio (não bloqueia)
+    return []
+  }
+
+  // Busca todos os grupos da instância com participantes
+  let allGroups: any[] = []
+  try {
+    const data = await evoFetch(
+      `/group/fetchAllGroups/${encodeURIComponent(instanceName)}?getParticipants=true`,
+      { timeoutMs: 60_000 }
+    )
+    allGroups = parseGroupList(data)
+  } catch {
+    return [] // se falhou, não bloqueia
+  }
+
+  const missingGroups: string[] = []
+  for (const jid of groupJids) {
+    const g = allGroups.find((x: any) => x.id === jid)
+    if (!g) {
+      missingGroups.push(jid) // instância nem enxerga o grupo
+      continue
+    }
+    const isMember = (g.participants ?? []).some((p: any) => {
+      const pid = (p?.id ?? '').split('@')[0]
+      return pid === ownerNumber
+    })
+    if (!isMember) missingGroups.push(jid)
+  }
+  return missingGroups
 }
 
 /**
