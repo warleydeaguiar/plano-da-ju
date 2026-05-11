@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
     mimetype,
     instance_name,
     scheduled_at,
+    mention_all,
   } = body
 
   if (!message?.trim()) {
@@ -76,6 +77,7 @@ export async function POST(req: NextRequest) {
       status:        isScheduled ? 'scheduled' : 'sending',
       scheduled_at:  isScheduled ? scheduled_at : null,
       total_groups:  groups?.length ?? 0,
+      mention_all:   !!mention_all,
     })
     .select()
     .single()
@@ -88,8 +90,10 @@ export async function POST(req: NextRequest) {
   }
 
   // Senão, envia agora
-  return sendNow(supabase, broadcast as any, groups ?? [], resolvedInstance, mediaField, media_type, mimetype, message.trim())
+  return sendNow(supabase, broadcast as any, groups ?? [], resolvedInstance, mediaField, media_type, mimetype, message.trim(), !!mention_all)
 }
+
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
 async function sendNow(
   supabase: ReturnType<typeof import('@/lib/supabase').createAdminClient>,
@@ -100,6 +104,7 @@ async function sendNow(
   mediaType: string | null,
   mimetype: string | null,
   message: string,
+  mentionAll: boolean,
 ) {
   if (!groups.length) {
     await supabase.from('wg_broadcasts' as any).update({ status: 'done', sent_at: new Date().toISOString() }).eq('id', broadcast.id)
@@ -111,17 +116,25 @@ async function sendNow(
 
   for (const group of groups) {
     try {
+      // Ordem fixa: IMAGEM PRIMEIRO, depois TEXTO (mensagens separadas)
       if (mediaType && media) {
+        // 1) Envia mídia sem caption (a imagem vai sozinha)
         await sendMediaToGroup(
           group.jid,
           media,
           mediaType as 'image' | 'video' | 'document',
           mimetype ?? (mediaType === 'image' ? 'image/jpeg' : mediaType === 'video' ? 'video/mp4' : 'application/octet-stream'),
-          message,
+          '', // sem caption — texto vai como mensagem separada
           instanceName,
+          mentionAll,
         )
+        // 2) Se houver texto, envia em mensagem separada com pequeno delay
+        if (message && message.trim()) {
+          await sleep(900)
+          await sendTextToGroup(group.jid, message, instanceName, mentionAll)
+        }
       } else {
-        await sendTextToGroup(group.jid, message, instanceName)
+        await sendTextToGroup(group.jid, message, instanceName, mentionAll)
       }
 
       await supabase.from('wg_broadcast_results' as any).insert({

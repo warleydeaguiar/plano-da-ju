@@ -214,6 +214,7 @@ export default function BroadcastClient({
   const [instanceName, setInstanceName] = useState('')
   const [scheduleMode, setScheduleMode] = useState(false)
   const [scheduledAt, setScheduledAt]   = useState('')
+  const [mentionAll, setMentionAll]     = useState(false)
 
   const [sending, setSending]       = useState(false)
   const [result, setResult]         = useState<{ ok: boolean; text: string } | null>(null)
@@ -326,6 +327,7 @@ export default function BroadcastClient({
         message: message.trim(),
         instance_name: instanceName || undefined,
         scheduled_at: scheduleMode && scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
+        mention_all: mentionAll,
       }
       if (mediaTab === 'upload' && uploadedMedia) {
         body.media_base64 = uploadedMedia.base64
@@ -348,6 +350,7 @@ export default function BroadcastClient({
       removeMedia()
       setScheduleMode(false)
       setScheduledAt('')
+      setMentionAll(false)
       const h2 = await fetch('/api/grupos/broadcast')
       const updated = await h2.json()
       if (Array.isArray(updated)) setBroadcasts(updated)
@@ -382,7 +385,7 @@ export default function BroadcastClient({
       <div style={{ fontSize: 22, fontWeight: 700, color: '#2D1B2E', marginBottom: 4 }}>Enviar mensagem nos grupos</div>
       <div style={{ fontSize: 14, color: gray, marginBottom: 28 }}>Envia ou agenda mensagem para todos os grupos ativos</div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 290px', gap: 24, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 330px', gap: 24, alignItems: 'start' }}>
         {/* ── Formulário ── */}
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '24px' }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: '#2D1B2E', marginBottom: 20 }}>Nova mensagem</div>
@@ -496,6 +499,24 @@ export default function BroadcastClient({
               )}
             </div>
 
+            {/* Mencionar todos (@all) */}
+            <div style={{ background: mentionAll ? accent + '08' : '#F9F9FC', border: `1px solid ${mentionAll ? accent + '30' : '#E5E5EA'}`, borderRadius: 12, padding: '14px 16px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                <div onClick={() => setMentionAll(v => !v)}
+                  style={{ width: 44, height: 24, borderRadius: 12, cursor: 'pointer', transition: 'background .2s', background: mentionAll ? accent : '#D0D0D8', position: 'relative', flexShrink: 0 }}>
+                  <div style={{ position: 'absolute', top: 3, left: mentionAll ? 22 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left .2s', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#2D1B2E' }}>
+                    Mencionar todos do grupo <span style={{ color: accent, fontWeight: 800 }}>@all</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: gray, marginTop: 2, lineHeight: 1.4 }}>
+                    Todos os membros recebem notificação de menção. Use com moderação para não saturar.
+                  </div>
+                </div>
+              </label>
+            </div>
+
             {/* Agendamento */}
             <div style={{ background: scheduleMode ? accent + '08' : '#F9F9FC', border: `1px solid ${scheduleMode ? accent + '30' : '#E5E5EA'}`, borderRadius: 12, padding: '14px 16px' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
@@ -530,6 +551,14 @@ export default function BroadcastClient({
 
         {/* ── Sidebar ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* WhatsApp Preview */}
+          <WhatsAppPreview
+            message={message}
+            mediaPreviewUrl={uploadedMedia?.preview || (mediaTab === 'url' && mediaType === 'image' ? mediaUrl : '')}
+            mediaType={uploadedMedia?.mediatype || (mediaTab === 'url' ? mediaType : '')}
+            mentionAll={mentionAll}
+          />
+
           {/* Mensagens salvas */}
           <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
@@ -694,6 +723,174 @@ export default function BroadcastClient({
           </table>
         </div>
       )}
+    </div>
+  )
+}
+
+// ─── WhatsApp Preview ───────────────────────────────────────
+function WhatsAppPreview({ message, mediaPreviewUrl, mediaType, mentionAll }: {
+  message: string
+  mediaPreviewUrl: string
+  mediaType: string
+  mentionAll: boolean
+}) {
+  const now = new Date()
+  const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+  const hasMedia = !!mediaPreviewUrl
+  const isImage = mediaType === 'image' || mediaType === ''
+  const isVideo = mediaType === 'video'
+  const hasText = !!message.trim()
+
+  // Render do texto com @all destacado em azul (estilo WhatsApp)
+  const renderMessage = (text: string) => {
+    if (!mentionAll) return text
+    return (
+      <>
+        <span style={{ color: '#1F7DBC', fontWeight: 600 }}>@todos </span>
+        {text}
+      </>
+    )
+  }
+
+  return (
+    <div style={{
+      background: '#fff', borderRadius: 18, border: '1px solid rgba(0,0,0,0.06)',
+      overflow: 'hidden', boxShadow: '0 4px 14px rgba(0,0,0,0.06)',
+      position: 'sticky', top: 20,
+    }}>
+      <div style={{
+        padding: '10px 14px', fontSize: 11, fontWeight: 700,
+        color: '#2D1B2E', background: '#FAFAFA',
+        borderBottom: '1px solid #F0F0F5',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <span>👁 Preview da mensagem</span>
+        <span style={{ fontSize: 9, color: '#8A8A8E', fontWeight: 500 }}>Como aparece no WhatsApp</span>
+      </div>
+
+      {/* WhatsApp chat */}
+      <div style={{
+        background: '#075E54', padding: '10px 12px',
+        display: 'flex', alignItems: 'center', gap: 10,
+        color: '#fff',
+      }}>
+        <div style={{
+          width: 36, height: 36, borderRadius: '50%',
+          background: 'rgba(255,255,255,0.2)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 14, fontWeight: 700,
+        }}>
+          👥
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.2 }}>Grupo de Promoções</div>
+          <div style={{ fontSize: 10, opacity: 0.7, marginTop: 1 }}>{mentionAll ? 'todos os participantes' : 'preview'}</div>
+        </div>
+      </div>
+
+      {/* Chat body */}
+      <div style={{
+        background: '#E5DDD5',
+        backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Cdefs%3E%3Cpattern id=\'p\' x=\'0\' y=\'0\' width=\'20\' height=\'20\' patternUnits=\'userSpaceOnUse\'%3E%3Ccircle cx=\'10\' cy=\'10\' r=\'1\' fill=\'%23000\' fill-opacity=\'0.04\'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width=\'100\' height=\'100\' fill=\'url(%23p)\'/%3E%3C/svg%3E")',
+        padding: '12px 12px 14px', minHeight: 200, maxHeight: 460, overflowY: 'auto',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+          <span style={{
+            fontSize: 10, color: '#54656F', background: '#E1F2FB',
+            padding: '3px 10px', borderRadius: 8, fontWeight: 500,
+          }}>HOJE</span>
+        </div>
+
+        {!hasMedia && !hasText && (
+          <div style={{
+            display: 'flex', justifyContent: 'center', padding: '24px 14px',
+            color: '#54656F', fontSize: 12, fontStyle: 'italic', textAlign: 'center',
+          }}>
+            Digite a mensagem para ver o preview…
+          </div>
+        )}
+
+        {/* Bubble 1 — imagem (ordem fixa: imagem primeiro) */}
+        {hasMedia && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
+            <div style={{
+              maxWidth: '85%', background: '#DCF8C6', borderRadius: 8,
+              padding: 3, position: 'relative',
+              boxShadow: '0 1px 1px rgba(0,0,0,0.08)',
+            }}>
+              {isImage ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={mediaPreviewUrl} alt="" style={{
+                  width: '100%', maxWidth: 240, borderRadius: 6, display: 'block',
+                }} />
+              ) : isVideo ? (
+                <div style={{
+                  width: 240, height: 140, borderRadius: 6,
+                  background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: '#fff', fontSize: 32, position: 'relative',
+                }}>
+                  ▶
+                  <div style={{
+                    position: 'absolute', bottom: 4, left: 6,
+                    fontSize: 10, color: '#fff', opacity: 0.9,
+                  }}>vídeo</div>
+                </div>
+              ) : (
+                <div style={{
+                  width: 240, padding: '18px 14px', borderRadius: 6,
+                  background: '#F0F2F5', textAlign: 'center', fontSize: 13,
+                }}>
+                  📄 Documento
+                </div>
+              )}
+              <div style={{
+                fontSize: 9, color: '#667781', textAlign: 'right',
+                padding: '3px 6px 0', display: 'flex', justifyContent: 'flex-end', gap: 2,
+              }}>
+                {time} <span style={{ color: '#4FC3F7' }}>✓✓</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Bubble 2 — texto (segunda mensagem) */}
+        {hasText && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: hasMedia ? 6 : 0 }}>
+            <div style={{
+              maxWidth: '85%', background: '#DCF8C6', borderRadius: 8,
+              padding: '6px 9px 6px 10px', position: 'relative',
+              boxShadow: '0 1px 1px rgba(0,0,0,0.08)',
+            }}>
+              <div style={{
+                fontSize: 13, color: '#111B21', lineHeight: 1.42,
+                whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+              }}>
+                {renderMessage(message)}
+              </div>
+              <div style={{
+                fontSize: 9, color: '#667781', textAlign: 'right',
+                marginTop: 2, display: 'flex', justifyContent: 'flex-end', gap: 2,
+              }}>
+                {time} <span style={{ color: '#4FC3F7' }}>✓✓</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Footer info */}
+      <div style={{
+        padding: '8px 12px', fontSize: 10, color: '#8A8A8E',
+        background: '#FAFAFA', borderTop: '1px solid #F0F0F5',
+        lineHeight: 1.4,
+      }}>
+        {hasMedia && hasText && (
+          <div>📤 Imagem enviada primeiro, depois o texto (mensagens separadas)</div>
+        )}
+        {mentionAll && (
+          <div style={{ color: '#C4607A', fontWeight: 600 }}>🔔 Todos os membros serão mencionados</div>
+        )}
+      </div>
     </div>
   )
 }

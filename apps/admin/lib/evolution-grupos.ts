@@ -142,10 +142,20 @@ export async function sendTextToNumber(phone: string, text: string, instanceName
   })
 }
 
-export async function sendTextToGroup(groupJid: string, text: string, instanceName = DEFAULT_INSTANCE) {
+export async function sendTextToGroup(
+  groupJid: string,
+  text: string,
+  instanceName = DEFAULT_INSTANCE,
+  mentionAll = false
+) {
   return evoFetch(`/message/sendText/${encodeURIComponent(instanceName)}`, {
     method: 'POST',
-    body: JSON.stringify({ number: groupJid, text, delay: 1200 }),
+    body: JSON.stringify({
+      number: groupJid,
+      text,
+      delay: 1200,
+      ...(mentionAll ? { mentionsEveryOne: true } : {}),
+    }),
   })
 }
 
@@ -155,11 +165,19 @@ export async function sendMediaToGroup(
   mediatype: 'image' | 'video' | 'document',
   mimetype: string,
   caption: string,
-  instanceName = DEFAULT_INSTANCE
+  instanceName = DEFAULT_INSTANCE,
+  mentionAll = false
 ) {
   return evoFetch(`/message/sendMedia/${encodeURIComponent(instanceName)}`, {
     method: 'POST',
-    body: JSON.stringify({ number: groupJid, mediatype, mimetype, media, caption }),
+    body: JSON.stringify({
+      number: groupJid,
+      mediatype,
+      mimetype,
+      media,
+      caption,
+      ...(mentionAll ? { mentionsEveryOne: true } : {}),
+    }),
   })
 }
 
