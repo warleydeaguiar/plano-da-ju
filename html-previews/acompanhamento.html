@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Plano da Ju — Acompanhamento</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    :root {
+      --accent: #C4607A;
+      --accent2: #9B4A6A;
+      --bg: #F2F2F7;
+      --surface: #FFFFFF;
+      --dark: #1C1C1E;
+      --mid: #48484A;
+      --sub: #8E8E93;
+      --sep: #E5E5EA;
+      --green: #34C759;
+      --gold: #FF9500;
+      --blue: #007AFF;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', sans-serif;
+      background: #E8E8EE;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .phone {
+      width: 390px;
+      height: 844px;
+      background: var(--bg);
+      border-radius: 54px;
+      overflow: hidden;
+      box-shadow: 0 50px 100px rgba(0,0,0,0.3), 0 0 0 1px rgba(0,0,0,0.06);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* Status bar */
+    .status {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 28px 0;
+      flex-shrink: 0;
+      background: var(--bg);
+    }
+    .status-time { font-size: 15px; font-weight: 600; color: var(--dark); }
+    .status-icons { display: flex; align-items: center; gap: 5px; }
+    .status-icons span { font-size: 13px; }
+
+    /* Scroll */
+    .scroll {
+      flex: 1;
+      overflow-y: auto;
+      scrollbar-width: none;
+      padding-bottom: 90px;
+    }
+    .scroll::-webkit-scrollbar { display: none; }
+
+    /* Page header */
+    .page-header {
+      padding: 16px 20px 12px;
+      background: var(--bg);
+    }
+    .page-title {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--dark);
+    }
+    .page-sub {
+      font-size: 14px;
+      color: var(--sub);
+      margin-top: 2px;
+    }
+
+    /* Status card */
+    .status-card {
+      margin: 0 16px 16px;
+      background: var(--surface);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .status-icon-wrap {
+      width: 52px; height: 52px;
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px;
+      flex-shrink: 0;
+    }
+    .status-icon-wrap.available { background: #E8F8EE; }
+    .status-icon-wrap.waiting { background: #FFF3E0; }
+    .status-icon-wrap.answered { background: #EEF3FF; }
+    .status-text-wrap { flex: 1; }
+    .status-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 3px;
+    }
+    .status-label.available { color: var(--green); }
+    .status-label.waiting { color: var(--gold); }
+    .status-label.answered { color: var(--blue); }
+    .status-title { font-size: 15px; font-weight: 600; color: var(--dark); }
+    .status-desc { font-size: 13px; color: var(--sub); margin-top: 2px; }
+
+    /* Week quota */
+    .quota-strip {
+      margin: 0 16px 16px;
+      background: var(--surface);
+      border-radius: 14px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+    .quota-left { font-size: 13px; color: var(--mid); }
+    .quota-dots { display: flex; gap: 6px; }
+    .quota-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+    }
+    .quota-dot.used { background: var(--accent); }
+    .quota-dot.free { background: var(--sep); }
+    .quota-reset { font-size: 12px; color: var(--sub); }
+
+    /* Section header */
+    .section-header {
+      padding: 8px 20px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .section-title {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: var(--dark);
+    }
+
+    /* Form card */
+    .form-card {
+      margin: 0 16px 16px;
+      background: var(--surface);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+    .form-header {
+      background: linear-gradient(135deg, var(--accent2), var(--accent));
+      padding: 18px 20px;
+      color: white;
+    }
+    .form-header-title { font-size: 17px; font-weight: 700; }
+    .form-header-sub { font-size: 13px; opacity: 0.85; margin-top: 3px; }
+
+    .form-body { padding: 20px; }
+
+    .form-question {
+      margin-bottom: 18px;
+    }
+    .form-question-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--mid);
+      margin-bottom: 10px;
+      letter-spacing: -0.1px;
+    }
+    .form-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .form-option {
+      padding: 8px 14px;
+      border-radius: 20px;
+      border: 1.5px solid var(--sep);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--mid);
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .form-option.selected {
+      border-color: var(--accent);
+      background: rgba(196,96,122,0.08);
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .form-option:active { opacity: 0.7; }
+
+    .form-textarea-wrap {
+      margin-bottom: 18px;
+    }
+    .form-textarea-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--mid);
+      margin-bottom: 8px;
+    }
+    .form-textarea {
+      width: 100%;
+      height: 90px;
+      border: 1.5px solid var(--sep);
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 14px;
+      color: var(--dark);
+      resize: none;
+      font-family: inherit;
+      background: var(--bg);
+      outline: none;
+    }
+    .form-textarea:focus { border-color: var(--accent); }
+    .form-textarea::placeholder { color: var(--sub); }
+
+    .form-notice {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #FFF8E7;
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-bottom: 16px;
+    }
+    .form-notice-icon { font-size: 16px; }
+    .form-notice-text { font-size: 12px; color: #8B6914; line-height: 1.4; }
+
+    .btn-send {
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(135deg, var(--accent2), var(--accent));
+      border: none;
+      border-radius: 14px;
+      color: white;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: -0.2px;
+    }
+
+    /* Waiting state */
+    .waiting-card {
+      margin: 0 16px 16px;
+      background: var(--surface);
+      border-radius: 20px;
+      padding: 24px 20px;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .waiting-icon { font-size: 44px; margin-bottom: 12px; }
+    .waiting-title { font-size: 17px; font-weight: 700; color: var(--dark); margin-bottom: 6px; }
+    .waiting-sub { font-size: 13px; color: var(--sub); line-height: 1.5; }
+    .waiting-eta {
+      display: inline-block;
+      margin-top: 14px;
+      padding: 8px 16px;
+      background: #FFF3E0;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gold);
+    }
+
+    /* History */
+    .history-card {
+      margin: 0 16px 12px;
+      background: var(--surface);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+    }
+    .history-item {
+      padding: 16px;
+      border-bottom: 1px solid var(--sep);
+    }
+    .history-item:last-child { border-bottom: none; }
+    .history-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .history-week {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--sub);
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+    .history-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+    .history-badge.answered { background: #E8F8EE; color: #1C7A3E; }
+    .history-badge.waiting { background: #FFF3E0; color: #8B6914; }
+
+    .history-question {
+      font-size: 13px;
+      color: var(--dark);
+      font-weight: 500;
+      margin-bottom: 6px;
+      line-height: 1.4;
+    }
+    .history-question-label {
+      font-size: 11px;
+      color: var(--sub);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-bottom: 4px;
+    }
+
+    .history-response {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--sep);
+    }
+    .history-response-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--accent);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-bottom: 6px;
+    }
+    .history-response-avatar {
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent2), var(--accent));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px; font-weight: 700; color: white;
+    }
+    .history-response-text {
+      font-size: 13px;
+      color: var(--mid);
+      line-height: 1.5;
+    }
+
+    /* Bottom nav */
+    .tabbar {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 83px;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(20px);
+      border-top: 1px solid rgba(0,0,0,0.08);
+      display: flex;
+      align-items: flex-start;
+      padding-top: 8px;
+    }
+    .tab-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      padding: 4px 0;
+      text-decoration: none;
+    }
+    .tab-icon { font-size: 22px; line-height: 1; }
+    .tab-label { font-size: 10px; font-weight: 500; color: var(--sub); letter-spacing: -0.1px; }
+    .tab-item.active .tab-label { color: var(--accent); font-weight: 600; }
+    .tab-center {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding-top: 0;
+      margin-top: -8px;
+    }
+    .tab-plus {
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent2), var(--accent));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px; color: white; font-weight: 300;
+      box-shadow: 0 4px 14px rgba(196,96,122,0.5);
+    }
+    .home-indicator {
+      position: absolute;
+      bottom: 8px;
+      left: 50%; transform: translateX(-50%);
+      width: 134px; height: 5px;
+      background: var(--dark);
+      border-radius: 3px;
+      opacity: 0.2;
+    }
+  </style>
+</head>
+<body>
+<div class="phone">
+  <!-- Status bar -->
+  <div class="status">
+    <div class="status-time">9:41</div>
+    <div class="status-icons">
+      <span>●●●</span>
+      <span>WiFi</span>
+      <span>🔋</span>
+    </div>
+  </div>
+
+  <!-- Scroll content -->
+  <div class="scroll">
+
+    <!-- Header -->
+    <div class="page-header">
+      <div class="page-title">Acompanhamento</div>
+      <div class="page-sub">Tire dúvidas diretamente com a Ju</div>
+    </div>
+
+    <!-- Status atual -->
+    <div class="status-card">
+      <div class="status-icon-wrap available">💬</div>
+      <div class="status-text-wrap">
+        <div class="status-label available">Disponível esta semana</div>
+        <div class="status-title">Envie sua dúvida para a Ju</div>
+        <div class="status-desc">Resposta em até 48 horas úteis</div>
+      </div>
+    </div>
+
+    <!-- Cota semanal -->
+    <div class="quota-strip">
+      <div>
+        <div class="quota-left" style="font-weight:600;color:var(--dark);font-size:14px;">Esta semana</div>
+        <div class="quota-reset" style="margin-top:2px;">Renova toda segunda-feira</div>
+      </div>
+      <div style="text-align:right">
+        <div class="quota-dots">
+          <div class="quota-dot free"></div>
+        </div>
+        <div class="quota-reset" style="margin-top:4px;">0 de 1 usado</div>
+      </div>
+    </div>
+
+    <!-- Form section -->
+    <div class="section-header">
+      <div class="section-title">Nova mensagem para a Ju</div>
+    </div>
+
+    <div class="form-card">
+      <div class="form-header">
+        <div class="form-header-title">Como está seu cabelo agora?</div>
+        <div class="form-header-sub">Responda rapidinho para a Ju entender sua situação</div>
+      </div>
+
+      <div class="form-body">
+
+        <!-- Q1 -->
+        <div class="form-question">
+          <div class="form-question-label">Como seu cabelo está esta semana?</div>
+          <div class="form-options">
+            <div class="form-option selected">😊 Ótimo</div>
+            <div class="form-option">😐 Normal</div>
+            <div class="form-option">😞 Ressecado</div>
+            <div class="form-option">😣 Quebrando</div>
+            <div class="form-option">💧 Oleoso</div>
+          </div>
+        </div>
+
+        <!-- Q2 -->
+        <div class="form-question">
+          <div class="form-question-label">Seguiu a rotina do seu plano?</div>
+          <div class="form-options">
+            <div class="form-option">✅ Segui tudo</div>
+            <div class="form-option selected">🔄 Maior parte</div>
+            <div class="form-option">⚠️ Pouco</div>
+            <div class="form-option">❌ Não segui</div>
+          </div>
+        </div>
+
+        <!-- Q3 -->
+        <div class="form-question">
+          <div class="form-question-label">Em qual etapa você está?</div>
+          <div class="form-options">
+            <div class="form-option selected">📍 Semana 1-4</div>
+            <div class="form-option">📍 Semana 5-8</div>
+            <div class="form-option">📍 Semana 9-12</div>
+            <div class="form-option">📍 Além da 12ª</div>
+          </div>
+        </div>
+
+        <!-- Dúvida livre -->
+        <div class="form-textarea-wrap">
+          <div class="form-textarea-label">Sua dúvida ou observação para a Ju 💌</div>
+          <textarea class="form-textarea" placeholder="Ex: Minha máscara de hidratação causou ressecamento, é normal? Posso substituir por..."></textarea>
+        </div>
+
+        <!-- Aviso -->
+        <div class="form-notice">
+          <div class="form-notice-icon">⏱️</div>
+          <div class="form-notice-text">Este é seu acompanhamento semanal. Você tem <strong>1 por semana</strong>. A Ju responde em até 48 horas úteis.</div>
+        </div>
+
+        <button class="btn-send">Enviar para a Ju 💖</button>
+
+      </div>
+    </div>
+
+    <!-- Historico -->
+    <div class="section-header" style="margin-top:4px;">
+      <div class="section-title">Histórico</div>
+    </div>
+
+    <div class="history-card">
+
+      <!-- Item 1 - respondido -->
+      <div class="history-item">
+        <div class="history-meta">
+          <div class="history-week">Semana de 21 abr</div>
+          <div class="history-badge answered">✓ Respondido</div>
+        </div>
+        <div class="history-question-label">Sua dúvida</div>
+        <div class="history-question">"Posso usar a máscara de nutrição toda semana ou vai deixar o cabelo pesado?"</div>
+        <div class="history-response">
+          <div class="history-response-label">
+            <div class="history-response-avatar">J</div>
+            Resposta da Ju
+          </div>
+          <div class="history-response-text">Sim! Para o seu tipo de cabelo (porosidade alta com fios finos), você pode usar a máscara de nutrição 1x por semana sem problema. Se sentir pesado, reduza para quinzenal e use o cronograma alternando: hidratação → nutrição → reconstrução. O ideal é sempre finalizar com água fria para selar! 💖</div>
+        </div>
+      </div>
+
+      <!-- Item 2 - respondido -->
+      <div class="history-item">
+        <div class="history-meta">
+          <div class="history-week">Semana de 14 abr</div>
+          <div class="history-badge answered">✓ Respondido</div>
+        </div>
+        <div class="history-question-label">Sua dúvida</div>
+        <div class="history-question">"Meu cabelo continua quebrando mesmo usando o cronograma. O que pode ser?"</div>
+        <div class="history-response">
+          <div class="history-response-label">
+            <div class="history-response-avatar">J</div>
+            Resposta da Ju
+          </div>
+          <div class="history-response-text">A quebra nas primeiras semanas é normal — o cronograma precisa de pelo menos 30 dias para mostrar resultado. Mas verifique: você está usando protetor térmico antes do secador? Para fios finos com porosidade alta, esse passo é indispensável. Se sim, vamos ajustar a frequência da máscara de reconstrução para 2x por semana por 2 semanas. 🌿</div>
+        </div>
+      </div>
+
+      <!-- Item 3 - aguardando (exemplo alternativo) -->
+      <div class="history-item">
+        <div class="history-meta">
+          <div class="history-week">Semana de 7 abr</div>
+          <div class="history-badge answered">✓ Respondido</div>
+        </div>
+        <div class="history-question-label">Sua dúvida</div>
+        <div class="history-question">"Posso substituir o Tônico Vello pelo Imecap Her que já tenho em casa?"</div>
+        <div class="history-response">
+          <div class="history-response-label">
+            <div class="history-response-avatar">J</div>
+            Resposta da Ju
+          </div>
+          <div class="history-response-text">Pode sim usar o Imecap Her enquanto não compra o Vello! Ele também vai ajudar no crescimento e na queda. A diferença é que o Vello é aplicado diretamente no couro cabeludo (ação local), enquanto o Imecap é oral (ação sistêmica). Os dois juntos são ainda melhores! 💪</div>
+        </div>
+      </div>
+
+    </div>
+
+  </div><!-- /scroll -->
+
+  <!-- Tab bar -->
+  <div class="tabbar">
+    <a class="tab-item" href="home.html">
+      <div class="tab-icon">🏠</div>
+      <div class="tab-label">Início</div>
+    </a>
+    <a class="tab-item" href="progresso.html">
+      <div class="tab-icon">📊</div>
+      <div class="tab-label">Progresso</div>
+    </a>
+    <div class="tab-center">
+      <div class="tab-plus">+</div>
+    </div>
+    <a class="tab-item" href="plano.html">
+      <div class="tab-icon">📋</div>
+      <div class="tab-label">Plano</div>
+    </a>
+    <a class="tab-item active" href="acompanhamento.html">
+      <div class="tab-icon" style="filter: hue-rotate(0deg)">💬</div>
+      <div class="tab-label" style="color:var(--accent)">Acompan.</div>
+    </a>
+  </div>
+
+  <div class="home-indicator"></div>
+</div>
+</body>
+</html>

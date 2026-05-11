@@ -1,22 +1,36 @@
-import { Tabs } from 'expo-router';
-import { View, Text, StyleSheet } from 'react-native';
+import { Tabs, router } from 'expo-router';
+import { TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { T, GRAD } from '../../lib/theme/tokens';
 
-const PINK = '#C4607A';
-const GRAY = '#8E8E93';
-const BG = '#1C1C1E';
-
-function TabIcon({ name, focused }: { name: string; focused: boolean }) {
-  const icons: Record<string, string> = {
-    index: '🏠',
-    agenda: '📅',
-    plano: '📋',
-    evolucao: '📈',
-    loja: '🛍️',
-  };
+function FABButton() {
   return (
-    <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.5 }}>
-      {icons[name] ?? '●'}
-    </Text>
+    <TouchableOpacity
+      style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-start', marginTop: -22 }}
+      onPress={() => router.push('/checkin')}
+      activeOpacity={0.85}
+    >
+      <LinearGradient
+        colors={GRAD.hero}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{
+          width: 56,
+          height: 56,
+          borderRadius: 28,
+          alignItems: 'center',
+          justifyContent: 'center',
+          shadowColor: T.accent,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.45,
+          shadowRadius: 10,
+          elevation: 8,
+        }}
+      >
+        <Ionicons name="add" size={30} color="#FFF" />
+      </LinearGradient>
+    </TouchableOpacity>
   );
 }
 
@@ -26,53 +40,71 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: BG,
-          borderTopColor: 'rgba(255,255,255,0.08)',
-          height: 80,
-          paddingBottom: 16,
+          backgroundColor: 'rgba(242,242,247,0.95)',
+          borderTopColor: 'rgba(0,0,0,0.12)',
+          borderTopWidth: 0.5,
+          height: 84,
+          paddingTop: 8,
+          paddingBottom: 0,
         },
-        tabBarActiveTintColor: PINK,
-        tabBarInactiveTintColor: GRAY,
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        tabBarActiveTintColor: T.accent,
+        tabBarInactiveTintColor: T.sub,
+        tabBarLabelStyle: { fontSize: 10, fontWeight: '600', letterSpacing: 0.1 },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: 'Início',
-          tabBarIcon: ({ focused }) => <TabIcon name="index" focused={focused} />,
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
-        name="agenda"
+        name="progresso"
         options={{
-          title: 'Agenda',
-          tabBarIcon: ({ focused }) => <TabIcon name="agenda" focused={focused} />,
+          title: 'Progresso',
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons name={focused ? 'stats-chart' : 'stats-chart-outline'} size={24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="registrar"
+        options={{
+          title: '',
+          tabBarButton: () => <FABButton />,
         }}
       />
       <Tabs.Screen
         name="plano"
         options={{
-          title: 'Meu Plano',
-          tabBarIcon: ({ focused }) => <TabIcon name="plano" focused={focused} />,
+          title: 'Plano',
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons name={focused ? 'clipboard' : 'clipboard-outline'} size={24} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
-        name="evolucao"
+        name="acompanhamento"
         options={{
-          title: 'Evolução',
-          tabBarIcon: ({ focused }) => <TabIcon name="evolucao" focused={focused} />,
+          title: 'Ju',
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons
+              name={focused ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline'}
+              size={24}
+              color={color}
+            />
+          ),
         }}
       />
-      <Tabs.Screen
-        name="loja"
-        options={{
-          title: 'Produtos',
-          tabBarIcon: ({ focused }) => <TabIcon name="loja" focused={focused} />,
-        }}
-      />
+
+      {/* Hidden tabs — tabBarButton: () => null removes them from the visible bar */}
+      <Tabs.Screen name="agenda" options={{ tabBarButton: () => null }} />
+      <Tabs.Screen name="evolucao" options={{ tabBarButton: () => null }} />
+      <Tabs.Screen name="loja" options={{ tabBarButton: () => null }} />
+      <Tabs.Screen name="perfil" options={{ tabBarButton: () => null }} />
     </Tabs>
   );
 }
-
-const styles = StyleSheet.create({});

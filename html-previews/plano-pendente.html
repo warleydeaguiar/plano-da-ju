@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Plano da Ju — Plano em Preparação</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    :root {
+      --accent: #C4607A;
+      --accent2: #9B4A6A;
+      --bg: #F2F2F7;
+      --surface: #FFFFFF;
+      --dark: #1C1C1E;
+      --mid: #48484A;
+      --sub: #8E8E93;
+      --sep: #E5E5EA;
+      --green: #34C759;
+      --gold: #FF9500;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+      background: #E8E8EE;
+      display: flex; justify-content: center; align-items: center;
+      min-height: 100vh; padding: 20px;
+    }
+    .phone {
+      width: 390px; height: 844px;
+      background: var(--bg);
+      border-radius: 54px;
+      overflow: hidden;
+      box-shadow: 0 50px 100px rgba(0,0,0,0.3), 0 0 0 1px rgba(0,0,0,0.06);
+      display: flex; flex-direction: column; position: relative;
+    }
+    .status {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 28px 0; flex-shrink: 0;
+    }
+    .status-time { font-size: 15px; font-weight: 600; color: var(--dark); }
+    .status-icons { display: flex; align-items: center; gap: 5px; font-size: 13px; }
+
+    .scroll { flex: 1; overflow-y: auto; scrollbar-width: none; padding-bottom: 90px; }
+    .scroll::-webkit-scrollbar { display: none; }
+
+    /* Countdown hero */
+    .countdown-hero {
+      background: linear-gradient(160deg, #2D1B3D 0%, var(--accent2) 50%, var(--accent) 100%);
+      padding: 32px 24px 28px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .countdown-hero::before {
+      content: '';
+      position: absolute;
+      top: -60px; left: -60px;
+      width: 200px; height: 200px;
+      background: rgba(255,255,255,0.04);
+      border-radius: 50%;
+    }
+    .countdown-hero::after {
+      content: '';
+      position: absolute;
+      bottom: -80px; right: -60px;
+      width: 220px; height: 220px;
+      background: rgba(255,255,255,0.04);
+      border-radius: 50%;
+    }
+    .countdown-emoji { font-size: 48px; margin-bottom: 12px; display: block; }
+    .countdown-title {
+      font-size: 22px; font-weight: 700; color: white;
+      letter-spacing: -0.5px; margin-bottom: 6px;
+    }
+    .countdown-sub {
+      font-size: 14px; color: rgba(255,255,255,0.7); line-height: 1.5;
+    }
+
+    /* Timer display */
+    .timer-wrap {
+      margin: 24px 0 8px;
+      display: flex; align-items: center; justify-content: center; gap: 4px;
+    }
+    .timer-block {
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 12px;
+      padding: 12px 14px;
+      text-align: center;
+      min-width: 64px;
+    }
+    .timer-num {
+      font-size: 32px; font-weight: 700; color: white;
+      letter-spacing: -1px; line-height: 1;
+    }
+    .timer-label {
+      font-size: 10px; color: rgba(255,255,255,0.6);
+      text-transform: uppercase; letter-spacing: 0.8px;
+      margin-top: 4px; font-weight: 500;
+    }
+    .timer-sep { font-size: 28px; font-weight: 700; color: rgba(255,255,255,0.5); }
+    .timer-hint { font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 10px; }
+
+    /* Progress bar */
+    .progress-wrap { margin: 0 24px; }
+    .progress-label {
+      display: flex; justify-content: space-between;
+      font-size: 12px; color: rgba(255,255,255,0.6);
+      margin-bottom: 8px;
+    }
+    .progress-bar {
+      height: 4px; background: rgba(255,255,255,0.15);
+      border-radius: 2px; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; width: 35%;
+      background: white; border-radius: 2px;
+      transition: width 1s;
+    }
+
+    /* Steps below hero */
+    .steps-section { padding: 24px 20px 8px; }
+    .steps-title { font-size: 20px; font-weight: 700; color: var(--dark); letter-spacing: -0.3px; }
+    .steps-sub { font-size: 14px; color: var(--sub); margin-top: 4px; }
+
+    .steps-list {
+      margin: 16px 16px 0;
+      background: var(--surface);
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .step-item {
+      display: flex; align-items: center; gap: 14px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--sep);
+    }
+    .step-item:last-child { border-bottom: none; }
+    .step-num {
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700; flex-shrink: 0;
+    }
+    .step-num.done { background: var(--green); color: white; }
+    .step-num.active {
+      background: linear-gradient(135deg, var(--accent2), var(--accent));
+      color: white;
+    }
+    .step-num.pending { background: var(--sep); color: var(--sub); }
+    .step-content { flex: 1; }
+    .step-name { font-size: 15px; font-weight: 600; color: var(--dark); }
+    .step-desc { font-size: 13px; color: var(--sub); margin-top: 2px; }
+    .step-badge {
+      font-size: 11px; font-weight: 600; padding: 3px 8px;
+      border-radius: 6px;
+    }
+    .step-badge.done { background: #E8F8EE; color: #1C7A3E; }
+    .step-badge.active { background: #FDEEF2; color: var(--accent); }
+    .step-badge.pending { background: var(--bg); color: var(--sub); }
+
+    /* Notif card */
+    .notif-card {
+      margin: 16px 16px 0;
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 16px 18px;
+      display: flex; gap: 14px; align-items: flex-start;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+    .notif-icon { font-size: 22px; flex-shrink: 0; }
+    .notif-title { font-size: 14px; font-weight: 600; color: var(--dark); }
+    .notif-sub { font-size: 13px; color: var(--sub); margin-top: 2px; line-height: 1.4; }
+    .notif-btn {
+      margin-top: 10px;
+      display: inline-block;
+      padding: 7px 14px;
+      background: var(--accent);
+      color: white;
+      border-radius: 10px;
+      font-size: 13px; font-weight: 600;
+    }
+
+    /* Preview card */
+    .preview-card {
+      margin: 12px 16px 0;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .preview-header {
+      background: linear-gradient(135deg, var(--accent2), var(--accent));
+      padding: 12px 16px;
+    }
+    .preview-header-title { font-size: 12px; color: rgba(255,255,255,0.7); font-weight: 500; }
+    .preview-header-name { font-size: 16px; color: white; font-weight: 700; margin-top: 2px; }
+    .preview-body { background: var(--surface); }
+    .preview-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--sep);
+      filter: blur(3px); pointer-events: none; user-select: none;
+    }
+    .preview-row:last-child { border-bottom: none; }
+    .preview-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+    .preview-text { font-size: 14px; color: var(--dark); }
+    .preview-lock {
+      position: absolute;
+      inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px;
+    }
+
+    /* Tab bar */
+    .tab-bar {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      height: 82px;
+      background: rgba(242,242,247,0.92);
+      backdrop-filter: blur(20px);
+      border-top: 0.5px solid rgba(0,0,0,0.12);
+      display: flex; align-items: flex-start; padding-top: 8px;
+    }
+    .tab {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; gap: 3px; cursor: pointer; text-decoration: none;
+    }
+    .tab-icon { font-size: 22px; }
+    .tab-label { font-size: 10px; font-weight: 500; color: var(--sub); }
+    .tab.active .tab-label { color: var(--accent); }
+    .tab-center {
+      flex: 1; display: flex; justify-content: center;
+      align-items: flex-start; margin-top: -10px;
+    }
+    .tab-plus {
+      width: 52px; height: 52px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent2), var(--accent));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px; color: white;
+      box-shadow: 0 4px 14px rgba(196,96,122,0.5);
+    }
+  </style>
+</head>
+<body>
+<div class="phone">
+
+  <div class="status">
+    <div class="status-time">9:41</div>
+    <div class="status-icons"><span>●●● WiFi 🔋</span></div>
+  </div>
+
+  <div class="scroll">
+
+    <!-- Countdown hero -->
+    <div class="countdown-hero">
+      <span class="countdown-emoji">✨</span>
+      <div class="countdown-title">Seu plano está sendo preparado</div>
+      <div class="countdown-sub">A Juliane está analisando seu perfil e<br>montando seu cronograma personalizado</div>
+
+      <div class="timer-wrap">
+        <div class="timer-block">
+          <div class="timer-num" id="hours">01</div>
+          <div class="timer-label">Hora</div>
+        </div>
+        <div class="timer-sep">:</div>
+        <div class="timer-block">
+          <div class="timer-num" id="minutes">18</div>
+          <div class="timer-label">Min</div>
+        </div>
+        <div class="timer-sep">:</div>
+        <div class="timer-block">
+          <div class="timer-num" id="seconds">42</div>
+          <div class="timer-label">Seg</div>
+        </div>
+      </div>
+      <div class="timer-hint">Você receberá uma notificação quando estiver pronto</div>
+
+      <div style="height:16px"></div>
+      <div class="progress-wrap">
+        <div class="progress-label">
+          <span>Analisando seu perfil...</span>
+          <span>35%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="pbar"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Steps -->
+    <div class="steps-section">
+      <div class="steps-title">O que acontece agora?</div>
+      <div class="steps-sub">Seu plano passa por 3 etapas</div>
+    </div>
+
+    <div class="steps-list">
+      <div class="step-item">
+        <div class="step-num done">✓</div>
+        <div class="step-content">
+          <div class="step-name">Quiz enviado</div>
+          <div class="step-desc">Suas respostas foram recebidas com sucesso</div>
+        </div>
+        <div class="step-badge done">Concluído</div>
+      </div>
+      <div class="step-item">
+        <div class="step-num active">⚙</div>
+        <div class="step-content">
+          <div class="step-name">IA analisando perfil</div>
+          <div class="step-desc">Processando tipo de cabelo, histórico e objetivos</div>
+        </div>
+        <div class="step-badge active">Em andamento</div>
+      </div>
+      <div class="step-item">
+        <div class="step-num pending">3</div>
+        <div class="step-content">
+          <div class="step-name">Revisão da Juliane</div>
+          <div class="step-desc">Ela revisa e personaliza cada detalhe do seu plano</div>
+        </div>
+        <div class="step-badge pending">Aguardando</div>
+      </div>
+    </div>
+
+    <!-- Notif enable -->
+    <div class="notif-card">
+      <div class="notif-icon">🔔</div>
+      <div>
+        <div class="notif-title">Quer ser avisada quando estiver pronto?</div>
+        <div class="notif-sub">Ative as notificações e saiba na hora que seu plano chegar.</div>
+        <div class="notif-btn">Ativar notificações</div>
+      </div>
+    </div>
+
+    <!-- Preview bloqueado -->
+    <div style="padding: 24px 20px 8px;">
+      <div style="font-size:20px;font-weight:700;color:var(--dark);letter-spacing:-0.3px;">Pré-visualização</div>
+      <div style="font-size:14px;color:var(--sub);margin-top:4px;">Desbloqueado em breve ✨</div>
+    </div>
+
+    <div class="preview-card" style="position:relative;">
+      <div class="preview-header">
+        <div class="preview-header-title">Seu cronograma — Semana 1</div>
+        <div class="preview-header-name">Plano Capilar · Maria Silva</div>
+      </div>
+      <div class="preview-body">
+        <div class="preview-row">
+          <div class="preview-dot"></div>
+          <div class="preview-text">Segunda: Lavagem com Shampoo Lowpoo</div>
+        </div>
+        <div class="preview-row">
+          <div class="preview-dot" style="background:var(--gold)"></div>
+          <div class="preview-text">Quarta: Máscara de Hidratação Profunda</div>
+        </div>
+        <div class="preview-row">
+          <div class="preview-dot" style="background:var(--green)"></div>
+          <div class="preview-text">Sábado: Tratamento de Nutrição</div>
+        </div>
+      </div>
+      <div style="position:absolute;inset:0;background:rgba(242,242,247,0.7);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;border-radius:16px;flex-direction:column;gap:8px;">
+        <div style="font-size:36px">🔒</div>
+        <div style="font-size:14px;font-weight:600;color:var(--dark)">Disponível em 1h18min</div>
+      </div>
+    </div>
+
+    <div style="height:16px"></div>
+
+  </div>
+
+  <!-- Tab bar -->
+  <div class="tab-bar">
+    <a class="tab" href="home.html">
+      <div class="tab-icon">🏠</div>
+      <div class="tab-label">Início</div>
+    </a>
+    <a class="tab" href="progresso.html">
+      <div class="tab-icon">📊</div>
+      <div class="tab-label">Progresso</div>
+    </a>
+    <div class="tab-center">
+      <div class="tab-plus">+</div>
+    </div>
+    <a class="tab active" href="plano.html">
+      <div class="tab-icon">📋</div>
+      <div class="tab-label" style="color:var(--accent)">Plano</div>
+    </a>
+    <a class="tab" href="acompanhamento.html">
+      <div class="tab-icon">💬</div>
+      <div class="tab-label">Acompan.</div>
+    </a>
+  </div>
+
+</div>
+
+<script>
+  // Countdown timer
+  let totalSeconds = 1 * 3600 + 18 * 60 + 42;
+  const hoursEl = document.getElementById('hours');
+  const minsEl = document.getElementById('minutes');
+  const secsEl = document.getElementById('seconds');
+  const pbar = document.getElementById('pbar');
+  const total = 2 * 3600;
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  setInterval(() => {
+    if (totalSeconds <= 0) return;
+    totalSeconds--;
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    hoursEl.textContent = pad(h);
+    minsEl.textContent = pad(m);
+    secsEl.textContent = pad(s);
+    const pct = Math.round(((total - totalSeconds) / total) * 100);
+    pbar.style.width = pct + '%';
+  }, 1000);
+</script>
+</body>
+</html>

@@ -1,111 +1,407 @@
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { useMemo, useState } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  RefreshControl,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useAuth } from '../../lib/auth';
+import { useHairPlan } from '../../lib/hooks';
+import { T, GRAD, SHADOW, R, SP } from '../../lib/theme/tokens';
 
-const C = {
-  bg: '#1C1C1E', card: '#2C2C2E', cardAlt: '#3A3A3C',
-  pink: '#C4607A', green: '#34C759', yellow: '#FFD60A',
-  text: '#FFFFFF', sub: '#8E8E93', border: 'rgba(255,255,255,0.08)',
+const HAIR_TYPE_LABEL: Record<string, string> = {
+  liso: 'Liso',
+  ondulado: 'Ondulado',
+  cacheado: 'Cacheado',
+  crespo: 'Crespo',
 };
 
-const weeks = [
-  { week: 1, focus: 'Detox e preparação do couro cabeludo', done: true },
-  { week: 2, focus: 'Hidratação profunda — poros abertos', done: true },
-  { week: 3, focus: 'Nutrição com proteína vegetal', done: true },
-  { week: 4, focus: 'Hidratação + nutrição combinadas', done: false, current: true },
-  { week: 5, focus: 'Reconstrução capilar leve', done: false },
-  { week: 6, focus: 'Selagem com óleo de rícino', done: false },
-];
+const POROSITY_LABEL: Record<string, string> = {
+  baixa: 'Baixa porosidade',
+  media: 'Média porosidade',
+  alta: 'Alta porosidade',
+};
 
-const products = [
-  { name: 'Shampoo Lowpoo Iberaparis', type: 'Limpeza', price: 'R$45,90', tag: 'Recomendado' },
-  { name: 'Máscara Hidratação Iberaparis', type: 'Hidratação', price: 'R$52,90', tag: 'Principal' },
-  { name: 'Óleo de Argan Iberaparis', type: 'Nutrição', price: 'R$38,90', tag: 'Recomendado' },
-  { name: 'Leave-in Iberaparis', type: 'Finalização', price: 'R$34,90', tag: 'Opcional' },
-];
+type Tab = 'rotina' | 'produtos' | 'dicas';
 
 export default function PlanoScreen() {
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
-      <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={s.pageTitle}>Meu Plano</Text>
+  const { profile } = useAuth();
+  const { data: plans, loading, error, refresh } = useHairPlan();
+  const [tab, setTab] = useState<Tab>('rotina');
+  const [activeWeek, setActiveWeek] = useState(1);
 
-        {/* Perfil */}
-        <View style={s.profileCard}>
-          <View style={s.profileRow}>
-            <Text style={{ fontSize: 28 }}>🌀</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={s.profileName}>Maria Fernanda</Text>
-              <Text style={s.profileSub}>Cacheado · Alta porosidade · Ressecamento</Text>
+  // Pega a semana ativa (default = primeira)
+  const week = useMemo(() => {
+    return plans?.find(p => p.week_number === activeWeek) ?? plans?.[0];
+  }, [plans, activeWeek]);
+
+  // Lista de chips do hero
+  const heroChips = useMemo(() => {
+    const chips: string[] = [];
+    if (profile?.hair_type) {
+      chips.push(HAIR_TYPE_LABEL[profile.hair_type] ?? profile.hair_type);
+    }
+    if (profile?.porosity) {
+      chips.push(POROSITY_LABEL[profile.porosity] ?? profile.porosity);
+    }
+    if (profile?.main_problems?.[0]) {
+      chips.push(profile.main_problems[0]);
+    }
+    return chips;
+  }, [profile]);
+
+  // Tasks vindas do plano (objeto ou string)
+  const tasks = useMemo(() => {
+    if (!week?.tasks) return [];
+    return week.tasks.map((t, i) => {
+      if (typeof t === 'string') return { idx: i + 1, title: t, description: '' };
+      return { idx: t.day ?? i + 1, title: t.title, description: t.description ?? '' };
+    });
+  }, [week]);
+
+  if (loading && !plans) {
+    return (
+      <View style={s.loadingWrap}>
+        <ActivityIndicator color={T.accent} size="large" />
+        <Text style={s.loadingText}>Carregando seu plano…</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ flex: 1, backgroundColor: T.bg }}>
+      <ScrollView
+        contentContainerStyle={s.scroll}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={loading} onRefresh={refresh} tintColor={T.accent} />
+        }
+      >
+        {/* Hero gradient */}
+        <LinearGradient
+          colors={GRAD.hero}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={s.hero}
+        >
+          <SafeAreaView edges={['top']}>
+            <View style={s.heroInner}>
+              <Text style={s.heroEyebrow}>Seu plano personalizado</Text>
+              <Text style={s.heroTitle}>Cronograma Capilar</Text>
+              <Text style={s.heroSub}>
+                {plans?.length ? `${plans.length} semanas planejadas` : 'Em construção'}
+              </Text>
+              <View style={s.heroBadgesRow}>
+                {heroChips.map((b, i) => (
+                  <View key={i} style={s.heroBadge}>
+                    <Text style={s.heroBadgeText}>{b}</Text>
+                  </View>
+                ))}
+              </View>
+              <View style={s.julianeBadge}>
+                <View style={s.julianeAvatar}>
+                  <Text style={{ fontSize: 14, color: '#FFF' }}>👩‍⚕️</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.julianeName}>Juliane Cost</Text>
+                  <Text style={s.julianeRole}>Especialista capilar · ✓ Revisado</Text>
+                </View>
+              </View>
             </View>
-          </View>
-          <View style={s.tagRow}>
-            {['Sem química', 'Rotina semanal', 'Foco: hidratação'].map((t, i) => (
-              <View key={i} style={s.tag}><Text style={s.tagText}>{t}</Text></View>
+          </SafeAreaView>
+        </LinearGradient>
+
+        {/* Week selector */}
+        {plans && plans.length > 1 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={s.weekRow}
+          >
+            {plans.map(p => (
+              <TouchableOpacity
+                key={p.week_number}
+                onPress={() => setActiveWeek(p.week_number)}
+                style={[
+                  s.weekChip,
+                  p.week_number === (week?.week_number ?? 1) && s.weekChipActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    s.weekChipText,
+                    p.week_number === (week?.week_number ?? 1) && s.weekChipTextActive,
+                  ]}
+                >
+                  Sem. {p.week_number}
+                </Text>
+              </TouchableOpacity>
             ))}
-          </View>
+          </ScrollView>
+        )}
+
+        {/* Tabs */}
+        <View style={s.tabRow}>
+          {(['rotina', 'produtos', 'dicas'] as Tab[]).map(t => (
+            <TouchableOpacity
+              key={t}
+              style={[s.tabBtn, tab === t && s.tabBtnActive]}
+              onPress={() => setTab(t)}
+            >
+              <Text style={[s.tabBtnText, tab === t && s.tabBtnTextActive]}>
+                {t === 'rotina' ? 'Rotina' : t === 'produtos' ? 'Produtos' : 'Dicas'}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
-        {/* Cronograma */}
-        <Text style={s.sectionLabel}>CRONOGRAMA — 52 SEMANAS</Text>
-        {weeks.map((w, i) => (
-          <View key={i} style={[s.weekCard, w.current && s.weekCurrent]}>
-            <View style={[s.weekBadge, w.done && s.weekDone, w.current && s.weekBadgeCurrent]}>
-              <Text style={{ fontSize: 10, fontWeight: '700', color: w.done ? C.green : w.current ? '#FFF' : C.sub }}>
-                {w.done ? '✓' : `S${w.week}`}
-              </Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[s.weekLabel, w.current && { color: C.pink }]}>
-                {w.current ? '📍 Semana atual' : `Semana ${w.week}`}
-              </Text>
-              <Text style={s.weekFocus}>{w.focus}</Text>
-            </View>
+        {error && (
+          <View style={s.errorBox}>
+            <Text style={s.errorText}>Erro: {error}</Text>
           </View>
-        ))}
-        <Text style={[s.sectionLabel, { textAlign: 'center', marginTop: 4 }]}>· · · 46 semanas restantes · · ·</Text>
+        )}
 
-        {/* Produtos */}
-        <Text style={s.sectionLabel}>PRODUTOS RECOMENDADOS</Text>
-        {products.map((p, i) => (
-          <View key={i} style={s.productCard}>
-            <View style={s.productIcon}><Text style={{ fontSize: 20 }}>🧴</Text></View>
-            <View style={{ flex: 1 }}>
-              <Text style={s.productName}>{p.name}</Text>
-              <Text style={s.productType}>{p.type} · {p.price}</Text>
-            </View>
-            <View style={[s.productBadge, p.tag === 'Principal' && { backgroundColor: 'rgba(196,96,122,0.2)' }]}>
-              <Text style={[s.productBadgeText, p.tag === 'Principal' && { color: C.pink }]}>{p.tag}</Text>
-            </View>
+        {!plans?.length ? (
+          <View style={s.emptyCard}>
+            <Text style={{ fontSize: 40, marginBottom: 8 }}>📋</Text>
+            <Text style={s.emptyTitle}>Plano em preparação</Text>
+            <Text style={s.emptySub}>
+              A Juliane está montando seu plano personalizado. Em algumas horas você poderá ver tudo aqui!
+            </Text>
           </View>
-        ))}
+        ) : tab === 'rotina' ? (
+          <>
+            {/* Foco da semana */}
+            <View style={s.card}>
+              <Text style={s.cardTitleStandalone}>
+                Foco — Semana {week?.week_number ?? 1}
+              </Text>
+              <View style={s.focoBox}>
+                <Text style={s.focoText}>{week?.focus ?? 'Carregando…'}</Text>
+                {week?.juliane_notes && (
+                  <View style={s.notesBox}>
+                    <Text style={s.notesLabel}>💬 Da Juliane</Text>
+                    <Text style={s.notesText}>{week.juliane_notes}</Text>
+                  </View>
+                )}
+              </View>
+            </View>
 
+            {/* Tarefas da semana */}
+            {tasks.length > 0 && (
+              <View style={s.card}>
+                <Text style={s.cardTitleStandalone}>Tarefas da semana</Text>
+                {tasks.map((task, i) => (
+                  <View
+                    key={i}
+                    style={[s.rotinaRow, i < tasks.length - 1 && s.diagBorder]}
+                  >
+                    <View style={s.taskNum}>
+                      <Text style={s.taskNumText}>{task.idx}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.rotinaAcao}>{task.title}</Text>
+                      {task.description ? (
+                        <Text style={s.rotinaDetalhe}>{task.description}</Text>
+                      ) : null}
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+          </>
+        ) : tab === 'produtos' ? (
+          <View style={s.card}>
+            <Text style={s.cardTitleStandalone}>Produtos da semana</Text>
+            {(week?.products ?? []).length === 0 ? (
+              <Text style={s.emptyInline}>Sem produtos definidos para esta semana.</Text>
+            ) : (
+              (week?.products ?? []).map((p, i, arr) => (
+                <View
+                  key={i}
+                  style={[s.prodRow, i < arr.length - 1 && s.diagBorder]}
+                >
+                  <Text style={s.prodCheck}>✓</Text>
+                  <Text style={s.prodNome}>{p}</Text>
+                </View>
+              ))
+            )}
+          </View>
+        ) : (
+          <View style={s.card}>
+            <Text style={s.cardTitleStandalone}>💡 Da Juliane para você</Text>
+            {(week?.tips ?? []).length === 0 ? (
+              <Text style={s.emptyInline}>Sem dicas específicas nesta semana.</Text>
+            ) : (
+              (week?.tips ?? []).map((d, i) => (
+                <View key={i} style={s.dicaItem}>
+                  <View style={s.dicaBulletDot} />
+                  <Text style={s.dicaItemText}>{d}</Text>
+                </View>
+              ))
+            )}
+          </View>
+        )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
-  scroll: { padding: 20, gap: 12, paddingBottom: 40 },
-  pageTitle: { fontSize: 28, fontWeight: '700', color: '#FFF', letterSpacing: -0.5, marginBottom: 4 },
-  profileCard: { backgroundColor: C.card, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: C.border },
-  profileRow: { flexDirection: 'row', gap: 12, alignItems: 'center', marginBottom: 12 },
-  profileName: { fontSize: 16, fontWeight: '700', color: C.text },
-  profileSub: { fontSize: 12, color: C.sub, marginTop: 2 },
-  tagRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  tag: { backgroundColor: C.cardAlt, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-  tagText: { fontSize: 11, color: C.sub },
-  sectionLabel: { fontSize: 11, fontWeight: '600', color: C.sub, letterSpacing: 1, textTransform: 'uppercase', marginTop: 4 },
-  weekCard: { backgroundColor: C.card, borderRadius: 12, padding: 14, flexDirection: 'row', gap: 12, alignItems: 'center', borderWidth: 1, borderColor: C.border },
-  weekCurrent: { borderColor: 'rgba(196,96,122,0.4)', backgroundColor: '#2A1820' },
-  weekBadge: { width: 32, height: 32, borderRadius: 16, backgroundColor: C.cardAlt, alignItems: 'center', justifyContent: 'center' },
-  weekDone: { backgroundColor: 'rgba(52,199,89,0.15)' },
-  weekBadgeCurrent: { backgroundColor: C.pink },
-  weekLabel: { fontSize: 11, color: C.sub, marginBottom: 2 },
-  weekFocus: { fontSize: 13, color: C.text, fontWeight: '500' },
-  productCard: { backgroundColor: C.card, borderRadius: 12, padding: 14, flexDirection: 'row', gap: 12, alignItems: 'center', borderWidth: 1, borderColor: C.border },
-  productIcon: { width: 40, height: 40, borderRadius: 10, backgroundColor: C.cardAlt, alignItems: 'center', justifyContent: 'center' },
-  productName: { fontSize: 13, fontWeight: '600', color: C.text },
-  productType: { fontSize: 11, color: C.sub, marginTop: 2 },
-  productBadge: { backgroundColor: 'rgba(142,142,147,0.15)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
-  productBadgeText: { fontSize: 10, fontWeight: '700', color: C.sub },
+  scroll: { paddingBottom: 24 },
+
+  loadingWrap: {
+    flex: 1,
+    backgroundColor: T.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  loadingText: { color: T.sub, fontSize: 13 },
+
+  hero: { paddingBottom: 24 },
+  heroInner: { paddingHorizontal: SP.xl, paddingTop: 16, gap: 6 },
+  heroEyebrow: {
+    fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.7)',
+    textTransform: 'uppercase', letterSpacing: 1,
+  },
+  heroTitle: { fontSize: 28, fontWeight: '800', color: '#FFF', letterSpacing: -0.5 },
+  heroSub: { fontSize: 13, color: 'rgba(255,255,255,0.75)' },
+  heroBadgesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
+  heroBadge: {
+    backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: R.pill,
+    paddingVertical: 4, paddingHorizontal: 12,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
+  },
+  heroBadgeText: { fontSize: 12, fontWeight: '600', color: '#FFF' },
+  julianeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: R.m,
+    paddingVertical: 10, paddingHorizontal: 12, marginTop: 12,
+  },
+  julianeAvatar: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  julianeName: { fontSize: 13, fontWeight: '800', color: '#FFF' },
+  julianeRole: { fontSize: 11, color: 'rgba(255,255,255,0.75)' },
+
+  weekRow: {
+    paddingHorizontal: SP.l,
+    paddingTop: SP.l,
+    gap: 8,
+  },
+  weekChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: R.pill,
+    borderWidth: 1.5,
+    borderColor: T.border,
+    backgroundColor: T.surface,
+  },
+  weekChipActive: { backgroundColor: T.accent, borderColor: T.accent },
+  weekChipText: { fontSize: 13, fontWeight: '700', color: T.dark },
+  weekChipTextActive: { color: '#FFF' },
+
+  tabRow: {
+    flexDirection: 'row', backgroundColor: T.surface,
+    marginHorizontal: SP.l, marginTop: SP.l, marginBottom: SP.m,
+    borderRadius: R.m, padding: 4,
+    ...SHADOW.card,
+  },
+  tabBtn: { flex: 1, paddingVertical: 9, alignItems: 'center', borderRadius: 9 },
+  tabBtnActive: { backgroundColor: T.accent },
+  tabBtnText: { fontSize: 14, fontWeight: '700', color: T.sub },
+  tabBtnTextActive: { color: '#FFF' },
+
+  card: {
+    marginHorizontal: SP.l, marginBottom: SP.m,
+    backgroundColor: T.surface, borderRadius: R.xl, overflow: 'hidden',
+    ...SHADOW.card,
+  },
+  cardTitleStandalone: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: T.dark,
+    paddingHorizontal: SP.l,
+    paddingTop: SP.l,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: T.sep,
+  },
+
+  focoBox: { padding: SP.l },
+  focoText: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: T.dark,
+    lineHeight: 24,
+    letterSpacing: -0.3,
+  },
+  notesBox: {
+    marginTop: SP.m,
+    backgroundColor: T.rose50,
+    borderRadius: R.m,
+    padding: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: T.accent,
+  },
+  notesLabel: { fontSize: 11, color: T.accent, fontWeight: '800', letterSpacing: 0.3, marginBottom: 4 },
+  notesText: { fontSize: 13, color: T.mid, lineHeight: 18, fontStyle: 'italic' },
+
+  diagBorder: { borderTopWidth: 1, borderTopColor: T.sep },
+  rotinaRow: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: SP.l, paddingVertical: 14, gap: 12 },
+  taskNum: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: T.rose50,
+    borderWidth: 1.5,
+    borderColor: T.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  taskNumText: { fontSize: 12, fontWeight: '800', color: T.accent },
+  rotinaAcao: { fontSize: 14, fontWeight: '700', color: T.dark },
+  rotinaDetalhe: { fontSize: 13, color: T.mid, marginTop: 3, lineHeight: 18 },
+
+  prodRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SP.l, paddingVertical: 12, gap: 10 },
+  prodCheck: { fontSize: 16, color: T.accent, fontWeight: '800' },
+  prodNome: { fontSize: 14, color: T.dark, fontWeight: '600', flex: 1 },
+
+  dicaItem: { flexDirection: 'row', gap: 12, paddingHorizontal: SP.l, paddingVertical: 12, alignItems: 'flex-start' },
+  dicaBulletDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: T.accent, marginTop: 8 },
+  dicaItemText: { fontSize: 14, color: T.mid, flex: 1, lineHeight: 21 },
+
+  emptyCard: {
+    marginHorizontal: SP.l,
+    marginTop: 16,
+    backgroundColor: T.surface,
+    borderRadius: R.xl,
+    padding: 24,
+    alignItems: 'center',
+    ...SHADOW.card,
+  },
+  emptyTitle: { fontSize: 16, fontWeight: '800', color: T.dark, marginTop: 4 },
+  emptySub: { fontSize: 13, color: T.sub, marginTop: 6, textAlign: 'center', lineHeight: 19 },
+  emptyInline: { fontSize: 13, color: T.sub, padding: SP.l, textAlign: 'center' },
+
+  errorBox: {
+    marginHorizontal: SP.l,
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#FEEAEA',
+    borderRadius: R.m,
+  },
+  errorText: { fontSize: 13, color: '#C0392B' },
 });
