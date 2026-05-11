@@ -18,6 +18,14 @@ interface Instance {
   profileName: string | null
 }
 
+interface Group {
+  id: string
+  jid: string
+  name: string
+  member_count: number
+  is_receiving: boolean
+}
+
 function StateBadge({ state }: { state: string }) {
   const map: Record<string, { bg: string; fg: string; label: string }> = {
     open:       { bg: T.greenSoft,  fg: '#15803D', label: '🟢 Conectado' },
@@ -155,8 +163,169 @@ function InstanceCard({ inst, onAction }: { inst: Instance; onAction: () => void
   )
 }
 
+function TestSendPanel({ instances, groups }: { instances: Instance[]; groups: Group[] }) {
+  const [instance, setInstance] = useState<string>('')
+  const [groupJid, setGroupJid] = useState<string>('')
+  const [text, setText] = useState<string>('Teste de envio · ' + new Date().toLocaleTimeString('pt-BR'))
+  const [sending, setSending] = useState(false)
+  const [result, setResult] = useState<any>(null)
+
+  // pré-seleciona a 1a instância open e o 1o grupo
+  useEffect(() => {
+    if (!instance) {
+      const open = instances.find(i => i.state === 'open')
+      if (open) setInstance(open.name)
+    }
+    if (!groupJid && groups[0]) setGroupJid(groups[0].jid)
+  }, [instances, groups]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function send() {
+    if (!instance || !groupJid || !text.trim()) {
+      setResult({ ok: false, error: 'Selecione instância, grupo e digite a mensagem' })
+      return
+    }
+    setSending(true)
+    setResult(null)
+    try {
+      const res = await fetch('/api/grupos/test-send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instance, group_jid: groupJid, text }),
+      })
+      const data = await res.json()
+      setResult(data)
+    } catch (err: any) {
+      setResult({ ok: false, error: err?.message ?? 'Erro de rede' })
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '10px 14px', borderRadius: 10, fontSize: 13,
+    border: `1px solid ${T.border}`, outline: 'none', boxSizing: 'border-box',
+    fontFamily: 'inherit', background: '#fff',
+  }
+
+  return (
+    <div style={{
+      background: T.card, border: `1px solid ${T.border}`, borderRadius: 14,
+      padding: '20px 22px', marginBottom: 22,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+        <div style={{ fontSize: 16, fontWeight: 700, color: T.ink }}>🧪 Teste de envio (1 grupo)</div>
+        <div style={{ fontSize: 12, color: T.inkSoft }}>
+          Envia 1 mensagem pra 1 grupo. Útil pra diagnosticar bloqueio do WhatsApp.
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <div>
+          <label style={{ fontSize: 11, fontWeight: 700, color: T.inkSoft, letterSpacing: 0.3, display: 'block', marginBottom: 4 }}>
+            INSTÂNCIA
+          </label>
+          <select value={instance} onChange={e => setInstance(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+            <option value="">— escolha —</option>
+            {instances.map(i => (
+              <option key={i.name} value={i.name}>
+                {i.profileName ?? i.name}
+                {i.state !== 'open' ? ` (${i.state})` : ' 🟢'}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label style={{ fontSize: 11, fontWeight: 700, color: T.inkSoft, letterSpacing: 0.3, display: 'block', marginBottom: 4 }}>
+            GRUPO ({groups.length} disponíveis)
+          </label>
+          <select value={groupJid} onChange={e => setGroupJid(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+            <option value="">— escolha —</option>
+            {groups.map(g => (
+              <option key={g.jid} value={g.jid}>
+                {g.name} ({g.member_count.toLocaleString('pt-BR')} membros)
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 12 }}>
+        <label style={{ fontSize: 11, fontWeight: 700, color: T.inkSoft, letterSpacing: 0.3, display: 'block', marginBottom: 4 }}>
+          MENSAGEM
+        </label>
+        <textarea
+          value={text} onChange={e => setText(e.target.value)} rows={2}
+          style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.5 }}
+        />
+      </div>
+
+      <button
+        onClick={send} disabled={sending}
+        style={{
+          background: sending ? T.graySoft : T.green, color: '#fff', border: 'none',
+          padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+          cursor: sending ? 'default' : 'pointer', fontFamily: 'inherit',
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+        }}
+      >
+        {sending ? '⏳ Enviando…' : '🚀 Enviar teste'}
+      </button>
+
+      {result && (
+        <div style={{
+          marginTop: 14, padding: '14px 16px', borderRadius: 10,
+          background: result.ok ? T.greenSoft : T.redSoft,
+          border: `1px solid ${result.ok ? '#86EFAC' : '#FCA5A5'}`,
+        }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: result.ok ? '#15803D' : '#B91C1C', marginBottom: 6 }}>
+            {result.ok ? '✓ Sucesso' : '✗ Falhou'}
+            {result.elapsed_ms != null && (
+              <span style={{ fontWeight: 500, opacity: 0.85, marginLeft: 10 }}>
+                ⏱ {(result.elapsed_ms / 1000).toFixed(2)}s
+              </span>
+            )}
+          </div>
+          {result.group_name && (
+            <div style={{ fontSize: 12, color: T.inkSoft, marginBottom: 6 }}>
+              Grupo: <strong>{result.group_name}</strong>
+            </div>
+          )}
+          {result.diagnosis && (
+            <div style={{ fontSize: 12, color: '#B91C1C', marginBottom: 6, lineHeight: 1.5 }}>
+              💡 {result.diagnosis}
+            </div>
+          )}
+          {result.error && (
+            <details>
+              <summary style={{ cursor: 'pointer', fontSize: 11, color: T.inkSoft, fontWeight: 600 }}>
+                Detalhe técnico
+              </summary>
+              <pre style={{
+                fontSize: 10, marginTop: 6, padding: 8, background: 'rgba(0,0,0,0.04)',
+                borderRadius: 6, overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+              }}>{result.error}</pre>
+            </details>
+          )}
+          {result.evolution_response && (
+            <details>
+              <summary style={{ cursor: 'pointer', fontSize: 11, color: T.inkSoft, fontWeight: 600 }}>
+                Resposta Evolution
+              </summary>
+              <pre style={{
+                fontSize: 10, marginTop: 6, padding: 8, background: 'rgba(0,0,0,0.04)',
+                borderRadius: 6, overflowX: 'auto',
+              }}>{JSON.stringify(result.evolution_response, null, 2).slice(0, 400)}</pre>
+            </details>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function ConexaoClient() {
   const [instances, setInstances] = useState<Instance[]>([])
+  const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
@@ -169,7 +338,18 @@ export default function ConexaoClient() {
     setLoading(false)
   }, [])
 
-  useEffect(() => { load() }, [load])
+  const loadGroups = useCallback(async () => {
+    try {
+      const res = await fetch('/api/grupos')
+      const data = await res.json()
+      if (Array.isArray(data)) {
+        const active = data.filter((g: any) => g.status === 'active' && g.jid)
+        setGroups(active)
+      }
+    } catch {}
+  }, [])
+
+  useEffect(() => { load(); loadGroups() }, [load, loadGroups])
   // Auto-refresh a cada 10s para ver mudanças de status
   useEffect(() => {
     const id = setInterval(load, 10_000)
@@ -203,11 +383,14 @@ export default function ConexaoClient() {
           Carregando…
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 14 }}>
-          {instances.map(inst => (
-            <InstanceCard key={inst.name} inst={inst} onAction={load} />
-          ))}
-        </div>
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 14, marginBottom: 22 }}>
+            {instances.map(inst => (
+              <InstanceCard key={inst.name} inst={inst} onAction={load} />
+            ))}
+          </div>
+          <TestSendPanel instances={instances} groups={groups} />
+        </>
       )}
     </div>
   )
