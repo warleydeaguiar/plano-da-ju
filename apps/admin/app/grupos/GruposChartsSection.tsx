@@ -61,12 +61,15 @@ function ChartCard({
 }) {
   const values = data.map(d => d[metric])
   const total  = values.reduce((a, b) => a + b, 0)
+  const avg    = data.length > 0 ? Math.round(total / data.length) : 0
+  const max    = values.reduce((m, v) => Math.max(m, v), 0)
   const half   = Math.floor(data.length / 2)
   const prev   = values.slice(0, half).reduce((a, b) => a + b, 0)
   const curr   = values.slice(half).reduce((a, b) => a + b, 0)
   const delta  = prev > 0 ? Math.round(((curr - prev) / prev) * 100) : 0
   const trend  = delta > 0 ? `▲ ${delta}%` : delta < 0 ? `▼ ${Math.abs(delta)}%` : '—'
   const trendColor = delta > 0 ? (metric === 'leaves' ? red : green) : delta < 0 ? (metric === 'leaves' ? green : red) : gray
+  const periodUnit = period === 'day' ? 'dia' : period === 'week' ? 'semana' : 'mês'
 
   // Labels: only show first, middle, last
   const labelIndexes = new Set([0, Math.floor(data.length / 2), data.length - 1])
@@ -77,7 +80,14 @@ function ChartCard({
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
         <div>
           <div style={{ fontSize: 12, color: gray, fontWeight: 600, marginBottom: 4 }}>{title}</div>
-          <div style={{ fontSize: 26, fontWeight: 700, color: '#2D1B2E', lineHeight: 1 }}>{total.toLocaleString('pt-BR')}</div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            <div style={{ fontSize: 26, fontWeight: 700, color: '#2D1B2E', lineHeight: 1 }}>{avg.toLocaleString('pt-BR')}</div>
+            <div style={{ fontSize: 12, color: gray, fontWeight: 500 }}>/ {periodUnit} (média)</div>
+          </div>
+          <div style={{ fontSize: 11, color: gray, marginTop: 4 }}>
+            total <strong style={{ color: '#2D1B2E' }}>{total.toLocaleString('pt-BR')}</strong>
+            {max > 0 && <> · pico <strong style={{ color: '#2D1B2E' }}>{max.toLocaleString('pt-BR')}</strong></>}
+          </div>
         </div>
         <span style={{ fontSize: 12, fontWeight: 700, color: trendColor, background: trendColor + '15', padding: '3px 9px', borderRadius: 20 }}>
           {trend}

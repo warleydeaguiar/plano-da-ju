@@ -567,7 +567,10 @@ export default function FollowupClient() {
   const [kanban, setKanban] = useState<{ atrasados: Lead[]; hoje: Lead[]; amanha: Lead[] }>({
     atrasados: [], hoje: [], amanha: [],
   })
-  const [counts, setCounts] = useState<{ atrasados: number; hoje: number; amanha: number; total: number }>({
+  const [counts, setCounts] = useState<{
+    atrasados: number; hoje: number; amanha: number; total: number;
+    totalLeads?: number; waitingForRule?: number;
+  }>({
     atrasados: 0, hoje: 0, amanha: 0, total: 0,
   })
   const [ruleCounts, setRuleCounts] = useState<Record<string, number>>({ '20': 0, '60': 0, '120': 0 })
@@ -719,6 +722,17 @@ export default function FollowupClient() {
           </div>
           <div style={{ fontSize: 14, color: T.inkSoft, paddingLeft: 52 }}>
             Juliane · <strong style={{ color: T.ink }}>{counts.total}</strong> {counts.total === 1 ? 'tarefa pendente' : 'tarefas pendentes'}
+            {counts.totalLeads != null && counts.totalLeads > 0 && (
+              <>
+                {' '}·{' '}
+                <span style={{ color: T.inkMuted }}>
+                  {counts.totalLeads.toLocaleString('pt-BR')} leads na base
+                  {counts.waitingForRule != null && counts.waitingForRule > 0 && (
+                    <> ({counts.waitingForRule} aguardando 20 dias)</>
+                  )}
+                </span>
+              </>
+            )}
           </div>
         </div>
         <SyncButton onSynced={() => { loadKanban() }} />

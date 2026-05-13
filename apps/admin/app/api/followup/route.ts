@@ -99,6 +99,15 @@ export async function GET(req: NextRequest) {
     const amanha = cards.filter(c => c.status === 'amanha')
       .sort((a, b) => a.rule_days - b.rule_days)
 
+    // Conta leads "aguardando" (na base mas ainda não hit 20 dias)
+    let waitingForRule = 0
+    let totalLeads = 0
+    for (const lead of (leads ?? []) as any[]) {
+      totalLeads++
+      const ds = daysSince(lead.created_at)
+      if (ds < 20) waitingForRule++
+    }
+
     // Contagem global por régua (sem filtro)
     const ruleCounts: Record<string, number> = { '20': 0, '60': 0, '120': 0 }
     for (const lead of (leads ?? []) as any[]) {
@@ -116,6 +125,8 @@ export async function GET(req: NextRequest) {
         hoje: hoje.length,
         amanha: amanha.length,
         total: atrasados.length + hoje.length + amanha.length,
+        totalLeads,
+        waitingForRule,
       },
       ruleCounts,
     })
