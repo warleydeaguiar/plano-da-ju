@@ -774,7 +774,7 @@ function InfoDepoimentos({ images }: { images: Record<string, string> }) {
       }}>
         Resultados de quem aplicou meu <em style={{ color: T.pinkDeep }}>plano personalizado</em>
       </h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 18 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 18 }}>
         {cards.map((d, i) => (
           <div key={i} style={{
             borderRadius: 18, overflow: 'hidden',
@@ -784,10 +784,14 @@ function InfoDepoimentos({ images }: { images: Record<string, string> }) {
             animation: `cardIn 0.55s ${i * 80}ms both cubic-bezier(.2,.85,.25,1)`,
           }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={d.src} alt={d.name} style={{ width: '100%', aspectRatio: '3/4', objectFit: 'cover', display: 'block' }} />
-            <div style={{ padding: '10px 12px' }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: T.ink, fontFamily: fonts.ui }}>{d.name}</div>
-              <div style={{ fontSize: 10, color: T.pinkDeep, marginTop: 2, fontWeight: 600, letterSpacing: 0.3, textTransform: 'uppercase' }}>{d.desc}</div>
+            <img
+              src={d.src}
+              alt={d.name}
+              style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'contain' }}
+            />
+            <div style={{ padding: '12px 16px' }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: T.ink, fontFamily: fonts.ui }}>{d.name}</div>
+              <div style={{ fontSize: 11, color: T.pinkDeep, marginTop: 2, fontWeight: 600, letterSpacing: 0.3, textTransform: 'uppercase' }}>{d.desc}</div>
             </div>
           </div>
         ))}
