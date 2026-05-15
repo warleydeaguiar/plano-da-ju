@@ -1406,6 +1406,16 @@ export default function QuizClient() {
       })
     } catch { /* silencia erros — não impede o avanço do quiz */ }
 
+    // Pixel Meta — evento Lead (otimização e lookalike no Meta Ads)
+    try {
+      if (typeof window !== 'undefined' && (window as any).fbq) {
+        (window as any).fbq('track', 'Lead', {
+          content_name: 'Quiz Plano Capilar',
+          content_category: 'plano-capilar',
+        })
+      }
+    } catch {}
+
     setSubmitting(false)
     setStepIndex(i => Math.min(total - 1, i + 1))
   }, [answers, nameInput, emailInput, phoneInput, total])

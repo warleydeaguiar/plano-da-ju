@@ -98,6 +98,20 @@ export default function ObrigadoClient() {
     const remaining = Math.max(0, READY_MINUTES * 60 - elapsed);
     setSecondsLeft(remaining);
     if (remaining === 0) setPlanReady(true);
+
+    // Pixel Meta — Purchase (compra concluída)
+    // Dispara só uma vez por compra usando uma flag em localStorage
+    try {
+      const purchaseFlagKey = `pixel_purchase_fired_${ts}`;
+      if (typeof window !== 'undefined' && (window as any).fbq && stored && !localStorage.getItem(purchaseFlagKey)) {
+        (window as any).fbq('track', 'Purchase', {
+          content_name: 'Plano Capilar Personalizado',
+          value: 34.90,
+          currency: 'BRL',
+        });
+        localStorage.setItem(purchaseFlagKey, '1');
+      }
+    } catch {}
   }, []);
 
   useEffect(() => {

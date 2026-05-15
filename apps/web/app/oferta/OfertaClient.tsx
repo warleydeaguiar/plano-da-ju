@@ -458,7 +458,19 @@ export default function OfertaClient() {
     }
   }
 
-  const onBuy = () => setStep('card_form');
+  const onBuy = () => {
+    // Pixel Meta — InitiateCheckout (usuário começou o checkout)
+    try {
+      if (typeof window !== 'undefined' && (window as any).fbq) {
+        (window as any).fbq('track', 'InitiateCheckout', {
+          content_name: 'Plano Capilar Personalizado',
+          value: 34.90,
+          currency: 'BRL',
+        })
+      }
+    } catch {}
+    setStep('card_form');
+  };
 
   const fontStyles = `
     @keyframes cardIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
