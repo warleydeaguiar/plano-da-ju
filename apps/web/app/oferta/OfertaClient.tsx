@@ -459,10 +459,26 @@ export default function OfertaClient() {
   }
 
   const onBuy = () => {
-    // Pixel Meta — InitiateCheckout (usuário começou o checkout)
+    // Pixel Meta — InitiateCheckout com Advanced Matching (email + phone + nome do quiz)
     try {
       if (typeof window !== 'undefined' && (window as any).fbq) {
-        (window as any).fbq('track', 'InitiateCheckout', {
+        const ans: any = quizAnswers
+        const email = (ans.email ?? '').toString().toLowerCase().trim()
+        const phoneDigits = (ans.phone ?? '').toString().replace(/\D/g, '')
+        const phoneE164 = phoneDigits.length === 10 || phoneDigits.length === 11 ? '55' + phoneDigits : phoneDigits
+        const fullName = (ans.name ?? '').toString().toLowerCase().trim().split(/\s+/)
+        const firstName = fullName[0] ?? ''
+        const lastName  = fullName.slice(1).join(' ')
+        if (email || phoneE164) {
+          ;(window as any).fbq('init', '921783859786853', {
+            em: email || undefined,
+            ph: phoneE164 || undefined,
+            fn: firstName || undefined,
+            ln: lastName || undefined,
+            country: 'br',
+          })
+        }
+        ;(window as any).fbq('track', 'InitiateCheckout', {
           content_name: 'Plano Capilar Personalizado',
           value: 34.90,
           currency: 'BRL',

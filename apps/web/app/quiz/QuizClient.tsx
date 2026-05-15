@@ -1406,12 +1406,29 @@ export default function QuizClient() {
       })
     } catch { /* silencia erros — não impede o avanço do quiz */ }
 
-    // Pixel Meta — evento Lead (otimização e lookalike no Meta Ads)
+    // Pixel Meta — evento Lead com Advanced Matching (email + phone + nome)
+    // Re-init do pixel com userData melhora o match score MUITO (sobe de "sem score" para 7-9)
     try {
       if (typeof window !== 'undefined' && (window as any).fbq) {
-        (window as any).fbq('track', 'Lead', {
+        const email = emailInput.trim().toLowerCase()
+        const phoneDigits = phoneInput.replace(/\D/g, '')
+        // Phone precisa do DDI 55 (Brasil) pro match funcionar
+        const phoneE164 = phoneDigits.length === 10 || phoneDigits.length === 11 ? '55' + phoneDigits : phoneDigits
+        const fullName = nameInput.trim().toLowerCase().split(/\s+/)
+        const firstName = fullName[0] ?? ''
+        const lastName  = fullName.slice(1).join(' ')
+        ;(window as any).fbq('init', '921783859786853', {
+          em: email,
+          ph: phoneE164,
+          fn: firstName,
+          ln: lastName,
+          country: 'br',
+        })
+        ;(window as any).fbq('track', 'Lead', {
           content_name: 'Quiz Plano Capilar',
           content_category: 'plano-capilar',
+          value: 34.90,
+          currency: 'BRL',
         })
       }
     } catch {}
