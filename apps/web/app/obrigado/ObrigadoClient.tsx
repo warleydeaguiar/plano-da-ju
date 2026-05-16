@@ -99,29 +99,34 @@ export default function ObrigadoClient() {
     setSecondsLeft(remaining);
     if (remaining === 0) setPlanReady(true);
 
-    // Pixel Meta — Purchase com Advanced Matching (email + phone + nome do checkout)
-    // Dispara só uma vez por compra usando flag em localStorage
+    // Pixel Meta — Purchase com Advanced Matching
+    // Só dispara se purchase_data existe E nunca foi disparado antes para esse ts.
+    // purchase_data só é gravado quando o pagamento é CONFIRMADO (card: após API retornar ok; pix: após polling confirmar).
     try {
       const purchaseFlagKey = `pixel_purchase_fired_${ts}`;
-      if (typeof window !== 'undefined' && (window as any).fbq && stored && !localStorage.getItem(purchaseFlagKey)) {
-        // Pega dados do quiz_answers (mesma origem do checkout)
-        let userData: any = null
+      if (
+        typeof window !== 'undefined' &&
+        (window as any).fbq &&
+        stored &&
+        !localStorage.getItem(purchaseFlagKey)
+      ) {
+        let userData: any = null;
         try {
-          const ans = JSON.parse(localStorage.getItem('quiz_answers') ?? '{}')
-          const email = (ans.email ?? data.email ?? '').toString().toLowerCase().trim()
-          const phoneDigits = (ans.phone ?? '').toString().replace(/\D/g, '')
-          const phoneE164 = phoneDigits.length === 10 || phoneDigits.length === 11 ? '55' + phoneDigits : phoneDigits
-          const fullName = (ans.name ?? data.name ?? '').toString().toLowerCase().trim().split(/\s+/)
+          const ans = JSON.parse(localStorage.getItem('quiz_answers') ?? '{}');
+          const em = (ans.email ?? data.email ?? '').toString().toLowerCase().trim();
+          const phoneDigits = (ans.phone ?? '').toString().replace(/\D/g, '');
+          const phoneE164 = phoneDigits.length === 10 || phoneDigits.length === 11 ? '55' + phoneDigits : phoneDigits;
+          const fullName = (ans.name ?? data.name ?? '').toString().toLowerCase().trim().split(/\s+/);
           userData = {
-            em: email || undefined,
+            em: em || undefined,
             ph: phoneE164 || undefined,
             fn: fullName[0] || undefined,
             ln: fullName.slice(1).join(' ') || undefined,
             country: 'br',
-          }
+          };
         } catch {}
 
-        if (userData && (userData.em || userData.ph)) {
+        if (userData?.em || userData?.ph) {
           (window as any).fbq('init', '921783859786853', userData);
         }
         (window as any).fbq('track', 'Purchase', {

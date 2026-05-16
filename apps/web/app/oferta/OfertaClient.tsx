@@ -32,13 +32,43 @@ const fonts = {
   ui:      '"Plus Jakarta Sans", "Inter", -apple-system, system-ui, sans-serif',
 };
 
-type Step = 'offer' | 'card_form' | 'pix_qr' | 'loading';
+type Step = 'offer' | 'card_form' | 'pix_qr' | 'pix_confirmed' | 'loading';
 const LOADING_MESSAGES = [
   'Conectando com o servidor…',
   'Verificando seus dados…',
   'Gerando o QR Code PIX…',
   'Quase pronto!',
 ];
+
+// Gera um session_id único por visita (rastreia o funil)
+function getSessionId(): string {
+  if (typeof window === 'undefined') return '';
+  const key = 'checkout_session_id';
+  let id = sessionStorage.getItem(key);
+  if (!id) {
+    id = `cs_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    sessionStorage.setItem(key, id);
+  }
+  return id;
+}
+
+// Loga evento do funil sem bloquear o fluxo
+async function logEvent(data: {
+  event_type: string;
+  email?: string;
+  payment_type?: string;
+  amount_cents?: number;
+  order_id?: string;
+  metadata?: Record<string, unknown>;
+}) {
+  try {
+    await fetch('/api/checkout/event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: getSessionId(), ...data }),
+    });
+  } catch {}
+}
 
 function formatCpf(v: string) {
   const d = v.replace(/\D/g, '').slice(0, 11);
@@ -338,7 +368,9 @@ export default function OfertaClient() {
   const [cep, setCep] = useState('');
   const [pixQrCode, setPixQrCode] = useState('');
   const [pixQrCodeUrl, setPixQrCodeUrl] = useState('');
+  const [pixOrderId, setPixOrderId] = useState('');
   const [pixCopied, setPixCopied] = useState(false);
+  const [pixPollCount, setPixPollCount] = useState(0);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [payType, setPayType] = useState<'card' | 'pix'>('card');
   const [images, setImages] = useState<Record<string, string>>({});
@@ -356,6 +388,8 @@ export default function OfertaClient() {
           if (parsed.email) setEmail(parsed.email);
         } catch {}
       }
+      // Loga visualização da oferta
+      logEvent({ event_type: 'offer_viewed' });
     }
     fetch('/api/quiz/images')
       .then(r => r.json())
@@ -364,6 +398,36 @@ export default function OfertaClient() {
       })
       .catch(() => {});
   }, []);
+
+  // ── Polling do PIX — verifica a cada 5s se foi pago ──────────
+  useEffect(() => {
+    if (step !== 'pix_qr' || !pixOrderId) return;
+
+    const MAX_POLLS = 72; // 72 × 5s = 6 minutos
+    if (pixPollCount >= MAX_POLLS) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `/api/checkout/pix/status?order_id=${encodeURIComponent(pixOrderId)}&email=${encodeURIComponent(email)}`
+        );
+        const data = await res.json();
+        if (data.paid) {
+          // PIX confirmado!
+          localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now() }));
+          setStep('pix_confirmed');
+          // Aguarda 2s mostrando confirmação antes de redirecionar
+          setTimeout(() => router.push('/obrigado'), 2000);
+        } else {
+          setPixPollCount(c => c + 1);
+        }
+      } catch {
+        setPixPollCount(c => c + 1);
+      }
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [step, pixOrderId, pixPollCount, email, name, router]);
 
   const isCardComplete = useMemo(() => (
     cardNumber.replace(/\s/g, '').length >= 13 &&
@@ -387,18 +451,26 @@ export default function OfertaClient() {
       const res = await fetch('/api/checkout/pix', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, cpf: cpf.replace(/\D/g, ''), quiz_answers: quizAnswers }),
+        body: JSON.stringify({
+          name,
+          email,
+          cpf: cpf.replace(/\D/g, ''),
+          quiz_answers: quizAnswers,
+          session_id: getSessionId(),
+        }),
       });
       const data = await res.json();
       clearInterval(interval);
       if (!res.ok) throw new Error(data.error);
       setPixQrCode(data.pix_qr_code);
       setPixQrCodeUrl(data.pix_qr_code_url);
+      setPixOrderId(data.order_id);
+      setPixPollCount(0);
       setStep('pix_qr');
     } catch (err) {
       clearInterval(interval);
       setError(err instanceof Error ? err.message : 'Erro ao gerar PIX');
-      setStep('offer');
+      setStep('card_form');
     }
   }
 
@@ -451,6 +523,7 @@ export default function OfertaClient() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now() }));
+      await logEvent({ event_type: 'payment_confirmed', email, payment_type: 'card', amount_cents: 3490 });
       router.push('/obrigado');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao processar cartão');
@@ -459,30 +532,33 @@ export default function OfertaClient() {
   }
 
   const onBuy = () => {
-    // Pixel Meta — InitiateCheckout com Advanced Matching (email + phone + nome do quiz)
+    // Log evento de checkout iniciado
+    logEvent({ event_type: 'checkout_initiated', email, payment_type: payType, amount_cents: 3490 });
+
+    // Pixel Meta — InitiateCheckout com Advanced Matching
     try {
       if (typeof window !== 'undefined' && (window as any).fbq) {
-        const ans: any = quizAnswers
-        const email = (ans.email ?? '').toString().toLowerCase().trim()
-        const phoneDigits = (ans.phone ?? '').toString().replace(/\D/g, '')
-        const phoneE164 = phoneDigits.length === 10 || phoneDigits.length === 11 ? '55' + phoneDigits : phoneDigits
-        const fullName = (ans.name ?? '').toString().toLowerCase().trim().split(/\s+/)
-        const firstName = fullName[0] ?? ''
-        const lastName  = fullName.slice(1).join(' ')
-        if (email || phoneE164) {
+        const ans: any = quizAnswers;
+        const em = (ans.email ?? email ?? '').toString().toLowerCase().trim();
+        const phoneDigits = (ans.phone ?? '').toString().replace(/\D/g, '');
+        const phoneE164 = phoneDigits.length === 10 || phoneDigits.length === 11 ? '55' + phoneDigits : phoneDigits;
+        const fullName = (ans.name ?? name ?? '').toString().toLowerCase().trim().split(/\s+/);
+        const firstName = fullName[0] ?? '';
+        const lastName  = fullName.slice(1).join(' ');
+        if (em || phoneE164) {
           ;(window as any).fbq('init', '921783859786853', {
-            em: email || undefined,
+            em: em || undefined,
             ph: phoneE164 || undefined,
             fn: firstName || undefined,
             ln: lastName || undefined,
             country: 'br',
-          })
+          });
         }
         ;(window as any).fbq('track', 'InitiateCheckout', {
           content_name: 'Plano Capilar Personalizado',
           value: 34.90,
           currency: 'BRL',
-        })
+        });
       }
     } catch {}
     setStep('card_form');
@@ -533,8 +609,30 @@ export default function OfertaClient() {
     );
   }
 
+  // ── PIX Confirmado ──
+  if (step === 'pix_confirmed') {
+    return (
+      <>
+        <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+        <style>{fontStyles}</style>
+        <div style={{
+          minHeight: '100vh', background: `radial-gradient(circle at 50% 30%, #D1FAE5, ${T.bg})`,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          gap: 20, padding: 24, fontFamily: fonts.ui,
+        }}>
+          <div style={{ fontSize: 72 }}>✅</div>
+          <h1 style={{ fontSize: 28, fontWeight: 700, color: T.ink, textAlign: 'center', fontFamily: fonts.display }}>
+            Pagamento confirmado!
+          </h1>
+          <p style={{ color: T.inkSoft, fontSize: 15, textAlign: 'center' }}>Redirecionando você…</p>
+        </div>
+      </>
+    );
+  }
+
   // ── PIX QR Code ──
   if (step === 'pix_qr') {
+    const isExpired = pixPollCount >= 72;
     return (
       <>
         <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -582,9 +680,33 @@ export default function OfertaClient() {
             >
               {pixCopied ? '✓ Código copiado!' : '📋 Copiar código PIX'}
             </button>
-            <p style={{ color: T.inkSoft, fontSize: 12, lineHeight: 1.6 }}>
-              Após o pagamento ser confirmado, você receberá um e-mail com acesso ao app.
-            </p>
+
+            {/* Status de aguardo com polling visual */}
+            {!isExpired ? (
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                background: 'rgba(255,255,255,0.7)', borderRadius: 12, padding: '12px 16px',
+                border: `1px solid ${T.border}`,
+              }}>
+                <div style={{
+                  width: 14, height: 14, borderRadius: '50%',
+                  border: `2px solid ${T.green}`, borderTopColor: 'transparent',
+                  animation: 'spin 0.9s linear infinite', flexShrink: 0,
+                }} />
+                <p style={{ color: T.inkSoft, fontSize: 13, margin: 0 }}>
+                  Aguardando confirmação do pagamento…
+                </p>
+              </div>
+            ) : (
+              <div style={{
+                background: '#FEF3C7', borderRadius: 12, padding: '12px 16px',
+                border: '1px solid #FDE68A',
+              }}>
+                <p style={{ color: '#92400E', fontSize: 13, margin: 0 }}>
+                  ⏳ O QR Code expirou. <button onClick={() => setStep('card_form')} style={{ color: T.pinkDeep, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, padding: 0 }}>Gerar novo PIX</button>
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </>

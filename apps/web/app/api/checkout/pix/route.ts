@@ -4,9 +4,11 @@ import { createServiceClient } from '@/lib/supabase/server';
 import { resolveAuthUserId } from '@/lib/supabase/auth-resolve';
 import type { PagarMeOrder } from '@/lib/pagarme/types';
 
+const PRICE_CENTS = 3490; // R$34,90
+
 export async function POST(req: NextRequest) {
   try {
-    const { name, email, cpf, quiz_answers } = await req.json();
+    const { name, email, cpf, quiz_answers, session_id } = await req.json();
 
     if (!name || !email) {
       return NextResponse.json({ error: 'Nome e e-mail são obrigatórios' }, { status: 400 });
@@ -17,7 +19,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'CPF inválido — obrigatório para pagamento via PIX' }, { status: 400 });
     }
 
-    // Create PIX order in PagarMe (R$49,90 — pagamento único)
+    // Create PIX order in PagarMe
     const order = await pagarme.post<PagarMeOrder>('/orders', {
       customer: {
         name,
@@ -28,10 +30,10 @@ export async function POST(req: NextRequest) {
       },
       items: [
         {
-          amount: 4990, // R$49,90 em centavos
-          description: 'Plano da Ju — Acesso Anual (PIX)',
+          amount: PRICE_CENTS,
+          description: 'Plano da Ju — Plano Capilar Personalizado',
           quantity: 1,
-          code: 'plano-da-ju-anual-pix',
+          code: 'plano-da-ju-pix',
         },
       ],
       payments: [
@@ -39,11 +41,11 @@ export async function POST(req: NextRequest) {
           payment_method: 'pix',
           pix: {
             expires_in: 3600, // 1 hora
-            additional_information: [{ name: 'Produto', value: 'Plano da Ju Anual' }],
+            additional_information: [{ name: 'Produto', value: 'Plano da Ju' }],
           },
         },
       ],
-      metadata: { source: 'plano-da-ju-web', payment_type: 'pix' },
+      metadata: { source: 'plano-da-ju-web', payment_type: 'pix', session_id: session_id ?? '' },
     });
 
     const charge = order.charges?.[0];
@@ -53,8 +55,9 @@ export async function POST(req: NextRequest) {
       throw new Error('QR Code PIX não retornado pelo PagarMe');
     }
 
-    // Registrar intenção de compra no Supabase (sem assinatura ativa ainda)
     const supabase = await createServiceClient();
+
+    // Criar/atualizar perfil com status pending e salvar o order_id do PIX
     const { data: existingUser } = await supabase
       .from('profiles')
       .select('id')
@@ -62,9 +65,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (!existingUser) {
-      // Usuária não tem perfil — criar auth user + profile com mesmo ID (FK)
       const userId = await resolveAuthUserId(supabase, email);
-
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase.from('profiles') as any).upsert({
         id: userId,
@@ -74,6 +75,27 @@ export async function POST(req: NextRequest) {
         subscription_type: 'none',
         subscription_status: 'pending',
         plan_status: 'pending_photo',
+        pagarme_pix_order_id: order.id,
+        checkout_session_id: session_id ?? null,
+      });
+    } else {
+      // Atualiza o order_id do PIX no perfil existente
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase.from('profiles') as any)
+        .update({ pagarme_pix_order_id: order.id, checkout_session_id: session_id ?? null })
+        .eq('email', email);
+    }
+
+    // Log checkout event
+    if (session_id) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase.from('checkout_events') as any).insert({
+        session_id,
+        event_type: 'pix_generated',
+        email,
+        payment_type: 'pix',
+        amount_cents: PRICE_CENTS,
+        order_id: order.id,
       });
     }
 
@@ -82,7 +104,7 @@ export async function POST(req: NextRequest) {
       pix_qr_code: pixData.qr_code,
       pix_qr_code_url: pixData.qr_code_url,
       expires_at: pixData.expires_at,
-      amount: 4990,
+      amount: PRICE_CENTS,
     });
   } catch (err) {
     console.error('[checkout/pix]', err);
