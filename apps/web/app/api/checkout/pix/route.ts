@@ -2,11 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { pagarme } from '@/lib/pagarme/client';
 import { createServiceClient } from '@/lib/supabase/server';
 import { resolveAuthUserId } from '@/lib/supabase/auth-resolve';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import type { PagarMeOrder } from '@/lib/pagarme/types';
 
 const PRICE_CENTS = 3490; // R$34,90
 
 export async function POST(req: NextRequest) {
+  // ── Rate limit: máx 5 PIX por IP em 1 min ───────────────────
+  const ip = getClientIp(req);
+  const rl = checkRateLimit(`pix:${ip}`, { max: 5, windowMs: 60_000 });
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Muitas tentativas. Aguarde 1 minuto.' },
+      { status: 429, headers: { 'Retry-After': '60' } },
+    );
+  }
+
   try {
     const { name, email, cpf, quiz_answers, session_id } = await req.json();
 
@@ -19,7 +30,41 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'CPF inválido — obrigatório para pagamento via PIX' }, { status: 400 });
     }
 
-    // Create PIX order in PagarMe
+    const supabase = await createServiceClient();
+
+    // ── Idempotência: se já existe PIX pendente recente, reusa ──
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: existing } = await (supabase.from('profiles') as any)
+      .select('pagarme_pix_order_id, subscription_status')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (existing?.pagarme_pix_order_id && existing.subscription_status === 'pending') {
+      try {
+        const reused = await pagarme.get<PagarMeOrder & { status: string }>(
+          `/orders/${existing.pagarme_pix_order_id}`,
+        );
+        // Reusa se ainda está pendente (não foi pago nem expirou)
+        if (reused.status === 'pending' || reused.status === 'waiting_payment') {
+          const charge = reused.charges?.[0];
+          const pixData = charge?.last_transaction;
+          if (pixData?.qr_code) {
+            return NextResponse.json({
+              order_id: reused.id,
+              pix_qr_code: pixData.qr_code,
+              pix_qr_code_url: pixData.qr_code_url,
+              expires_at: pixData.expires_at,
+              amount: PRICE_CENTS,
+              reused: true,
+            });
+          }
+        }
+      } catch {
+        // Se falhar ao reusar, cria novo PIX
+      }
+    }
+
+    // ── Cria nova ordem PIX ─────────────────────────────────────
     const order = await pagarme.post<PagarMeOrder>('/orders', {
       customer: {
         name,
@@ -40,7 +85,7 @@ export async function POST(req: NextRequest) {
         {
           payment_method: 'pix',
           pix: {
-            expires_in: 3600, // 1 hora
+            expires_in: 3600,
             additional_information: [{ name: 'Produto', value: 'Plano da Ju' }],
           },
         },
@@ -55,16 +100,8 @@ export async function POST(req: NextRequest) {
       throw new Error('QR Code PIX não retornado pelo PagarMe');
     }
 
-    const supabase = await createServiceClient();
-
-    // Criar/atualizar perfil com status pending e salvar o order_id do PIX
-    const { data: existingUser } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('email', email)
-      .single();
-
-    if (!existingUser) {
+    // Upsert do perfil (cria se não existir, atualiza se existir)
+    if (!existing) {
       const userId = await resolveAuthUserId(supabase, email);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase.from('profiles') as any).upsert({
@@ -79,14 +116,17 @@ export async function POST(req: NextRequest) {
         checkout_session_id: session_id ?? null,
       });
     } else {
-      // Atualiza o order_id do PIX no perfil existente
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase.from('profiles') as any)
-        .update({ pagarme_pix_order_id: order.id, checkout_session_id: session_id ?? null })
+        .update({
+          full_name: name,
+          quiz_answers,
+          pagarme_pix_order_id: order.id,
+          checkout_session_id: session_id ?? null,
+        })
         .eq('email', email);
     }
 
-    // Log checkout event
     if (session_id) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase.from('checkout_events') as any).insert({

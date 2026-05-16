@@ -70,6 +70,60 @@ async function logEvent(data: {
   } catch {}
 }
 
+// ─── Validators / detectors ──────────────────────────────────
+function luhnCheck(num: string): boolean {
+  const digits = num.replace(/\D/g, '');
+  if (digits.length < 13) return false;
+  let sum = 0;
+  let alt = false;
+  for (let i = digits.length - 1; i >= 0; i--) {
+    let n = parseInt(digits[i], 10);
+    if (alt) {
+      n *= 2;
+      if (n > 9) n -= 9;
+    }
+    sum += n;
+    alt = !alt;
+  }
+  return sum % 10 === 0;
+}
+
+function detectCardBrand(num: string): string {
+  const n = num.replace(/\D/g, '');
+  if (!n) return '';
+  if (/^4/.test(n)) return 'visa';
+  if (/^(5[1-5]|2[2-7])/.test(n)) return 'mastercard';
+  if (/^3[47]/.test(n)) return 'amex';
+  if (/^(6011|65|64[4-9])/.test(n)) return 'discover';
+  if (/^(636|438935|504175|451416|5067|509|627780|636297|636368)/.test(n)) return 'elo';
+  if (/^(606282|3841)/.test(n)) return 'hipercard';
+  return '';
+}
+
+function isValidExpiry(exp: string): boolean {
+  const m = exp.match(/^(\d{2})\/(\d{2})$/);
+  if (!m) return false;
+  const month = parseInt(m[1], 10);
+  const year  = 2000 + parseInt(m[2], 10);
+  if (month < 1 || month > 12) return false;
+  const expiryDate = new Date(year, month, 0); // último dia do mês
+  return expiryDate.getTime() >= Date.now();
+}
+
+function isValidCpf(cpf: string): boolean {
+  const c = cpf.replace(/\D/g, '');
+  if (c.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(c)) return false;
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += parseInt(c[i], 10) * (10 - i);
+  let d1 = (sum * 10) % 11; if (d1 === 10) d1 = 0;
+  if (d1 !== parseInt(c[9], 10)) return false;
+  sum = 0;
+  for (let i = 0; i < 10; i++) sum += parseInt(c[i], 10) * (11 - i);
+  let d2 = (sum * 10) % 11; if (d2 === 10) d2 = 0;
+  return d2 === parseInt(c[10], 10);
+}
+
 function formatCpf(v: string) {
   const d = v.replace(/\D/g, '').slice(0, 11);
   return d
@@ -87,16 +141,36 @@ function formatCep(v: string) {
   return v.replace(/\D/g, '').slice(0, 8).replace(/(\d{5})(\d)/, '$1-$2');
 }
 
-function useCountdown(initialSeconds: number) {
-  const [s, setS] = useState(initialSeconds);
+// Countdown honesto: 24h a partir da PRIMEIRA visita (persiste em localStorage)
+// Não reseta em refresh, não engana a usuária.
+function useHonestCountdown(totalSeconds: number) {
+  const [secondsLeft, setSecondsLeft] = useState(totalSeconds);
+
   useEffect(() => {
-    if (s <= 0) return;
-    const id = setInterval(() => setS(v => Math.max(0, v - 1)), 1000);
+    if (typeof window === 'undefined') return;
+    const key = 'offer_first_seen_at';
+    let firstSeen = localStorage.getItem(key);
+    if (!firstSeen) {
+      firstSeen = String(Date.now());
+      localStorage.setItem(key, firstSeen);
+    }
+    const startTs = parseInt(firstSeen, 10);
+    const tick = () => {
+      const elapsed = Math.floor((Date.now() - startTs) / 1000);
+      setSecondsLeft(Math.max(0, totalSeconds - elapsed));
+    };
+    tick();
+    const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [s]);
-  const mm = String(Math.floor(s / 60)).padStart(2, '0');
-  const ss = String(s % 60).padStart(2, '0');
-  return `${mm}:${ss}`;
+  }, [totalSeconds]);
+
+  const hours = Math.floor(secondsLeft / 3600);
+  const mins  = Math.floor((secondsLeft % 3600) / 60);
+  const secs  = secondsLeft % 60;
+  if (hours > 0) {
+    return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }
 
 // ─── Sparkles flutuantes no fundo ────────────────────────────
@@ -302,7 +376,7 @@ function OfferCard({ countdown, name, onBuy }: { countdown: string; name: string
         letterSpacing: 2, textTransform: 'uppercase',
         fontFamily: fonts.ui,
       }}>
-        ⚡ Oferta de Black Friday
+        ✨ Oferta Especial
       </div>
       <div style={{
         background: 'rgba(255,255,255,0.92)',
@@ -330,7 +404,7 @@ function OfferCard({ countdown, name, onBuy }: { countdown: string; name: string
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
               lineHeight: 1, letterSpacing: -1,
-            }}>R$ 34,9</div>
+            }}>R$ 34,90</div>
             <div style={{ fontSize: 9, color: T.inkSoft, marginTop: 3, fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase', fontFamily: fonts.ui }}>pagamento único</div>
           </div>
         </div>
@@ -369,13 +443,25 @@ export default function OfertaClient() {
   const [pixQrCode, setPixQrCode] = useState('');
   const [pixQrCodeUrl, setPixQrCodeUrl] = useState('');
   const [pixOrderId, setPixOrderId] = useState('');
+  const [pixExpiresAt, setPixExpiresAt] = useState<number>(0); // unix ms
   const [pixCopied, setPixCopied] = useState(false);
   const [pixPollCount, setPixPollCount] = useState(0);
+  const [pixExpired, setPixExpired] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [payType, setPayType] = useState<'card' | 'pix'>('card');
   const [images, setImages] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const countdown = useCountdown(597);
+  // Detalhes do cartão (validação inline)
+  const [cardBrand, setCardBrand] = useState<string>('');
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [cepStatus, setCepStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
+  const [cepAddress, setCepAddress] = useState<{ city: string; state: string } | null>(null);
+  const [cardSubscriptionId, setCardSubscriptionId] = useState('');
+  const [cardPolling, setCardPolling] = useState(false);
+
+  // 24 horas (em vez de 9:57 fake que reseta a cada refresh)
+  const countdown = useHonestCountdown(24 * 60 * 60);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -388,8 +474,27 @@ export default function OfertaClient() {
           if (parsed.email) setEmail(parsed.email);
         } catch {}
       }
-      // Loga visualização da oferta
       logEvent({ event_type: 'offer_viewed' });
+
+      // ── Recovery: se havia PIX pendente, volta direto pra tela do QR ──
+      try {
+        const pending = localStorage.getItem('pix_pending');
+        if (pending) {
+          const p = JSON.parse(pending);
+          // Só recupera se ainda dentro de 1h
+          if (p.expiresAt && p.expiresAt > Date.now() && p.orderId) {
+            setPixOrderId(p.orderId);
+            setPixQrCode(p.qrCode ?? '');
+            setPixQrCodeUrl(p.qrCodeUrl ?? '');
+            setPixExpiresAt(p.expiresAt);
+            if (p.email) setEmail(p.email);
+            if (p.name) setName(p.name);
+            setStep('pix_qr');
+          } else {
+            localStorage.removeItem('pix_pending');
+          }
+        }
+      } catch {}
     }
     fetch('/api/quiz/images')
       .then(r => r.json())
@@ -399,12 +504,13 @@ export default function OfertaClient() {
       .catch(() => {});
   }, []);
 
-  // ── Polling do PIX — verifica a cada 5s se foi pago ──────────
+  // ── Polling do PIX — verifica a cada 5s até expirar (até 1h) ──
   useEffect(() => {
     if (step !== 'pix_qr' || !pixOrderId) return;
-
-    const MAX_POLLS = 72; // 72 × 5s = 6 minutos
-    if (pixPollCount >= MAX_POLLS) return;
+    if (pixExpiresAt && Date.now() >= pixExpiresAt) {
+      setPixExpired(true);
+      return;
+    }
 
     const timer = setTimeout(async () => {
       try {
@@ -413,10 +519,9 @@ export default function OfertaClient() {
         );
         const data = await res.json();
         if (data.paid) {
-          // PIX confirmado!
           localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now() }));
+          localStorage.removeItem('pix_pending');
           setStep('pix_confirmed');
-          // Aguarda 2s mostrando confirmação antes de redirecionar
           setTimeout(() => router.push('/obrigado'), 2000);
         } else {
           setPixPollCount(c => c + 1);
@@ -427,18 +532,98 @@ export default function OfertaClient() {
     }, 5000);
 
     return () => clearTimeout(timer);
-  }, [step, pixOrderId, pixPollCount, email, name, router]);
+  }, [step, pixOrderId, pixPollCount, pixExpiresAt, email, name, router]);
+
+  // ── Polling do cartão (caso assinatura demore a virar 'active') ──
+  useEffect(() => {
+    if (!cardPolling || !cardSubscriptionId) return;
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `/api/checkout/card/status?subscription_id=${encodeURIComponent(cardSubscriptionId)}&email=${encodeURIComponent(email)}`
+        );
+        const data = await res.json();
+        if (data.paid) {
+          localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now() }));
+          await logEvent({ event_type: 'payment_confirmed', email, payment_type: 'card', amount_cents: 3490 });
+          router.push('/obrigado');
+        } else if (data.failed) {
+          setCardPolling(false);
+          setError('Não foi possível cobrar seu cartão. Verifique os dados ou tente outro método.');
+          setStep('card_form');
+        }
+      } catch {}
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [cardPolling, cardSubscriptionId, email, name, router]);
+
+  // Validação granular do cartão (usada nos hints e no botão)
+  const cardErrors = useMemo(() => {
+    const errs: Record<string, string> = {};
+    const numClean = cardNumber.replace(/\s/g, '');
+    if (numClean.length > 0 && (numClean.length < 13 || !luhnCheck(numClean))) {
+      errs.number = 'Número do cartão inválido';
+    }
+    if (cardName.trim().length > 0 && cardName.trim().length < 3) {
+      errs.name = 'Nome muito curto';
+    }
+    if (cardExpiry.length > 0 && !isValidExpiry(cardExpiry)) {
+      errs.expiry = 'Data expirada ou inválida';
+    }
+    if (cardCvv.length > 0 && cardCvv.length < 3) {
+      errs.cvv = 'CVV inválido';
+    }
+    const cpfClean = cpf.replace(/\D/g, '');
+    if (cpfClean.length > 0 && cpfClean.length === 11 && !isValidCpf(cpf)) {
+      errs.cpf = 'CPF inválido';
+    }
+    if (cep.replace(/\D/g, '').length > 0 && cep.replace(/\D/g, '').length === 8 && cepStatus === 'error') {
+      errs.cep = 'CEP não encontrado';
+    }
+    return errs;
+  }, [cardNumber, cardName, cardExpiry, cardCvv, cpf, cep, cepStatus]);
 
   const isCardComplete = useMemo(() => (
-    cardNumber.replace(/\s/g, '').length >= 13 &&
+    luhnCheck(cardNumber.replace(/\s/g, '')) &&
     cardName.trim().length >= 3 &&
-    /^\d{2}\/\d{2}$/.test(cardExpiry) &&
+    isValidExpiry(cardExpiry) &&
     cardCvv.length >= 3 &&
-    cpf.replace(/\D/g, '').length === 11 &&
-    cep.replace(/\D/g, '').length === 8
-  ), [cardNumber, cardName, cardExpiry, cardCvv, cpf, cep]);
+    isValidCpf(cpf) &&
+    cep.replace(/\D/g, '').length === 8 &&
+    cepStatus === 'ok'
+  ), [cardNumber, cardName, cardExpiry, cardCvv, cpf, cep, cepStatus]);
+
+  // Detecta brand do cartão enquanto digita
+  useEffect(() => {
+    setCardBrand(detectCardBrand(cardNumber));
+  }, [cardNumber]);
+
+  // Resolve CEP via ViaCEP quando preenchido
+  useEffect(() => {
+    const clean = cep.replace(/\D/g, '');
+    if (clean.length !== 8) {
+      setCepStatus('idle');
+      setCepAddress(null);
+      return;
+    }
+    setCepStatus('loading');
+    fetch(`https://viacep.com.br/ws/${clean}/json/`)
+      .then(r => r.json())
+      .then(data => {
+        if (data?.erro) {
+          setCepStatus('error');
+          setCepAddress(null);
+        } else {
+          setCepStatus('ok');
+          setCepAddress({ city: data.localidade, state: data.uf });
+        }
+      })
+      .catch(() => setCepStatus('error'));
+  }, [cep]);
 
   async function handlePix() {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     setError('');
     setLoadingMsg(LOADING_MESSAGES[0]);
     setStep('loading');
@@ -462,19 +647,39 @@ export default function OfertaClient() {
       const data = await res.json();
       clearInterval(interval);
       if (!res.ok) throw new Error(data.error);
+
+      const expiresAtMs = data.expires_at ? new Date(data.expires_at).getTime() : Date.now() + 3600_000;
+
       setPixQrCode(data.pix_qr_code);
       setPixQrCodeUrl(data.pix_qr_code_url);
       setPixOrderId(data.order_id);
+      setPixExpiresAt(expiresAtMs);
       setPixPollCount(0);
+      setPixExpired(false);
+
+      // Persiste para recovery em refresh/close tab
+      try {
+        localStorage.setItem('pix_pending', JSON.stringify({
+          orderId: data.order_id,
+          qrCode: data.pix_qr_code,
+          qrCodeUrl: data.pix_qr_code_url,
+          expiresAt: expiresAtMs,
+          email, name,
+        }));
+      } catch {}
+
       setStep('pix_qr');
     } catch (err) {
       clearInterval(interval);
       setError(err instanceof Error ? err.message : 'Erro ao gerar PIX');
       setStep('card_form');
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
   async function handleCard() {
+    if (isSubmitting) return;
     setError('');
     const publishableKey = process.env.NEXT_PUBLIC_PAGARME_PUBLISHABLE_KEY;
     if (!publishableKey) {
@@ -482,13 +687,20 @@ export default function OfertaClient() {
       return;
     }
     if (!isCardComplete) {
-      setError('Preencha todos os campos do cartão, CPF e CEP.');
+      setError('Preencha todos os campos corretamente.');
+      // Marca todos como tocados pra mostrar erros
+      setTouched({ number: true, name: true, expiry: true, cvv: true, cpf: true, cep: true });
       return;
     }
+    setIsSubmitting(true);
     setStep('loading');
     try {
       const cleanCpf = cpf.replace(/\D/g, '');
       const cleanCep = cep.replace(/\D/g, '');
+      // Endereço REAL vindo do ViaCEP (não mais hardcoded SP)
+      const billingCity  = cepAddress?.city  ?? 'São Paulo';
+      const billingState = cepAddress?.state ?? 'SP';
+
       const tokenRes = await fetch(`https://api.pagar.me/core/v5/tokens?appId=${publishableKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -502,8 +714,11 @@ export default function OfertaClient() {
             exp_year: parseInt('20' + cardExpiry.split('/')[1], 10),
             cvv: cardCvv,
             billing_address: {
-              line_1: 'Endereço cadastrado', zip_code: cleanCep,
-              city: 'São Paulo', state: 'SP', country: 'BR',
+              line_1: 'Endereço cadastrado',
+              zip_code: cleanCep,
+              city: billingCity,
+              state: billingState,
+              country: 'BR',
             },
           },
         }),
@@ -517,17 +732,31 @@ export default function OfertaClient() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name, email, cpf: cleanCpf,
-          card_token: tokenData.id, quiz_answers: quizAnswers,
+          card_token: tokenData.id,
+          quiz_answers: quizAnswers,
+          session_id: getSessionId(),
+          billing_address: { city: billingCity, state: billingState, cep: cleanCep },
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now() }));
-      await logEvent({ event_type: 'payment_confirmed', email, payment_type: 'card', amount_cents: 3490 });
-      router.push('/obrigado');
+
+      // Cobrança aprovada imediatamente?
+      if (data.paid) {
+        localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now() }));
+        await logEvent({ event_type: 'payment_confirmed', email, payment_type: 'card', amount_cents: 3490 });
+        router.push('/obrigado');
+      } else {
+        // Assinatura criada mas cobrança ainda pendente — inicia polling
+        setCardSubscriptionId(data.subscription_id);
+        setCardPolling(true);
+        setLoadingMsg('Confirmando seu pagamento…');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao processar cartão');
       setStep('card_form');
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -632,7 +861,10 @@ export default function OfertaClient() {
 
   // ── PIX QR Code ──
   if (step === 'pix_qr') {
-    const isExpired = pixPollCount >= 72;
+    const isExpired = pixExpired || (pixExpiresAt > 0 && Date.now() >= pixExpiresAt);
+    const secondsLeft = Math.max(0, Math.floor((pixExpiresAt - Date.now()) / 1000));
+    const mmExp = String(Math.floor(secondsLeft / 60)).padStart(2, '0');
+    const ssExp = String(secondsLeft % 60).padStart(2, '0');
     return (
       <>
         <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -681,29 +913,41 @@ export default function OfertaClient() {
               {pixCopied ? '✓ Código copiado!' : '📋 Copiar código PIX'}
             </button>
 
-            {/* Status de aguardo com polling visual */}
+            {/* Status: polling + countdown real */}
             {!isExpired ? (
-              <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                background: 'rgba(255,255,255,0.7)', borderRadius: 12, padding: '12px 16px',
-                border: `1px solid ${T.border}`,
-              }}>
+              <>
                 <div style={{
-                  width: 14, height: 14, borderRadius: '50%',
-                  border: `2px solid ${T.green}`, borderTopColor: 'transparent',
-                  animation: 'spin 0.9s linear infinite', flexShrink: 0,
-                }} />
-                <p style={{ color: T.inkSoft, fontSize: 13, margin: 0 }}>
-                  Aguardando confirmação do pagamento…
-                </p>
-              </div>
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                  background: 'rgba(255,255,255,0.7)', borderRadius: 12, padding: '12px 16px',
+                  border: `1px solid ${T.border}`, marginBottom: 10,
+                }}>
+                  <div style={{
+                    width: 14, height: 14, borderRadius: '50%',
+                    border: `2px solid ${T.green}`, borderTopColor: 'transparent',
+                    animation: 'spin 0.9s linear infinite', flexShrink: 0,
+                  }} />
+                  <p style={{ color: T.inkSoft, fontSize: 13, margin: 0 }}>
+                    Aguardando confirmação do pagamento…
+                  </p>
+                </div>
+                {pixExpiresAt > 0 && (
+                  <p style={{ color: T.inkSoft, fontSize: 12, margin: 0 }}>
+                    ⏱ Este PIX expira em <strong style={{ color: T.ink, fontFamily: 'ui-monospace, monospace' }}>{mmExp}:{ssExp}</strong>
+                  </p>
+                )}
+              </>
             ) : (
               <div style={{
                 background: '#FEF3C7', borderRadius: 12, padding: '12px 16px',
                 border: '1px solid #FDE68A',
               }}>
                 <p style={{ color: '#92400E', fontSize: 13, margin: 0 }}>
-                  ⏳ O QR Code expirou. <button onClick={() => setStep('card_form')} style={{ color: T.pinkDeep, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, padding: 0 }}>Gerar novo PIX</button>
+                  ⏳ O PIX expirou. <button onClick={() => {
+                    localStorage.removeItem('pix_pending');
+                    setPixOrderId(''); setPixQrCode(''); setPixQrCodeUrl('');
+                    setPixExpiresAt(0); setPixExpired(false);
+                    setStep('card_form');
+                  }} style={{ color: T.pinkDeep, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, padding: 0 }}>Gerar novo PIX</button>
                 </p>
               </div>
             )}
@@ -777,15 +1021,91 @@ export default function OfertaClient() {
 
             {payType === 'card' ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <input style={inputStyle(false)} placeholder="Nome no cartão" value={cardName} onChange={e => setCardName(e.target.value)} autoComplete="cc-name" />
-                <input style={inputStyle(false)} placeholder="Número do cartão" value={cardNumber} onChange={e => setCardNumber(formatCard(e.target.value))} maxLength={19} inputMode="numeric" autoComplete="cc-number" />
+                <div>
+                  <input
+                    style={inputStyle(false)} placeholder="Nome no cartão" value={cardName}
+                    onChange={e => setCardName(e.target.value)}
+                    onBlur={() => setTouched(t => ({ ...t, name: true }))}
+                    autoComplete="cc-name"
+                  />
+                  {touched.name && cardErrors.name && (
+                    <p style={{ color: T.red, fontSize: 12, marginTop: 4, marginLeft: 4 }}>{cardErrors.name}</p>
+                  )}
+                </div>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    style={{ ...inputStyle(false), paddingRight: cardBrand ? 60 : 18 }}
+                    placeholder="Número do cartão" value={cardNumber}
+                    onChange={e => setCardNumber(formatCard(e.target.value))}
+                    onBlur={() => setTouched(t => ({ ...t, number: true }))}
+                    maxLength={19} inputMode="numeric" autoComplete="cc-number"
+                  />
+                  {cardBrand && (
+                    <span style={{
+                      position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)',
+                      fontSize: 10, fontWeight: 800, color: T.inkSoft, textTransform: 'uppercase',
+                      background: T.pinkSoft, padding: '4px 8px', borderRadius: 6, letterSpacing: 0.5,
+                    }}>{cardBrand}</span>
+                  )}
+                  {touched.number && cardErrors.number && (
+                    <p style={{ color: T.red, fontSize: 12, marginTop: 4, marginLeft: 4 }}>{cardErrors.number}</p>
+                  )}
+                </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <input style={inputStyle(false)} placeholder="MM/AA" value={cardExpiry} onChange={e => setCardExpiry(formatExpiry(e.target.value))} maxLength={5} inputMode="numeric" autoComplete="cc-exp" />
-                  <input style={inputStyle(false)} placeholder="CVV" value={cardCvv} onChange={e => setCardCvv(e.target.value.replace(/\D/g, '').slice(0, 4))} maxLength={4} inputMode="numeric" autoComplete="cc-csc" />
+                  <div>
+                    <input
+                      style={inputStyle(false)} placeholder="MM/AA" value={cardExpiry}
+                      onChange={e => setCardExpiry(formatExpiry(e.target.value))}
+                      onBlur={() => setTouched(t => ({ ...t, expiry: true }))}
+                      maxLength={5} inputMode="numeric" autoComplete="cc-exp"
+                    />
+                    {touched.expiry && cardErrors.expiry && (
+                      <p style={{ color: T.red, fontSize: 12, marginTop: 4, marginLeft: 4 }}>{cardErrors.expiry}</p>
+                    )}
+                  </div>
+                  <div>
+                    <input
+                      style={inputStyle(false)} placeholder="CVV" value={cardCvv}
+                      onChange={e => setCardCvv(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                      onBlur={() => setTouched(t => ({ ...t, cvv: true }))}
+                      maxLength={4} inputMode="numeric" autoComplete="cc-csc"
+                    />
+                    {touched.cvv && cardErrors.cvv && (
+                      <p style={{ color: T.red, fontSize: 12, marginTop: 4, marginLeft: 4 }}>{cardErrors.cvv}</p>
+                    )}
+                  </div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 12 }}>
-                  <input style={inputStyle(false)} placeholder="CPF" value={cpf} onChange={e => setCpf(formatCpf(e.target.value))} maxLength={14} inputMode="numeric" />
-                  <input style={inputStyle(false)} placeholder="CEP" value={cep} onChange={e => setCep(formatCep(e.target.value))} maxLength={9} inputMode="numeric" />
+                  <div>
+                    <input
+                      style={inputStyle(false)} placeholder="CPF" value={cpf}
+                      onChange={e => setCpf(formatCpf(e.target.value))}
+                      onBlur={() => setTouched(t => ({ ...t, cpf: true }))}
+                      maxLength={14} inputMode="numeric"
+                    />
+                    {touched.cpf && cardErrors.cpf && (
+                      <p style={{ color: T.red, fontSize: 12, marginTop: 4, marginLeft: 4 }}>{cardErrors.cpf}</p>
+                    )}
+                  </div>
+                  <div>
+                    <input
+                      style={inputStyle(false)} placeholder="CEP" value={cep}
+                      onChange={e => setCep(formatCep(e.target.value))}
+                      onBlur={() => setTouched(t => ({ ...t, cep: true }))}
+                      maxLength={9} inputMode="numeric"
+                    />
+                    {cepStatus === 'ok' && cepAddress && (
+                      <p style={{ color: T.green, fontSize: 11, marginTop: 4, marginLeft: 4 }}>
+                        ✓ {cepAddress.city}/{cepAddress.state}
+                      </p>
+                    )}
+                    {cepStatus === 'loading' && (
+                      <p style={{ color: T.inkSoft, fontSize: 11, marginTop: 4, marginLeft: 4 }}>Buscando…</p>
+                    )}
+                    {touched.cep && cardErrors.cep && (
+                      <p style={{ color: T.red, fontSize: 12, marginTop: 4, marginLeft: 4 }}>{cardErrors.cep}</p>
+                    )}
+                  </div>
                 </div>
               </div>
             ) : (
@@ -803,13 +1123,33 @@ export default function OfertaClient() {
             <div style={{ marginTop: 20 }}>
               <GreenButton
                 onClick={payType === 'card' ? handleCard : handlePix}
-                disabled={payType === 'card' ? !isCardComplete : cpf.replace(/\D/g, '').length < 11}
+                disabled={
+                  isSubmitting ||
+                  (payType === 'card'
+                    ? !isCardComplete
+                    : !isValidCpf(cpf) || !name.trim() || !email.includes('@'))
+                }
               >
-                🔒 {payType === 'card' ? 'Pagar R$ 34,90' : 'Gerar PIX — R$ 34,90'}
+                {isSubmitting ? '⏳ Processando…' : `🔒 ${payType === 'card' ? 'Pagar R$ 34,90' : 'Gerar PIX — R$ 34,90'}`}
               </GreenButton>
             </div>
-            <p style={{ textAlign: 'center', marginTop: 14, fontSize: 11, color: T.inkSoft, fontFamily: fonts.ui }}>
-              🔒 Pagamento seguro via PagarMe · Seus dados não são armazenados
+            {/* Trust badges */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              gap: 14, marginTop: 14, flexWrap: 'wrap',
+            }}>
+              <span style={{ fontSize: 11, color: T.inkSoft, display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: fonts.ui }}>
+                🔒 SSL 256-bit
+              </span>
+              <span style={{ fontSize: 11, color: T.inkSoft, display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: fonts.ui }}>
+                🛡 Anti-fraude
+              </span>
+              <span style={{ fontSize: 11, color: T.inkSoft, display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: fonts.ui }}>
+                💳 PagarMe
+              </span>
+            </div>
+            <p style={{ textAlign: 'center', marginTop: 8, fontSize: 11, color: T.inkSoft, fontFamily: fonts.ui }}>
+              Garantia de 7 dias · Seus dados nunca são compartilhados
             </p>
           </div>
         </div>
@@ -1121,10 +1461,10 @@ export default function OfertaClient() {
             <div style={{ marginBottom: 12 }}>das 9h às 17h30</div>
             <div style={{ marginBottom: 12 }}>📞 31 9744-5597</div>
             <div style={{ marginBottom: 4 }}>
-              julianecost.com | Avenida Quinze de Novembro, 609, Jardim Petrópolis, Belim - MS CEP: 32855-122
+              julianecost.com | Avenida Quinze de Novembro, 609, Jardim Petrópolis, Contagem — MG · CEP 32.185-122
             </div>
             <div style={{ marginBottom: 12 }}>CNPJ: 20.227.193/0001-18</div>
-            <div style={{ fontSize: 11, color: T.inkMuted }}>© 2025 julianecost.com — Todos os direitos reservados.</div>
+            <div style={{ fontSize: 11, color: T.inkMuted }}>© 2026 julianecost.com — Todos os direitos reservados.</div>
           </div>
         </div>
       </div>

@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import { sendCapiEvent } from '@/lib/meta/capi';
 
+// Eventos do PagarMe que tratamos
+// IMPORTANTE: NÃO ativar perfil em 'subscription.created' — esse evento dispara
+// quando a assinatura é criada, ANTES da primeira cobrança ser aprovada.
+// Só ativamos em 'charge.paid' / 'order.paid' (pagamento real confirmado).
 const HANDLED_EVENTS = new Set([
   'order.paid',
-  'subscription.created',
-  'subscription.canceled',
-  'subscription.renewed',
   'charge.paid',
+  'subscription.renewed',
+  'subscription.canceled',
+  'charge.payment_failed',
 ]);
 
 export async function POST(req: NextRequest) {
@@ -21,54 +26,83 @@ export async function POST(req: NextRequest) {
     const supabase = await createServiceClient();
 
     switch (eventType) {
-      // PIX pago / cobrança confirmada
+      // ── Pagamento confirmado (PIX ou cartão) ──────────────────
       case 'order.paid':
       case 'charge.paid': {
-        const order = body.data;
-        const email = order.customer?.email;
+        const data = body.data;
+        const email = data.customer?.email;
         if (!email) break;
 
+        // Busca perfil atual
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: profile } = await (supabase.from('profiles') as any)
-          .select('id, subscription_status, checkout_session_id')
+          .select('id, subscription_status, checkout_session_id, full_name, quiz_answers')
           .eq('email', email)
           .maybeSingle();
 
-        // Só ativa se ainda estava pending (evita re-processar)
-        if (profile?.subscription_status !== 'active') {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (supabase.from('profiles') as any)
-            .update({
-              subscription_type: 'annual_pix',
-              subscription_status: 'active',
-              subscription_expires_at: new Date(
-                Date.now() + 365 * 24 * 60 * 60 * 1000,
-              ).toISOString(),
-              pagarme_charge_id: order.charges?.[0]?.id ?? order.id ?? null,
-              plan_status: 'pending_photo',
-              plan_requested_at: new Date().toISOString(),
-            })
-            .eq('email', email);
-
-          // Log evento de pagamento confirmado
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (supabase.from('checkout_events') as any).insert({
-            session_id: profile?.checkout_session_id ?? order.id ?? email,
-            event_type: 'payment_confirmed',
-            email,
-            payment_type: 'pix',
-            amount_cents: order.amount ?? 3490,
-            order_id: order.id,
-            metadata: { webhook_event: eventType },
-          });
+        if (profile?.subscription_status === 'active') {
+          // Já ativo — idempotente
+          break;
         }
+
+        const paymentMethod = data.charges?.[0]?.payment_method ?? data.payment_method ?? 'pix';
+        const subType = paymentMethod === 'credit_card' ? 'annual_card' : 'annual_pix';
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase.from('profiles') as any)
+          .update({
+            subscription_type: subType,
+            subscription_status: 'active',
+            subscription_expires_at: new Date(
+              Date.now() + 365 * 24 * 60 * 60 * 1000,
+            ).toISOString(),
+            pagarme_charge_id: data.charges?.[0]?.id ?? data.id ?? null,
+            plan_status: 'pending_photo',
+            plan_requested_at: new Date().toISOString(),
+          })
+          .eq('email', email);
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase.from('checkout_events') as any).insert({
+          session_id: profile?.checkout_session_id ?? data.id ?? email,
+          event_type: 'payment_confirmed',
+          email,
+          payment_type: subType === 'annual_card' ? 'card' : 'pix',
+          amount_cents: data.amount ?? 3490,
+          order_id: data.id,
+          metadata: { webhook_event: eventType },
+        });
+
+        // Meta CAPI — Purchase server-side
+        const ans = (profile?.quiz_answers ?? {}) as Record<string, unknown>;
+        const phoneDigits = String(ans.phone ?? '').replace(/\D/g, '');
+        const phoneE164 = phoneDigits.length === 10 || phoneDigits.length === 11
+          ? '55' + phoneDigits : phoneDigits || undefined;
+        const fullName = String(ans.name ?? profile?.full_name ?? '').trim().split(/\s+/);
+
+        await sendCapiEvent({
+          eventName: 'Purchase',
+          eventId: data.id, // dedup
+          user: {
+            email,
+            phone: phoneE164,
+            firstName: fullName[0],
+            lastName: fullName.slice(1).join(' ') || undefined,
+          },
+          customData: {
+            value: (data.amount ?? 3490) / 100,
+            currency: 'BRL',
+            content_name: 'Plano Capilar Personalizado',
+            order_id: data.id,
+          },
+        });
         break;
       }
 
-      // Cartão — assinatura criada com sucesso
-      case 'subscription.created': {
-        const sub = body.data;
-        const email = sub.customer?.email;
+      // ── Cobrança recusada — log para análise ──────────────────
+      case 'charge.payment_failed': {
+        const data = body.data;
+        const email = data.customer?.email;
         if (!email) break;
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -78,29 +112,22 @@ export async function POST(req: NextRequest) {
           .maybeSingle();
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase.from('profiles') as any)
-          .update({
-            subscription_type: 'annual_card',
-            subscription_status: 'active',
-            pagarme_subscription_id: sub.id,
-            subscription_expires_at: sub.current_cycle?.end_at ?? null,
-          })
-          .eq('email', email);
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (supabase.from('checkout_events') as any).insert({
-          session_id: profile?.checkout_session_id ?? sub.id ?? email,
-          event_type: 'payment_confirmed',
+          session_id: profile?.checkout_session_id ?? data.id ?? email,
+          event_type: 'payment_failed',
           email,
           payment_type: 'card',
-          amount_cents: 3490,
-          order_id: sub.id,
-          metadata: { webhook_event: eventType },
+          order_id: data.id,
+          metadata: {
+            failure_message: data.last_transaction?.gateway_response?.errors?.[0]?.message
+              ?? data.last_transaction?.acquirer_message
+              ?? 'unknown',
+          },
         });
         break;
       }
 
-      // Renovação
+      // ── Renovação ─────────────────────────────────────────────
       case 'subscription.renewed': {
         const sub = body.data;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -113,7 +140,7 @@ export async function POST(req: NextRequest) {
         break;
       }
 
-      // Cancelamento
+      // ── Cancelamento ──────────────────────────────────────────
       case 'subscription.canceled': {
         const sub = body.data;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
