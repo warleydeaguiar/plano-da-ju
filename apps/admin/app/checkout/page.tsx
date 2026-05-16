@@ -52,7 +52,7 @@ export default async function CheckoutFunnelPage({
   const sb = createAdminClient()
 
   // Eventos do período
-  const { data: events } = await sb
+  const { data: events } = await (sb as any)
     .from('checkout_events')
     .select('event_type, session_id, email, payment_type, amount_cents, created_at')
     .gte('created_at', since)
