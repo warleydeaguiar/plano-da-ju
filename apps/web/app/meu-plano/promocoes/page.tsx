@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { T, fonts, shadow, gradient } from '../theme';
-import { IconSearch, IconClose, IconLink, IconBag, iconForCategory } from '../icons';
+import { IconSearch, IconClose, IconBag, IconSparkles, iconForCategory } from '../icons';
 
 interface ProductRow {
   id: string;
@@ -87,10 +87,10 @@ export default function LojaPage() {
             fontSize: 28, fontWeight: 600, color: T.ink,
             fontFamily: fonts.display, letterSpacing: -0.5,
           }}>
-            <em style={{ fontStyle: 'italic' }}>Produtos</em>
+            <em style={{ fontStyle: 'italic' }}>Promoções</em>
           </div>
           <div style={{ fontSize: 13, color: T.inkSoft, marginTop: 4 }}>
-            Recomendados para você
+            Produtos selecionados pela Ju com desconto especial
           </div>
         </div>
 
@@ -219,14 +219,14 @@ function ProductCard({ product, index, isMatch = false, outlined = false }: {
         color: '#FFF',
       }}>
         {!product.image_url && <Icon size={36} color="#FFF" stroke={1.6} />}
-        {product.affiliate_url && (
+        {product.is_ybera && (
           <div style={{
             position: 'absolute', top: 6, right: 6,
-            background: 'rgba(255,255,255,0.95)', color: T.ink,
-            fontSize: 9, fontWeight: 700, padding: '3px 6px', borderRadius: 5,
+            background: 'rgba(255,255,255,0.95)', color: T.pinkDeep,
+            fontSize: 9, fontWeight: 700, padding: '3px 7px', borderRadius: 5,
             display: 'inline-flex', alignItems: 'center', gap: 3,
           }}>
-            <IconLink size={9} /> Afiliado
+            <IconSparkles size={10} stroke={2} /> Desconto Ju
           </div>
         )}
       </div>

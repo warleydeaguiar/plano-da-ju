@@ -5,14 +5,14 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { createBrowserClient } from '@supabase/ssr';
 import { T, fonts } from './theme';
-import { IconHome, IconCalendar, IconList, IconChart, IconBag } from './icons';
+import { IconHome, IconCalendar, IconList, IconChart, IconSparkles } from './icons';
 
 const TABS = [
   { href: '/meu-plano',           Icon: IconHome,     label: 'Início'    },
   { href: '/meu-plano/agenda',    Icon: IconCalendar, label: 'Agenda'    },
   { href: '/meu-plano/plano',     Icon: IconList,     label: 'Plano'     },
   { href: '/meu-plano/progresso', Icon: IconChart,    label: 'Progresso' },
-  { href: '/meu-plano/loja',      Icon: IconBag,      label: 'Loja'      },
+  { href: '/meu-plano/promocoes', Icon: IconSparkles, label: 'Promoções' },
 ];
 
 const HIDE_NAV_ON = ['/meu-plano/check-in'];

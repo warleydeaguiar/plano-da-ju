@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { sendCapiEvent } from '@/lib/meta/capi';
+import { notifyNewSale } from '@/lib/discord';
 
 // Eventos do PagarMe que tratamos
 // IMPORTANTE: NÃO ativar perfil em 'subscription.created' — esse evento dispara
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest) {
         // Busca perfil atual
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: profile } = await (supabase.from('profiles') as any)
-          .select('id, subscription_status, checkout_session_id, full_name, quiz_answers')
+          .select('id, subscription_status, checkout_session_id, full_name, quiz_answers, hair_type, porosity, main_problems')
           .eq('email', email)
           .maybeSingle();
 
@@ -96,6 +97,25 @@ export async function POST(req: NextRequest) {
             order_id: data.id,
           },
         });
+
+        // Discord notification for Juliane (fire-and-forget)
+        notifyNewSale({
+          customerName: (ans.name as string) ?? profile?.full_name ?? null,
+          email,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          hairType: profile?.hair_type ?? (ans.hair_type as string) ?? null,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          porosity: profile?.porosity ?? (ans.porosity as string) ?? null,
+          mainProblem:
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (profile?.main_problems as string[] | null)?.[0]
+            ?? (Array.isArray(ans.main_problems) ? (ans.main_problems as string[])[0] : null)
+            ?? (ans.objetivo as string)
+            ?? null,
+          paymentMethod: subType === 'annual_card' ? 'card' : 'pix',
+          amountCents: data.amount ?? 3490,
+        }).catch(err => console.error('[discord notify]', err));
+
         break;
       }
 

@@ -10,6 +10,7 @@ import {
   IconWash, IconDrop, IconWind, IconCamera, IconSparkles,
   IconClock, IconPin, IconHeart, IconBag,
 } from './icons';
+import StoriesPlayer, { type Story } from './StoriesPlayer';
 
 // ── types ────────────────────────────────────────────────
 interface HairState {
@@ -190,6 +191,10 @@ export default function HojePage() {
   const [loading, setLoading]   = useState(true);
   const [loggingEvt, setLoggingEvt] = useState<string | null>(null);
   const [justLogged, setJustLogged] = useState<string | null>(null);
+  const [stories, setStories] = useState<Story[]>([]);
+  const [playerOpen, setPlayerOpen] = useState(false);
+  const [playerStartIdx, setPlayerStartIdx] = useState(0);
+  const [accessToken, setAccessToken] = useState<string>('');
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -199,8 +204,17 @@ export default function HojePage() {
   const load = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { router.push('/login'); return; }
+    setAccessToken(session.access_token);
     const uid = session.user.id;
     const today = new Date().toISOString().split('T')[0];
+
+    // Fetch matching stories (fire-and-forget — non-blocking)
+    fetch('/api/meu-plano/stories', {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    })
+      .then(r => r.ok ? r.json() : { stories: [] })
+      .then(j => setStories(j.stories ?? []))
+      .catch(() => {});
 
     const [p, pl, hs, ev, ci] = await Promise.all([
       supabase.from('profiles')
@@ -323,6 +337,66 @@ export default function HojePage() {
             </Pill>
           )}
         </div>
+
+        {/* Dicas da Juliane carousel (Instagram-style) */}
+        {stories.length > 0 && (
+          <div style={{ padding: '0 0 16px' }}>
+            <div style={{ padding: '4px 24px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <div style={{
+                fontSize: 11, fontWeight: 700, color: T.inkSoft,
+                textTransform: 'uppercase', letterSpacing: 1.2,
+              }}>Dicas da Juliane</div>
+              <div style={{ fontSize: 11.5, color: T.pinkDeep, fontWeight: 600 }}>
+                {stories.length} nova{stories.length !== 1 ? 's' : ''}
+              </div>
+            </div>
+            <div style={{
+              padding: '0 16px', display: 'flex', gap: 10,
+              overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch',
+            }}>
+              {stories.map((s, i) => (
+                <button
+                  key={s.id}
+                  onClick={() => { setPlayerStartIdx(i); setPlayerOpen(true); }}
+                  style={{
+                    flexShrink: 0, padding: 0, border: 'none', cursor: 'pointer',
+                    background: 'transparent', textAlign: 'left',
+                  }}
+                >
+                  <div style={{
+                    width: 76, height: 76, borderRadius: '50%',
+                    background: `linear-gradient(135deg, ${T.pinkDeep}, ${T.gold})`,
+                    padding: 3,
+                    boxShadow: '0 4px 12px rgba(190,24,93,0.22)',
+                  }}>
+                    <div style={{
+                      width: '100%', height: '100%', borderRadius: '50%',
+                      background: s.cover_image_url ? `url(${s.cover_image_url}) center/cover` : `linear-gradient(135deg, ${T.pinkSoft}, ${T.rose})`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      border: '2.5px solid #FFF',
+                      overflow: 'hidden',
+                      color: T.pinkDeep,
+                    }}>
+                      {!s.cover_image_url && (s.media_type === 'video' ? (
+                        <IconCamera size={28} color={T.pinkDeep} stroke={1.6} />
+                      ) : (
+                        <IconSparkles size={28} color={T.pinkDeep} stroke={1.6} />
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{
+                    fontSize: 10.5, color: T.ink, fontWeight: 600,
+                    textAlign: 'center', marginTop: 6,
+                    width: 76, lineHeight: 1.2,
+                    overflow: 'hidden', textOverflow: 'ellipsis',
+                    display: '-webkit-box', WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                  }}>{s.title}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Week strip */}
         <div style={{ padding: '0 16px 16px', display: 'flex', gap: 6 }}>
@@ -620,6 +694,16 @@ export default function HojePage() {
           </button>
         </div>
       </div>
+
+      {/* Stories player overlay */}
+      {playerOpen && stories.length > 0 && (
+        <StoriesPlayer
+          stories={stories}
+          initialIndex={playerStartIdx}
+          accessToken={accessToken}
+          onClose={() => setPlayerOpen(false)}
+        />
+      )}
     </div>
   );
 }

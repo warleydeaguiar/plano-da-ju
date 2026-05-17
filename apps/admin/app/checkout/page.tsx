@@ -58,7 +58,8 @@ export default async function CheckoutFunnelPage({
     .gte('created_at', since)
     .order('created_at', { ascending: false })
 
-  const allEvents = events ?? []
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const allEvents: any[] = events ?? []
 
   // Conta SESSIONS únicas por step (não eventos)
   const sessionsByStep = new Map<string, Set<string>>()
