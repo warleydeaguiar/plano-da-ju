@@ -705,7 +705,7 @@ function InfoBio({ photoSrc, beforeSrc }: { photoSrc: string; beforeSrc: string 
     <div>
       {/* Full photo */}
       <div style={{
-        width: '100%', maxWidth: 260, margin: '0 auto 18px',
+        width: '100%', maxWidth: 380, margin: '0 auto 18px',
         borderRadius: 20, overflow: 'hidden',
         boxShadow: `0 16px 36px ${T.pinkDeep}26, 0 0 0 4px #fff, 0 0 0 8px ${T.pinkSoft}`,
         animation: 'mediaZoomIn 0.7s cubic-bezier(.2,.85,.25,1)',
