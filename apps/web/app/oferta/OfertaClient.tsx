@@ -397,7 +397,7 @@ function OfferCard({ countdown, name, onBuy }: { countdown: string; name: string
             </div>
           </div>
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-            <div style={{ fontSize: 12, color: T.inkMuted, textDecoration: 'line-through', marginBottom: 2, fontFamily: fonts.ui }}>R$ 59,90</div>
+            <div style={{ fontSize: 12, color: T.inkMuted, textDecoration: 'line-through', marginBottom: 2, fontFamily: fonts.ui }}>R$ 99,90</div>
             <div style={{
               fontFamily: fonts.display, fontSize: 32, fontWeight: 700,
               background: `linear-gradient(135deg, ${T.pinkDeep}, ${T.pink})`,
