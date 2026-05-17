@@ -703,16 +703,15 @@ function InfoMediaBeforeAfter({ src }: { src: string }) {
 function InfoBio({ photoSrc, beforeSrc }: { photoSrc: string; beforeSrc: string }) {
   return (
     <div>
-      {/* Circular photo */}
+      {/* Full photo */}
       <div style={{
-        width: '100%', maxWidth: 220, margin: '0 auto 18px',
-        borderRadius: 100, overflow: 'hidden', aspectRatio: '1/1',
+        width: '100%', maxWidth: 260, margin: '0 auto 18px',
+        borderRadius: 20, overflow: 'hidden',
         boxShadow: `0 16px 36px ${T.pinkDeep}26, 0 0 0 4px #fff, 0 0 0 8px ${T.pinkSoft}`,
         animation: 'mediaZoomIn 0.7s cubic-bezier(.2,.85,.25,1)',
-        position: 'relative',
       }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={photoSrc} alt="Juliane Cost" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+        <img src={photoSrc} alt="Juliane Cost" style={{ width: '100%', height: 'auto', display: 'block' }} />
       </div>
 
       {/* Name + title */}
