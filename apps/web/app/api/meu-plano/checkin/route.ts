@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     const { data: { user }, error: authErr } = await anonClient.auth.getUser(token);
     if (authErr || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { hair_feel, scalp_feel } = await req.json();
+    const { hair_feel, scalp_feel, breakage, all_answers } = await req.json();
     if (!hair_feel) return NextResponse.json({ error: 'hair_feel required' }, { status: 400 });
 
     const supabase = await createServiceClient();
@@ -30,9 +30,9 @@ export async function POST(req: NextRequest) {
       checked_at: now,
       hair_feel,
       scalp_feel: scalp_feel ?? null,
-      breakage_observed: false,
-      questions_asked: ['hair_feel', 'scalp_feel'],
-      answers_raw: { hair_feel, scalp_feel: scalp_feel ?? null },
+      breakage_observed: breakage === true,
+      questions_asked: Object.keys(all_answers ?? { hair_feel, scalp_feel }),
+      answers_raw: all_answers ?? { hair_feel, scalp_feel, breakage },
     });
 
     // Update current_condition in hair_state
