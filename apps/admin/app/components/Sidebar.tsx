@@ -37,6 +37,7 @@ const NAV: NavItem[] = [
   },
   { icon: '🎬', label: 'Stories da Juliane', href: '/stories' },
   { icon: '🎧', label: 'Suporte Plano Capilar', href: '/suporte' },
+  { icon: '🛍️', label: 'Produtos', href: '/produtos' },
   { icon: '🌿', label: 'Ybera', href: '/ybera' },
   { icon: '📈', label: 'Analytics', href: '/analytics' },
   { icon: '🛒', label: 'Checkout', href: '/checkout' },
