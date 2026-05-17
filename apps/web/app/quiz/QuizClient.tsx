@@ -1057,46 +1057,27 @@ function InfoScreen({ q, onContinue, images }: { q: QuizStep; onContinue: () => 
 
 // ─── Tela: loading com prova social ───────────────────────────
 function LoadingScreen({ q, pct, images }: { q: QuizStep; pct: number; images: Record<string, string> }) {
-  const socialProfiles = [
-    { key: 'plano_capilar_social_1', handle: '@lessalarissaa' },
-    { key: 'plano_capilar_social_2', handle: '@_leticiadourado' },
-    { key: 'plano_capilar_social_3', handle: '@juliafranco_1' },
-    { key: 'plano_capilar_social_4', handle: '@marinafernandesd' },
-    { key: 'plano_capilar_social_5', handle: '@ketleyvisantos' },
-  ]
-
   return (
     <div style={{
       flex: 1, display: 'flex', flexDirection: 'column',
       padding: '20px 24px 32px', gap: 20,
     }}>
-      {/* Barra de progresso */}
-      <div>
-        <div style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          marginBottom: 8,
+      {/* Título — sem barra extra (já existe a do header) */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      }}>
+        <span style={{
+          fontSize: 13, color: T.inkSoft, fontFamily: fonts.ui, fontWeight: 500,
+          lineHeight: 1.4, flex: 1, paddingRight: 12,
         }}>
-          <span style={{
-            fontSize: 13, color: T.inkSoft, fontFamily: fonts.ui, fontWeight: 500,
-            lineHeight: 1.4, flex: 1, paddingRight: 12,
-          }}>
-            {q.title}
-          </span>
-          <span style={{
-            fontSize: 14, fontWeight: 700, color: T.ink,
-            fontFamily: fonts.ui, letterSpacing: -0.2,
-          }}>
-            {Math.round(pct * 100)}%
-          </span>
-        </div>
-        <div style={{ height: 6, background: '#E5E7EB', borderRadius: 99, overflow: 'hidden' }}>
-          <div style={{
-            height: '100%', width: `${pct * 100}%`,
-            background: `linear-gradient(90deg, ${T.pink}, ${T.pinkDeep})`,
-            borderRadius: 99,
-            transition: 'width 0.6s cubic-bezier(.2,.7,.3,1)',
-          }} />
-        </div>
+          {q.title}
+        </span>
+        <span style={{
+          fontSize: 14, fontWeight: 700, color: T.ink,
+          fontFamily: fonts.ui, letterSpacing: -0.2,
+        }}>
+          {Math.round(pct * 100)}%
+        </span>
       </div>
 
       {/* Headline social proof */}
@@ -1115,40 +1096,24 @@ function LoadingScreen({ q, pct, images }: { q: QuizStep; pct: number; images: R
         </div>
       </div>
 
-      {/* Grade de 5 fotos */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }}>
-        {socialProfiles.map((p, i) => (
-          <div key={i} style={{ textAlign: 'center' }}>
-            {images[p.key] ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={images[p.key]}
-                alt={p.handle}
-                style={{
-                  width: '100%', aspectRatio: '1/1', objectFit: 'cover',
-                  borderRadius: 8, display: 'block',
-                }}
-              />
-            ) : (
-              <div style={{
-                width: '100%', aspectRatio: '1/1', borderRadius: 8,
-                background: `linear-gradient(135deg, ${T.rose}, ${T.cream})`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 20,
-              }}>
-                👤
-              </div>
-            )}
-            <div style={{
-              fontSize: 8, color: T.inkSoft, marginTop: 4,
-              fontFamily: fonts.ui, fontWeight: 500,
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}>
-              {p.handle}
-            </div>
-          </div>
-        ))}
-      </div>
+      {/* Imagem única do grid social */}
+      {images['plano_capilar_social_grid'] ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={images['plano_capilar_social_grid']}
+          alt="Clientes da Juliane Cost"
+          style={{ width: '100%', height: 'auto', display: 'block', borderRadius: 12 }}
+        />
+      ) : (
+        <div style={{
+          width: '100%', height: 80, borderRadius: 12,
+          background: `linear-gradient(135deg, ${T.rose}, ${T.cream})`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 13, color: T.inkSoft, fontFamily: fonts.ui,
+        }}>
+          Clientes da Juliane Cost
+        </div>
+      )}
 
       {/* Card: compraram nos últimos minutos */}
       <div style={{
@@ -1597,7 +1562,7 @@ export default function QuizClient() {
 
   useEffect(() => {
     if (step?.kind === 'loading') {
-      const t = setTimeout(() => setStepIndex(i => Math.min(total - 1, i + 1)), 3500)
+      const t = setTimeout(() => setStepIndex(i => Math.min(total - 1, i + 1)), 10000)
       return () => clearTimeout(t)
     }
   }, [stepIndex, step, total])
