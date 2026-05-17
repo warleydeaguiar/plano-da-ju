@@ -1674,7 +1674,7 @@ export default function QuizClient() {
   const finalContinue = useCallback(() => {
     if (stepIndex >= total - 1) {
       try { localStorage.setItem('quiz_answers', JSON.stringify(answers)) } catch {}
-      router.push('/oferta')
+      router.push('/roleta')
     } else {
       goNext()
     }
