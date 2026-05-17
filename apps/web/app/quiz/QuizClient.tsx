@@ -1562,7 +1562,7 @@ export default function QuizClient() {
 
   useEffect(() => {
     if (step?.kind === 'loading') {
-      const t = setTimeout(() => setStepIndex(i => Math.min(total - 1, i + 1)), 10000)
+      const t = setTimeout(() => setStepIndex(i => Math.min(total - 1, i + 1)), 5000)
       return () => clearTimeout(t)
     }
   }, [stepIndex, step, total])
