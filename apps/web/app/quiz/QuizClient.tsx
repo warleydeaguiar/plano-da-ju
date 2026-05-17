@@ -705,9 +705,10 @@ function InfoMediaBeforeAfter({ src }: { src: string }) {
   )
 }
 
-function InfoBio({ photoSrc }: { photoSrc: string }) {
+function InfoBio({ photoSrc, beforeSrc }: { photoSrc: string; beforeSrc: string }) {
   return (
     <div>
+      {/* Circular photo */}
       <div style={{
         width: '100%', maxWidth: 220, margin: '0 auto 18px',
         borderRadius: 100, overflow: 'hidden', aspectRatio: '1/1',
@@ -718,6 +719,8 @@ function InfoBio({ photoSrc }: { photoSrc: string }) {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={photoSrc} alt="Juliane Cost" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
       </div>
+
+      {/* Name + title */}
       <div style={{ textAlign: 'center', marginBottom: 18 }}>
         <div style={{
           fontFamily: fonts.display, fontSize: 22, fontWeight: 600, color: T.ink,
@@ -732,27 +735,86 @@ function InfoBio({ photoSrc }: { photoSrc: string }) {
           Tricologista · Especialista
         </div>
       </div>
+
+      {/* Bio text */}
       <div style={{ fontSize: 14, color: T.inkSoft, lineHeight: 1.7, fontFamily: fonts.ui }}>
-        Prazer, sou a <strong style={{ color: T.ink, fontWeight: 700 }}>Juliane Cost</strong>, especialista em recuperação de cabelos femininos.
+        Prazer, sou a <strong style={{ color: T.ink, fontWeight: 700 }}>Juliane Cost</strong>, especialista em recuperação de cabelo feminino.
         <br /><br />
-        Meu trabalho começou ajudando mulheres modificando hábitos e comprando os produtos certos.
+        Sou formada em <strong style={{ color: T.ink, fontWeight: 700 }}>Tricologia</strong> (Ciência que estuda os cabelos) pela Faculdade Unyleya.
         <br /><br />
-        Eu sei que é difícil cuidar do cabelo, principalmente quando não sabemos o que fazer ou se temos pouco tempo. Por isso, criei meu plano personalizado capilar que vai te ajudar mostrando passo-a-passo e diariamente o que você precisa fazer.
+        Já ajudei mais de <strong style={{ color: T.ink, fontWeight: 700 }}>3 mil mulheres em 12 países diferentes</strong> a alcançar o cabelo dos sonhos, mais longo, com pontas cheias e mais brilhante apenas mudando hábitos e comprando os produtos certo.
         <br /><br />
-        Já são <strong style={{ color: T.ink, fontWeight: 700 }}>3.500 mulheres atendidas individualmente</strong>, com casos reais que você verá durante seu plano.
+        Eu sei que é difícil cuidar do cabelo, principalmente quando não sabemos o que realmente nosso cabelo precisa. Muita gente na internet indica produtos milagrosos que no fim só te fazem perder tempo e dinheiro.
         <br /><br />
-        Esse plano vai te mostrar que cuidar de cabelo pode ser fácil e prazeroso. E o resultado da metodologia tem sido incrível.
+        Por isso eu criei um <strong style={{ color: T.ink, fontWeight: 700 }}>plano personalizado e individualizado</strong> com base nas suas respostas ao meu questionário — vou montar um plano capilar feito sob medida para você. Nada de milhares de produtos caros!
         <br /><br />
-        Além disso, você terá acesso a um <strong style={{ color: T.ink, fontWeight: 700 }}>grupo exclusivo de promoções no WhatsApp</strong>, com descontos diretos das fábricas que eu confio.
+        Esse plano vai te mostrar que cuidar do cabelo pode ser fácil e prazeroso. E o melhor: os resultados serão visíveis e duradouros.
+        <br /><br />
+        Além disso, você terá acesso a um <strong style={{ color: T.ink, fontWeight: 700 }}>grupo exclusivo de promoções no WhatsApp</strong> com descontos direto das fábricas que eu confio.
+        <br /><br />
+        Imagine como será daqui a <strong style={{ color: T.ink, fontWeight: 700 }}>90 dias</strong>: tendo seu cabelo mais bonito do que nunca!
+        <br /><br />
+        Agora é a sua vez de se transformar o seu cabelo, como outras centenas de mulheres.
       </div>
-      <div style={{
-        marginTop: 22, padding: '16px 18px',
-        background: `linear-gradient(135deg, ${T.rose}, ${T.cream})`,
-        borderRadius: 16, fontSize: 14, color: T.ink, fontWeight: 600, textAlign: 'center',
-        fontFamily: fonts.display, fontStyle: 'italic',
-        border: `1px solid ${T.pinkSoft}`,
-      }}>
-        “Sem mais bla,bla,bla, apenas saberá o que fazer no seu cabelo, e sem mistérios.”
+
+      {/* Minha transformação — before photo */}
+      <div style={{ marginTop: 28 }}>
+        <h3 style={{
+          fontFamily: fonts.display, fontSize: 18, fontWeight: 600, color: T.ink,
+          marginBottom: 12, letterSpacing: -0.2,
+        }}>
+          Minha transformação
+        </h3>
+        <div style={{ fontSize: 14, color: T.inkSoft, lineHeight: 1.65, fontFamily: fonts.ui, marginBottom: 14 }}>
+          Antes eu não tinha um plano de cuidados para o meu cabelo e por isso eu comprava um monte de produtos aleatórios que minhas amigas indicavam, por isso meu cabelo ficou com pontas ralas, pequeno e sem hidratação.
+        </div>
+        <div style={{
+          borderRadius: 18, overflow: 'hidden',
+          boxShadow: `0 16px 36px ${T.pinkDeep}1A, 0 4px 12px rgba(0,0,0,0.08)`,
+          border: `3px solid #fff`,
+        }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={beforeSrc} alt="Antes — Juliane Cost" style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'contain' }} />
+        </div>
+      </div>
+
+      {/* Poucos meses depois — YouTube video */}
+      <div style={{ marginTop: 28 }}>
+        <h3 style={{
+          fontFamily: fonts.display, fontSize: 18, fontWeight: 600, color: T.ink,
+          marginBottom: 8, letterSpacing: -0.2,
+        }}>
+          Poucos meses depois
+        </h3>
+        <div style={{ fontSize: 14, color: T.inkSoft, lineHeight: 1.65, fontFamily: fonts.ui, marginBottom: 14 }}>
+          Agora sabendo exatamente o que fazer e quais produtos comprar:
+        </div>
+        <div style={{
+          borderRadius: 18, overflow: 'hidden',
+          boxShadow: `0 16px 36px ${T.pinkDeep}1A, 0 4px 12px rgba(0,0,0,0.08)`,
+          position: 'relative', width: '100%', paddingTop: '56.25%',
+          border: `3px solid #fff`,
+        }}>
+          <iframe
+            src="https://www.youtube.com/embed/pv0dcXx2K0k"
+            title="Resultado do cabelo da Juliane Cost"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            style={{
+              position: 'absolute', top: 0, left: 0,
+              width: '100%', height: '100%', border: 'none',
+            }}
+          />
+        </div>
+        <div style={{
+          marginTop: 14, padding: '14px 16px',
+          background: `linear-gradient(135deg, ${T.rose}, ${T.cream})`,
+          borderRadius: 14, fontSize: 13, color: T.ink, fontWeight: 600, textAlign: 'center',
+          fontFamily: fonts.display, fontStyle: 'italic',
+          border: `1px solid ${T.pinkSoft}`,
+        }}>
+          "Sem mega hair, apenas sabendo o que fazer na hora certa. Não é sorte, é ciência."
+        </div>
       </div>
     </div>
   )
@@ -858,7 +920,7 @@ function InfoScreen({ q, onContinue, images }: { q: QuizStep; onContinue: () => 
           }}>
             {q.title}
           </h2>
-          <InfoBio photoSrc={bioPhotoSrc} />
+          <InfoBio photoSrc={bioPhotoSrc} beforeSrc={beforeAfterSrc} />
         </>
       )}
       {q.media === 'depoimentos' && <InfoDepoimentos images={images} />}
