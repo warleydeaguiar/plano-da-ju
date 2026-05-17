@@ -841,7 +841,8 @@ function InfoDepoimentos({ images }: { images: Record<string, string> }) {
     setActiveSlide(Math.round(scrollLeft / offsetWidth))
   }
 
-  const youtubeParams = 'autoplay=1&mute=1&loop=1&playsinline=1&rel=0&controls=1'
+  // autoplay + muted + loop + sem controles + sem título
+  const youtubeParams = 'autoplay=1&mute=1&loop=1&playsinline=1&rel=0&controls=0&showinfo=0&modestbranding=1'
 
   return (
     <div>
@@ -854,40 +855,49 @@ function InfoDepoimentos({ images }: { images: Record<string, string> }) {
 
       {/* Carrossel de imagens */}
       <div style={{ position: 'relative', marginBottom: 6 }}>
-        <div
-          ref={scrollRef}
-          onScroll={handleScroll}
-          className="carousel-scroll"
-          style={{
-            display: 'flex', overflowX: 'auto', gap: 0,
-            scrollSnapType: 'x mandatory',
-            WebkitOverflowScrolling: 'touch',
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
-            borderRadius: 18,
-          }}
-        >
-          {cards.map((d, i) => (
-            <div key={i} style={{
-              minWidth: '100%', scrollSnapAlign: 'center',
-              borderRadius: 18, overflow: 'hidden',
-              background: '#fff',
-              boxShadow: '0 8px 20px rgba(190,24,93,0.08)',
-              border: `1px solid ${T.border}`,
-              flexShrink: 0,
-            }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={d.src}
-                alt={d.name}
-                style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'contain' }}
-              />
-              <div style={{ padding: '12px 16px' }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: T.ink, fontFamily: fonts.ui }}>{d.name}</div>
-                <div style={{ fontSize: 11, color: T.pinkDeep, marginTop: 2, fontWeight: 600, letterSpacing: 0.3, textTransform: 'uppercase' }}>{d.desc}</div>
+        {/* Container externo com overflow:hidden para clipar os slides laterais */}
+        <div style={{ overflow: 'hidden', borderRadius: 18 }}>
+          <div
+            ref={scrollRef}
+            onScroll={handleScroll}
+            className="carousel-scroll"
+            style={{
+              display: 'flex',
+              overflowX: 'auto',
+              scrollSnapType: 'x mandatory',
+              WebkitOverflowScrolling: 'touch',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+            }}
+          >
+            {cards.map((d, i) => (
+              <div key={i} style={{
+                flex: '0 0 100%',  // largura exata do container, sem encolher
+                scrollSnapAlign: 'start',
+                background: '#fff',
+                boxShadow: '0 8px 20px rgba(190,24,93,0.08)',
+                border: `1px solid ${T.border}`,
+              }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={d.src}
+                  alt={d.name}
+                  style={{
+                    width: '100%',
+                    height: 'auto',
+                    maxHeight: 320,
+                    display: 'block',
+                    objectFit: 'contain',
+                    background: '#F9F9FC',
+                  }}
+                />
+                <div style={{ padding: '12px 16px' }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: T.ink, fontFamily: fonts.ui }}>{d.name}</div>
+                  <div style={{ fontSize: 11, color: T.pinkDeep, marginTop: 2, fontWeight: 600, letterSpacing: 0.3, textTransform: 'uppercase' }}>{d.desc}</div>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
         {/* Dots */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 12 }}>
@@ -905,12 +915,13 @@ function InfoDepoimentos({ images }: { images: Record<string, string> }) {
         </div>
       </div>
 
-      {/* Vídeo depoimento 1 — Beatriz */}
+      {/* Vídeo depoimento 1 — Beatriz (vertical 9:16, sem controles) */}
       <div style={{ marginTop: 18 }}>
         <div style={{
           borderRadius: 18, overflow: 'hidden',
           boxShadow: '0 8px 20px rgba(190,24,93,0.08)',
-          position: 'relative', width: '100%', paddingTop: '56.25%',
+          position: 'relative', width: '100%', paddingTop: '177.78%',
+          background: '#000',
         }}>
           <iframe
             src={`https://www.youtube.com/embed/Fwvy0YX7cZI?${youtubeParams}&playlist=Fwvy0YX7cZI`}
@@ -925,12 +936,13 @@ function InfoDepoimentos({ images }: { images: Record<string, string> }) {
         </div>
       </div>
 
-      {/* Vídeo depoimento 2 — Fernanda */}
+      {/* Vídeo depoimento 2 — Fernanda (vertical 9:16, sem controles) */}
       <div style={{ marginTop: 14 }}>
         <div style={{
           borderRadius: 18, overflow: 'hidden',
           boxShadow: '0 8px 20px rgba(190,24,93,0.08)',
-          position: 'relative', width: '100%', paddingTop: '56.25%',
+          position: 'relative', width: '100%', paddingTop: '177.78%',
+          background: '#000',
         }}>
           <iframe
             src={`https://www.youtube.com/embed/bguz9ckzABM?${youtubeParams}&playlist=bguz9ckzABM`}
