@@ -789,14 +789,16 @@ function InfoBio({ photoSrc, beforeSrc }: { photoSrc: string; beforeSrc: string 
         <div style={{ fontSize: 14, color: T.inkSoft, lineHeight: 1.65, fontFamily: fonts.ui, marginBottom: 14 }}>
           Agora sabendo exatamente o que fazer e quais produtos comprar:
         </div>
+        {/* Formato vertical 9:16 — autoplay, loop, sem título, sem controles */}
         <div style={{
           borderRadius: 18, overflow: 'hidden',
           boxShadow: `0 16px 36px ${T.pinkDeep}1A, 0 4px 12px rgba(0,0,0,0.08)`,
-          position: 'relative', width: '100%', paddingTop: '56.25%',
+          position: 'relative', width: '100%', paddingTop: '177.78%',
           border: `3px solid #fff`,
+          background: '#000',
         }}>
           <iframe
-            src="https://www.youtube.com/embed/pv0dcXx2K0k"
+            src="https://www.youtube.com/embed/pv0dcXx2K0k?autoplay=1&mute=1&loop=1&playlist=pv0dcXx2K0k&controls=0&showinfo=0&modestbranding=1&playsinline=1&rel=0"
             title="Resultado do cabelo da Juliane Cost"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
@@ -980,6 +982,8 @@ function InfoScreen({ q, onContinue, images }: { q: QuizStep; onContinue: () => 
   const videoSrc = images['plano_capilar_juliane_video'] || 'https://player-vz-a21ca3b7-7bf.tv.pandavideo.com.br/embed/?v=66a4914a-6513-4d27-804b-2c3b1d32880d'
   const beforeAfterSrc = images['plano_capilar_before_after'] || '/images/ju-depois.png'
   const bioPhotoSrc = images['plano_capilar_juliane_bio'] || '/images/ju-foto.jpg'
+  // Foto "antes" exclusiva da seção de transformação da Juliane na bio
+  const julianeAntesSrc = images['plano_capilar_juliane_antes'] || beforeAfterSrc
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '4px 24px 24px', gap: 18 }}>
@@ -1022,7 +1026,7 @@ function InfoScreen({ q, onContinue, images }: { q: QuizStep; onContinue: () => 
           }}>
             {q.title}
           </h2>
-          <InfoBio photoSrc={bioPhotoSrc} beforeSrc={beforeAfterSrc} />
+          <InfoBio photoSrc={bioPhotoSrc} beforeSrc={julianeAntesSrc} />
         </>
       )}
       {q.media === 'depoimentos' && <InfoDepoimentos images={images} />}
