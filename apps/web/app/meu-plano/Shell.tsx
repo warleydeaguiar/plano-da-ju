@@ -4,29 +4,16 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { createBrowserClient } from '@supabase/ssr';
-
-const BG = '#F5EFF9';
-const PINK = '#C4607A';
-const MID = '#6B5370';
-const BORDER = '#EDE6F2';
-const CARD = '#FFFFFF';
+import { T, fonts } from './theme';
+import { IconHome, IconCalendar, IconList, IconChart, IconBag } from './icons';
 
 const TABS = [
-  { href: '/meu-plano',           icon: '🏠', label: 'Início'    },
-  { href: '/meu-plano/agenda',    icon: '📅', label: 'Agenda'    },
-  { href: '/meu-plano/plano',     icon: '📋', label: 'Plano'     },
-  { href: '/meu-plano/progresso', icon: '📊', label: 'Progresso' },
-  { href: '/meu-plano/loja',      icon: '🛍️', label: 'Loja'      },
+  { href: '/meu-plano',           Icon: IconHome,     label: 'Início'    },
+  { href: '/meu-plano/agenda',    Icon: IconCalendar, label: 'Agenda'    },
+  { href: '/meu-plano/plano',     Icon: IconList,     label: 'Plano'     },
+  { href: '/meu-plano/progresso', Icon: IconChart,    label: 'Progresso' },
+  { href: '/meu-plano/loja',      Icon: IconBag,      label: 'Loja'      },
 ];
-
-const TITLES: Record<string, string> = {
-  '/meu-plano':           'Início — Plano da Ju',
-  '/meu-plano/agenda':    'Agenda — Plano da Ju',
-  '/meu-plano/plano':     'Meu Plano — Plano da Ju',
-  '/meu-plano/progresso': 'Progresso — Plano da Ju',
-  '/meu-plano/loja':      'Produtos — Plano da Ju',
-  '/meu-plano/check-in':  'Check-in — Plano da Ju',
-};
 
 const HIDE_NAV_ON = ['/meu-plano/check-in'];
 
@@ -47,35 +34,45 @@ export default function MeuPlanoShell({ children }: { children: React.ReactNode 
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Set per-route document title
-  useEffect(() => {
-    const t = TITLES[pathname];
-    if (t) document.title = t;
-  }, [pathname]);
-
   const hideNav = HIDE_NAV_ON.some(p => pathname.startsWith(p));
 
   if (!ready) {
     return (
-      <div style={{ minHeight: '100vh', background: BG, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
-        <div style={{ width: 40, height: 40, border: `3px solid ${BORDER}`, borderTopColor: PINK, borderRadius: '50%', animation: 'spin 0.9s linear infinite' }} />
+      <div style={{
+        minHeight: '100vh', background: T.bg,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexDirection: 'column', gap: 16, fontFamily: fonts.ui,
+      }}>
+        <div style={{
+          width: 40, height: 40,
+          border: `3px solid ${T.pinkSoft}`,
+          borderTopColor: T.pink,
+          borderRadius: '50%',
+          animation: 'spin 0.9s linear infinite',
+        }} />
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: BG }}>
-      <div style={{ paddingBottom: hideNav ? 0 : 76 }}>
+    <div style={{
+      minHeight: '100vh',
+      background: T.bg,
+      fontFamily: fonts.ui,
+      color: T.ink,
+    }}>
+      <div style={{ paddingBottom: hideNav ? 0 : 78 }}>
         {children}
       </div>
 
       {!hideNav && (
         <nav style={{
           position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100,
-          background: 'rgba(255,255,255,0.95)',
-          backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-          borderTop: `1px solid ${BORDER}`,
+          background: 'rgba(255,250,245,0.92)',
+          backdropFilter: 'blur(20px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+          borderTop: `1px solid ${T.border}`,
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         }}>
           <div style={{ maxWidth: 480, margin: '0 auto', display: 'flex' }}>
@@ -84,30 +81,41 @@ export default function MeuPlanoShell({ children }: { children: React.ReactNode 
                 ? pathname === '/meu-plano'
                 : pathname.startsWith(tab.href);
               return (
-                <Link key={tab.href} href={tab.href} style={{
-                  flex: 1, padding: '10px 0 8px',
-                  textDecoration: 'none', cursor: 'pointer',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-                }}>
-                  <span style={{ fontSize: 20, opacity: active ? 1 : 0.6 }}>{tab.icon}</span>
-                  <span style={{ fontSize: 10.5, fontWeight: 700, color: active ? PINK : MID }}>
+                <Link
+                  key={tab.href}
+                  href={tab.href}
+                  style={{
+                    flex: 1, padding: '10px 0 6px',
+                    textDecoration: 'none', cursor: 'pointer',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+                    position: 'relative',
+                  }}
+                >
+                  <tab.Icon size={22} color={active ? T.pink : T.inkSoft} stroke={active ? 2 : 1.7} />
+                  <span style={{
+                    fontSize: 10.5,
+                    fontWeight: active ? 700 : 500,
+                    color: active ? T.pinkDeep : T.inkSoft,
+                    letterSpacing: 0.2,
+                  }}>
                     {tab.label}
                   </span>
-                  {active && <div style={{ width: 22, height: 2.5, background: PINK, borderRadius: 2 }} />}
-                  {!active && <div style={{ height: 2.5 }} />}
+                  <div style={{
+                    height: 2.5, width: 20, borderRadius: 2,
+                    background: active ? T.pink : 'transparent',
+                  }} />
                 </Link>
               );
             })}
           </div>
         </nav>
       )}
+
       <style jsx global>{`
-        body { background: ${BG}; }
-        * { box-sizing: border-box; }
+        body { background: ${T.bg}; font-family: ${fonts.ui}; color: ${T.ink}; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        button { font-family: ${fonts.ui}; }
       `}</style>
     </div>
   );
 }
-
-// Avoid TS unused warning for CARD/MID in some lint configs
-void [CARD, MID, BORDER, PINK];

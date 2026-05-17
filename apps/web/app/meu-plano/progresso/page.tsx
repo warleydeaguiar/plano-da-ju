@@ -3,16 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
-
-const ACCENT  = '#C4607A';
-const ACCENT2 = '#9B4A6A';
-const DARK    = '#1C1C1E';
-const MID     = '#48484A';
-const SUB     = '#8E8E93';
-const SEP     = '#E5E5EA';
-const SURFACE = '#FFFFFF';
-const GREEN   = '#34C759';
-const GOLD    = '#FF9500';
+import { T, fonts, shadow, gradient } from '../theme';
+import { IconCamera, IconChevronRight, IconFlame, IconRuler, IconSparkles, IconDrop } from '../icons';
 
 interface PhotoAnalysis {
   id: string;
@@ -25,13 +17,8 @@ interface PhotoAnalysis {
   avaliacao_texto: string | null;
   analyzed_at: string;
 }
-interface HairEvent {
-  event_type: string;
-  occurred_at: string;
-}
-interface Profile {
-  hair_length_cm: number | null;
-}
+interface HairEvent { event_type: string; occurred_at: string }
+interface Profile { hair_length_cm: number | null }
 
 type Period = 30 | 90 | 180;
 
@@ -76,9 +63,7 @@ export default function ProgressoPage() {
   async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setUploadError(null);
-    setUploadOk(false);
-    setUploading(true);
+    setUploadError(null); setUploadOk(false); setUploading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { setUploading(false); return; }
@@ -111,23 +96,19 @@ export default function ProgressoPage() {
   const previous = photos[1];
   const oldest = photos[photos.length - 1];
 
-  // Period filter
   const cutoff = new Date(Date.now() - period * 86_400_000);
   const photosInPeriod = photos.filter(p => new Date(p.analyzed_at) >= cutoff).reverse();
 
-  // Length growth — derive from photo_analyses estimated growth or profile baseline
   const lengthNow = profile?.hair_length_cm ?? null;
   const lengthDelta = oldest?.crescimento_estimado_cm && latest?.crescimento_estimado_cm
     ? (latest.crescimento_estimado_cm - oldest.crescimento_estimado_cm)
     : photos.length >= 2 ? 4.5 : 0;
 
-  // Score deltas
   const delta = (curr?: number | null, prev?: number | null) => {
     if (curr == null || prev == null) return null;
     return curr - prev;
   };
 
-  // Streak from events
   const eventDays = new Set(events.map(e => e.occurred_at.split('T')[0]));
   let streak = 0; const cur = new Date();
   // eslint-disable-next-line no-constant-condition
@@ -144,10 +125,9 @@ export default function ProgressoPage() {
   }
   const completed = Math.round((events.length / (period || 1)) * 100);
 
-  // Sparkline
   function Sparkline({ points }: { points: number[] }) {
     if (points.length < 2) {
-      return <div style={{ color: SUB, fontSize: 12 }}>Envie mais fotos para ver o gráfico</div>;
+      return <div style={{ color: T.inkSoft, fontSize: 12, marginTop: 10 }}>Envie mais fotos para ver o gráfico</div>;
     }
     const w = 280, h = 64;
     const min = Math.min(...points), max = Math.max(...points);
@@ -159,14 +139,14 @@ export default function ProgressoPage() {
       <svg viewBox={`0 0 ${w} ${h}`} style={{ width: '100%', height: 64 }}>
         <defs>
           <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={ACCENT} stopOpacity="0.35" />
-            <stop offset="100%" stopColor={ACCENT} stopOpacity="0" />
+            <stop offset="0%" stopColor={T.pink} stopOpacity="0.35" />
+            <stop offset="100%" stopColor={T.pink} stopOpacity="0" />
           </linearGradient>
         </defs>
         <path d={area} fill="url(#sparkGrad)" />
-        <path d={path} fill="none" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx={0} cy={h - ((points[0] - min) / range) * (h - 8) - 4} r="3" fill="#FFF" stroke={ACCENT} strokeWidth="2" />
-        <circle cx={(points.length - 1) * stepX} cy={h - ((points[points.length - 1] - min) / range) * (h - 8) - 4} r="3" fill={ACCENT} />
+        <path d={path} fill="none" stroke={T.pink} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx={0} cy={h - ((points[0] - min) / range) * (h - 8) - 4} r="3" fill="#FFF" stroke={T.pink} strokeWidth="2" />
+        <circle cx={(points.length - 1) * stepX} cy={h - ((points[points.length - 1] - min) / range) * (h - 8) - 4} r="3" fill={T.pink} />
       </svg>
     );
   }
@@ -176,19 +156,25 @@ export default function ProgressoPage() {
     .filter((v): v is number => v != null);
 
   return (
-    <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", sans-serif' }}>
+    <div>
       <div style={{ maxWidth: 480, margin: '0 auto' }}>
 
         {/* Header */}
-        <div style={{ padding: '20px 20px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ padding: '24px 24px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
-            <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.5, color: DARK }}>Progresso</div>
-            <div style={{ fontSize: 13, color: SUB, marginTop: 3 }}>{period} dias de rotina</div>
+            <div style={{
+              fontSize: 28, fontWeight: 600, color: T.ink,
+              fontFamily: fonts.display, letterSpacing: -0.5,
+            }}>
+              <em style={{ fontStyle: 'italic' }}>Progresso</em>
+            </div>
+            <div style={{ fontSize: 13, color: T.inkSoft, marginTop: 4 }}>{period} dias de rotina</div>
           </div>
           <select value={period} onChange={e => setPeriod(parseInt(e.target.value, 10) as Period)} style={{
-            background: SURFACE, border: 'none', borderRadius: 10,
-            padding: '7px 12px', fontSize: 13, fontWeight: 600, color: DARK,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.06)', cursor: 'pointer',
+            background: T.surface, border: `1px solid ${T.borderSoft}`, borderRadius: 10,
+            padding: '7px 12px', fontSize: 13, fontWeight: 600, color: T.ink,
+            boxShadow: shadow.card, cursor: 'pointer',
+            fontFamily: fonts.ui,
           }}>
             <option value={30}>1 mês</option>
             <option value={90}>3 meses</option>
@@ -198,48 +184,70 @@ export default function ProgressoPage() {
 
         {/* Photo hero */}
         <label style={{
-          display: 'flex', margin: '0 16px 16px', cursor: uploading ? 'default' : 'pointer',
-          background: `linear-gradient(135deg, #8B3A6E, ${ACCENT})`,
-          borderRadius: 18, padding: 20, alignItems: 'center', gap: 14,
-          boxShadow: '0 8px 24px rgba(155,74,106,0.3)', color: '#FFF',
+          display: 'flex', margin: '0 16px 18px', cursor: uploading ? 'default' : 'pointer',
+          background: gradient.hero,
+          borderRadius: 20, padding: 22, alignItems: 'center', gap: 14,
+          boxShadow: shadow.hero, color: '#FFF',
           opacity: uploading ? 0.7 : 1,
+          position: 'relative', overflow: 'hidden',
         }}>
           <input ref={fileInputRef} type="file" accept="image/*" capture="user" onChange={handlePhoto} disabled={uploading} style={{ display: 'none' }} />
+          <div style={{ position: 'absolute', right: -30, top: -30, width: 140, height: 140, borderRadius: '50%', background: 'rgba(255,255,255,0.10)' }} />
           <div style={{
-            width: 52, height: 52, borderRadius: 14,
-            background: 'rgba(255,255,255,0.18)',
+            width: 54, height: 54, borderRadius: 15,
+            background: 'rgba(255,255,255,0.20)',
+            border: '1px solid rgba(255,255,255,0.25)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 26, flexShrink: 0,
-          }}>{uploading ? '⏳' : '📸'}</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 16, fontWeight: 700 }}>
+            flexShrink: 0, position: 'relative', zIndex: 1,
+          }}>
+            <IconCamera size={26} color="#FFF" stroke={1.7} />
+          </div>
+          <div style={{ flex: 1, position: 'relative', zIndex: 1 }}>
+            <div style={{ fontSize: 17, fontWeight: 600, fontFamily: fonts.display }}>
               {uploading ? 'Analisando…' : uploadOk ? 'Foto registrada!' : 'Registrar foto de hoje'}
             </div>
             <div style={{ fontSize: 12.5, opacity: 0.88, marginTop: 2 }}>
               IA compara com fotos anteriores e analisa a evolução
             </div>
           </div>
-          <div style={{ fontSize: 22, opacity: 0.7 }}>›</div>
+          <IconChevronRight size={22} color="rgba(255,255,255,0.7)" stroke={2.2} />
         </label>
         {uploadError && (
-          <div style={{ margin: '-8px 16px 16px', background: '#FFE5E0', color: '#D70015', borderRadius: 10, padding: '8px 12px', fontSize: 12.5, fontWeight: 600 }}>
+          <div style={{ margin: '-10px 16px 18px', background: '#FFE5E0', color: '#A30015', borderRadius: 12, padding: '10px 14px', fontSize: 12.5, fontWeight: 600, border: '1px solid #FFB4A8' }}>
             {uploadError}
           </div>
         )}
 
         {/* Comprimento card */}
-        <div style={{ margin: '0 16px 16px', background: SURFACE, borderRadius: 16, padding: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+        <div style={{
+          margin: '0 16px 14px', background: T.surface, borderRadius: 18,
+          padding: 18, boxShadow: shadow.card,
+          border: `1px solid ${T.borderSoft}`,
+        }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <div style={{ fontSize: 11, fontWeight: 600, color: SUB, textTransform: 'uppercase', letterSpacing: 0.4 }}>📏 Comprimento</div>
+              <div style={{
+                fontSize: 11, fontWeight: 700, color: T.inkSoft,
+                textTransform: 'uppercase', letterSpacing: 1,
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+              }}>
+                <IconRuler size={13} color={T.inkSoft} /> Comprimento
+              </div>
               {lengthDelta > 0 && (
-                <div style={{ fontSize: 11, fontWeight: 700, color: GREEN, marginTop: 4 }}>↑ +{lengthDelta.toFixed(1)} cm</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: T.green, marginTop: 4 }}>
+                  ↑ +{lengthDelta.toFixed(1)} cm
+                </div>
               )}
-              <div style={{ fontSize: 28, fontWeight: 800, color: DARK, lineHeight: 1, marginTop: 6 }}>
+              <div style={{
+                fontSize: 30, fontWeight: 800, color: T.ink, lineHeight: 1, marginTop: 6,
+                fontFamily: fonts.display,
+              }}>
                 {lengthNow ? `${lengthNow} cm` : '—'}
               </div>
               {lengthDelta > 0 && (
-                <div style={{ fontSize: 12, color: SUB, marginTop: 4 }}>Cresceu +{lengthDelta.toFixed(1)} cm em {period} dias</div>
+                <div style={{ fontSize: 12, color: T.inkSoft, marginTop: 4 }}>
+                  Cresceu +{lengthDelta.toFixed(1)} cm em {period} dias
+                </div>
               )}
             </div>
           </div>
@@ -250,38 +258,34 @@ export default function ProgressoPage() {
 
         {/* Score cards */}
         <div style={{ padding: '0 16px 16px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-          <ScoreCard icon="✨" label="Brilho"     value={latest?.brilho_score}     delta={delta(latest?.brilho_score, previous?.brilho_score)} />
-          <ScoreCard icon="💧" label="Hidratação" value={latest?.hidratacao_score} delta={delta(latest?.hidratacao_score, previous?.hidratacao_score)} />
-          <ScoreCard icon="🌀" label="Frizz"      value={latest?.frizz_score}      delta={delta(latest?.frizz_score, previous?.frizz_score)} inverse />
+          <ScoreCard label="Brilho"     value={latest?.brilho_score}     delta={delta(latest?.brilho_score, previous?.brilho_score)} icon={<IconSparkles size={18} color={T.gold} />} />
+          <ScoreCard label="Hidratação" value={latest?.hidratacao_score} delta={delta(latest?.hidratacao_score, previous?.hidratacao_score)} icon={<IconDrop size={18} color="#3B82F6" />} />
+          <ScoreCard label="Frizz"      value={latest?.frizz_score}      delta={delta(latest?.frizz_score, previous?.frizz_score)} inverse icon={<IconSparkles size={18} color={T.pinkDeep} />} />
         </div>
 
         {/* Antes & Depois */}
         {oldest && latest && oldest.id !== latest.id && (
           <>
-            <div style={{ padding: '6px 24px 10px' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: DARK }}>Antes & Depois</div>
-            </div>
-            <div style={{ margin: '0 16px 16px', background: SURFACE, borderRadius: 16, padding: 14, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-              <div style={{ position: 'relative', height: 220, borderRadius: 12, overflow: 'hidden' }}>
-                {/* Before image */}
+            <SectionLabel>Antes & Depois</SectionLabel>
+            <div style={{
+              margin: '0 16px 18px', background: T.surface, borderRadius: 18,
+              padding: 14, boxShadow: shadow.card,
+              border: `1px solid ${T.borderSoft}`,
+            }}>
+              <div style={{ position: 'relative', height: 240, borderRadius: 12, overflow: 'hidden' }}>
                 <div style={{
                   position: 'absolute', inset: 0,
-                  background: oldest.photo_url ? `url(${oldest.photo_url}) center/cover` : `linear-gradient(135deg, #B19CD9, #6B5B95)`,
+                  background: oldest.photo_url ? `url(${oldest.photo_url}) center/cover` : gradient.gold,
                 }} />
-                {/* After image, clipped */}
                 <div style={{
                   position: 'absolute', inset: 0,
                   clipPath: `inset(0 0 0 ${sliderPos}%)`,
-                  background: latest.photo_url ? `url(${latest.photo_url}) center/cover` : `linear-gradient(135deg, ${ACCENT2}, ${ACCENT})`,
+                  background: latest.photo_url ? `url(${latest.photo_url}) center/cover` : gradient.heroSoft,
                 }} />
-                {/* Labels */}
-                <div style={{ position: 'absolute', top: 10, left: 12, background: 'rgba(0,0,0,0.5)', color: '#FFF', fontSize: 10.5, fontWeight: 700, padding: '4px 8px', borderRadius: 6 }}>
+                <div style={{ position: 'absolute', top: 10, left: 12, background: 'rgba(0,0,0,0.55)', color: '#FFF', fontSize: 10.5, fontWeight: 700, padding: '4px 9px', borderRadius: 6 }}>
                   Antes · {new Date(oldest.analyzed_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                 </div>
-                <div style={{ position: 'absolute', top: 10, right: 12, background: 'rgba(0,0,0,0.5)', color: '#FFF', fontSize: 10.5, fontWeight: 700, padding: '4px 8px', borderRadius: 6 }}>
-                  Hoje
-                </div>
-                {/* Divider */}
+                <div style={{ position: 'absolute', top: 10, right: 12, background: 'rgba(0,0,0,0.55)', color: '#FFF', fontSize: 10.5, fontWeight: 700, padding: '4px 9px', borderRadius: 6 }}>Hoje</div>
                 <div style={{
                   position: 'absolute', top: 0, bottom: 0, left: `${sliderPos}%`, width: 2,
                   background: '#FFF', boxShadow: '0 0 8px rgba(0,0,0,0.4)',
@@ -291,21 +295,18 @@ export default function ProgressoPage() {
                   transform: 'translate(-50%, -50%)',
                   width: 36, height: 36, borderRadius: '50%', background: '#FFF',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 14, color: ACCENT, fontWeight: 700,
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+                  fontSize: 14, color: T.pinkDeep, fontWeight: 700,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.30)',
                 }}>⟺</div>
                 <input
                   type="range" min="0" max="100" value={sliderPos}
                   onChange={e => setSliderPos(parseInt(e.target.value, 10))}
-                  style={{
-                    position: 'absolute', inset: 0, width: '100%', height: '100%',
-                    opacity: 0, cursor: 'ew-resize',
-                  }}
+                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'ew-resize' }}
                 />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, fontSize: 11.5, color: SUB }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, fontSize: 11.5, color: T.inkSoft }}>
                 <span>{new Date(oldest.analyzed_at).toLocaleDateString('pt-BR')} → {new Date(latest.analyzed_at).toLocaleDateString('pt-BR')}</span>
-                <span style={{ color: ACCENT, fontWeight: 700 }}>
+                <span style={{ color: T.pinkDeep, fontWeight: 700 }}>
                   {Math.floor((new Date(latest.analyzed_at).getTime() - new Date(oldest.analyzed_at).getTime()) / 86_400_000)} dias de rotina
                 </span>
               </div>
@@ -313,33 +314,42 @@ export default function ProgressoPage() {
           </>
         )}
 
-        {/* Análise da IA */}
+        {/* AI analysis (dark) */}
         {latest && (
           <>
-            <div style={{ padding: '6px 24px 10px' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: DARK }}>Análise da IA</div>
-            </div>
+            <SectionLabel>Análise da IA</SectionLabel>
             <div style={{
-              margin: '0 16px 16px', background: '#1C1C1E', borderRadius: 16, padding: 18,
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              margin: '0 16px 18px', background: T.ink, borderRadius: 18, padding: 20,
+              boxShadow: shadow.raised,
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                <div style={{ fontSize: 22 }}>🔬</div>
+                <div style={{
+                  width: 36, height: 36, borderRadius: 10,
+                  background: gradient.gold, color: T.goldDeep,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <IconSparkles size={18} />
+                </div>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#FFF' }}>
-                    Última análise · {new Date(latest.analyzed_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#FFF', fontFamily: fonts.display }}>
+                    Última análise · {new Date(latest.analyzed_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                   </div>
-                  <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.55)', marginTop: 2 }}>Baseada na foto enviada</div>
+                  <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.55)', marginTop: 2 }}>
+                    Baseada na foto enviada
+                  </div>
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <AIScore label="Brilho"     score={latest.brilho_score}     />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <AIScore label="Brilho"     score={latest.brilho_score} />
                 <AIScore label="Hidratação" score={latest.hidratacao_score} />
-                <AIScore label="Pontas"     score={latest.pontas_score}     />
-                <AIScore label="Frizz"      score={latest.frizz_score}      inverse />
+                <AIScore label="Pontas"     score={latest.pontas_score} />
+                <AIScore label="Frizz"      score={latest.frizz_score} inverse />
               </div>
               {latest.avaliacao_texto && (
-                <div style={{ marginTop: 16, fontSize: 13, color: 'rgba(255,255,255,0.85)', lineHeight: 1.6 }}>
+                <div style={{
+                  marginTop: 16, fontSize: 13, color: 'rgba(255,255,255,0.85)', lineHeight: 1.6,
+                  fontFamily: fonts.display, fontStyle: 'italic',
+                }}>
                   {latest.avaliacao_texto}
                 </div>
               )}
@@ -347,61 +357,69 @@ export default function ProgressoPage() {
           </>
         )}
 
-        {/* Consistência */}
-        <div style={{ padding: '6px 24px 10px' }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: DARK }}>Consistência</div>
-        </div>
-        <div style={{ margin: '0 16px 16px', background: SURFACE, borderRadius: 16, padding: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+        {/* Streak */}
+        <SectionLabel>Consistência</SectionLabel>
+        <div style={{
+          margin: '0 16px 18px', background: T.surface, borderRadius: 18,
+          padding: 18, boxShadow: shadow.card, border: `1px solid ${T.borderSoft}`,
+        }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
             <div>
-              <div style={{ fontSize: 32, fontWeight: 800, color: DARK, lineHeight: 1 }}>
-                {streak} 🔥
+              <div style={{
+                fontSize: 34, fontWeight: 800, color: T.ink, lineHeight: 1,
+                fontFamily: fonts.display,
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+              }}>
+                {streak}
+                <IconFlame size={28} color={T.pink} stroke={1.7} />
               </div>
-              <div style={{ fontSize: 12, color: SUB, marginTop: 4 }}>dias seguindo a rotina</div>
+              <div style={{ fontSize: 12, color: T.inkSoft, marginTop: 4 }}>dias seguindo a rotina</div>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 11, color: SUB }}>Completadas</div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: completed >= 60 ? GREEN : GOLD }}>{Math.min(100, completed)}%</div>
+              <div style={{ fontSize: 11, color: T.inkSoft }}>Completadas</div>
+              <div style={{
+                fontSize: 16, fontWeight: 700,
+                color: completed >= 60 ? T.green : T.gold,
+                fontFamily: fonts.display,
+              }}>{Math.min(100, completed)}%</div>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
             {last14.map((on, i) => (
               <div key={i} style={{
-                flex: 1, aspectRatio: '1', borderRadius: 4,
-                background: i === last14.length - 1 ? ACCENT : on ? `${ACCENT}55` : '#F2F2F7',
-                border: i === last14.length - 1 ? `1.5px solid ${ACCENT}` : 'none',
+                flex: 1, aspectRatio: '1', borderRadius: 5,
+                background: i === last14.length - 1 ? T.pink : on ? `${T.pink}55` : T.cream,
+                border: i === last14.length - 1 ? `1.5px solid ${T.pinkDeep}` : 'none',
               }} />
             ))}
           </div>
-          <div style={{ display: 'flex', gap: 4, fontSize: 9.5, color: SUB, justifyContent: 'space-around' }}>
+          <div style={{ display: 'flex', gap: 4, fontSize: 9.5, color: T.inkSoft, justifyContent: 'space-around' }}>
             <span>14d</span><span>7d</span><span>Hoje</span>
           </div>
         </div>
 
-        {/* Galeria */}
+        {/* Gallery */}
         {photos.length > 0 && (
           <>
-            <div style={{ padding: '6px 24px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: DARK }}>Galeria</div>
-              <span style={{ fontSize: 12, color: SUB }}>{photos.length} fotos</span>
-            </div>
-            <div style={{ margin: '0 16px 20px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+            <SectionLabel rightLabel={`${photos.length} fotos`}>Galeria</SectionLabel>
+            <div style={{ margin: '0 16px 22px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
               {photos.slice(0, 9).map((p, i) => (
                 <div key={i} style={{
-                  aspectRatio: '1', borderRadius: 10,
-                  background: p.photo_url ? `url(${p.photo_url}) center/cover` : `linear-gradient(135deg, ${ACCENT2}55, ${ACCENT}55)`,
+                  aspectRatio: '1', borderRadius: 12,
+                  background: p.photo_url ? `url(${p.photo_url}) center/cover` : gradient.heroSoft,
                   position: 'relative', overflow: 'hidden',
+                  border: `1px solid ${T.borderSoft}`,
                 }}>
                   <div style={{
-                    position: 'absolute', bottom: 6, left: 6,
-                    background: 'rgba(0,0,0,0.6)', color: '#FFF',
-                    fontSize: 9.5, fontWeight: 700, padding: '2px 5px', borderRadius: 4,
+                    position: 'absolute', bottom: 5, left: 5,
+                    background: 'rgba(0,0,0,0.65)', color: '#FFF',
+                    fontSize: 9.5, fontWeight: 700, padding: '2px 6px', borderRadius: 5,
                   }}>{new Date(p.analyzed_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</div>
                   {p.brilho_score && (
                     <div style={{
-                      position: 'absolute', top: 6, right: 6,
-                      background: '#FFF', color: ACCENT,
-                      fontSize: 8.5, fontWeight: 800, padding: '2px 5px', borderRadius: 4,
+                      position: 'absolute', top: 5, right: 5,
+                      background: '#FFF', color: T.pinkDeep,
+                      fontSize: 8.5, fontWeight: 800, padding: '2px 6px', borderRadius: 5,
                     }}>IA ✓</div>
                   )}
                 </div>
@@ -410,10 +428,15 @@ export default function ProgressoPage() {
           </>
         )}
         {photos.length === 0 && (
-          <div style={{ margin: '24px 16px', textAlign: 'center', padding: '24px 20px' }}>
+          <div style={{ margin: '24px 16px 22px', textAlign: 'center', padding: '24px 20px' }}>
             <div style={{ fontSize: 44, marginBottom: 10 }}>📸</div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: DARK, marginBottom: 4 }}>Comece a registrar sua evolução</div>
-            <div style={{ fontSize: 12.5, color: SUB, lineHeight: 1.5 }}>Tire uma foto agora — ela será comparada com fotos futuras para mostrar sua progressão.</div>
+            <div style={{
+              fontSize: 16, fontWeight: 600, color: T.ink, marginBottom: 4,
+              fontFamily: fonts.display,
+            }}>Comece a registrar sua evolução</div>
+            <div style={{ fontSize: 12.5, color: T.inkSoft, lineHeight: 1.5 }}>
+              Tire uma foto agora — ela será comparada com fotos futuras para mostrar sua progressão.
+            </div>
           </div>
         )}
 
@@ -422,19 +445,40 @@ export default function ProgressoPage() {
   );
 }
 
+function SectionLabel({ children, rightLabel }: { children: React.ReactNode; rightLabel?: string }) {
+  return (
+    <div style={{ padding: '4px 24px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+      <div style={{
+        fontSize: 11, fontWeight: 700, color: T.inkSoft,
+        textTransform: 'uppercase', letterSpacing: 1.2,
+      }}>{children}</div>
+      {rightLabel && <div style={{ fontSize: 11.5, color: T.inkSoft }}>{rightLabel}</div>}
+    </div>
+  );
+}
+
 function ScoreCard({ icon, label, value, delta, inverse = false }: {
-  icon: string; label: string; value?: number | null; delta: number | null; inverse?: boolean;
+  icon: React.ReactNode; label: string; value?: number | null; delta: number | null; inverse?: boolean;
 }) {
   const positive = delta !== null && (inverse ? delta < 0 : delta > 0);
   return (
-    <div style={{ background: SURFACE, borderRadius: 14, padding: 12, textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-      <div style={{ fontSize: 18 }}>{icon}</div>
-      <div style={{ fontSize: 22, fontWeight: 800, color: DARK, marginTop: 4, lineHeight: 1 }}>
+    <div style={{
+      background: T.surface, borderRadius: 14, padding: 12, textAlign: 'center',
+      boxShadow: shadow.card, border: `1px solid ${T.borderSoft}`,
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'center' }}>{icon}</div>
+      <div style={{
+        fontSize: 24, fontWeight: 800, color: T.ink, marginTop: 4, lineHeight: 1,
+        fontFamily: fonts.display,
+      }}>
         {value != null ? value.toFixed(1) : '—'}
       </div>
-      <div style={{ fontSize: 11, color: SUB, marginTop: 4 }}>{label}</div>
+      <div style={{ fontSize: 11, color: T.inkSoft, marginTop: 4 }}>{label}</div>
       {delta !== null && Math.abs(delta) > 0.01 && (
-        <div style={{ fontSize: 10.5, fontWeight: 700, color: positive ? GREEN : '#FF3B30', marginTop: 2 }}>
+        <div style={{
+          fontSize: 10.5, fontWeight: 700,
+          color: positive ? T.green : T.danger, marginTop: 2,
+        }}>
           {delta > 0 ? '↑' : '↓'} {Math.abs(delta).toFixed(1)}
         </div>
       )}
@@ -446,12 +490,14 @@ function AIScore({ label, score, inverse = false }: { label: string; score?: num
   const max = 5;
   const v = score ?? 0;
   const pct = (v / max) * 100;
-  const color = inverse ? (v < 2.5 ? GREEN : v < 4 ? GOLD : '#FF3B30') : (v >= 4 ? GREEN : v >= 2.5 ? GOLD : '#FF3B30');
+  const color = inverse
+    ? (v < 2.5 ? T.green : v < 4 ? T.gold : T.danger)
+    : (v >= 4 ? T.green : v >= 2.5 ? T.gold : T.danger);
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'rgba(255,255,255,0.85)', marginBottom: 5 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'rgba(255,255,255,0.85)', marginBottom: 6 }}>
         <span>{label}</span>
-        <span style={{ fontWeight: 700, color: '#FFF' }}>{v.toFixed(1)} / 5</span>
+        <span style={{ fontWeight: 700, color: '#FFF', fontFamily: fonts.display }}>{v.toFixed(1)} / 5</span>
       </div>
       <div style={{ height: 6, background: 'rgba(255,255,255,0.12)', borderRadius: 3, overflow: 'hidden' }}>
         <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 3 }} />

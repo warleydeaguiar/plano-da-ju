@@ -2,19 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { createBrowserClient } from '@supabase/ssr';
-
-const ACCENT  = '#C4607A';
-const ACCENT2 = '#9B4A6A';
-const DARK    = '#1C1C1E';
-const MID     = '#48484A';
-const SUB     = '#8E8E93';
-const SEP     = '#E5E5EA';
-const SURFACE = '#FFFFFF';
-const GREEN   = '#34C759';
-const GOLD    = '#FF9500';
-const BLUE    = '#007AFF';
-const PURPLE  = '#5856D6';
+import { T, fonts, shadow, gradient } from '../theme';
+import {
+  IconCheck, IconBag, IconSparkles, iconForTask, iconForCategory,
+} from '../icons';
 
 type Tab = 'rotina' | 'produtos' | 'dicas';
 
@@ -45,35 +38,7 @@ interface ProductRow {
   price_brl: number | null;
   affiliate_url: string | null;
   image_url: string | null;
-  is_iberaparis: boolean;
-}
-
-const TASK_COLOR: Record<string, string> = {
-  hidrat: BLUE,
-  lavag: PURPLE,
-  shampoo: PURPLE,
-  nutri: ACCENT,
-  recon: '#5E5CE6',
-  oleo: GOLD,
-  óleo: GOLD,
-  descan: SEP,
-};
-
-function colorForTask(title: string) {
-  const t = title.toLowerCase();
-  for (const key of Object.keys(TASK_COLOR)) if (t.includes(key)) return TASK_COLOR[key];
-  return ACCENT;
-}
-
-function emojiForTask(title: string) {
-  const t = title.toLowerCase();
-  if (t.includes('hidrat')) return '💧';
-  if (t.includes('lavag') || t.includes('shampoo')) return '🚿';
-  if (t.includes('nutri')) return '🥥';
-  if (t.includes('recon')) return '💪';
-  if (t.includes('óleo') || t.includes('oleo')) return '✨';
-  if (t.includes('descan')) return '😴';
-  return '🌿';
+  is_ybera: boolean;
 }
 
 export default function PlanoPage() {
@@ -96,11 +61,17 @@ export default function PlanoPage() {
     const uid = session.user.id;
 
     const [p, pl, pr] = await Promise.all([
-      supabase.from('profiles').select('full_name,hair_type,porosity,chemical_history,main_problems,hair_length_cm,quiz_answers,plan_released_at,plan_status').eq('id', uid).single(),
+      supabase.from('profiles')
+        .select('full_name,hair_type,porosity,chemical_history,main_problems,hair_length_cm,quiz_answers,plan_released_at,plan_status')
+        .eq('id', uid).single(),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (supabase as any).from('hair_plans').select('week_number,focus,tasks,products,tips,juliane_notes').eq('user_id', uid).order('week_number'),
+      (supabase as any).from('hair_plans')
+        .select('week_number,focus,tasks,products,tips,juliane_notes')
+        .eq('user_id', uid).order('week_number'),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (supabase as any).from('products').select('id,name,brand,category,price_brl,affiliate_url,image_url,is_iberaparis').eq('active', true).limit(8),
+      (supabase as any).from('products')
+        .select('id,name,brand,category,price_brl,affiliate_url,image_url,is_ybera')
+        .eq('active', true).limit(8),
     ]);
     if (p.data)  setProfile(p.data as Profile);
     if (pl.data) setPlans(pl.data as HairPlanRow[]);
@@ -114,154 +85,234 @@ export default function PlanoPage() {
 
   const currentPlan = plans.find(p => p.week_number === activeWeek);
 
-  // Hair profile chips
-  const chips: { label: string; color: string }[] = [];
-  if (profile?.hair_type) chips.push({ label: profile.hair_type, color: ACCENT });
-  if (profile?.porosity) chips.push({ label: `${profile.porosity} porosidade`, color: BLUE });
+  const chips: { label: string; tone: 'pink' | 'gold' | 'cream' }[] = [];
+  if (profile?.hair_type) chips.push({ label: profile.hair_type, tone: 'pink' });
+  if (profile?.porosity) chips.push({ label: `${profile.porosity} porosidade`, tone: 'gold' });
   const mainProblem = profile?.main_problems?.[0];
-  if (mainProblem) chips.push({ label: mainProblem, color: GOLD });
+  if (mainProblem) chips.push({ label: mainProblem, tone: 'cream' });
 
   const releasedDate = profile?.plan_released_at
-    ? new Date(profile.plan_released_at).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', year: 'numeric' })
+    ? new Date(profile.plan_released_at).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })
     : null;
 
   return (
-    <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", sans-serif' }}>
+    <div>
       <div style={{ maxWidth: 480, margin: '0 auto' }}>
 
-        {/* Hero */}
+        {/* Hero with warm gradient */}
         <div style={{
-          margin: 0, padding: '32px 24px 56px',
-          background: `linear-gradient(135deg, #8B3A6E, ${ACCENT})`,
-          borderBottomLeftRadius: 24, borderBottomRightRadius: 24,
+          padding: '36px 24px 64px',
+          background: gradient.hero,
+          borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
           color: '#FFF', position: 'relative', overflow: 'hidden',
         }}>
-          <div style={{ position: 'absolute', right: -40, top: -40, width: 200, height: 200, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.8, opacity: 0.8, textTransform: 'uppercase' }}>SEU PLANO PERSONALIZADO</div>
-          <h1 style={{ fontSize: 26, fontWeight: 800, letterSpacing: -0.5, margin: '4px 0 8px' }}>Cronograma Capilar</h1>
-          {releasedDate && <div style={{ fontSize: 12.5, opacity: 0.85 }}>Criado para o seu perfil em {releasedDate}</div>}
-          {chips.length > 0 && (
-            <div style={{ marginTop: 16, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {chips.map((c, i) => (
-                <div key={i} style={{
-                  background: 'rgba(255,255,255,0.18)', borderRadius: 12, padding: '5px 12px',
-                  fontSize: 12, fontWeight: 600,
-                }}>{c.label}</div>
-              ))}
+          {/* Decorative orbs */}
+          <div style={{ position: 'absolute', right: -50, top: -50, width: 220, height: 220, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
+          <div style={{ position: 'absolute', left: -30, bottom: -60, width: 140, height: 140, borderRadius: '50%', background: 'rgba(201,168,119,0.18)' }} />
+
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <div style={{
+              fontSize: 11, fontWeight: 700, letterSpacing: 1.4,
+              opacity: 0.85, textTransform: 'uppercase',
+            }}>
+              Seu plano personalizado
             </div>
-          )}
+            <h1 style={{
+              fontSize: 30, fontWeight: 600, letterSpacing: -0.5,
+              margin: '8px 0 6px',
+              fontFamily: fonts.display, fontStyle: 'italic',
+            }}>
+              Cronograma <em style={{ fontWeight: 700 }}>Capilar</em>
+            </h1>
+            {releasedDate && (
+              <div style={{ fontSize: 12.5, opacity: 0.85, marginTop: 4 }}>
+                Criado para você em {releasedDate}
+              </div>
+            )}
+            {chips.length > 0 && (
+              <div style={{ marginTop: 18, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {chips.map((c, i) => (
+                  <div key={i} style={{
+                    background: 'rgba(255,255,255,0.18)',
+                    border: '1px solid rgba(255,255,255,0.22)',
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                    borderRadius: 99, padding: '6px 13px',
+                    fontSize: 12, fontWeight: 600,
+                    textTransform: 'capitalize',
+                  }}>{c.label}</div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Juliane badge (overlapping hero) */}
+        {/* Juliane verification card (overlaps hero) */}
         <div style={{
-          margin: '-30px 16px 16px',
-          background: SURFACE, borderRadius: 16,
+          margin: '-34px 16px 18px',
+          background: T.surface, borderRadius: 18,
           padding: '14px 16px',
-          display: 'flex', alignItems: 'center', gap: 12,
-          boxShadow: '0 6px 16px rgba(0,0,0,0.08)',
+          display: 'flex', alignItems: 'center', gap: 14,
+          boxShadow: shadow.raised,
           position: 'relative', zIndex: 2,
+          border: `1px solid ${T.borderSoft}`,
         }}>
           <div style={{
-            width: 46, height: 46, borderRadius: '50%',
-            background: `linear-gradient(135deg, ${ACCENT2}, ${ACCENT})`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 22, color: '#FFF',
-          }}>👩‍⚕️</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 14.5, fontWeight: 700, color: DARK }}>Juliane Cost</div>
-            <div style={{ fontSize: 12, color: SUB }}>Especialista Capilar</div>
+            width: 52, height: 52, borderRadius: '50%',
+            overflow: 'hidden',
+            border: `2.5px solid ${T.gold}`,
+            boxShadow: '0 4px 12px rgba(190,24,93,0.18)',
+            position: 'relative',
+            flexShrink: 0,
+          }}>
+            <Image
+              src="/images/ju-depois.png"
+              alt="Juliane Cost"
+              width={52} height={52}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              fontSize: 15.5, fontWeight: 700, color: T.ink,
+              fontFamily: fonts.display, letterSpacing: -0.2,
+            }}>
+              Juliane Cost
+            </div>
+            <div style={{ fontSize: 12, color: T.inkSoft, marginTop: 1 }}>
+              Especialista capilar · Ybera Paris
+            </div>
           </div>
           <div style={{
-            background: '#E8F8EE', color: GREEN,
-            borderRadius: 20, padding: '5px 10px',
+            background: T.greenSoft, color: T.green,
+            borderRadius: 99, padding: '5px 11px',
             fontSize: 11, fontWeight: 700,
-            display: 'inline-flex', alignItems: 'center', gap: 4,
-          }}>✓ Revisado</div>
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            flexShrink: 0,
+          }}>
+            <IconCheck size={12} stroke={2.5} />
+            Revisado
+          </div>
         </div>
 
         {/* Sub-tabs */}
-        <div style={{ margin: '0 16px 16px', display: 'flex', background: SURFACE, borderRadius: 12, padding: 4, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+        <div style={{
+          margin: '0 16px 18px', display: 'flex',
+          background: T.surface, borderRadius: 14, padding: 4,
+          boxShadow: shadow.card, border: `1px solid ${T.borderSoft}`,
+        }}>
           {(['rotina','produtos','dicas'] as Tab[]).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{
-              flex: 1, padding: '8px 0', borderRadius: 9, border: 'none',
-              background: tab === t ? ACCENT : 'transparent',
-              color: tab === t ? '#FFF' : MID,
+              flex: 1, padding: '9px 0', borderRadius: 10, border: 'none',
+              background: tab === t ? gradient.heroSoft : 'transparent',
+              color: tab === t ? '#FFF' : T.inkSoft,
               fontSize: 13, fontWeight: 700, cursor: 'pointer',
               textTransform: 'capitalize',
+              letterSpacing: 0.2,
+              transition: 'all 0.18s',
+              boxShadow: tab === t ? '0 2px 6px rgba(190,24,93,0.25)' : 'none',
             }}>{t}</button>
           ))}
         </div>
 
-        {/* Diagnóstico (sempre visível em Rotina) */}
+        {/* Diagnóstico (Rotina tab) */}
         {tab === 'rotina' && (
           <>
-            <div style={{ padding: '6px 24px 10px' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: DARK }}>Seu Diagnóstico</div>
-            </div>
+            <SectionLabel>Seu diagnóstico</SectionLabel>
             <div style={{
-              margin: '0 16px 16px', background: SURFACE, borderRadius: 14,
-              padding: 16,
-              boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+              margin: '0 16px 18px', background: T.surface, borderRadius: 16,
+              padding: 18, boxShadow: shadow.card,
+              border: `1px solid ${T.borderSoft}`,
             }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                <DiagItem label="Tipo de cabelo" value={profile?.hair_type ?? '—'} tone={ACCENT} />
-                <DiagItem label="Porosidade" value={profile?.porosity ?? '—'} tone={BLUE} />
-                <DiagItem label="Foco principal" value={mainProblem ?? 'Manutenção'} tone={GOLD} />
-                <DiagItem label="Químicas" value={profile?.chemical_history ?? 'Nenhuma'} tone={PURPLE} />
-                <DiagItem label="Comprimento" value={profile?.hair_length_cm ? `${profile.hair_length_cm} cm` : '—'} />
-                <DiagItem label="Lavagem ideal" value={`A cada ${profile?.hair_type?.includes('oleoso') ? '2-3' : profile?.hair_type?.includes('crespo') ? '5-7' : '3-5'} dias`} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <DiagItem label="Tipo de cabelo"  value={profile?.hair_type ?? '—'}      tone="pink" />
+                <DiagItem label="Porosidade"      value={profile?.porosity ?? '—'}       tone="gold" />
+                <DiagItem label="Foco principal"  value={mainProblem ?? 'Manutenção'}    tone="cream" />
+                <DiagItem label="Químicas"        value={profile?.chemical_history ?? 'Nenhuma'} />
+                <DiagItem label="Comprimento"     value={profile?.hair_length_cm ? `${profile.hair_length_cm} cm` : '—'} />
+                <DiagItem label="Lavagem ideal"   value={`A cada ${profile?.hair_type?.includes('oleoso') ? '2–3' : profile?.hair_type?.includes('crespo') ? '5–7' : '3–5'} dias`} />
               </div>
             </div>
 
-            {/* Rotina Semanal — week selector */}
-            <div style={{ padding: '6px 24px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: DARK }}>Rotina Semanal</div>
-              <div style={{ fontSize: 12.5, color: SUB }}>{plans.length} semanas</div>
-            </div>
+            {/* Week selector */}
+            <SectionLabel rightLabel={`${plans.length} semanas`}>
+              Rotina semanal
+            </SectionLabel>
             {plans.length > 0 && (
-              <div style={{ padding: '0 16px 12px', display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none' }}>
+              <div style={{
+                padding: '0 16px 14px', display: 'flex', gap: 6,
+                overflowX: 'auto', scrollbarWidth: 'none',
+              }}>
                 {plans.map(p => (
                   <button key={p.week_number} onClick={() => setActiveWeek(p.week_number)} style={{
-                    flexShrink: 0, padding: '6px 12px', borderRadius: 18,
-                    border: `1.5px solid ${p.week_number === activeWeek ? ACCENT : SEP}`,
-                    background: p.week_number === activeWeek ? ACCENT : SURFACE,
-                    color: p.week_number === activeWeek ? '#FFF' : DARK,
-                    fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
+                    flexShrink: 0, padding: '7px 14px', borderRadius: 99,
+                    border: `1.5px solid ${p.week_number === activeWeek ? T.pink : T.border}`,
+                    background: p.week_number === activeWeek ? T.pink : T.surface,
+                    color: p.week_number === activeWeek ? '#FFF' : T.ink,
+                    fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
                   }}>Sem. {p.week_number}</button>
                 ))}
               </div>
             )}
+
             {currentPlan && (
               <>
                 {/* Focus banner */}
-                <div style={{ margin: '0 16px 14px', background: SURFACE, borderRadius: 14, padding: '16px 18px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: ACCENT, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                    SEMANA {currentPlan.week_number} · FOCO
+                <div style={{
+                  margin: '0 16px 14px',
+                  background: gradient.warm,
+                  borderRadius: 16, padding: '16px 18px',
+                  border: `1px solid ${T.border}`,
+                }}>
+                  <div style={{
+                    fontSize: 11, fontWeight: 700, color: T.pinkDeep,
+                    textTransform: 'uppercase', letterSpacing: 1.2,
+                  }}>
+                    Semana {currentPlan.week_number} · Foco
                   </div>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: DARK, marginTop: 4 }}>{currentPlan.focus}</div>
+                  <div style={{
+                    fontSize: 19, fontWeight: 600, color: T.ink, marginTop: 4,
+                    fontFamily: fonts.display, letterSpacing: -0.3,
+                  }}>
+                    {currentPlan.focus}
+                  </div>
                 </div>
 
                 {/* 7-day breakdown */}
-                <div style={{ margin: '0 16px 14px', background: SURFACE, borderRadius: 14, padding: '4px 0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                <div style={{
+                  margin: '0 16px 16px', background: T.surface, borderRadius: 16,
+                  overflow: 'hidden', boxShadow: shadow.card,
+                  border: `1px solid ${T.borderSoft}`,
+                }}>
                   {currentPlan.tasks.map((task, i) => {
                     const dayName = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'][task.day - 1] ?? `Dia ${task.day}`;
-                    const color = colorForTask(task.title);
-                    const emoji = emojiForTask(task.title);
+                    const TaskIcon = iconForTask(task.title);
                     return (
                       <div key={i} style={{
-                        padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14,
-                        borderBottom: i < currentPlan.tasks.length - 1 ? `0.5px solid ${SEP}` : 'none',
+                        padding: '14px 18px',
+                        display: 'flex', alignItems: 'center', gap: 14,
+                        borderBottom: i < currentPlan.tasks.length - 1 ? `1px solid ${T.borderSoft}` : 'none',
                       }}>
                         <div style={{
-                          width: 36, height: 36, borderRadius: 10,
-                          background: `${color}22`, color, fontSize: 18,
+                          width: 38, height: 38, borderRadius: 11,
+                          background: T.rose, color: T.pinkDeep,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           flexShrink: 0,
-                        }}>{emoji}</div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 11.5, color: SUB, fontWeight: 600 }}>{dayName}</div>
-                          <div style={{ fontSize: 14, fontWeight: 600, color: DARK, marginTop: 2 }}>{task.title}</div>
-                          <div style={{ fontSize: 12.5, color: SUB, marginTop: 2, lineHeight: 1.4 }}>{task.description}</div>
+                          border: `1px solid ${T.pinkSoft}`,
+                        }}>
+                          <TaskIcon size={20} />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            fontSize: 11, color: T.inkSoft,
+                            fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5,
+                          }}>{dayName}</div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: T.ink, marginTop: 2 }}>
+                            {task.title}
+                          </div>
+                          <div style={{ fontSize: 12.5, color: T.inkSoft, marginTop: 2, lineHeight: 1.45 }}>
+                            {task.description}
+                          </div>
                         </div>
                       </div>
                     );
@@ -271,13 +322,23 @@ export default function PlanoPage() {
                 {/* Juliane's note */}
                 {currentPlan.juliane_notes && (
                   <div style={{
-                    margin: '0 16px 16px', background: '#FDE8EE', borderRadius: 14,
-                    padding: '14px 16px', borderLeft: `3px solid ${ACCENT}`,
+                    margin: '0 16px 18px', background: gradient.gold,
+                    borderRadius: 16, padding: '16px 18px',
+                    border: `1px solid ${T.gold}55`,
+                    position: 'relative',
                   }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: ACCENT, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
-                      💬 Da Juliane para você
+                    <div style={{
+                      fontSize: 10.5, fontWeight: 700, color: T.goldDeep,
+                      textTransform: 'uppercase', letterSpacing: 1.2,
+                      marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6,
+                    }}>
+                      <IconSparkles size={13} color={T.goldDeep} />
+                      Da Juliane para você
                     </div>
-                    <div style={{ fontSize: 13, color: DARK, lineHeight: 1.5, fontStyle: 'italic' }}>
+                    <div style={{
+                      fontSize: 14, color: T.ink, lineHeight: 1.55,
+                      fontFamily: fonts.display, fontStyle: 'italic',
+                    }}>
                       &ldquo;{currentPlan.juliane_notes}&rdquo;
                     </div>
                   </div>
@@ -285,11 +346,11 @@ export default function PlanoPage() {
               </>
             )}
             {plans.length === 0 && profile?.plan_status !== 'ready' && (
-              <div style={{ textAlign: 'center', padding: '40px 24px' }}>
-                <div style={{ fontSize: 44, marginBottom: 10 }}>⏳</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: DARK, marginBottom: 6 }}>Seu plano está sendo preparado</div>
-                <div style={{ fontSize: 13, color: SUB, lineHeight: 1.5 }}>A Juliane está personalizando seu cronograma. Em breve ficará pronto aqui!</div>
-              </div>
+              <EmptyState
+                emoji="⏳"
+                title="Seu plano está sendo preparado"
+                description="A Juliane está personalizando seu cronograma. Em breve ficará pronto aqui!"
+              />
             )}
           </>
         )}
@@ -297,33 +358,26 @@ export default function PlanoPage() {
         {/* Produtos tab */}
         {tab === 'produtos' && (
           <>
-            <div style={{ padding: '6px 24px 10px' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: DARK }}>✨ Produtos Recomendados</div>
-            </div>
-            <div style={{ margin: '0 16px 16px', display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
-              {products.filter(p => p.is_iberaparis).map(p => (
-                <ProductCard key={p.id} product={p} essential />
-              ))}
-              {products.filter(p => !p.is_iberaparis).map(p => (
-                <ProductCard key={p.id} product={p} />
-              ))}
+            <SectionLabel>Produtos recomendados</SectionLabel>
+            <div style={{ padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {products.filter(p => p.is_ybera).map(p => <ProductCard key={p.id} product={p} essential />)}
+              {products.filter(p => !p.is_ybera).map(p => <ProductCard key={p.id} product={p} />)}
               {products.length === 0 && (
-                <div style={{ textAlign: 'center', padding: '40px 0' }}>
-                  <div style={{ fontSize: 44, marginBottom: 10 }}>🛍️</div>
-                  <div style={{ fontSize: 14, color: SUB }}>Produtos serão exibidos em breve.</div>
-                </div>
+                <EmptyState emoji="🛍️" title="Catálogo em breve" description="Os produtos recomendados serão exibidos aqui." />
               )}
             </div>
             {currentPlan?.products && currentPlan.products.length > 0 && (
               <>
-                <div style={{ padding: '6px 24px 10px' }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: DARK }}>Para esta semana</div>
-                </div>
-                <div style={{ margin: '0 16px 16px', background: SURFACE, borderRadius: 14, padding: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                <SectionLabel>Para esta semana</SectionLabel>
+                <div style={{
+                  margin: '0 16px 18px', background: T.surface, borderRadius: 16,
+                  padding: '14px 18px', boxShadow: shadow.card,
+                  border: `1px solid ${T.borderSoft}`,
+                }}>
                   {currentPlan.products.map((prod, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '6px 0' }}>
-                      <span style={{ color: ACCENT, fontSize: 14, marginTop: 1 }}>✓</span>
-                      <span style={{ fontSize: 13.5, color: DARK, lineHeight: 1.4 }}>{prod}</span>
+                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '7px 0' }}>
+                      <IconCheck size={16} color={T.pink} stroke={2.3} />
+                      <span style={{ fontSize: 13.5, color: T.ink, lineHeight: 1.45 }}>{prod}</span>
                     </div>
                   ))}
                 </div>
@@ -335,23 +389,20 @@ export default function PlanoPage() {
         {/* Dicas tab */}
         {tab === 'dicas' && (
           <>
-            <div style={{ padding: '6px 24px 10px' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: DARK }}>💡 Dicas da Juliane</div>
-            </div>
-            <div style={{ margin: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <SectionLabel>Dicas da Juliane</SectionLabel>
+            <div style={{ margin: '0 16px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
               {currentPlan?.tips?.map((tip, i) => (
                 <div key={i} style={{
-                  background: SURFACE, borderRadius: 14, padding: '14px 16px',
-                  borderLeft: `3px solid ${ACCENT}`, boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                  background: T.surface, borderRadius: 14, padding: '14px 16px',
+                  borderLeft: `3px solid ${T.pink}`,
+                  boxShadow: shadow.card,
+                  border: `1px solid ${T.borderSoft}`,
                 }}>
-                  <div style={{ fontSize: 13.5, color: DARK, lineHeight: 1.55 }}>{tip}</div>
+                  <div style={{ fontSize: 13.5, color: T.ink, lineHeight: 1.6 }}>{tip}</div>
                 </div>
               ))}
               {(!currentPlan?.tips || currentPlan.tips.length === 0) && (
-                <div style={{ textAlign: 'center', padding: '40px 0' }}>
-                  <div style={{ fontSize: 44, marginBottom: 10 }}>💡</div>
-                  <div style={{ fontSize: 14, color: SUB }}>Dicas estarão disponíveis em breve.</div>
-                </div>
+                <EmptyState emoji="💡" title="Dicas em breve" description="Adicionaremos dicas personalizadas para esta semana." />
               )}
             </div>
           </>
@@ -362,58 +413,131 @@ export default function PlanoPage() {
   );
 }
 
-function DiagItem({ label, value, tone }: { label: string; value: string; tone?: string }) {
+// ─── Subcomponents ────────────────────────────────────────────────
+function SectionLabel({ children, rightLabel }: { children: React.ReactNode; rightLabel?: string }) {
+  return (
+    <div style={{ padding: '4px 24px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+      <div style={{
+        fontSize: 11, fontWeight: 700, color: T.inkSoft,
+        textTransform: 'uppercase', letterSpacing: 1.2,
+      }}>
+        {children}
+      </div>
+      {rightLabel && (
+        <div style={{ fontSize: 11.5, color: T.inkSoft, fontWeight: 500 }}>{rightLabel}</div>
+      )}
+    </div>
+  );
+}
+
+function DiagItem({ label, value, tone }: { label: string; value: string; tone?: 'pink' | 'gold' | 'cream' }) {
+  const toneColors = {
+    pink:  { bg: T.pinkSoft, fg: T.pinkDeep },
+    gold:  { bg: T.goldSoft, fg: T.goldDeep },
+    cream: { bg: T.rose,     fg: T.pinkDeep },
+  };
+  const c = tone ? toneColors[tone] : null;
   return (
     <div>
-      <div style={{ fontSize: 11, fontWeight: 600, color: SUB, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4 }}>{label}</div>
-      {tone ? (
-        <div style={{ display: 'inline-block', background: `${tone}1A`, color: tone, fontSize: 12.5, fontWeight: 700, borderRadius: 8, padding: '3px 9px', textTransform: 'capitalize' }}>
-          {value}
-        </div>
+      <div style={{
+        fontSize: 10.5, fontWeight: 700, color: T.inkSoft,
+        textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 5,
+      }}>
+        {label}
+      </div>
+      {c ? (
+        <div style={{
+          display: 'inline-block',
+          background: c.bg, color: c.fg,
+          fontSize: 12.5, fontWeight: 700,
+          borderRadius: 99, padding: '4px 11px',
+          textTransform: 'capitalize',
+        }}>{value}</div>
       ) : (
-        <div style={{ fontSize: 13.5, fontWeight: 600, color: DARK, textTransform: 'capitalize' }}>{value}</div>
+        <div style={{
+          fontSize: 13.5, fontWeight: 600, color: T.ink,
+          textTransform: 'capitalize',
+        }}>{value}</div>
       )}
     </div>
   );
 }
 
 function ProductCard({ product, essential = false }: { product: ProductRow; essential?: boolean }) {
+  const Icon = iconForCategory(product.category, product.name);
   return (
-    <div style={{ background: SURFACE, borderRadius: 14, padding: 14, display: 'flex', gap: 14, alignItems: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+    <div style={{
+      background: T.surface, borderRadius: 16, padding: 14,
+      display: 'flex', gap: 14, alignItems: 'center',
+      boxShadow: shadow.card,
+      border: `1px solid ${T.borderSoft}`,
+    }}>
       <div style={{
-        width: 56, height: 56, borderRadius: 12,
-        background: product.is_iberaparis ? `linear-gradient(135deg, ${ACCENT2}, ${ACCENT})` : `linear-gradient(135deg, #B19CD9, ${PURPLE})`,
+        width: 58, height: 58, borderRadius: 14,
+        background: product.is_ybera ? gradient.heroSoft : gradient.gold,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 26, flexShrink: 0,
+        color: product.is_ybera ? '#FFF' : T.goldDeep,
+        flexShrink: 0,
       }}>
-        {product.category?.includes('shampoo') ? '🧴' :
-         product.category?.includes('masc') ? '💜' :
-         product.category?.includes('óleo') || product.category?.includes('oleo') ? '✨' : '🌿'}
+        <Icon size={26} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 10.5, fontWeight: 700, color: SUB, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-          {product.brand ?? 'Iberaparis'}
+        <div style={{
+          fontSize: 10.5, fontWeight: 700, color: T.inkSoft,
+          textTransform: 'uppercase', letterSpacing: 0.6,
+        }}>
+          {product.brand ?? 'Ybera Paris'}
         </div>
-        <div style={{ fontSize: 13.5, fontWeight: 700, color: DARK, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div style={{
+          fontSize: 13.5, fontWeight: 700, color: T.ink,
+          marginTop: 2,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
           {product.name}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
           {product.price_brl && (
-            <span style={{ fontSize: 14.5, fontWeight: 800, color: DARK }}>R$ {product.price_brl.toFixed(2).replace('.', ',')}</span>
+            <span style={{
+              fontSize: 14.5, fontWeight: 800, color: T.ink,
+              fontFamily: fonts.display,
+            }}>
+              R$ {product.price_brl.toFixed(2).replace('.', ',')}
+            </span>
           )}
           {essential && (
-            <span style={{ fontSize: 10, fontWeight: 700, color: GREEN, background: '#E8F8EE', borderRadius: 6, padding: '2px 6px' }}>Essencial</span>
+            <span style={{
+              fontSize: 10, fontWeight: 700, color: T.green,
+              background: T.greenSoft, borderRadius: 6, padding: '2px 7px',
+            }}>Essencial</span>
           )}
         </div>
       </div>
       {product.affiliate_url && (
         <a href={product.affiliate_url} target="_blank" rel="noopener noreferrer" style={{
-          background: `linear-gradient(135deg, ${ACCENT2}, ${ACCENT})`,
-          color: '#FFF', fontSize: 11.5, fontWeight: 700,
-          padding: '8px 12px', borderRadius: 10, textDecoration: 'none',
+          background: gradient.heroSoft,
+          color: '#FFF', fontSize: 12, fontWeight: 700,
+          padding: '9px 13px', borderRadius: 11,
+          textDecoration: 'none',
           flexShrink: 0,
-        }}>🛍️ Ver</a>
+          display: 'inline-flex', alignItems: 'center', gap: 5,
+          boxShadow: '0 2px 8px rgba(190,24,93,0.25)',
+        }}>
+          <IconBag size={13} stroke={2} /> Ver
+        </a>
       )}
+    </div>
+  );
+}
+
+function EmptyState({ emoji, title, description }: { emoji: string; title: string; description: string }) {
+  return (
+    <div style={{ textAlign: 'center', padding: '40px 24px' }}>
+      <div style={{ fontSize: 44, marginBottom: 10 }}>{emoji}</div>
+      <div style={{
+        fontSize: 17, fontWeight: 600, color: T.ink, marginBottom: 6,
+        fontFamily: fonts.display,
+      }}>{title}</div>
+      <div style={{ fontSize: 13, color: T.inkSoft, lineHeight: 1.5 }}>{description}</div>
     </div>
   );
 }
