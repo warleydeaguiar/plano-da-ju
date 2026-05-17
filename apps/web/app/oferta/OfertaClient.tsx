@@ -212,14 +212,15 @@ function FloatingPetals() {
   );
 }
 
-// ─── Stat bar com gradiente ──────────────────────────────────
-function StatBar({ label, pct, color }: { label: string; pct: number; color: string }) {
+// ─── Stat bar com label + descrição + barra ──────────────────
+function StatBar({ label, desc, pct, color }: { label: string; desc: string; pct: number; color: string }) {
   return (
-    <div style={{ marginBottom: 9 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: T.inkSoft, marginBottom: 3, fontFamily: fonts.ui }}>
-        <span>{label}</span>
-        <span style={{ fontWeight: 700, color: T.ink }}>{pct}%</span>
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 1, fontFamily: fonts.ui }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: T.ink }}>{label}</span>
+        <span style={{ fontSize: 11, fontWeight: 700, color: T.ink, flexShrink: 0, marginLeft: 4 }}>{pct}%</span>
       </div>
+      <div style={{ fontSize: 10, color: T.inkSoft, marginBottom: 4, fontFamily: fonts.ui }}>{desc}</div>
       <div style={{ height: 7, background: 'rgba(196,140,150,0.13)', borderRadius: 99, overflow: 'hidden' }}>
         <div style={{
           height: '100%', width: `${pct}%`, background: color, borderRadius: 99,
@@ -231,10 +232,9 @@ function StatBar({ label, pct, color }: { label: string; pct: number; color: str
   );
 }
 
-function CompareCard({ side, name, stats }: {
+function CompareCard({ side, stats }: {
   side: 'antes' | 'depois';
-  name: string;
-  stats: { label: string; pct: number }[];
+  stats: { label: string; desc: string; pct: number }[];
 }) {
   const isAfter = side === 'depois';
   return (
@@ -250,7 +250,7 @@ function CompareCard({ side, name, stats }: {
       <div style={{
         display: 'inline-flex', alignItems: 'center', gap: 5,
         fontSize: 11, fontWeight: 700, color: '#fff',
-        marginBottom: 10, letterSpacing: 0.5, textTransform: 'uppercase',
+        marginBottom: 12, letterSpacing: 0.5, textTransform: 'uppercase',
         background: isAfter
           ? `linear-gradient(135deg, ${T.green}, ${T.greenDeep})`
           : `linear-gradient(135deg, ${T.red}, #DC2626)`,
@@ -258,14 +258,8 @@ function CompareCard({ side, name, stats }: {
       }}>
         {isAfter ? '✨ Depois' : 'Antes'}
       </div>
-      <div style={{
-        fontSize: 13, color: T.ink, fontWeight: 700,
-        marginBottom: 12, fontFamily: fonts.ui,
-      }}>
-        {name}
-      </div>
       {stats.map((s, i) => (
-        <StatBar key={i} label={s.label} pct={s.pct} color={isAfter
+        <StatBar key={i} label={s.label} desc={s.desc} pct={s.pct} color={isAfter
           ? `linear-gradient(90deg, ${T.green}, ${T.greenDeep})`
           : `linear-gradient(90deg, #FB7185, ${T.red})`
         } />
@@ -1190,13 +1184,17 @@ export default function OfertaClient() {
 
           {/* Antes/Depois */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 18, animation: 'cardIn 0.6s cubic-bezier(.2,.85,.25,1)' }}>
-            <CompareCard side="antes" name="Comprimento de cabelo" stats={[
-              { label: 'Pequeno', pct: 25 }, { label: 'Alto', pct: 90 },
-              { label: 'Frizz', pct: 75 }, { label: 'Hidratação', pct: 35 }, { label: 'Pontas', pct: 25 },
+            <CompareCard side="antes" stats={[
+              { label: 'Comprimento do cabelo', desc: 'Pequeno',  pct: 25 },
+              { label: 'Frizz',                 desc: 'Alto',     pct: 90 },
+              { label: 'Hidratação',            desc: 'Baixo',    pct: 25 },
+              { label: 'Pontas',                desc: 'Ralas',    pct: 25 },
             ]} />
-            <CompareCard side="depois" name="Comprimento" stats={[
-              { label: 'Grande', pct: 90 }, { label: 'Alto', pct: 90 },
-              { label: 'Frizz', pct: 100 }, { label: 'Hidratação', pct: 100 }, { label: 'Pontas', pct: 98 },
+            <CompareCard side="depois" stats={[
+              { label: 'Comprimento',  desc: 'Grande',   pct: 90  },
+              { label: 'Frizz',        desc: 'Pouco',    pct: 5   },
+              { label: 'Hidratação',   desc: 'Elevado',  pct: 100 },
+              { label: 'Pontas',       desc: 'Cheias',   pct: 88  },
             ]} />
           </div>
 
