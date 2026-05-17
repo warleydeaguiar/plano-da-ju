@@ -24,6 +24,7 @@ const NAV: NavItem[] = [
       { label: 'Conexões Evolution', href: '/grupos/conexao' },
     ],
   },
+  { icon: '🎯', label: 'Leads', href: '/leads' },
   { icon: '📞', label: 'Followup', href: '/followup' },
   {
     icon: '🎯', label: 'Quiz', href: '/quiz',
