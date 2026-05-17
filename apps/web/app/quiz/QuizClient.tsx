@@ -1569,7 +1569,8 @@ export default function QuizClient() {
   useEffect(() => { trackView() }, [])
 
   useEffect(() => {
-    fetch('/api/quiz/images')
+    // cache: 'no-store' garante dados frescos sem cache do browser
+    fetch('/api/quiz/images', { cache: 'no-store' })
       .then(r => r.json())
       .then((data: Record<string, string>) => {
         if (data && typeof data === 'object') setImages(data)

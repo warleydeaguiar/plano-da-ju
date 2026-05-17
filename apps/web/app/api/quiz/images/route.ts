@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-export const revalidate = 60 // cache 1 minuto
+export const dynamic = 'force-dynamic' // nunca cachear — imagens mudam ao vivo
 
 function client() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -24,7 +24,7 @@ export async function GET() {
       if (row.key && row.url) map[row.key] = row.url
     }
     return NextResponse.json(map, {
-      headers: { 'Cache-Control': 'public, max-age=60, s-maxage=60, stale-while-revalidate=300' },
+      headers: { 'Cache-Control': 'no-store' },
     })
   } catch {
     return NextResponse.json({})
