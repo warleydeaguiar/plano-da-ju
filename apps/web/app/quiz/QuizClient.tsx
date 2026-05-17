@@ -821,53 +821,155 @@ function InfoBio({ photoSrc, beforeSrc }: { photoSrc: string; beforeSrc: string 
 }
 
 function InfoDepoimentos({ images }: { images: Record<string, string> }) {
+  const [activeSlide, setActiveSlide] = useState(0)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
   const fb = (key: string, fallback: string) => images[key] || fallback
   const cards = [
-    { src: fb('plano_capilar_depoimento_1', '/images/resultado-antes1.png'), name: 'Gabriela Bernicki', desc: 'Mudou a rotina e todos os produtos' },
-    { src: fb('plano_capilar_depoimento_2', '/images/resultado-antes2.png'), name: 'Beatriz', desc: 'Plano capilar' },
-    { src: fb('plano_capilar_depoimento_3', '/images/resultado-antes3.png'), name: 'Fernanda', desc: 'Plano capilar' },
+    { src: fb('plano_capilar_depoimento_1', '/images/resultado-antes1.png'), name: 'Gabriela Benicio', desc: 'Mudou a rotina e todos os produtos' },
+    { src: fb('plano_capilar_depoimento_2', '/images/resultado-antes2.png'), name: 'Beatriz', desc: 'Plano capilar da Ju' },
+    { src: fb('plano_capilar_depoimento_3', '/images/resultado-antes3.png'), name: 'Fernanda', desc: 'Plano capilar da Ju' },
     { src: fb('plano_capilar_depoimento_4', '/images/resultado-antes4.png'), name: 'Rafaela Nascimento', desc: 'Resultado real' },
+    { src: fb('plano_capilar_depoimento_5', '/images/resultado-antes5.png'), name: 'Ketley Visantos', desc: '@ketleyvisantos' },
   ]
+
+  const handleScroll = () => {
+    if (!scrollRef.current) return
+    const { scrollLeft, offsetWidth } = scrollRef.current
+    setActiveSlide(Math.round(scrollLeft / offsetWidth))
+  }
+
+  const youtubeParams = 'autoplay=1&mute=1&loop=1&playsinline=1&rel=0&controls=1'
+
   return (
     <div>
       <h2 style={{
         fontSize: 24, fontFamily: fonts.display, fontWeight: 600, color: T.ink,
-        lineHeight: 1.2, textAlign: 'center', margin: '0 0 24px', letterSpacing: -0.4,
+        lineHeight: 1.2, textAlign: 'center', margin: '0 0 20px', letterSpacing: -0.4,
       }}>
         Resultados de quem aplicou meu <em style={{ color: T.pinkDeep }}>plano personalizado</em>
       </h2>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 18 }}>
-        {cards.map((d, i) => (
-          <div key={i} style={{
-            borderRadius: 18, overflow: 'hidden',
-            background: '#fff',
-            boxShadow: '0 8px 20px rgba(190,24,93,0.08)',
-            border: `1px solid ${T.border}`,
-            animation: `cardIn 0.55s ${i * 80}ms both cubic-bezier(.2,.85,.25,1)`,
-          }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={d.src}
-              alt={d.name}
-              style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'contain' }}
-            />
-            <div style={{ padding: '12px 16px' }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: T.ink, fontFamily: fonts.ui }}>{d.name}</div>
-              <div style={{ fontSize: 11, color: T.pinkDeep, marginTop: 2, fontWeight: 600, letterSpacing: 0.3, textTransform: 'uppercase' }}>{d.desc}</div>
+
+      {/* Carrossel de imagens */}
+      <div style={{ position: 'relative', marginBottom: 6 }}>
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="carousel-scroll"
+          style={{
+            display: 'flex', overflowX: 'auto', gap: 0,
+            scrollSnapType: 'x mandatory',
+            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            borderRadius: 18,
+          }}
+        >
+          {cards.map((d, i) => (
+            <div key={i} style={{
+              minWidth: '100%', scrollSnapAlign: 'center',
+              borderRadius: 18, overflow: 'hidden',
+              background: '#fff',
+              boxShadow: '0 8px 20px rgba(190,24,93,0.08)',
+              border: `1px solid ${T.border}`,
+              flexShrink: 0,
+            }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={d.src}
+                alt={d.name}
+                style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'contain' }}
+              />
+              <div style={{ padding: '12px 16px' }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: T.ink, fontFamily: fonts.ui }}>{d.name}</div>
+                <div style={{ fontSize: 11, color: T.pinkDeep, marginTop: 2, fontWeight: 600, letterSpacing: 0.3, textTransform: 'uppercase' }}>{d.desc}</div>
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
+        {/* Dots */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 12 }}>
+          {cards.map((_, i) => (
+            <div key={i} style={{
+              width: i === activeSlide ? 18 : 7, height: 7,
+              borderRadius: 99,
+              background: i === activeSlide ? T.pinkDeep : T.pinkSoft,
+              transition: 'all 0.3s',
+              cursor: 'pointer',
+            }} onClick={() => {
+              scrollRef.current?.scrollTo({ left: i * scrollRef.current.offsetWidth, behavior: 'smooth' })
+            }} />
+          ))}
+        </div>
       </div>
+
+      {/* Vídeo depoimento 1 — Beatriz */}
+      <div style={{ marginTop: 18 }}>
+        <div style={{
+          borderRadius: 18, overflow: 'hidden',
+          boxShadow: '0 8px 20px rgba(190,24,93,0.08)',
+          position: 'relative', width: '100%', paddingTop: '56.25%',
+        }}>
+          <iframe
+            src={`https://www.youtube.com/embed/Fwvy0YX7cZI?${youtubeParams}&playlist=Fwvy0YX7cZI`}
+            title="Depoimento Beatriz - Plano capilar da Ju"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            style={{
+              position: 'absolute', top: 0, left: 0,
+              width: '100%', height: '100%', border: 'none',
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Vídeo depoimento 2 — Fernanda */}
+      <div style={{ marginTop: 14 }}>
+        <div style={{
+          borderRadius: 18, overflow: 'hidden',
+          boxShadow: '0 8px 20px rgba(190,24,93,0.08)',
+          position: 'relative', width: '100%', paddingTop: '56.25%',
+        }}>
+          <iframe
+            src={`https://www.youtube.com/embed/bguz9ckzABM?${youtubeParams}&playlist=bguz9ckzABM`}
+            title="Depoimento Fernanda - Plano capilar da Ju"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            style={{
+              position: 'absolute', top: 0, left: 0,
+              width: '100%', height: '100%', border: 'none',
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Review — Rafaela Nascimento */}
       <div style={{
+        marginTop: 18, background: '#fff', borderRadius: 14,
+        padding: '14px 16px',
+        boxShadow: '0 2px 12px rgba(0,0,0,0.07)',
+        border: '1px solid #F3F4F6',
+      }}>
+        <div style={{ color: T.gold, fontSize: 14, letterSpacing: 1, marginBottom: 6 }}>★★★★★</div>
+        <div style={{ fontWeight: 700, fontSize: 14, color: T.ink, fontFamily: fonts.ui }}>Rafaela Nascimento</div>
+        <div style={{ fontSize: 11, color: T.inkSoft, fontFamily: fonts.ui, marginBottom: 8 }}>@rafaela.nascimento</div>
+        <div style={{ fontSize: 13, color: '#6B7280', fontFamily: fonts.ui, lineHeight: 1.55 }}>
+          Meu cabelo ficou menos elástico, menos oleoso e começou a crescer MUITO. Ju, você é DEMAIS!!
+        </div>
+      </div>
+
+      {/* CTA */}
+      <div style={{
+        marginTop: 18,
         background: `linear-gradient(135deg, ${T.cream}, ${T.rose})`,
         borderRadius: 16, padding: '14px 18px', textAlign: 'center',
-        marginBottom: 6, border: `1px solid ${T.pinkSoft}`,
+        border: `1px solid ${T.pinkSoft}`,
       }}>
         <div style={{ fontFamily: fonts.display, fontSize: 16, fontWeight: 600, color: T.ink, marginBottom: 2 }}>
-          Juliane Cost
+          Juliane Cost Tricologista
         </div>
         <div style={{ fontSize: 11, color: T.pinkDeep, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase' }}>
-          Tricologista · Especialista em cabelo feminino
+          Especialista em cabelo feminino
         </div>
       </div>
     </div>
@@ -932,58 +1034,133 @@ function InfoScreen({ q, onContinue, images }: { q: QuizStep; onContinue: () => 
   )
 }
 
-// ─── Tela: loading com sparkles ───────────────────────────────
-function LoadingScreen({ q, pct }: { q: QuizStep; pct: number }) {
+// ─── Tela: loading com prova social ───────────────────────────
+function LoadingScreen({ q, pct, images }: { q: QuizStep; pct: number; images: Record<string, string> }) {
+  const socialProfiles = [
+    { key: 'plano_capilar_social_1', handle: '@lessalarissaa' },
+    { key: 'plano_capilar_social_2', handle: '@_leticiadourado' },
+    { key: 'plano_capilar_social_3', handle: '@juliafranco_1' },
+    { key: 'plano_capilar_social_4', handle: '@marinafernandesd' },
+    { key: 'plano_capilar_social_5', handle: '@ketleyvisantos' },
+  ]
+
   return (
     <div style={{
-      flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-      justifyContent: 'center', padding: 32, gap: 24, position: 'relative',
+      flex: 1, display: 'flex', flexDirection: 'column',
+      padding: '20px 24px 32px', gap: 20,
     }}>
-      {/* Anel animado com gradient */}
-      <div style={{
-        position: 'relative', width: 120, height: 120,
-      }}>
-        <svg width="120" height="120" viewBox="0 0 120 120" style={{ transform: 'rotate(-90deg)' }}>
-          <defs>
-            <linearGradient id="loadingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor={T.gold} />
-              <stop offset="50%" stopColor={T.pink} />
-              <stop offset="100%" stopColor={T.pinkDeep} />
-            </linearGradient>
-          </defs>
-          <circle cx="60" cy="60" r="50" fill="none" stroke={T.pinkSoft} strokeWidth="6" />
-          <circle
-            cx="60" cy="60" r="50" fill="none"
-            stroke="url(#loadingGrad)" strokeWidth="6"
-            strokeLinecap="round"
-            strokeDasharray={2 * Math.PI * 50}
-            strokeDashoffset={(1 - pct) * 2 * Math.PI * 50}
-            style={{ transition: 'stroke-dashoffset 0.6s cubic-bezier(.2,.7,.3,1)' }}
-          />
-        </svg>
+      {/* Barra de progresso */}
+      <div>
         <div style={{
-          position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: fonts.display, fontSize: 32, fontWeight: 600, color: T.ink, letterSpacing: -1,
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          marginBottom: 8,
         }}>
-          {Math.round(pct * 100)}%
+          <span style={{
+            fontSize: 13, color: T.inkSoft, fontFamily: fonts.ui, fontWeight: 500,
+            lineHeight: 1.4, flex: 1, paddingRight: 12,
+          }}>
+            {q.title}
+          </span>
+          <span style={{
+            fontSize: 14, fontWeight: 700, color: T.ink,
+            fontFamily: fonts.ui, letterSpacing: -0.2,
+          }}>
+            {Math.round(pct * 100)}%
+          </span>
+        </div>
+        <div style={{ height: 6, background: '#E5E7EB', borderRadius: 99, overflow: 'hidden' }}>
+          <div style={{
+            height: '100%', width: `${pct * 100}%`,
+            background: `linear-gradient(90deg, ${T.pink}, ${T.pinkDeep})`,
+            borderRadius: 99,
+            transition: 'width 0.6s cubic-bezier(.2,.7,.3,1)',
+          }} />
         </div>
       </div>
-      <h2 style={{
-        fontSize: 18, fontWeight: 600, color: T.ink,
-        fontFamily: fonts.display,
-        lineHeight: 1.4, textAlign: 'center', margin: 0, maxWidth: 320,
-        letterSpacing: -0.2,
-      }}>
-        {q.title}
-      </h2>
-      <div style={{ display: 'flex', gap: 6 }}>
-        {[0, 1, 2].map(i => (
-          <div key={i} style={{
-            width: 8, height: 8, borderRadius: '50%',
-            background: T.pink,
-            animation: `dotPulse 1.4s ${i * 0.2}s ease-in-out infinite`,
-          }} />
+
+      {/* Headline social proof */}
+      <div style={{ textAlign: 'center' }}>
+        <div style={{
+          fontFamily: fonts.display, fontSize: 34, fontWeight: 700,
+          color: T.gold, letterSpacing: -1, lineHeight: 1,
+        }}>
+          3.500 mulheres
+        </div>
+        <div style={{
+          fontFamily: fonts.display, fontSize: 17, fontWeight: 600,
+          color: T.ink, marginTop: 4,
+        }}>
+          escolheram a metodologia da Juliane Cost
+        </div>
+      </div>
+
+      {/* Grade de 5 fotos */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }}>
+        {socialProfiles.map((p, i) => (
+          <div key={i} style={{ textAlign: 'center' }}>
+            {images[p.key] ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={images[p.key]}
+                alt={p.handle}
+                style={{
+                  width: '100%', aspectRatio: '1/1', objectFit: 'cover',
+                  borderRadius: 8, display: 'block',
+                }}
+              />
+            ) : (
+              <div style={{
+                width: '100%', aspectRatio: '1/1', borderRadius: 8,
+                background: `linear-gradient(135deg, ${T.rose}, ${T.cream})`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 20,
+              }}>
+                👤
+              </div>
+            )}
+            <div style={{
+              fontSize: 8, color: T.inkSoft, marginTop: 4,
+              fontFamily: fonts.ui, fontWeight: 500,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {p.handle}
+            </div>
+          </div>
         ))}
+      </div>
+
+      {/* Card: compraram nos últimos minutos */}
+      <div style={{
+        background: '#fff', borderRadius: 14, padding: '14px 16px',
+        boxShadow: '0 2px 12px rgba(0,0,0,0.07)',
+        border: '1px solid #F3F4F6',
+      }}>
+        <div style={{ fontSize: 15, fontFamily: fonts.ui, color: T.ink, lineHeight: 1.4 }}>
+          <strong>46 mulheres</strong> compraram nos ultimos minutos
+        </div>
+        <div style={{ fontSize: 13, color: T.inkSoft, fontFamily: fonts.ui, marginTop: 2 }}>
+          O plano capilar personalizado
+        </div>
+      </div>
+
+      {/* Review Ketley Lorrayne */}
+      <div style={{
+        background: '#fff', borderRadius: 14, padding: '14px 16px',
+        boxShadow: '0 2px 12px rgba(0,0,0,0.07)',
+        border: '1px solid #F3F4F6',
+      }}>
+        <div style={{ color: T.gold, fontSize: 14, letterSpacing: 1, marginBottom: 6 }}>
+          ★★★★★
+        </div>
+        <div style={{ fontWeight: 700, fontSize: 14, color: T.ink, fontFamily: fonts.ui }}>
+          Ketley Lorrayne
+        </div>
+        <div style={{ fontSize: 11, color: T.inkSoft, fontFamily: fonts.ui, marginBottom: 8 }}>
+          @Ketley.Lorrayne
+        </div>
+        <div style={{ fontSize: 13, color: '#6B7280', fontFamily: fonts.ui, lineHeight: 1.55 }}>
+          Meu cabelo estava caindo muito, depois que escolhi os produtos certo com a Ju eu consegui recuperar meu cabelo, e ainda peguei vários descontos! Jú você é a melhor!
+        </div>
       </div>
     </div>
   )
@@ -1543,6 +1720,7 @@ export default function QuizClient() {
           0%, 100% { opacity: 0.3; transform: scale(0.85); }
           50% { opacity: 1; transform: scale(1.2); }
         }
+        .carousel-scroll::-webkit-scrollbar { display: none; }
         @keyframes celebrate {
           0% { opacity: 0; transform: scale(0.6) rotate(-10deg); }
           60% { opacity: 1; transform: scale(1.1) rotate(5deg); }
@@ -1587,7 +1765,7 @@ export default function QuizClient() {
               <TextareaScreen q={step} value={textInput} onChange={setTextInput} onContinue={saveTextarea} />
             )}
             {step?.kind === 'info' && <InfoScreen q={step} onContinue={goNext} images={images} />}
-            {step?.kind === 'loading' && <LoadingScreen q={step} pct={pct} />}
+            {step?.kind === 'loading' && <LoadingScreen q={step} pct={pct} images={images} />}
             {step?.kind === 'phone' && (
               <PhoneScreen q={step} value={phoneInput} onChange={setPhoneInput} onSubmit={savePhone} />
             )}
