@@ -855,14 +855,21 @@ function InfoDepoimentos({ images }: { images: Record<string, string> }) {
 
       {/* Carrossel de imagens */}
       <div style={{ position: 'relative', marginBottom: 6 }}>
-        {/* Container externo com overflow:hidden para clipar os slides laterais */}
-        <div style={{ overflow: 'hidden', borderRadius: 18 }}>
+        {/* overflow:hidden no wrapper clipa os slides vizinhos */}
+        <div style={{ overflow: 'hidden', borderRadius: 18, border: `1px solid ${T.border}` }}>
+          {/*
+            CSS Grid com gridAutoColumns:'100%' é a forma mais confiável de fazer
+            carousel — cada coluna fica exatamente 100% da largura visível,
+            sem o problema do flex-basis percentual em containers overflow:auto
+          */}
           <div
             ref={scrollRef}
             onScroll={handleScroll}
             className="carousel-scroll"
             style={{
-              display: 'flex',
+              display: 'grid',
+              gridAutoFlow: 'column',
+              gridAutoColumns: '100%',
               overflowX: 'auto',
               scrollSnapType: 'x mandatory',
               WebkitOverflowScrolling: 'touch',
@@ -872,11 +879,9 @@ function InfoDepoimentos({ images }: { images: Record<string, string> }) {
           >
             {cards.map((d, i) => (
               <div key={i} style={{
-                flex: '0 0 100%',  // largura exata do container, sem encolher
                 scrollSnapAlign: 'start',
                 background: '#fff',
                 boxShadow: '0 8px 20px rgba(190,24,93,0.08)',
-                border: `1px solid ${T.border}`,
               }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
