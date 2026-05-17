@@ -130,18 +130,23 @@ function buildUpcoming(plan: HairPlanRow | undefined, events: HairEvent[]) {
   };
   const items: Array<{ icon: string; day: string; name: string; note: string; status: 'done' | 'today' | 'future' }> = [];
 
-  // Last 2 events as "done"
-  const recent = [...events].sort((a, b) => b.occurred_at.localeCompare(a.occurred_at)).slice(0, 2);
-  for (const e of recent) {
+  // Last 2 events as "done" — dedupe by event_type so we don't repeat the same type
+  const sortedEvents = [...events].sort((a, b) => b.occurred_at.localeCompare(a.occurred_at));
+  const seenTypes = new Set<string>();
+  for (const e of sortedEvents) {
+    if (seenTypes.has(e.event_type)) continue;
+    seenTypes.add(e.event_type);
     const meta = labels[e.event_type] ?? { icon: '✓', name: e.event_type, note: '' };
     const d = Math.floor((today.getTime() - new Date(e.occurred_at).getTime()) / 86_400_000);
+    const dayLabel = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'][new Date(e.occurred_at).getDay()];
     items.push({
       icon: '✓',
-      day: d === 0 ? `Hoje · ${meta.name}` : `Há ${d} dia${d > 1 ? 's' : ''}`,
+      day: d === 0 ? `Hoje · ${dayLabel}` : d === 1 ? 'Ontem' : `Há ${d} dias`,
       name: meta.name,
       note: meta.note,
       status: 'done',
     });
+    if (items.length >= 2) break;
   }
 
   // Today + future from plan tasks (first 2 tasks)

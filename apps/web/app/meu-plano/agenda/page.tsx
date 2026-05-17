@@ -104,21 +104,35 @@ export default function AgendaPage() {
   type AgendaEvent = { date: Date; iso: string; title: string; description?: string; meta: ReturnType<typeof emojiFor>; status: 'done' | 'today' | 'future' };
   const scheduled: AgendaEvent[] = [];
 
-  // Plan tasks placed on the right day starting from plan_released_at
+  // Plan tasks placed on actual weekday (task.day: 1=Mon..7=Sun) starting from
+  // the Monday on/after plan_released_at. We use *local* date components to
+  // avoid the UTC→local timezone shift that would push events back a day.
   if (planReleased && plans.length > 0) {
+    // Local-midnight version of plan start (drops timezone offset)
+    const localStart = new Date(planReleased.getFullYear(), planReleased.getMonth(), planReleased.getDate());
+    // Find the Monday on or after the plan start (so week 1's day 1 is a Monday)
+    const dow = localStart.getDay(); // 0=Sun..6=Sat
+    const daysUntilMonday = dow === 1 ? 0 : (8 - dow) % 7;
+    const week1Monday = new Date(localStart);
+    week1Monday.setDate(localStart.getDate() + daysUntilMonday);
+    week1Monday.setHours(12, 0, 0, 0); // noon to avoid DST edge cases
+
+    const todayLocal = new Date();
+    todayLocal.setHours(0, 0, 0, 0);
+
     for (const plan of plans) {
-      const weekStart = new Date(planReleased);
-      weekStart.setDate(weekStart.getDate() + (plan.week_number - 1) * 7);
+      const weekMonday = new Date(week1Monday);
+      weekMonday.setDate(week1Monday.getDate() + (plan.week_number - 1) * 7);
       for (const task of plan.tasks ?? []) {
-        const date = new Date(weekStart);
-        date.setDate(weekStart.getDate() + (task.day - 1));
-        const iso = date.toISOString().split('T')[0];
-        const isToday = date.toDateString() === today.toDateString();
-        const isPast  = date < today && !isToday;
+        const date = new Date(weekMonday);
+        date.setDate(weekMonday.getDate() + (task.day - 1));
+        const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        const dayKey = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+        const todayKey = todayLocal.getTime();
         scheduled.push({
           date, iso, title: task.title, description: task.description,
           meta: emojiFor(task.title),
-          status: isPast ? 'done' : isToday ? 'today' : 'future',
+          status: dayKey < todayKey ? 'done' : dayKey === todayKey ? 'today' : 'future',
         });
       }
     }

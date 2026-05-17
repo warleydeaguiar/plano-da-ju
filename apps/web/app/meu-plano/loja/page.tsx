@@ -34,13 +34,15 @@ const CATEGORIES = [
   { key: 'protetor',      label: 'Protetor'     },
 ];
 
-function emojiFor(category: string | null) {
-  const c = (category ?? '').toLowerCase();
-  if (c.includes('shampoo'))      return '🧴';
-  if (c.includes('condicionador')) return '💧';
-  if (c.includes('masc'))         return '💜';
-  if (c.includes('óleo') || c.includes('oleo')) return '✨';
-  if (c.includes('protetor'))     return '☀️';
+function emojiFor(category: string | null, name?: string | null) {
+  const ref = `${category ?? ''} ${name ?? ''}`.toLowerCase();
+  if (ref.includes('shampoo') || ref.includes('limpeza') || ref.includes('co-wash')) return '🧴';
+  if (ref.includes('condicionador'))                                                  return '💧';
+  if (ref.includes('máscara') || ref.includes('mascara') || ref.includes('hidrat'))   return '💜';
+  if (ref.includes('óleo') || ref.includes('oleo'))                                   return '✨';
+  if (ref.includes('protetor') || ref.includes('térm'))                               return '☀️';
+  if (ref.includes('recons') || ref.includes('queratina'))                            return '💪';
+  if (ref.includes('nutri') || ref.includes('karit'))                                 return '🥥';
   return '🌿';
 }
 
@@ -211,7 +213,7 @@ function ProductCard({ product, index, isMatch = false, outlined = false }: {
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontSize: 32,
       }}>
-        {!product.image_url && emojiFor(product.category)}
+        {!product.image_url && emojiFor(product.category, product.name)}
         {product.affiliate_url && (
           <div style={{
             position: 'absolute', top: 6, right: 6,

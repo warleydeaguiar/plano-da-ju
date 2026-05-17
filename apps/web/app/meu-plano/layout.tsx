@@ -19,6 +19,15 @@ const TABS = [
   { href: '/meu-plano/loja',      icon: '🛍️', label: 'Loja'      },
 ];
 
+const TITLES: Record<string, string> = {
+  '/meu-plano':           'Início — Plano da Ju',
+  '/meu-plano/agenda':    'Agenda — Plano da Ju',
+  '/meu-plano/plano':     'Meu Plano — Plano da Ju',
+  '/meu-plano/progresso': 'Progresso — Plano da Ju',
+  '/meu-plano/loja':      'Produtos — Plano da Ju',
+  '/meu-plano/check-in':  'Check-in — Plano da Ju',
+};
+
 const HIDE_NAV_ON = ['/meu-plano/check-in'];
 
 export default function MeuPlanoLayout({ children }: { children: React.ReactNode }) {
@@ -37,6 +46,12 @@ export default function MeuPlanoLayout({ children }: { children: React.ReactNode
       else setReady(true);
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Set per-route document title
+  useEffect(() => {
+    const t = TITLES[pathname];
+    if (t) document.title = t;
+  }, [pathname]);
 
   const hideNav = HIDE_NAV_ON.some(p => pathname.startsWith(p));
 
