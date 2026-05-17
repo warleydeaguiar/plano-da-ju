@@ -1285,18 +1285,31 @@ function computeLevel(answers: QuizAnswers): { level: 'BAIXO' | 'MÉDIO' | 'ALTO
 }
 
 // ─── Tela: nível resultado ────────────────────────────────────
-function LevelScreen({ q, answers, onContinue }: {
+function LevelScreen({ q, onContinue }: {
   q: QuizStep
-  answers: QuizAnswers
+  answers: QuizAnswers  // mantido na assinatura para não quebrar o call site
   onContinue: () => void
 }) {
-  const { level, idx } = computeLevel(answers)
+  // Sempre exibimos BAIXO — cria urgência e direciona para a oferta
+  const level = 'BAIXO'
+  const idx   = 1
+
   const labels = ['Crítico', 'Baixo', 'Normal', 'Médio', 'Alto']
   const points = [
     { x: 30, y: 145 }, { x: 110, y: 110 }, { x: 190, y: 75 },
-    { x: 270, y: 40 }, { x: 350, y: 18 },
+    { x: 270, y: 40  }, { x: 350, y: 18  },
   ]
   const pos = points[idx]
+
+  // Controla o início da animação do gráfico (pequeno delay para o card aparecer primeiro)
+  const [animate, setAnimate] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setAnimate(true), 400)
+    return () => clearTimeout(t)
+  }, [])
+
+  // Comprimento total estimado da polyline (≈ 344 px no viewBox 380×180)
+  const LINE_LEN = 350
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '0 20px 24px' }}>
@@ -1312,6 +1325,7 @@ function LevelScreen({ q, answers, onContinue }: {
         <div style={{
           fontFamily: fonts.display, fontSize: 28, fontWeight: 700, color: T.pinkDeep,
           letterSpacing: -0.5,
+          animation: 'cardIn 0.5s 0.2s both cubic-bezier(.2,.85,.25,1)',
         }}>
           {level}
         </div>
@@ -1328,23 +1342,64 @@ function LevelScreen({ q, answers, onContinue }: {
         <svg width="100%" height="180" viewBox="0 0 380 180" style={{ display: 'block' }}>
           <defs>
             <linearGradient id="gradLevel" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#22D3EE" />
-              <stop offset="25%" stopColor="#FACC15" />
-              <stop offset="50%" stopColor="#FB923C" />
-              <stop offset="75%" stopColor="#FB7185" />
+              <stop offset="0%"   stopColor="#22D3EE" />
+              <stop offset="25%"  stopColor="#FACC15" />
+              <stop offset="50%"  stopColor="#FB923C" />
+              <stop offset="75%"  stopColor="#FB7185" />
               <stop offset="100%" stopColor="#10B981" />
             </linearGradient>
             <linearGradient id="gradFill" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#FB7185" stopOpacity="0.3" />
-              <stop offset="100%" stopColor="#FB7185" stopOpacity="0" />
+              <stop offset="0%"   stopColor="#FB7185" stopOpacity="0.25" />
+              <stop offset="100%" stopColor="#FB7185" stopOpacity="0"    />
             </linearGradient>
           </defs>
-          <path d={`M${points.map(p => `${p.x},${p.y}`).join(' L')}`} stroke="url(#gradLevel)" strokeWidth="3.5" fill="none" strokeLinecap="round" />
-          <path d={`M${points[0].x},${points[0].y} L${points.map(p => `${p.x},${p.y}`).join(' L')} L${points[4].x},170 L${points[0].x},170 Z`} fill="url(#gradFill)" />
+
+          {/* Área preenchida — aparece junto com a linha */}
+          <path
+            d={`M${points[0].x},${points[0].y} L${points.map(p => `${p.x},${p.y}`).join(' L')} L${points[4].x},170 L${points[0].x},170 Z`}
+            fill="url(#gradFill)"
+            style={{
+              opacity: animate ? 1 : 0,
+              transition: 'opacity 0.6s 0.6s ease-out',
+            }}
+          />
+
+          {/* Linha animada com stroke-dashoffset */}
+          <path
+            d={`M${points.map(p => `${p.x},${p.y}`).join(' L')}`}
+            stroke="url(#gradLevel)"
+            strokeWidth="3.5"
+            fill="none"
+            strokeLinecap="round"
+            strokeDasharray={LINE_LEN}
+            strokeDashoffset={animate ? 0 : LINE_LEN}
+            style={{ transition: animate ? 'stroke-dashoffset 1.1s cubic-bezier(.4,0,.2,1)' : 'none' }}
+          />
+
+          {/* Pontos — aparecem após a linha terminar */}
           {points.map((p, i) => (
-            <circle key={i} cx={p.x} cy={p.y} r={i === idx ? 8 : 4} fill={i === idx ? T.pink : '#fff'} stroke={i === idx ? T.pinkDeep : T.border} strokeWidth="2" />
+            <circle
+              key={i}
+              cx={p.x} cy={p.y}
+              r={i === idx ? 8 : 4}
+              fill={i === idx ? T.pink : '#fff'}
+              stroke={i === idx ? T.pinkDeep : T.border}
+              strokeWidth="2"
+              style={{
+                opacity: animate ? 1 : 0,
+                transition: `opacity 0.3s ${0.9 + i * 0.05}s ease-out`,
+              }}
+            />
           ))}
-          <g transform={`translate(${pos.x - 26}, ${pos.y - 36})`}>
+
+          {/* Label "Você" — último a aparecer */}
+          <g
+            transform={`translate(${pos.x - 26}, ${pos.y - 36})`}
+            style={{
+              opacity: animate ? 1 : 0,
+              transition: 'opacity 0.4s 1.2s ease-out',
+            }}
+          >
             <rect x="0" y="0" width="52" height="22" rx="11" fill={T.pinkDeep} />
             <text x="26" y="15" textAnchor="middle" fontSize="11" fontWeight="700" fill="#fff" fontFamily={fonts.ui}>Você</text>
           </g>
