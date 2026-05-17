@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase'
 import { getGrupoAdSpend } from '@/lib/meta-ads'
+import { fetchCurrentMonthOrders, fetchYberaOrders, groupByMonth, type YberaOrder } from '@/lib/ybera-api'
 import Sidebar from '../components/Sidebar'
 
 export const dynamic = 'force-dynamic'
@@ -54,7 +55,6 @@ async function getCurrentMonthLeads(): Promise<number> {
   const now = new Date()
   const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
 
-  // Leads = cliques únicos nos links dos grupos no mês atual
   const { count } = await (supabase.from('wg_redirect_clicks') as any)
     .select('*', { count: 'exact', head: true })
     .gte('created_at', start)
@@ -64,22 +64,32 @@ async function getCurrentMonthLeads(): Promise<number> {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default async function YberaPage() {
-  const [rows, adsResult, liveLeads] = await Promise.all([
+  const [rows, adsResult, liveLeads, liveOrdersResult] = await Promise.all([
     getYberaData(),
     getGrupoAdSpend('this_month'),
     getCurrentMonthLeads(),
+    fetchCurrentMonthOrders(),
   ])
 
   const currentYM = new Date().toISOString().slice(0, 7) // '2026-05'
   const current   = rows.find((r: any) => r.year_month === currentYM)
   const history   = rows.filter((r: any) => r.year_month !== currentYM)
 
-  // Mês atual: se não existe no banco ainda, monta com dados ao vivo
   const cur = current ?? { year_month: currentYM, month_name: 'Mês atual', vendas: 0, vendas_afiliadas: 0, anuncios: 0, leads: 0, meta: null }
 
-  // Leads do mês: prefere wg_redirect_clicks se > 0, senão usa banco
-  const curLeads   = liveLeads > 0 ? liveLeads : (cur.leads ?? 0)
-  // Anúncios do mês: prefere Meta API se configurado
+  // Live Ybera API data for current month
+  const liveOrders: YberaOrder[] = liveOrdersResult.orders
+  const liveVendas = liveOrders.reduce((s, o) => s + (o.subtotal ?? 0), 0)
+  const liveOrderCount = liveOrders.length
+  const yberaConnected = liveOrdersResult.status === 'ok'
+  const yberaNoToken   = liveOrdersResult.status === 'no_token'
+
+  // Prefer live API data for current month sales
+  const curVendas = yberaConnected && liveVendas > 0 ? liveVendas : (cur.vendas ?? 0)
+
+  // Leads do mês
+  const curLeads    = liveLeads > 0 ? liveLeads : (cur.leads ?? 0)
+  // Anúncios do mês
   const curAnuncios = adsResult.status === 'ok' ? adsResult.totalSpend : (cur.anuncios ?? 0)
   const curCPL      = curLeads > 0 && curAnuncios > 0 ? curAnuncios / curLeads : (cur.custo_por_lead ?? 0)
 
@@ -89,10 +99,10 @@ export default async function YberaPage() {
   const totalLeads     = rows.reduce((s: number, r: any) => s + (r.leads ?? 0), 0)
   const totalAfiliadas = rows.reduce((s: number, r: any) => s + (r.vendas_afiliadas ?? 0), 0)
 
-  // Melhor mês por vendas
+  // Melhor mês
   const best = rows.reduce((best: any, r: any) => (!best || (r.vendas ?? 0) > (best.vendas ?? 0)) ? r : best, null)
 
-  // ROI médio (últimos 6 meses com dados)
+  // ROI médio últimos 6 meses
   const last6 = rows.filter((r: any) => r.anuncios > 0 && r.vendas > 0).slice(0, 6)
   const avgROI = last6.length > 0
     ? last6.reduce((s: number, r: any) => s + (r.vendas / r.anuncios), 0) / last6.length
@@ -100,8 +110,28 @@ export default async function YberaPage() {
 
   // Últimos 12 meses para gráfico
   const chart12 = [...rows].reverse().slice(-12)
-  const maxVendas = Math.max(1, ...chart12.map((r: any) => r.vendas ?? 0))
-  const maxAnuncios = Math.max(1, ...chart12.map((r: any) => r.anuncios ?? 0))
+  const maxVendas = Math.max(1, ...chart12.map((r: any) => r.vendas ?? 0), curVendas)
+
+  // Top 5 produtos do mês via API
+  const prodMap = new Map<string, { qty: number; revenue: number }>()
+  for (const o of liveOrders) {
+    for (const p of o.products) {
+      if (!p.value || p.value === 0) continue
+      const e = prodMap.get(p.name) ?? { qty: 0, revenue: 0 }
+      e.qty += p.quantity
+      e.revenue += p.total
+      prodMap.set(p.name, e)
+    }
+  }
+  const topProducts = Array.from(prodMap.entries())
+    .map(([name, v]) => ({ name, ...v }))
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 8)
+
+  // Recent orders (last 15)
+  const recentOrders = [...liveOrders]
+    .sort((a, b) => new Date(b.registerDate).getTime() - new Date(a.registerDate).getTime())
+    .slice(0, 15)
 
   return (
     <div style={{
@@ -114,21 +144,28 @@ export default async function YberaPage() {
         {/* ── Header ── */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <div style={{ fontSize: 22, fontWeight: 700, color: '#2D1B2E' }}>Ybera — Afiliação</div>
-              {adsResult.status === 'ok' && (
+
+              {yberaConnected && (
                 <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: green + '18', color: green }}>
-                  📡 Meta Ads conectado
+                  🛍️ Ybera API conectada · {liveOrderCount} pedidos hoje/mês
                 </span>
               )}
-              {adsResult.status === 'not_configured' && (
+              {yberaNoToken && (
                 <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: orange + '18', color: orange }}>
-                  ⚠️ Meta Ads não configurado
+                  ⚠️ YBERA_API_TOKEN não configurado
                 </span>
               )}
-              {adsResult.status === 'error' && (
-                <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: red + '18', color: red }} title={adsResult.error}>
-                  ❌ Erro Meta Ads
+              {liveOrdersResult.status === 'error' && (
+                <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: red + '18', color: red }}>
+                  ❌ Erro Ybera API
+                </span>
+              )}
+
+              {adsResult.status === 'ok' && (
+                <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: blue + '12', color: blue }}>
+                  📡 Meta Ads conectado
                 </span>
               )}
             </div>
@@ -138,7 +175,31 @@ export default async function YberaPage() {
           </div>
         </div>
 
-        {/* ── Banner de setup Meta Ads (quando não configurado) ── */}
+        {/* ── Setup banners ── */}
+        {yberaNoToken && (
+          <div style={{
+            background: '#fff', borderRadius: 14, border: `1px solid ${orange}30`,
+            padding: '16px 24px', marginBottom: 16,
+            display: 'flex', alignItems: 'flex-start', gap: 14,
+          }}>
+            <div style={{ fontSize: 28, flexShrink: 0 }}>🛍️</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E', marginBottom: 4 }}>
+                Conectar Ybera Club API
+              </div>
+              <div style={{ fontSize: 12, color: gray, lineHeight: 1.6 }}>
+                Para puxar os pedidos automaticamente, adicione a variável de ambiente:
+                <br />
+                <code style={{ background: '#F5F5F7', padding: '1px 6px', borderRadius: 4 }}>YBERA_API_TOKEN</code>
+                {' '}no Vercel (Admin → Settings → Environment Variables).
+              </div>
+              <div style={{ fontSize: 11, color: gray, marginTop: 6 }}>
+                Para obter: acesse <strong>app.yberaclub.com/settings</strong> → aba &quot;API Integração&quot; → copie a Chave de Acesso.
+              </div>
+            </div>
+          </div>
+        )}
+
         {adsResult.status !== 'ok' && (
           <div style={{
             background: '#fff', borderRadius: 14, border: `1px solid ${orange}30`,
@@ -151,17 +212,11 @@ export default async function YberaPage() {
                 Conectar Meta Ads (campanha &quot;Grupo&quot;)
               </div>
               <div style={{ fontSize: 12, color: gray, lineHeight: 1.6 }}>
-                Para puxar os gastos automaticamente, adicione as variáveis de ambiente:
-                <br />
+                Adicione{' '}
                 <code style={{ background: '#F5F5F7', padding: '1px 6px', borderRadius: 4 }}>META_ADS_ACCESS_TOKEN</code>
                 {' '}e{' '}
                 <code style={{ background: '#F5F5F7', padding: '1px 6px', borderRadius: 4 }}>META_ADS_ACCOUNT_ID</code>
                 {' '}no Vercel.
-              </div>
-              <div style={{ fontSize: 11, color: gray, marginTop: 6 }}>
-                Para obter: Business Manager → Configurações → Usuários do Sistema → Gerar Token (permissão: ads_read).
-                O ID da conta está no Gerenciador de Anúncios (formato: act_XXXXXXXXXX).
-                {adsResult.error && <span style={{ color: red }}> Erro: {adsResult.error}</span>}
               </div>
             </div>
           </div>
@@ -174,18 +229,97 @@ export default async function YberaPage() {
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14, marginBottom: 28 }}>
+          <StatCard icon="🛒" label="Pedidos no mês" value={num(yberaConnected ? liveOrderCount : null)}
+            sub={yberaConnected ? 'via Ybera API ao vivo' : 'sem dados ao vivo'} color={accent} />
+          <StatCard icon="💰" label="Vendas do mês" value={brl(curVendas)}
+            sub={yberaConnected ? 'Ybera API ao vivo' : 'valor histórico'}
+            color={cur.meta && curVendas >= cur.meta ? green : undefined} small />
           <StatCard icon="📢" label="Investimento Grupos" value={brl(curAnuncios)}
-            sub={adsResult.status === 'ok' ? 'Meta Ads ao vivo' : 'valor manual'} color={accent} small />
+            sub={adsResult.status === 'ok' ? 'Meta Ads ao vivo' : 'valor manual'} color={blue} small />
           <StatCard icon="👥" label="Leads do mês" value={num(curLeads)}
-            sub={liveLeads > 0 ? 'via grupos de promoção' : 'valor histórico'} color={blue} />
+            sub={liveLeads > 0 ? 'via grupos de promoção' : 'valor histórico'} color={purple} />
           <StatCard icon="💸" label="Custo por lead" value={curCPL > 0 ? `R$ ${curCPL.toFixed(2).replace('.', ',')}` : '—'}
             color={curCPL > 2 ? red : curCPL > 1.5 ? orange : green} />
-          <StatCard icon="🛒" label="Vendas do mês" value={brl(cur.vendas)} small
-            sub={cur.meta ? `meta: ${brl(cur.meta)}` : undefined}
-            color={cur.meta && cur.vendas >= cur.meta ? green : undefined} />
-          <StatCard icon="🤝" label="Vendas afiliadas" value={brl(cur.vendas_afiliadas > 0 ? cur.vendas_afiliadas : null)}
-            color={purple} small />
         </div>
+
+        {/* ── Live: top products + recent orders ── */}
+        {yberaConnected && liveOrders.length > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+
+            {/* Top produtos */}
+            <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '20px 24px' }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E', marginBottom: 4 }}>
+                🏆 Top produtos no mês
+              </div>
+              <div style={{ fontSize: 11, color: gray, marginBottom: 16 }}>
+                Ybera Club ao vivo · {topProducts.length} SKUs
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {topProducts.length === 0 && (
+                  <p style={{ fontSize: 13, color: gray }}>Nenhum produto com receita ainda</p>
+                )}
+                {topProducts.map((p, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        width: 22, height: 22, borderRadius: 6, background: accent + '18',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 10, fontWeight: 700, color: accent, flexShrink: 0, marginTop: 1,
+                      }}>
+                        {i + 1}
+                      </div>
+                      <div style={{ fontSize: 12, color: '#2D1B2E', lineHeight: 1.4, overflow: 'hidden' }}>
+                        <div style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {p.name.length > 45 ? p.name.slice(0, 45) + '…' : p.name}
+                        </div>
+                        <div style={{ color: gray, fontSize: 11 }}>{p.qty}× vendidos</div>
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: accent, flexShrink: 0 }}>
+                      {brl(p.revenue)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Pedidos recentes */}
+            <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '20px 24px' }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E', marginBottom: 4 }}>
+                📦 Pedidos recentes
+              </div>
+              <div style={{ fontSize: 11, color: gray, marginBottom: 16 }}>
+                Últimos {recentOrders.length} pedidos do mês
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 340, overflowY: 'auto' }}>
+                {recentOrders.map((o, i) => {
+                  const d = new Date(o.registerDate)
+                  const label = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+                  const time  = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                  return (
+                    <div key={o.id} style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: '6px 8px', borderRadius: 8,
+                      background: i % 2 === 0 ? 'rgba(0,0,0,0.02)' : 'transparent',
+                    }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: '#2D1B2E', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {o.customer.name.trim() || 'Cliente'}
+                        </div>
+                        <div style={{ fontSize: 11, color: gray }}>
+                          {label} {time} · {o.products.filter(p => p.value > 0).length} produto(s)
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: green, flexShrink: 0, marginLeft: 8 }}>
+                        {brl(o.subtotal)}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── Totais históricos ── */}
         <div style={{ marginBottom: 8 }}>
@@ -216,8 +350,11 @@ export default async function YberaPage() {
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 100 }}>
             {chart12.map((r: any, i: number) => {
-              const hVendas   = r.vendas   > 0 ? Math.max(4, (r.vendas   / maxVendas)   * 88) : 0
-              const hAnuncios = r.anuncios > 0 ? Math.max(4, (r.anuncios / maxVendas)   * 88) : 0
+              // For current month, prefer live data
+              const vendas   = r.year_month === currentYM && yberaConnected ? curVendas : (r.vendas ?? 0)
+              const anuncios = r.year_month === currentYM && adsResult.status === 'ok' ? curAnuncios : (r.anuncios ?? 0)
+              const hVendas   = vendas   > 0 ? Math.max(4, (vendas   / maxVendas) * 88) : 0
+              const hAnuncios = anuncios > 0 ? Math.max(4, (anuncios / maxVendas) * 88) : 0
               const isLast = i === chart12.length - 1
               const label = r.month_name.split(' ').map((w: string) => w.slice(0, 3)).join(' ')
               return (
@@ -247,7 +384,7 @@ export default async function YberaPage() {
         {adsResult.status === 'ok' && adsResult.campaigns.length > 0 && (
           <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '20px 24px', marginBottom: 24 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E', marginBottom: 16 }}>
-              📡 Campanhas "Grupo" — {new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+              📡 Campanhas &quot;Grupo&quot; — {new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
             </div>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
@@ -278,7 +415,8 @@ export default async function YberaPage() {
           <div style={{ padding: '18px 24px', borderBottom: '1px solid #F0F0F5' }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: '#2D1B2E' }}>Histórico mensal completo</div>
             <div style={{ fontSize: 12, color: gray, marginTop: 2 }}>
-              Anúncios: {adsResult.status === 'ok' ? 'mês atual via Meta API, histórico manual' : 'dados históricos manuais'}
+              Vendas: {yberaConnected ? 'mês atual via Ybera API, histórico manual' : 'dados históricos manuais'}
+              {' · '}Anúncios: {adsResult.status === 'ok' ? 'mês atual via Meta API, histórico manual' : 'dados históricos manuais'}
               {' · '}Leads: mês atual via grupos de promoção, histórico manual
             </div>
           </div>
@@ -286,7 +424,7 @@ export default async function YberaPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 800 }}>
               <thead>
                 <tr style={{ background: '#FAFAFA', borderBottom: '1px solid #F0F0F5' }}>
-                  {['Mês', 'Vendas do mês', 'Vendas afiliadas', 'Anúncios', 'Leads', 'CPL', 'ROI', 'Meta'].map(h => (
+                  {['Mês', 'Pedidos', 'Vendas do mês', 'Vendas afiliadas', 'Anúncios', 'Leads', 'CPL', 'ROI', 'Meta'].map(h => (
                     <th key={h} style={{
                       padding: '10px 16px', textAlign: h === 'Mês' ? 'left' : 'right',
                       fontSize: 11, color: gray, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4,
@@ -297,9 +435,11 @@ export default async function YberaPage() {
               </thead>
               <tbody>
                 {rows.map((r: any) => {
-                  const roi = r.anuncios > 0 ? (r.vendas / r.anuncios) : null
-                  const metaPct = r.meta && r.vendas ? (r.vendas / r.meta) * 100 : null
                   const isCur  = r.year_month === currentYM
+                  const vendas = isCur && yberaConnected ? curVendas : (r.vendas ?? 0)
+                  const orders = isCur && yberaConnected ? liveOrderCount : null
+                  const roi    = r.anuncios > 0 ? (vendas / r.anuncios) : null
+                  const metaPct = r.meta && vendas ? (vendas / r.meta) * 100 : null
                   const cpl    = r.custo_por_lead ?? (r.anuncios > 0 && r.leads > 0 ? r.anuncios / r.leads : null)
                   return (
                     <tr key={r.year_month} style={{
@@ -310,10 +450,16 @@ export default async function YberaPage() {
                         <div style={{ fontSize: 13, fontWeight: isCur ? 700 : 600, color: isCur ? accent : '#2D1B2E' }}>
                           {r.month_name}
                         </div>
-                        {isCur && <div style={{ fontSize: 10, color: accent }}>mês atual</div>}
+                        {isCur && <div style={{ fontSize: 10, color: accent }}>
+                          {yberaConnected ? '🔴 ao vivo' : 'mês atual'}
+                        </div>}
                       </td>
-                      <td style={{ padding: '11px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#2D1B2E' }}>
-                        {brl(r.vendas)}
+                      <td style={{ padding: '11px 16px', textAlign: 'right', fontSize: 13, color: '#2D1B2E' }}>
+                        {orders != null ? num(orders) : '—'}
+                      </td>
+                      <td style={{ padding: '11px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: isCur && yberaConnected ? accent : '#2D1B2E' }}>
+                        {brl(vendas || null)}
+                        {isCur && yberaConnected && <div style={{ fontSize: 9, color: gray }}>Ybera API</div>}
                       </td>
                       <td style={{ padding: '11px 16px', textAlign: 'right', fontSize: 13, color: r.vendas_afiliadas > 0 ? purple : gray }}>
                         {r.vendas_afiliadas > 0 ? brl(r.vendas_afiliadas) : '—'}
@@ -357,6 +503,7 @@ export default async function YberaPage() {
               <tfoot>
                 <tr style={{ borderTop: '2px solid #F0F0F5', background: '#FAFAFA' }}>
                   <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 700, color: '#2D1B2E' }}>Total</td>
+                  <td style={{ padding: '12px 16px' }} />
                   <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#2D1B2E' }}>{brl(totalVendas)}</td>
                   <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 700, color: purple }}>{brl(totalAfiliadas)}</td>
                   <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 700, color: accent }}>{brl(totalAnuncios)}</td>
