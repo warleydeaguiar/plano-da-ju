@@ -436,9 +436,9 @@ function InfoMediaJulianeVideo({ src }: { src: string }) {
 
 function InfoMediaBeforeAfter({ src }: { src: string }) {
   return (
-    <div style={{ width: '100%', borderRadius: 14, overflow: 'hidden', aspectRatio: '4/3', background: '#F3F4F6' }}>
+    <div style={{ width: '100%', borderRadius: 14, overflow: 'hidden', background: '#F3F4F6' }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt="Resultado capilar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      <img src={src} alt="Resultado capilar" style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'contain' }} />
     </div>
   )
 }

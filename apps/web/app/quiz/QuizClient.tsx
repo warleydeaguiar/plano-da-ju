@@ -682,7 +682,7 @@ function InfoMediaJulianeVideo({ src }: { src: string }) {
 function InfoMediaBeforeAfter({ src }: { src: string }) {
   return (
     <div style={{
-      width: '100%', borderRadius: 22, overflow: 'hidden', aspectRatio: '4/3',
+      width: '100%', borderRadius: 22, overflow: 'hidden',
       background: '#F3F4F6',
       boxShadow: `0 20px 40px ${T.pinkDeep}1A, 0 6px 16px rgba(0,0,0,0.08)`,
       position: 'relative',
@@ -690,7 +690,7 @@ function InfoMediaBeforeAfter({ src }: { src: string }) {
       border: `3px solid #fff`,
     }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt="Resultado capilar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      <img src={src} alt="Resultado capilar" style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'contain' }} />
       <div style={{
         position: 'absolute', top: 12, right: 12,
         background: 'rgba(255,255,255,0.95)',
