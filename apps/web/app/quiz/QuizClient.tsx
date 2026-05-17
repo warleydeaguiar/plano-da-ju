@@ -1636,6 +1636,18 @@ export default function QuizClient() {
     }
   }, [stepIndex])  // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Garante que cada nova tela começa pelo topo — evita o usuário
+  // começar a ler a próxima pergunta pelo meio/fim da tela.
+  // Usa 'instant' para não disputar com a animação pageFade.
+  // Fallback para scrollTo(0,0) em browsers mais antigos.
+  useEffect(() => {
+    try {
+      window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
+    } catch {
+      window.scrollTo(0, 0)
+    }
+  }, [stepIndex])
+
   const goNext = useCallback(() => setStepIndex(i => Math.min(total - 1, i + 1)), [total])
   const goBack = useCallback(() => setStepIndex(i => Math.max(0, i - 1)), [])
 
