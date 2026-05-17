@@ -1359,13 +1359,14 @@ export default function OfertaClient() {
             marginBottom: 32, overflow: 'hidden',
           }}>
             {[
-              { q: 'Quando eu adquirir o plano, ele já está disponível?', a: 'Sim, todo o conteúdo do plano é liberado imediatamente, porém, a parte personalizada será entregue em até 3 dias pois precisa ler cada resposta para fazer algo feito para você.' },
-              { q: 'Os produtos indicados são difíceis de encontrar?', a: 'Não. Indicamos produtos acessíveis e que você encontra em qualquer farmácia ou loja de cosméticos.' },
-              { q: 'Quando posso começar a ver resultados?', a: 'Os primeiros resultados aparecem em até 4 semanas seguindo o plano corretamente. Em 90 dias você verá a transformação completa.' },
-              { q: 'Você usa Mega Hair?', a: 'Não. Todo o trabalho é feito com seu cabelo natural, focado em recuperação e fortalecimento dos fios.' },
-              { q: 'O que é Tricologia?', a: 'É a ciência que estuda os cabelos e o couro cabeludo. A Juliane é tricologista formada e atende mulheres com problemas capilares há anos.' },
+              { q: 'Quando eu adquirir o plano, ele já estará disponível?', a: 'Sim, todo o conteúdo do plano é liberado imediatamente, porém a parte personalizada será entregue em até 3 dias pois preciso ler cada resposta para fazer algo feito para você.' },
+              { q: 'Os produtos indicados são difíceis de encontrar?', a: 'Não! Eu tenho parceria com as marcas de produtos de cabelo e por isso tenho preços abaixo do mercado para vocês.' },
+              { q: 'E se eu tiver dúvidas ao longo do processo?', a: 'Você terá suporte diário através do WhatsApp, vou ficar disponível para falar com você e te ajudar.' },
+              { q: 'Quando posso começar a ver resultados?', a: 'Cada cabelo tem seu ritmo, mas a maioria começa a notar mudanças significativas já nas primeiras semanas, especialmente com a combinação de rotina de cuidados e os produtos certos.' },
+              { q: 'Você usa Mega Hair?', a: 'Não, no meu insta tem diversos videos mostrando meu cabelo desde a raiz.' },
+              { q: 'O que é Tricologia?', a: 'A tricologia é uma área focada no estudo, tratamento e prevenção de problemas que possam afetar o cabelo.\n\nAtravés de uma consulta preliminar, o tricologista é capaz de examinar e identificar as possíveis causas de adversidades capilares, trazendo ao paciente soluções para resolvê-las.' },
             ].map((f, i) => (
-              <div key={i} style={{ borderBottom: i < 4 ? `1px solid ${T.border}` : 'none' }}>
+              <div key={i} style={{ borderBottom: i < 5 ? `1px solid ${T.border}` : 'none' }}>
                 <button
                   onClick={() => setOpenFaq(openFaq === i ? null : i)}
                   style={{
@@ -1387,6 +1388,7 @@ export default function OfertaClient() {
                     fontSize: 13, color: T.inkSoft, lineHeight: 1.65,
                     padding: '0 18px 16px', fontFamily: fonts.ui,
                     animation: 'cardIn 0.35s cubic-bezier(.2,.7,.3,1)',
+                    whiteSpace: 'pre-line',
                   }}>
                     {f.a}
                   </div>
