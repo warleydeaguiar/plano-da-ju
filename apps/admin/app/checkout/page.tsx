@@ -104,7 +104,7 @@ export default async function CheckoutFunnelPage({
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#F5F2F4', fontFamily: '-apple-system, "Inter", system-ui, sans-serif' }}>
       <Sidebar />
-      <main style={{ flex: 1, padding: '32px 40px', maxWidth: 1400 }}>
+      <main style={{ flex: 1, marginLeft: 220, padding: '32px 40px', maxWidth: 1400 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
           <div>
             <h1 style={{ fontSize: 28, fontWeight: 800, color: '#2D1B2E', marginBottom: 4 }}>Funil de Checkout</h1>
