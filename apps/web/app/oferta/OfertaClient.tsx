@@ -640,6 +640,7 @@ export default function OfertaClient() {
           name,
           email,
           cpf: cpf.replace(/\D/g, ''),
+          phone: (quizAnswers?.phone ?? '').toString().replace(/\D/g, ''),
           quiz_answers: quizAnswers,
           session_id: getSessionId(),
         }),
@@ -732,6 +733,7 @@ export default function OfertaClient() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name, email, cpf: cleanCpf,
+          phone: (quizAnswers?.phone ?? '').toString().replace(/\D/g, ''),
           card_token: tokenData.id,
           quiz_answers: quizAnswers,
           session_id: getSessionId(),

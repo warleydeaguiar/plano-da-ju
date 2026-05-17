@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { name, email, cpf, quiz_answers, session_id } = await req.json();
+    const { name, email, cpf, phone, quiz_answers, session_id } = await req.json();
 
     if (!name || !email) {
       return NextResponse.json({ error: 'Nome e e-mail são obrigatórios' }, { status: 400 });
@@ -29,6 +29,11 @@ export async function POST(req: NextRequest) {
     if (cleanCpf.length !== 11) {
       return NextResponse.json({ error: 'CPF inválido — obrigatório para pagamento via PIX' }, { status: 400 });
     }
+
+    // Telefone: DDD (2 dígitos) + número (8-9 dígitos)
+    const cleanPhone = (phone ?? '').replace(/\D/g, '');
+    const areaCode = cleanPhone.length >= 10 ? cleanPhone.slice(0, 2) : '11';
+    const phoneNumber = cleanPhone.length >= 10 ? cleanPhone.slice(2) : '999999999';
 
     const supabase = await createServiceClient();
 
@@ -72,6 +77,13 @@ export async function POST(req: NextRequest) {
         type: 'individual',
         document: cleanCpf,
         document_type: 'CPF',
+        phones: {
+          mobile_phone: {
+            country_code: '55',
+            area_code: areaCode,
+            number: phoneNumber,
+          },
+        },
       },
       items: [
         {

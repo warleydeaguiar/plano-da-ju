@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { name, email, cpf, card_token, quiz_answers, session_id, billing_address } = await req.json();
+    const { name, email, cpf, phone, card_token, quiz_answers, session_id, billing_address } = await req.json();
 
     if (!name || !email || !card_token) {
       return NextResponse.json(
@@ -28,6 +28,9 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanCpf = typeof cpf === 'string' ? cpf.replace(/\D/g, '') : '';
+    const cleanPhone = (phone ?? '').replace(/\D/g, '');
+    const areaCode = cleanPhone.length >= 10 ? cleanPhone.slice(0, 2) : '11';
+    const phoneNumber = cleanPhone.length >= 10 ? cleanPhone.slice(2) : '999999999';
 
     const plan = await getOrCreateCardPlan();
 
@@ -42,6 +45,13 @@ export async function POST(req: NextRequest) {
           ...(cleanCpf.length === 11
             ? { document: cleanCpf, document_type: 'CPF' }
             : {}),
+          phones: {
+            mobile_phone: {
+              country_code: '55',
+              area_code: areaCode,
+              number: phoneNumber,
+            },
+          },
         },
         payment_method: 'credit_card',
         card_token,
