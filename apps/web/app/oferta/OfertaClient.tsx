@@ -448,7 +448,7 @@ export default function OfertaClient() {
   const [pixPollCount, setPixPollCount] = useState(0);
   const [pixExpired, setPixExpired] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
-  const [payType, setPayType] = useState<'card' | 'pix'>('card');
+  const [payType, setPayType] = useState<'card' | 'pix'>('pix');
   const [images, setImages] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
