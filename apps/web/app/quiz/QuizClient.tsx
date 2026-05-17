@@ -235,7 +235,7 @@ function SparkleBurst({ trigger }: { trigger: number }) {
 }
 
 // ─── Header (back + progress) ────────────────────────────────
-function Header({ pct, canBack, onBack, showPercent }: { pct: number; canBack: boolean; onBack: () => void; showPercent?: boolean }) {
+function Header({ pct, canBack, onBack, hideBar }: { pct: number; canBack: boolean; onBack: () => void; hideBar?: boolean }) {
   return (
     <div style={{ padding: '24px 24px 0', display: 'flex', flexDirection: 'column', gap: 16, position: 'relative', zIndex: 2 }}>
       <div style={{ height: 28, display: 'flex', alignItems: 'center' }}>
@@ -266,35 +266,30 @@ function Header({ pct, canBack, onBack, showPercent }: { pct: number; canBack: b
         ) : <div style={{ width: 36, height: 36 }} />}
         <div style={{ flex: 1 }} />
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{
-          flex: 1, height: 8, background: 'rgba(196,140,150,0.13)',
-          borderRadius: 99, overflow: 'hidden', position: 'relative',
-          boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)',
-        }}>
+      {/* Esconde a barra do quiz durante o loading — ela tem barra própria */}
+      {!hideBar && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{
-            position: 'absolute', inset: 0, width: `${pct * 100}%`,
-            background: `linear-gradient(90deg, ${T.gold}, ${T.pink} 50%, ${T.pinkDeep})`,
-            borderRadius: 99,
-            transition: 'width 0.65s cubic-bezier(.2,.7,.3,1)',
-            boxShadow: `0 0 14px ${T.pink}66`,
+            flex: 1, height: 8, background: 'rgba(196,140,150,0.13)',
+            borderRadius: 99, overflow: 'hidden', position: 'relative',
+            boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)',
           }}>
             <div style={{
-              position: 'absolute', right: 0, top: 0, bottom: 0, width: 28,
-              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.85), transparent)',
-              animation: 'shimmer 1.8s linear infinite',
-            }} />
+              position: 'absolute', inset: 0, width: `${pct * 100}%`,
+              background: `linear-gradient(90deg, ${T.gold}, ${T.pink} 50%, ${T.pinkDeep})`,
+              borderRadius: 99,
+              transition: 'width 0.65s cubic-bezier(.2,.7,.3,1)',
+              boxShadow: `0 0 14px ${T.pink}66`,
+            }}>
+              <div style={{
+                position: 'absolute', right: 0, top: 0, bottom: 0, width: 28,
+                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.85), transparent)',
+                animation: 'shimmer 1.8s linear infinite',
+              }} />
+            </div>
           </div>
         </div>
-        {showPercent && (
-          <div style={{
-            fontSize: 13, fontWeight: 700, color: T.pinkDeep, minWidth: 40,
-            textAlign: 'right', fontFamily: fonts.ui,
-          }}>
-            {Math.round(pct * 100)}%
-          </div>
-        )}
-      </div>
+      )}
     </div>
   )
 }
@@ -1056,28 +1051,41 @@ function InfoScreen({ q, onContinue, images }: { q: QuizStep; onContinue: () => 
 }
 
 // ─── Tela: loading com prova social ───────────────────────────
-function LoadingScreen({ q, pct, images }: { q: QuizStep; pct: number; images: Record<string, string> }) {
+function LoadingScreen({ q, images }: { q: QuizStep; images: Record<string, string> }) {
+  // Barra própria: anima 0 → 100% em exatamente 5 segundos (linear)
+  const [barStarted, setBarStarted] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setBarStarted(true), 60) // pequeno delay para a transição CSS disparar
+    return () => clearTimeout(t)
+  }, [])
+
   return (
     <div style={{
       flex: 1, display: 'flex', flexDirection: 'column',
       padding: '20px 24px 32px', gap: 20,
     }}>
-      {/* Título — sem barra extra (já existe a do header) */}
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      }}>
-        <span style={{
-          fontSize: 13, color: T.inkSoft, fontFamily: fonts.ui, fontWeight: 500,
-          lineHeight: 1.4, flex: 1, paddingRight: 12,
+      {/* Barra de análise — 0→100% em 5s, independente do progresso do quiz */}
+      <div>
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          marginBottom: 8,
         }}>
-          {q.title}
-        </span>
-        <span style={{
-          fontSize: 14, fontWeight: 700, color: T.ink,
-          fontFamily: fonts.ui, letterSpacing: -0.2,
-        }}>
-          {Math.round(pct * 100)}%
-        </span>
+          <span style={{
+            fontSize: 13, color: T.inkSoft, fontFamily: fonts.ui, fontWeight: 500,
+            lineHeight: 1.4,
+          }}>
+            {q.title}
+          </span>
+        </div>
+        <div style={{ height: 6, background: '#E5E7EB', borderRadius: 99, overflow: 'hidden' }}>
+          <div style={{
+            height: '100%',
+            width: barStarted ? '100%' : '0%',
+            background: `linear-gradient(90deg, ${T.pink}, ${T.pinkDeep})`,
+            borderRadius: 99,
+            transition: barStarted ? 'width 4900ms linear' : 'none',
+          }} />
+        </div>
       </div>
 
       {/* Headline social proof */}
@@ -1673,7 +1681,7 @@ export default function QuizClient() {
   }, [stepIndex, total, answers, router, goNext])
 
   const canBack = stepIndex > 0 && step?.kind !== 'loading'
-  const showPercent = step?.kind === 'loading'
+  const isLoading = step?.kind === 'loading'
 
   return (
     <>
@@ -1735,7 +1743,7 @@ export default function QuizClient() {
           display: 'flex', flexDirection: 'column', minHeight: '100svh',
           position: 'relative', zIndex: 1,
         }}>
-          <Header pct={pct} canBack={canBack} onBack={goBack} showPercent={showPercent} />
+          <Header pct={pct} canBack={canBack} onBack={goBack} hideBar={isLoading} />
 
           <div key={stepIndex} style={{
             flex: 1, display: 'flex', flexDirection: 'column',
@@ -1752,7 +1760,7 @@ export default function QuizClient() {
               <TextareaScreen q={step} value={textInput} onChange={setTextInput} onContinue={saveTextarea} />
             )}
             {step?.kind === 'info' && <InfoScreen q={step} onContinue={goNext} images={images} />}
-            {step?.kind === 'loading' && <LoadingScreen q={step} pct={pct} images={images} />}
+            {step?.kind === 'loading' && <LoadingScreen q={step} images={images} />}
             {step?.kind === 'phone' && (
               <PhoneScreen q={step} value={phoneInput} onChange={setPhoneInput} onSubmit={savePhone} />
             )}
