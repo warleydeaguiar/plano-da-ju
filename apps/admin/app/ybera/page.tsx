@@ -84,8 +84,15 @@ export default async function YberaPage() {
   const yberaConnected = liveOrdersResult.status === 'ok'
   const yberaNoToken   = liveOrdersResult.status === 'no_token'
 
-  // Prefer live API data for current month sales
-  const curVendas = yberaConnected && liveVendas > 0 ? liveVendas : (cur.vendas ?? 0)
+  // Comissão: 20% sobre vendas Ybera (independente do que o painel deles mostra como 15%)
+  const COMMISSION_RATE = 0.20
+
+  // Prefer live API data for current month Ybera sales
+  // Live API uses subtotal; for historical accuracy use vendas_afiliadas (updated from Excel)
+  const curYberaSales  = yberaConnected && liveVendas > 0 ? liveVendas : (cur.vendas_afiliadas ?? 0)
+  const curComissao    = curYberaSales * COMMISSION_RATE
+  // curVendas = Ybera sales (used in chart/table as "Vendas Ybera")
+  const curVendas      = yberaConnected && liveVendas > 0 ? liveVendas : (cur.vendas ?? 0)
 
   // Leads do mês
   const curLeads    = liveLeads > 0 ? liveLeads : (cur.leads ?? 0)
@@ -93,11 +100,12 @@ export default async function YberaPage() {
   const curAnuncios = adsResult.status === 'ok' ? adsResult.totalSpend : (cur.anuncios ?? 0)
   const curCPL      = curLeads > 0 && curAnuncios > 0 ? curAnuncios / curLeads : (cur.custo_por_lead ?? 0)
 
-  // Totais históricos (excluindo mês atual)
+  // Totais históricos
   const totalVendas    = rows.reduce((s: number, r: any) => s + (r.vendas ?? 0), 0)
   const totalAnuncios  = rows.reduce((s: number, r: any) => s + (r.anuncios ?? 0), 0)
   const totalLeads     = rows.reduce((s: number, r: any) => s + (r.leads ?? 0), 0)
   const totalAfiliadas = rows.reduce((s: number, r: any) => s + (r.vendas_afiliadas ?? 0), 0)
+  const totalComissao  = totalAfiliadas * COMMISSION_RATE
 
   // Melhor mês
   const best = rows.reduce((best: any, r: any) => (!best || (r.vendas ?? 0) > (best.vendas ?? 0)) ? r : best, null)
@@ -231,13 +239,13 @@ export default async function YberaPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14, marginBottom: 28 }}>
           <StatCard icon="🛒" label="Pedidos no mês" value={num(yberaConnected ? liveOrderCount : null)}
             sub={yberaConnected ? 'via Ybera API ao vivo' : 'sem dados ao vivo'} color={accent} />
-          <StatCard icon="💰" label="Vendas do mês" value={brl(curVendas)}
-            sub={yberaConnected ? 'Ybera API ao vivo' : 'valor histórico'}
-            color={cur.meta && curVendas >= cur.meta ? green : undefined} small />
+          <StatCard icon="💰" label="Vendas Ybera" value={brl(curYberaSales)}
+            sub={yberaConnected ? 'Ybera API ao vivo' : 'fonte: Excel'}
+            color={accent} small />
+          <StatCard icon="🤝" label="Comissão (20%)" value={brl(curComissao)}
+            sub="20% sobre vendas Ybera" color={green} small />
           <StatCard icon="📢" label="Investimento Grupos" value={brl(curAnuncios)}
             sub={adsResult.status === 'ok' ? 'Meta Ads ao vivo' : 'valor manual'} color={blue} small />
-          <StatCard icon="👥" label="Leads do mês" value={num(curLeads)}
-            sub={liveLeads > 0 ? 'via grupos de promoção' : 'valor histórico'} color={purple} />
           <StatCard icon="💸" label="Custo por lead" value={curCPL > 0 ? `R$ ${curCPL.toFixed(2).replace('.', ',')}` : '—'}
             color={curCPL > 2 ? red : curCPL > 1.5 ? orange : green} />
         </div>
@@ -328,11 +336,10 @@ export default async function YberaPage() {
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 28 }}>
-          <StatCard icon="💰" label="Receita total" value={brl(totalVendas)} sub="desde jan/2024" small />
+          <StatCard icon="💰" label="Vendas Ybera total" value={brl(totalAfiliadas)} sub="desde jan/2024" small />
+          <StatCard icon="🤝" label="Comissão total (20%)" value={brl(totalComissao)} color={green} small />
           <StatCard icon="📢" label="Investimento total" value={brl(totalAnuncios)} color={accent} small />
           <StatCard icon="👥" label="Total de leads" value={num(totalLeads)} color={blue} />
-          <StatCard icon="🏆" label="ROI médio (6m)" value={avgROI > 0 ? `${avgROI.toFixed(1)}x` : '—'}
-            color={avgROI >= 10 ? green : avgROI >= 5 ? orange : gray} />
         </div>
 
         {/* ── Gráfico 12 meses ── */}
@@ -424,7 +431,7 @@ export default async function YberaPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 800 }}>
               <thead>
                 <tr style={{ background: '#FAFAFA', borderBottom: '1px solid #F0F0F5' }}>
-                  {['Mês', 'Pedidos', 'Vendas do mês', 'Vendas afiliadas', 'Anúncios', 'Leads', 'CPL', 'ROI', 'Meta'].map(h => (
+                  {['Mês', 'Pedidos', 'Vendas Ybera', 'Comissão (20%)', 'Anúncios', 'Leads', 'CPL', 'ROI', 'Meta'].map(h => (
                     <th key={h} style={{
                       padding: '10px 16px', textAlign: h === 'Mês' ? 'left' : 'right',
                       fontSize: 11, color: gray, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4,
@@ -458,11 +465,13 @@ export default async function YberaPage() {
                         {orders != null ? num(orders) : '—'}
                       </td>
                       <td style={{ padding: '11px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: isCur && yberaConnected ? accent : '#2D1B2E' }}>
-                        {brl(vendas || null)}
+                        {brl(isCur && yberaConnected ? curYberaSales : (r.vendas_afiliadas || null))}
                         {isCur && yberaConnected && <div style={{ fontSize: 9, color: gray }}>Ybera API</div>}
                       </td>
-                      <td style={{ padding: '11px 16px', textAlign: 'right', fontSize: 13, color: r.vendas_afiliadas > 0 ? purple : gray }}>
-                        {r.vendas_afiliadas > 0 ? brl(r.vendas_afiliadas) : '—'}
+                      <td style={{ padding: '11px 16px', textAlign: 'right', fontSize: 13, color: green, fontWeight: 600 }}>
+                        {r.vendas_afiliadas > 0
+                          ? brl((isCur && yberaConnected ? curYberaSales : r.vendas_afiliadas) * COMMISSION_RATE)
+                          : '—'}
                       </td>
                       <td style={{ padding: '11px 16px', textAlign: 'right', fontSize: 13, color: accent }}>
                         {brl(r.anuncios)}
@@ -504,8 +513,8 @@ export default async function YberaPage() {
                 <tr style={{ borderTop: '2px solid #F0F0F5', background: '#FAFAFA' }}>
                   <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 700, color: '#2D1B2E' }}>Total</td>
                   <td style={{ padding: '12px 16px' }} />
-                  <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#2D1B2E' }}>{brl(totalVendas)}</td>
-                  <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 700, color: purple }}>{brl(totalAfiliadas)}</td>
+                  <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#2D1B2E' }}>{brl(totalAfiliadas)}</td>
+                  <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 700, color: green }}>{brl(totalComissao)}</td>
                   <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 700, color: accent }}>{brl(totalAnuncios)}</td>
                   <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#2D1B2E' }}>{num(totalLeads)}</td>
                   <td colSpan={3} />
