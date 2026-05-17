@@ -6,6 +6,31 @@ export const maxDuration = 60;
 
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY ?? '';
 
+// ─── YouTube helpers ───────────────────────────────────────────────
+function parseYouTubeId(url: string): string | null {
+  try {
+    const u = new URL(url.trim())
+    // youtu.be/VIDEO_ID
+    if (u.hostname === 'youtu.be') return u.pathname.slice(1).split('?')[0] || null
+    // youtube.com/watch?v=VIDEO_ID
+    const v = u.searchParams.get('v')
+    if (v) return v
+    // youtube.com/shorts/VIDEO_ID  or  /embed/VIDEO_ID  or  /v/VIDEO_ID
+    const m = u.pathname.match(/\/(shorts|embed|v)\/([^/?&]+)/)
+    if (m?.[2]) return m[2]
+  } catch { /* invalid URL */ }
+  return null
+}
+
+function buildEmbedUrl(videoId: string): string {
+  return `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`
+}
+
+function buildThumbnailUrl(videoId: string): string {
+  // maxresdefault is 1280×720, but may not exist for all videos → hqdefault is 480×360 and always present
+  return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
+}
+
 // ─── Targeting extraction via Claude ───────────────────────────────
 type ExtractedTargeting = {
   target_hair_types: string[];
@@ -57,10 +82,7 @@ Retorne APENAS o JSON, sem markdown.`,
         }],
       }),
     });
-    if (!res.ok) {
-      console.error('[stories targeting] anthropic failed', res.status);
-      return {};
-    }
+    if (!res.ok) return {};
     const j = await res.json();
     const text: string = j.content?.[0]?.text ?? '';
     const m = text.match(/\{[\s\S]*\}/);
@@ -81,24 +103,12 @@ export async function GET() {
       .select('*')
       .order('created_at', { ascending: false });
 
-    // Counts of views per story
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: viewCounts } = await (supabase as any)
-      .rpc('story_view_counts')
-      .select('*') // optional RPC; fall back to manual aggregate
-      .catch(() => ({ data: null }));
-
-    let countsByStory: Record<string, number> = {};
-    if (!viewCounts) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: views } = await (supabase as any).from('story_views').select('story_id');
-      if (views) {
-        countsByStory = (views as { story_id: string }[]).reduce((acc, v) => {
-          acc[v.story_id] = (acc[v.story_id] ?? 0) + 1;
-          return acc;
-        }, {} as Record<string, number>);
-      }
-    }
+    const { data: views } = await (supabase as any).from('story_views').select('story_id');
+    const countsByStory: Record<string, number> = {};
+    ((views ?? []) as { story_id: string }[]).forEach(v => {
+      countsByStory[v.story_id] = (countsByStory[v.story_id] ?? 0) + 1;
+    });
 
     return NextResponse.json({
       stories: (stories ?? []).map((s: { id: string } & Record<string, unknown>) => ({
@@ -112,103 +122,109 @@ export async function GET() {
   }
 }
 
-// ─── POST: upload story media + insert row ─────────────────────────
+// ─── POST: create story from YouTube link ──────────────────────────
 export async function POST(req: NextRequest) {
   try {
-    const form = await req.formData();
-    const file = form.get('media') as File | null;
-    const cover = form.get('cover') as File | null;
-    const title = form.get('title') as string;
-    const description = form.get('description') as string;
-    const mediaType = form.get('media_type') as 'video' | 'audio';
-    const priority = parseInt((form.get('priority') as string) ?? '0', 10);
-    const aiAssist = form.get('ai_assist') === 'true';
+    const body = await req.json();
+    const {
+      title,
+      description,
+      youtube_url,
+      priority = 0,
+      ai_assist = true,
+      target_hair_types,
+      target_problems,
+      target_porosity,
+      target_chemicals,
+      trigger_phase,
+      trigger_day_min,
+      trigger_day_max,
+    } = body;
 
-    if (!file || !title || !description || !mediaType) {
-      return NextResponse.json({ error: 'Campos obrigatórios faltando' }, { status: 400 });
+    if (!title?.trim() || !description?.trim() || !youtube_url?.trim()) {
+      return NextResponse.json({ error: 'Título, descrição e link do YouTube são obrigatórios' }, { status: 400 });
     }
-    if (file.size > 100 * 1024 * 1024) {
-      return NextResponse.json({ error: 'Arquivo muito grande (máx. 100 MB)' }, { status: 400 });
+
+    const videoId = parseYouTubeId(youtube_url);
+    if (!videoId) {
+      return NextResponse.json({ error: 'Link do YouTube inválido. Tente: youtube.com/watch?v=... ou youtu.be/...' }, { status: 400 });
     }
+
+    const mediaUrl   = buildEmbedUrl(videoId);
+    const coverUrl   = buildThumbnailUrl(videoId);
+
+    // Optional AI targeting
+    let targeting: Partial<ExtractedTargeting> = {};
+    if (ai_assist) {
+      targeting = await extractTargeting(title, description);
+    }
+
+    const parseArr = (v: unknown): string[] => {
+      if (Array.isArray(v)) return v.filter(Boolean)
+      if (typeof v === 'string' && v.trim()) return v.split(',').map((s: string) => s.trim()).filter(Boolean)
+      return []
+    }
+
+    const manualHair      = parseArr(target_hair_types)
+    const manualProblems  = parseArr(target_problems)
+    const manualPorosity  = parseArr(target_porosity)
+    const manualChemicals = parseArr(target_chemicals)
 
     const supabase = createAdminClient();
     const id = crypto.randomUUID();
 
-    // Upload media
-    const ext = file.name.split('.').pop() ?? (mediaType === 'video' ? 'mp4' : 'mp3');
-    const path = `${id}/media.${ext}`;
-    const buffer = new Uint8Array(await file.arrayBuffer());
-    const { error: upErr } = await supabase.storage.from('juliane-stories').upload(path, buffer, {
-      contentType: file.type, upsert: true,
-    });
-    if (upErr) {
-      console.error('[stories POST] upload', upErr);
-      return NextResponse.json({ error: 'Falha ao salvar mídia' }, { status: 500 });
-    }
-    const { data: pub } = supabase.storage.from('juliane-stories').getPublicUrl(path);
-    const mediaUrl = pub.publicUrl;
-
-    // Upload cover (optional, video only)
-    let coverUrl: string | null = null;
-    if (cover) {
-      const coverPath = `${id}/cover.${cover.name.split('.').pop() ?? 'jpg'}`;
-      const coverBuf = new Uint8Array(await cover.arrayBuffer());
-      const { error: coverErr } = await supabase.storage.from('juliane-stories').upload(coverPath, coverBuf, {
-        contentType: cover.type, upsert: true,
-      });
-      if (!coverErr) {
-        coverUrl = supabase.storage.from('juliane-stories').getPublicUrl(coverPath).data.publicUrl;
-      }
-    }
-
-    // Optional AI targeting
-    let targeting: Partial<ExtractedTargeting> = {};
-    if (aiAssist) {
-      targeting = await extractTargeting(title, description);
-    }
-
-    // Manual targeting from form (override AI if provided)
-    const parseArr = (key: string): string[] => {
-      const v = form.get(key);
-      if (typeof v !== 'string' || !v.trim()) return [];
-      return v.split(',').map(s => s.trim()).filter(Boolean);
-    };
-    const manualHair = parseArr('target_hair_types');
-    const manualProblems = parseArr('target_problems');
-    const manualPorosity = parseArr('target_porosity');
-    const manualChemicals = parseArr('target_chemicals');
-    const manualPhase = (form.get('trigger_phase') as string) || null;
-    const manualDayMin = form.get('trigger_day_min');
-    const manualDayMax = form.get('trigger_day_max');
-
     const row = {
       id,
-      title,
-      description,
-      media_type: mediaType,
+      title: title.trim(),
+      description: description.trim(),
+      media_type: 'video',
       media_url: mediaUrl,
       cover_image_url: coverUrl,
-      priority,
+      youtube_video_id: videoId,
+      priority: parseInt(String(priority), 10) || 0,
       active: true,
-      target_hair_types: manualHair.length ? manualHair : (targeting.target_hair_types ?? []),
-      target_problems:   manualProblems.length ? manualProblems : (targeting.target_problems ?? []),
-      target_porosity:   manualPorosity.length ? manualPorosity : (targeting.target_porosity ?? []),
+      target_hair_types: manualHair.length  ? manualHair      : (targeting.target_hair_types ?? []),
+      target_problems:   manualProblems.length ? manualProblems : (targeting.target_problems   ?? []),
+      target_porosity:   manualPorosity.length ? manualPorosity : (targeting.target_porosity   ?? []),
       target_chemicals:  manualChemicals.length ? manualChemicals : (targeting.target_chemicals ?? []),
-      trigger_phase:     manualPhase || targeting.trigger_phase || 'any',
-      trigger_day_min:   manualDayMin ? parseInt(manualDayMin as string, 10) : (targeting.trigger_day_min ?? 0),
-      trigger_day_max:   manualDayMax ? parseInt(manualDayMax as string, 10) : (targeting.trigger_day_max ?? null),
+      trigger_phase:     trigger_phase || targeting.trigger_phase || 'any',
+      trigger_day_min:   trigger_day_min != null ? Number(trigger_day_min) : (targeting.trigger_day_min ?? 0),
+      trigger_day_max:   trigger_day_max != null ? Number(trigger_day_max) : (targeting.trigger_day_max ?? null),
     };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: insertErr } = await (supabase.from('juliane_stories') as any).insert(row);
     if (insertErr) {
       console.error('[stories POST] insert', insertErr);
-      return NextResponse.json({ error: 'Falha ao salvar story' }, { status: 500 });
+      // youtube_video_id column might not exist yet — retry without it
+      const { youtube_video_id: _drop, ...rowFallback } = row;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: insertErr2 } = await (supabase.from('juliane_stories') as any).insert(rowFallback);
+      if (insertErr2) {
+        console.error('[stories POST] insert fallback', insertErr2);
+        return NextResponse.json({ error: 'Falha ao salvar story' }, { status: 500 });
+      }
+      return NextResponse.json({ ok: true, story: { ...rowFallback, view_count: 0 }, ai_targeting: ai_assist ? targeting : null });
     }
 
-    return NextResponse.json({ ok: true, story: row, ai_targeting: aiAssist ? targeting : null });
+    return NextResponse.json({ ok: true, story: { ...row, view_count: 0 }, ai_targeting: ai_assist ? targeting : null });
   } catch (err) {
     console.error('[stories POST]', err);
+    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+  }
+}
+
+// ─── PATCH: toggle active ──────────────────────────────────────────
+export async function PATCH(req: NextRequest) {
+  try {
+    const { id, active } = await req.json();
+    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
+    const supabase = createAdminClient();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from('juliane_stories') as any).update({ active }).eq('id', id);
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error('[stories PATCH]', err);
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
   }
 }
