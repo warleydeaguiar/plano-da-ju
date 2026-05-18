@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 // ╔══════════════════════════════════════════════════════════╗
@@ -141,36 +141,40 @@ function formatCep(v: string) {
   return v.replace(/\D/g, '').slice(0, 8).replace(/(\d{5})(\d)/, '$1-$2');
 }
 
-// Countdown honesto: 24h a partir da PRIMEIRA visita (persiste em localStorage)
-// Não reseta em refresh, não engana a usuária.
-function useHonestCountdown(totalSeconds: number) {
-  const [secondsLeft, setSecondsLeft] = useState(totalSeconds);
+// Timer de oferta: 15 minutos sempre frescos a partir do carregamento da página.
+// Não persiste — toda visita/refresh reinicia do zero.
+const OFFER_DURATION_SECS = 15 * 60; // 15 minutos
+
+function useOfferCountdown() {
+  const startMs = useRef(Date.now());
+  const [secondsLeft, setSecondsLeft] = useState(OFFER_DURATION_SECS);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const key = 'offer_first_seen_at';
-    let firstSeen = localStorage.getItem(key);
-    if (!firstSeen) {
-      firstSeen = String(Date.now());
-      localStorage.setItem(key, firstSeen);
-    }
-    const startTs = parseInt(firstSeen, 10);
-    const tick = () => {
-      const elapsed = Math.floor((Date.now() - startTs) / 1000);
-      setSecondsLeft(Math.max(0, totalSeconds - elapsed));
-    };
-    tick();
-    const id = setInterval(tick, 1000);
+    startMs.current = Date.now(); // garante reset em cada montagem
+    const id = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startMs.current) / 1000);
+      setSecondsLeft(Math.max(0, OFFER_DURATION_SECS - elapsed));
+    }, 1000);
     return () => clearInterval(id);
-  }, [totalSeconds]);
+  }, []);
 
-  const hours = Math.floor(secondsLeft / 3600);
-  const mins  = Math.floor((secondsLeft % 3600) / 60);
-  const secs  = secondsLeft % 60;
-  if (hours > 0) {
-    return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-  }
+  const mins = Math.floor(secondsLeft / 60);
+  const secs = secondsLeft % 60;
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+// ─── Cálculo de parcelas com juros repassados ao cliente ─────
+// 1,99 % ao mês (juros simples). Você sempre recebe ~R$34,90 após taxa PagarMe.
+const MONTHLY_RATE = 1.99;
+
+function installTotalCents(n: number): number {
+  if (n <= 1) return 3490;
+  return Math.round(3490 * (1 + (MONTHLY_RATE / 100) * n));
+}
+
+function installPerStr(n: number): string {
+  const perCents = Math.round(installTotalCents(n) / n);
+  return `R$${(perCents / 100).toFixed(2).replace('.', ',')}`;
 }
 
 // ─── Sparkles flutuantes no fundo ────────────────────────────
@@ -391,15 +395,18 @@ function OfferCard({ countdown, name, onBuy }: { countdown: string; name: string
             </div>
           </div>
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-            <div style={{ fontSize: 12, color: T.inkMuted, textDecoration: 'line-through', marginBottom: 2, fontFamily: fonts.ui }}>R$ 99,90</div>
+            <div style={{ fontSize: 11, color: T.inkMuted, textDecoration: 'line-through', marginBottom: 1, fontFamily: fonts.ui }}>R$ 99,90</div>
+            <div style={{ fontSize: 10, color: T.inkSoft, fontFamily: fonts.ui }}>4x de</div>
             <div style={{
-              fontFamily: fonts.display, fontSize: 32, fontWeight: 700,
+              fontFamily: fonts.display, fontSize: 30, fontWeight: 700,
               background: `linear-gradient(135deg, ${T.pinkDeep}, ${T.pink})`,
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
-              lineHeight: 1, letterSpacing: -1,
-            }}>R$ 34,90</div>
-            <div style={{ fontSize: 9, color: T.inkSoft, marginTop: 2, fontWeight: 500, fontFamily: fonts.ui }}>ou 4x de <strong style={{ color: T.pinkDeep }}>R$8,73</strong> sem juros</div>
+              lineHeight: 1.05, letterSpacing: -0.5,
+            }}>{installPerStr(4)}</div>
+            <div style={{ fontSize: 9, color: T.inkSoft, marginTop: 3, fontFamily: fonts.ui }}>
+              ou à vista <strong style={{ color: T.ink }}>R$34,90</strong>
+            </div>
           </div>
         </div>
         <div style={{
@@ -452,11 +459,11 @@ export default function OfertaClient() {
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [cepStatus, setCepStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
   const [cepAddress, setCepAddress] = useState<{ city: string; state: string } | null>(null);
-  const [cardSubscriptionId, setCardSubscriptionId] = useState('');
+  const [cardOrderId, setCardOrderId] = useState('');
   const [cardPolling, setCardPolling] = useState(false);
 
-  // 24 horas (em vez de 9:57 fake que reseta a cada refresh)
-  const countdown = useHonestCountdown(24 * 60 * 60);
+  // Timer: 15 min frescos a cada visita
+  const countdown = useOfferCountdown();
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -529,18 +536,18 @@ export default function OfertaClient() {
     return () => clearTimeout(timer);
   }, [step, pixOrderId, pixPollCount, pixExpiresAt, email, name, router]);
 
-  // ── Polling do cartão (caso assinatura demore a virar 'active') ──
+  // ── Polling do cartão (order ainda processando) ──
   useEffect(() => {
-    if (!cardPolling || !cardSubscriptionId) return;
+    if (!cardPolling || !cardOrderId) return;
     const timer = setTimeout(async () => {
       try {
         const res = await fetch(
-          `/api/checkout/card/status?subscription_id=${encodeURIComponent(cardSubscriptionId)}&email=${encodeURIComponent(email)}`
+          `/api/checkout/card/status?order_id=${encodeURIComponent(cardOrderId)}&email=${encodeURIComponent(email)}`
         );
         const data = await res.json();
         if (data.paid) {
           localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now() }));
-          await logEvent({ event_type: 'payment_confirmed', email, payment_type: 'card', amount_cents: 3490 });
+          await logEvent({ event_type: 'payment_confirmed', email, payment_type: 'card', amount_cents: installTotalCents(installments) });
           router.push('/obrigado');
         } else if (data.failed) {
           setCardPolling(false);
@@ -550,7 +557,7 @@ export default function OfertaClient() {
       } catch {}
     }, 3000);
     return () => clearTimeout(timer);
-  }, [cardPolling, cardSubscriptionId, email, name, router]);
+  }, [cardPolling, cardOrderId, email, name, router, installments]);
 
   // Validação granular do cartão (usada nos hints e no botão)
   const cardErrors = useMemo(() => {
@@ -742,11 +749,11 @@ export default function OfertaClient() {
       // Cobrança aprovada imediatamente?
       if (data.paid) {
         localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now() }));
-        await logEvent({ event_type: 'payment_confirmed', email, payment_type: 'card', amount_cents: 3490 });
+        await logEvent({ event_type: 'payment_confirmed', email, payment_type: 'card', amount_cents: installTotalCents(installments) });
         router.push('/obrigado');
       } else {
-        // Assinatura criada mas cobrança ainda pendente — inicia polling
-        setCardSubscriptionId(data.subscription_id);
+        // Order criado mas cobrança ainda pendente — inicia polling
+        setCardOrderId(data.order_id);
         setCardPolling(true);
         setLoadingMsg('Confirmando seu pagamento…');
       }
@@ -978,14 +985,15 @@ export default function OfertaClient() {
       marginBottom: 16, fontFamily: fonts.ui,
     };
 
-    const INSTALLMENTS = [
-      { n: 1, label: '1x de R$34,90 (à vista, sem acréscimo)' },
-      { n: 2, label: '2x de R$17,45 sem juros' },
-      { n: 3, label: '3x de R$11,64 sem juros' },
-      { n: 4, label: '4x de R$8,73 sem juros' },
-    ];
+    // Parcelas com juros de 1,99%/mês repassados ao cliente
+    const INSTALLMENTS = [1, 2, 3, 4].map(n => ({
+      n,
+      label: n === 1
+        ? `1x de R$34,90 (à vista — sem acréscimo)`
+        : `${n}x de ${installPerStr(n)} (total R$${(installTotalCents(n) / 100).toFixed(2).replace('.', ',')})`,
+    }));
     const installAmt = installments > 1
-      ? `${installments}x de R$${(3490 / installments / 100).toFixed(2).replace('.', ',')}`
+      ? `${installments}x de ${installPerStr(installments)}`
       : 'R$34,90';
 
     return (
@@ -1020,25 +1028,37 @@ export default function OfertaClient() {
             {/* ── Product header ── */}
             <div style={{ ...sectionCard, marginBottom: 14 }}>
               <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-                <div style={{
-                  width: 56, height: 56, borderRadius: 12, flexShrink: 0,
-                  background: `linear-gradient(135deg, ${T.pink}, ${T.pinkDeep})`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 24,
-                }}>🌿</div>
+                {/* Foto da Juliane */}
+                {images['plano_capilar_juliane_bio'] ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={images['plano_capilar_juliane_bio']}
+                    alt="Juliane Cost"
+                    style={{ width: 60, height: 60, borderRadius: 12, flexShrink: 0, objectFit: 'cover', border: `2px solid ${T.pinkSoft}` }}
+                  />
+                ) : (
+                  <div style={{
+                    width: 60, height: 60, borderRadius: 12, flexShrink: 0,
+                    background: `linear-gradient(135deg, ${T.pink}, ${T.pinkDeep})`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24,
+                  }}>🌿</div>
+                )}
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 15, fontWeight: 700, color: T.ink, lineHeight: 1.3 }}>
                     Plano Capilar Personalizado
                   </div>
                   <div style={{ fontSize: 12, color: T.inkSoft, marginTop: 2 }}>Tricologista Juliane Cost</div>
-                  <div style={{ marginTop: 6, display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                    <span style={{
-                      fontSize: 24, fontWeight: 800, fontFamily: fonts.display,
-                      background: `linear-gradient(135deg, ${T.pinkDeep}, ${T.pink})`,
-                      WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-                      lineHeight: 1,
-                    }}>R$34,90</span>
-                    <span style={{ fontSize: 11, color: T.inkSoft }}>ou 4x de <strong style={{ color: T.pinkDeep }}>R$8,73</strong></span>
+                  <div style={{ marginTop: 6 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                      <span style={{ fontSize: 11, color: T.inkSoft, fontFamily: fonts.ui }}>4x de</span>
+                      <span style={{
+                        fontSize: 22, fontWeight: 800, fontFamily: fonts.display,
+                        background: `linear-gradient(135deg, ${T.pinkDeep}, ${T.pink})`,
+                        WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+                        lineHeight: 1,
+                      }}>{installPerStr(4)}</span>
+                    </div>
+                    <div style={{ fontSize: 10, color: T.inkSoft, marginTop: 2 }}>ou à vista R$34,90</div>
                   </div>
                 </div>
               </div>
