@@ -7,6 +7,9 @@ import './globals.css';
 // Eventos custom (Lead, InitiateCheckout, Purchase) são disparados via window.fbq nos clients.
 const META_PIXEL_ID = '921783859786853';
 
+// Google Analytics 4
+const GA_ID = 'G-F2LEPP0NLT';
+
 export const metadata: Metadata = {
   title: 'Plano da Ju — Diagnóstico Capilar Gratuito',
   description: 'Descubra o plano ideal para recuperar seu cabelo em 90 dias. Diagnóstico personalizado pela especialista Juliane Cost.',
@@ -21,6 +24,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pt-BR" className="h-full">
       <head>
+        {/* Google Analytics 4 */}
+        <Script
+          src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
+          strategy="afterInteractive"
+        />
+        <Script
+          id="google-analytics"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', '${GA_ID}', { page_path: window.location.pathname });
+            `,
+          }}
+        />
+
         <Script
           id="meta-pixel"
           strategy="afterInteractive"
