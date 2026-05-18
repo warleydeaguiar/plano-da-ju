@@ -53,18 +53,57 @@ const OPTION_LABELS: Record<string, Record<string, string>> = {
   areas:                { couro: 'Couro cabeludo', comprimento: 'Comprimento', pontas: 'Pontas' },
 }
 
+// Labels curtos para exibição no funil
+const STEP_LABELS: Record<string, string> = {
+  tipo:                 'Tipo de cabelo',
+  cor:                  'Cor do cabelo',
+  idade:                'Faixa etária',
+  incomoda:             'O que incomoda',
+  quimica:              'Químicas recentes',
+  info_juliane:         'Info: Juliane',
+  info_3500:            'Info: 3500 mulheres',
+  corte_quimico:        'Corte químico?',
+  espessura:            'Espessura do fio',
+  oleosidade:           'Seco/oleoso/normal',
+  porosidade:           'Porosidade',
+  caspa:                'Caspa/coceira',
+  elasticidade:         'Elasticidade',
+  lavagem:              'Frequência lavagem',
+  calor:                'Uso de calor',
+  cronograma:           'Faz cronograma?',
+  crescimento_desigual: 'Crescimento desigual',
+  sol_piscina:          'Sol/piscina/mar',
+  agua:                 'Litros de água/dia',
+  protetor:             'Usa protetor?',
+  como_plano:           'Como quer o plano',
+  produtos_casa:        'Produtos em casa',
+  cortes:               'Freq. de cortes',
+  areas:                'Áreas preocupantes',
+  info_bio:             'Info: Bio Juliane',
+  info_depoimentos:     'Depoimentos',
+  loading:              'Carregando plano',
+  phone:                'Telefone',
+  name_email:           'Nome e e-mail',
+  level:                'Nível do plano',
+  plan_ready:           'Plano pronto!',
+  mini_testi:           'Mini depoimento',
+}
+
 async function getData() {
   const sb = createAdminClient()
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const since30 = new Date(Date.now() - 30 * 86400_000).toISOString()
 
-  const [viewsAll, viewsToday, viewsMonth, profiles, answersAll, dailyViews] = await Promise.all([
+  const [viewsAll, viewsToday, viewsMonth, profiles, answersAll, dailyViews, stepEvents, leadsCount, checkoutEvents] = await Promise.all([
     sb.from('wg_quiz_views' as any).select('id', { count: 'exact', head: true }).eq('quiz_slug', 'plano-capilar'),
     sb.from('wg_quiz_views' as any).select('id', { count: 'exact', head: true }).eq('quiz_slug', 'plano-capilar').gte('created_at', today.toISOString()),
     sb.from('wg_quiz_views' as any).select('id', { count: 'exact', head: true }).eq('quiz_slug', 'plano-capilar').gte('created_at', since30),
     sb.from('profiles').select('id', { count: 'exact', head: true }),
     sb.from('wg_quiz_answers' as any).select('question_id, answer').eq('quiz_slug', 'plano-capilar'),
     sb.from('wg_quiz_views' as any).select('created_at').eq('quiz_slug', 'plano-capilar').gte('created_at', since30).order('created_at', { ascending: true }),
+    sb.from('wg_quiz_step_events' as any).select('step_index, step_id, event_type, session_id').eq('quiz_slug', 'plano-capilar').gte('created_at', since30),
+    sb.from('wg_quiz_leads' as any).select('id', { count: 'exact', head: true }).eq('quiz_slug', 'plano-capilar').gte('created_at', since30),
+    sb.from('checkout_events' as any).select('event_type').gte('created_at', since30),
   ])
 
   // Série diária de views
@@ -120,17 +159,71 @@ async function getData() {
     return order.indexOf(a.questionId) - order.indexOf(b.questionId)
   })
 
+  // ── Funil por passo ────────────────────────────────────────────
+  const stepViewedMap:   Record<number, Set<string>> = {}
+  const stepAnsweredMap: Record<number, Set<string>> = {}
+  const stepIdMap:       Record<number, string>      = {}
+
+  for (const row of (stepEvents.data ?? []) as any[]) {
+    const idx: number = row.step_index
+    const sid: string = row.session_id
+    if (!stepViewedMap[idx])   stepViewedMap[idx]   = new Set()
+    if (!stepAnsweredMap[idx]) stepAnsweredMap[idx] = new Set()
+    if (!stepIdMap[idx])       stepIdMap[idx]       = row.step_id
+    if (row.event_type === 'viewed')   stepViewedMap[idx].add(sid)
+    if (row.event_type === 'answered') stepAnsweredMap[idx].add(sid)
+  }
+
+  const allStepIndexes = Array.from(
+    new Set([...Object.keys(stepViewedMap), ...Object.keys(stepAnsweredMap)].map(Number))
+  ).sort((a, b) => a - b)
+
+  const stepFunnelRaw = allStepIndexes.map(idx => ({
+    step_index: idx,
+    step_id:    stepIdMap[idx] ?? '',
+    viewed:     stepViewedMap[idx]?.size   ?? 0,
+    answered:   stepAnsweredMap[idx]?.size ?? 0,
+  }))
+
+  const maxViewed = Math.max(...stepFunnelRaw.map(r => r.viewed), 1)
+  const stepFunnel = stepFunnelRaw.map((row, i) => {
+    const rate    = row.viewed > 0 ? Math.round((row.answered / row.viewed) * 100)    : null
+    const pctOfTop = Math.round((row.viewed / maxViewed) * 100)
+    const prevViewed = i > 0 ? stepFunnelRaw[i - 1].viewed : null
+    const dropoff  = prevViewed != null && prevViewed > 0
+      ? Math.round(((prevViewed - row.viewed) / prevViewed) * 100)
+      : null
+    return {
+      ...row,
+      label:           STEP_LABELS[row.step_id] ?? row.step_id,
+      conversion_rate: rate,
+      pct_of_top:      pctOfTop,
+      dropoff_from_prev: dropoff,
+    }
+  })
+
+  // ── Checkout funnel ─────────────────────────────────────────────
+  const checkoutCounts: Record<string, number> = {}
+  for (const row of (checkoutEvents.data ?? []) as any[]) {
+    const et = row.event_type as string
+    checkoutCounts[et] = (checkoutCounts[et] ?? 0) + 1
+  }
+
   return {
     kpis: {
-      views:      viewsAll.count ?? 0,
-      today:      viewsToday.count ?? 0,
-      viewsMonth: viewsMonth.count ?? 0,
-      profiles:   profiles.count ?? 0,
-      conversion: (viewsAll.count ?? 0) > 0 ? Math.round(((profiles.count ?? 0) / (viewsAll.count ?? 1)) * 100) : null,
-      respondents: answersAll.data ? new Set((answersAll.data as any[]).filter(r => r.question_id === 'hair_type').map(() => 1)).size : 0,
+      views:            viewsAll.count   ?? 0,
+      today:            viewsToday.count ?? 0,
+      viewsMonth:       viewsMonth.count ?? 0,
+      profiles:         profiles.count   ?? 0,
+      periodLeads:      leadsCount.count ?? 0,
+      conversion:       (viewsAll.count ?? 0) > 0 ? Math.round(((profiles.count ?? 0) / (viewsAll.count ?? 1)) * 100) : null,
+      checkoutInitiated:  checkoutCounts['checkout_initiated']  ?? 0,
+      pixGenerated:       checkoutCounts['pix_generated']       ?? 0,
+      paymentConfirmed:   checkoutCounts['payment_confirmed']   ?? 0,
     },
     dailySeries,
     questionAnalytics,
+    stepFunnel,
   }
 }
 

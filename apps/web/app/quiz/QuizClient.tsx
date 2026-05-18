@@ -75,6 +75,20 @@ function trackAnswers(answersData: QuizAnswers) {
     }),
   }).catch(() => {})
 }
+function trackStepEvent(sessionId: string, stepIndex: number, stepId: string, eventType: 'viewed' | 'answered') {
+  if (typeof window === 'undefined' || !sessionId || !stepId) return
+  fetch('/api/quiz/step-event', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      session_id: sessionId,
+      quiz_slug:  'plano-capilar',
+      step_index: stepIndex,
+      step_id:    stepId,
+      event_type: eventType,
+    }),
+  }).catch(() => {})
+}
 
 // ─── Curva de progresso "manipulada" ─────────────────────────
 function fakeProgress(step: number, total: number): number {
@@ -1610,6 +1624,16 @@ export default function QuizClient() {
   const pct = useFakeProgress(stepIndex, total)
   const trackedRef = useRef(false)
 
+  // Refs para acesso em callbacks sem stale closure
+  const sessionIdRef  = useRef<string>('')
+  const stepIndexRef  = useRef(stepIndex)
+  const stepIdRef     = useRef(step?.id ?? '')
+  useEffect(() => { stepIndexRef.current = stepIndex }, [stepIndex])
+  useEffect(() => { stepIdRef.current = step?.id ?? '' }, [step])
+
+  // Inicializa sessionId uma única vez no mount
+  useEffect(() => { sessionIdRef.current = getOrCreateSessionId() }, [])
+
   useEffect(() => { trackView() }, [])
 
   useEffect(() => {
@@ -1648,11 +1672,26 @@ export default function QuizClient() {
     }
   }, [stepIndex])
 
-  const goNext = useCallback(() => setStepIndex(i => Math.min(total - 1, i + 1)), [total])
+  // Rastreia cada etapa visualizada (taxa de visualização por passo)
+  useEffect(() => {
+    if (!step || !sessionIdRef.current) return
+    trackStepEvent(sessionIdRef.current, stepIndex, step.id, 'viewed')
+  }, [stepIndex]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Helper para rastrear "respondeu e avançou" no passo atual
+  const trackAnswered = useCallback(() => {
+    trackStepEvent(sessionIdRef.current, stepIndexRef.current, stepIdRef.current, 'answered')
+  }, [])
+
+  const goNext = useCallback(() => {
+    trackAnswered()
+    setStepIndex(i => Math.min(total - 1, i + 1))
+  }, [total, trackAnswered])
   const goBack = useCallback(() => setStepIndex(i => Math.max(0, i - 1)), [])
 
   const choose = useCallback((qid: string, v: string) => {
     setAnswers(a => ({ ...a, [qid]: v }))
+    trackStepEvent(sessionIdRef.current, stepIndexRef.current, stepIdRef.current, 'answered')
     setTimeout(() => setStepIndex(i => Math.min(total - 1, i + 1)), 320)
   }, [total])
 
@@ -1667,12 +1706,14 @@ export default function QuizClient() {
   const saveTextarea = useCallback(() => {
     if (!step) return
     setAnswers(a => ({ ...a, [step.id]: textInput.trim() }))
+    trackStepEvent(sessionIdRef.current, stepIndexRef.current, stepIdRef.current, 'answered')
     setTimeout(() => setStepIndex(i => Math.min(total - 1, i + 1)), 100)
   }, [step, textInput, total])
 
   const savePhone = useCallback(() => {
     if (!step) return
     setAnswers(a => ({ ...a, phone: phoneInput.replace(/\D/g, '') }))
+    trackStepEvent(sessionIdRef.current, stepIndexRef.current, stepIdRef.current, 'answered')
     setTimeout(() => setStepIndex(i => Math.min(total - 1, i + 1)), 100)
   }, [step, phoneInput, total])
 
@@ -1734,17 +1775,19 @@ export default function QuizClient() {
     } catch {}
 
     setSubmitting(false)
+    trackStepEvent(sessionIdRef.current, stepIndexRef.current, stepIdRef.current, 'answered')
     setStepIndex(i => Math.min(total - 1, i + 1))
   }, [answers, nameInput, emailInput, phoneInput, total])
 
   const finalContinue = useCallback(() => {
+    trackStepEvent(sessionIdRef.current, stepIndexRef.current, stepIdRef.current, 'answered')
     if (stepIndex >= total - 1) {
       try { localStorage.setItem('quiz_answers', JSON.stringify(answers)) } catch {}
       router.push('/roleta')
     } else {
-      goNext()
+      setStepIndex(i => Math.min(total - 1, i + 1))
     }
-  }, [stepIndex, total, answers, router, goNext])
+  }, [stepIndex, total, answers, router])
 
   const canBack = stepIndex > 0 && step?.kind !== 'loading'
   const isLoading = step?.kind === 'loading'

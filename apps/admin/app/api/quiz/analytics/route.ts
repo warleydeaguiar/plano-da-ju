@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (slug === 'plano-capilar') {
-    const [allViewsRes, periodViewsRes, allLeadsRes, todayLeadsRes, answersRes, dailyViewsRes] = await Promise.all([
+    const [allViewsRes, periodViewsRes, allLeadsRes, todayLeadsRes, answersRes, dailyViewsRes, stepEventsRes, leadsCountRes, checkoutEventsRes] = await Promise.all([
       // Views total
       sb.from('wg_quiz_views' as any).select('id', { count: 'exact', head: true }).eq('quiz_slug', slug),
       // Views período
@@ -93,6 +93,12 @@ export async function GET(req: NextRequest) {
       sb.from('wg_quiz_answers' as any).select('question_id, answer').eq('quiz_slug', slug).gte('created_at', since),
       // Views por dia
       sb.from('wg_quiz_views' as any).select('created_at').eq('quiz_slug', slug).gte('created_at', since).order('created_at', { ascending: true }),
+      // Eventos por passo (funil)
+      sb.from('wg_quiz_step_events' as any).select('step_index, step_id, event_type, session_id').eq('quiz_slug', slug).gte('created_at', since),
+      // Total de leads capturados (email/phone)
+      sb.from('wg_quiz_leads' as any).select('id', { count: 'exact', head: true }).eq('quiz_slug', slug).gte('created_at', since),
+      // Eventos de checkout
+      sb.from('checkout_events' as any).select('event_type').gte('created_at', since),
     ])
 
     // Série diária de views
@@ -130,16 +136,72 @@ export async function GET(req: NextRequest) {
       return { questionId, total, options }
     })
 
+    // ── Funil por passo ──────────────────────────────────────────
+    // Conta sessões únicas que "viewed" e "answered" em cada step_index
+    const stepViewedMap:   Record<number, Set<string>> = {}
+    const stepAnsweredMap: Record<number, Set<string>> = {}
+    const stepIdMap:       Record<number, string>      = {}
+
+    for (const row of (stepEventsRes.data ?? []) as any[]) {
+      const idx: number = row.step_index
+      const sid: string = row.session_id
+      const sid_str: string = row.step_id
+      if (!stepViewedMap[idx])   stepViewedMap[idx]   = new Set()
+      if (!stepAnsweredMap[idx]) stepAnsweredMap[idx] = new Set()
+      if (!stepIdMap[idx])       stepIdMap[idx]       = sid_str
+      if (row.event_type === 'viewed')   stepViewedMap[idx].add(sid)
+      if (row.event_type === 'answered') stepAnsweredMap[idx].add(sid)
+    }
+
+    // Constrói array ordenado com taxa de conversão por passo
+    const allStepIndexes = Array.from(
+      new Set([...Object.keys(stepViewedMap), ...Object.keys(stepAnsweredMap)].map(Number))
+    ).sort((a, b) => a - b)
+
+    const stepFunnel = allStepIndexes.map((idx) => {
+      const viewed   = stepViewedMap[idx]?.size   ?? 0
+      const answered = stepAnsweredMap[idx]?.size ?? 0
+      const rate     = viewed > 0 ? Math.round((answered / viewed) * 100) : null
+      return {
+        step_index: idx,
+        step_id:    stepIdMap[idx] ?? '',
+        viewed,
+        answered,
+        conversion_rate: rate,
+      }
+    })
+
+    // Drop-off entre passos consecutivos
+    const stepFunnelWithDropoff = stepFunnel.map((row, i) => {
+      const prevViewed = i > 0 ? stepFunnel[i - 1].viewed : null
+      const dropoff    = prevViewed != null && prevViewed > 0 && row.viewed < prevViewed
+        ? Math.round(((prevViewed - row.viewed) / prevViewed) * 100)
+        : null
+      return { ...row, dropoff_from_prev: dropoff }
+    })
+
+    // ── Eventos de checkout ─────────────────────────────────────
+    const checkoutCounts: Record<string, number> = {}
+    for (const row of (checkoutEventsRes.data ?? []) as any[]) {
+      const et = row.event_type as string
+      checkoutCounts[et] = (checkoutCounts[et] ?? 0) + 1
+    }
+
     return NextResponse.json({
       slug,
       kpis: {
-        totalViews:    allViewsRes.count ?? 0,
-        periodViews:   periodViewsRes.count ?? 0,
-        todayViews:    todayLeadsRes.count ?? 0,
-        totalProfiles: allLeadsRes.count ?? 0,
+        totalViews:       allViewsRes.count   ?? 0,
+        periodViews:      periodViewsRes.count ?? 0,
+        todayViews:       todayLeadsRes.count  ?? 0,
+        totalProfiles:    allLeadsRes.count    ?? 0,
+        periodLeads:      leadsCountRes.count  ?? 0,
+        checkoutInitiated:  checkoutCounts['checkout_initiated']  ?? 0,
+        pixGenerated:       checkoutCounts['pix_generated']       ?? 0,
+        paymentConfirmed:   checkoutCounts['payment_confirmed']   ?? 0,
       },
       dailySeries,
       questionAnalytics,
+      stepFunnel: stepFunnelWithDropoff,
     })
   }
 
