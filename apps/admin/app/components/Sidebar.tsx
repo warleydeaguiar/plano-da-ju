@@ -26,6 +26,7 @@ const NAV: NavItem[] = [
   },
   { icon: '🎯', label: 'Leads', href: '/leads' },
   { icon: '📞', label: 'Followup', href: '/followup' },
+  { icon: '📧', label: 'Email Marketing', href: '/email-marketing' },
   {
     icon: '🎯', label: 'Quiz', href: '/quiz',
     children: [
