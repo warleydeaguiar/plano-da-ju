@@ -399,7 +399,7 @@ function OfferCard({ countdown, name, onBuy }: { countdown: string; name: string
               backgroundClip: 'text',
               lineHeight: 1, letterSpacing: -1,
             }}>R$ 34,90</div>
-            <div style={{ fontSize: 9, color: T.inkSoft, marginTop: 3, fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase', fontFamily: fonts.ui }}>pagamento único</div>
+            <div style={{ fontSize: 9, color: T.inkSoft, marginTop: 2, fontWeight: 500, fontFamily: fonts.ui }}>ou 4x de <strong style={{ color: T.pinkDeep }}>R$8,73</strong> sem juros</div>
           </div>
         </div>
         <div style={{
@@ -408,9 +408,9 @@ function OfferCard({ countdown, name, onBuy }: { countdown: string; name: string
           padding: '8px 12px', background: T.cream, borderRadius: 99,
           border: `1px solid ${T.border}`,
         }}>
-          💳 Pagamento único no Pix ou Cartão de Crédito
+          ⚡ PIX à vista · 💳 Cartão em até 4x sem juros
         </div>
-        <GreenButton onClick={onBuy} variant="green">Comprar agora</GreenButton>
+        <GreenButton onClick={onBuy} variant="green">Quero meu plano agora →</GreenButton>
       </div>
     </div>
   );
@@ -445,6 +445,7 @@ export default function OfertaClient() {
   const [payType, setPayType] = useState<'card' | 'pix'>('pix');
   const [images, setImages] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [installments, setInstallments] = useState(1);
 
   // Detalhes do cartão (validação inline)
   const [cardBrand, setCardBrand] = useState<string>('');
@@ -731,6 +732,7 @@ export default function OfertaClient() {
           card_token: tokenData.id,
           quiz_answers: quizAnswers,
           session_id: getSessionId(),
+          installments,
           billing_address: { city: billingCity, state: billingState, cep: cleanCep },
         }),
       });
@@ -953,200 +955,350 @@ export default function OfertaClient() {
     );
   }
 
-  // ── Card Form ──
+  // ── Checkout (Hotmart-style single-page) ──
   if (step === 'card_form') {
-    const inputStyle = (focused: boolean): React.CSSProperties => ({
-      background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(12px)',
-      border: `1.5px solid ${focused ? T.pink : T.border}`, borderRadius: 14,
-      padding: '16px 18px', fontSize: 15, color: T.ink, width: '100%',
+    const inputS: React.CSSProperties = {
+      background: '#fff', border: '1.5px solid #E2D9EB', borderRadius: 10,
+      padding: '13px 15px', fontSize: 15, color: T.ink, width: '100%',
       outline: 'none', fontFamily: fonts.ui, boxSizing: 'border-box',
-      boxShadow: focused
-        ? `0 0 0 4px ${T.pink}22, 0 4px 12px rgba(190,24,93,0.06)`
-        : '0 2px 8px rgba(190,24,93,0.04)',
-      transition: 'all 0.25s',
-    });
-    const focusableInput = (props: React.InputHTMLAttributes<HTMLInputElement>) => {
-      const [f, setF] = [false, () => {}]; // not actually using state for simplicity
-      return <input {...props} style={{ ...inputStyle(false) }} onFocus={(e) => { e.currentTarget.style.borderColor = T.pink; e.currentTarget.style.boxShadow = `0 0 0 4px ${T.pink}22, 0 4px 12px rgba(190,24,93,0.06)`; }} onBlur={(e) => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.boxShadow = '0 2px 8px rgba(190,24,93,0.04)'; }} />;
+      transition: 'border-color 0.2s, box-shadow 0.2s',
     };
+    const labelS: React.CSSProperties = {
+      fontSize: 12, color: T.inkSoft, fontWeight: 600,
+      display: 'block', marginBottom: 5, fontFamily: fonts.ui,
+    };
+    const sectionCard: React.CSSProperties = {
+      background: '#fff', borderRadius: 16, border: '1px solid rgba(0,0,0,0.07)',
+      padding: '20px', marginBottom: 14,
+      boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+    };
+    const sectionTitle: React.CSSProperties = {
+      fontSize: 11, fontWeight: 700, color: T.inkSoft,
+      textTransform: 'uppercase', letterSpacing: 0.8,
+      marginBottom: 16, fontFamily: fonts.ui,
+    };
+
+    const INSTALLMENTS = [
+      { n: 1, label: '1x de R$34,90 (à vista, sem acréscimo)' },
+      { n: 2, label: '2x de R$17,45 sem juros' },
+      { n: 3, label: '3x de R$11,64 sem juros' },
+      { n: 4, label: '4x de R$8,73 sem juros' },
+    ];
+    const installAmt = installments > 1
+      ? `${installments}x de R$${(3490 / installments / 100).toFixed(2).replace('.', ',')}`
+      : 'R$34,90';
+
     return (
       <>
-        <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-        <style>{fontStyles}</style>
+        <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+        <style>{fontStyles + `
+          .co-input:focus { border-color: ${T.pink} !important; box-shadow: 0 0 0 3px ${T.pink}20; }
+          .co-select:focus { border-color: ${T.pink} !important; outline: none; }
+        `}</style>
+
+        {/* Urgency bar */}
         <div style={{
-          minHeight: '100vh',
-          background: `radial-gradient(circle at 30% 0%, ${T.rose}, transparent 50%), ${T.bg}`,
-          padding: '24px', fontFamily: fonts.ui,
+          background: `linear-gradient(90deg, ${T.pinkDeep}, ${T.pink})`,
+          color: '#fff', textAlign: 'center', padding: '10px 16px',
+          fontSize: 13, fontWeight: 700, fontFamily: fonts.ui, letterSpacing: 0.2,
         }}>
-          <div style={{ maxWidth: 420, margin: '0 auto' }}>
+          ⏱ Oferta especial · {countdown} restantes
+        </div>
+
+        <div style={{ minHeight: '100vh', background: '#F4F0F7', fontFamily: fonts.ui, paddingBottom: 48 }}>
+          <div style={{ maxWidth: 480, margin: '0 auto', padding: '0 16px' }}>
+
+            {/* Back */}
             <button onClick={() => setStep('offer')} style={{
-              background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)',
-              border: `1px solid ${T.border}`, borderRadius: 99,
-              color: T.ink, fontSize: 14, fontWeight: 600,
-              cursor: 'pointer', marginBottom: 20, padding: '8px 16px', display: 'inline-flex', alignItems: 'center', gap: 6,
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: T.inkSoft, fontSize: 13, fontWeight: 600,
+              padding: '14px 0', display: 'inline-flex', alignItems: 'center', gap: 5,
             }}>
-              ‹ Voltar
+              ‹ Voltar para a oferta
             </button>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 22 }}>
-              {(['card', 'pix'] as const).map(type => (
-                <button key={type} onClick={() => setPayType(type)} style={{
-                  background: payType === type
-                    ? `linear-gradient(135deg, ${T.pink}, ${T.pinkDeep})`
-                    : 'rgba(255,255,255,0.85)',
-                  backdropFilter: 'blur(12px)',
-                  color: payType === type ? '#fff' : T.ink,
-                  border: `1.5px solid ${payType === type ? 'transparent' : T.border}`,
-                  borderRadius: 14, padding: '14px', cursor: 'pointer', textAlign: 'center',
-                  fontSize: 14, fontWeight: 700, fontFamily: fonts.ui,
-                  boxShadow: payType === type ? `0 8px 20px ${T.pink}33` : '0 2px 6px rgba(0,0,0,0.04)',
-                  transition: 'all 0.22s',
-                }}>
-                  {type === 'card' ? '💳 Cartão' : '📱 PIX'}
-                </button>
-              ))}
+            {/* ── Product header ── */}
+            <div style={{ ...sectionCard, marginBottom: 14 }}>
+              <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+                <div style={{
+                  width: 56, height: 56, borderRadius: 12, flexShrink: 0,
+                  background: `linear-gradient(135deg, ${T.pink}, ${T.pinkDeep})`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 24,
+                }}>🌿</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: T.ink, lineHeight: 1.3 }}>
+                    Plano Capilar Personalizado
+                  </div>
+                  <div style={{ fontSize: 12, color: T.inkSoft, marginTop: 2 }}>Tricologista Juliane Cost</div>
+                  <div style={{ marginTop: 6, display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                    <span style={{
+                      fontSize: 24, fontWeight: 800, fontFamily: fonts.display,
+                      background: `linear-gradient(135deg, ${T.pinkDeep}, ${T.pink})`,
+                      WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+                      lineHeight: 1,
+                    }}>R$34,90</span>
+                    <span style={{ fontSize: 11, color: T.inkSoft }}>ou 4x de <strong style={{ color: T.pinkDeep }}>R$8,73</strong></span>
+                  </div>
+                </div>
+              </div>
+              <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #F0EAF5', display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                {['✓ Garantia 7 dias', '✓ Acesso imediato', '✓ Suporte WhatsApp'].map(t => (
+                  <span key={t} style={{ fontSize: 11, color: T.greenDeep, fontWeight: 600 }}>{t}</span>
+                ))}
+              </div>
             </div>
 
-            <h1 style={{
-              fontSize: 26, fontWeight: 600, color: T.ink, marginBottom: 6,
-              fontFamily: fonts.display, letterSpacing: -0.4,
-            }}>
-              {payType === 'card' ? 'Dados do cartão' : 'Pagar com PIX'}
-            </h1>
-            <p style={{ color: T.inkSoft, fontSize: 14, marginBottom: 24 }}>R$ 34,90 — pagamento único</p>
-
-            {payType === 'card' ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* ── Dados pessoais ── */}
+            <div style={sectionCard}>
+              <div style={sectionTitle}>Seus dados</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div>
+                  <label style={labelS}>Nome completo</label>
                   <input
-                    style={inputStyle(false)} placeholder="Nome no cartão" value={cardName}
-                    onChange={e => setCardName(e.target.value)}
-                    onBlur={() => setTouched(t => ({ ...t, name: true }))}
-                    autoComplete="cc-name"
+                    className="co-input" style={inputS}
+                    placeholder="Seu nome completo"
+                    value={name} onChange={e => setName(e.target.value)}
                   />
-                  {touched.name && cardErrors.name && (
-                    <p style={{ color: T.red, fontSize: 12, marginTop: 4, marginLeft: 4 }}>{cardErrors.name}</p>
+                </div>
+                <div>
+                  <label style={labelS}>E-mail</label>
+                  <input
+                    className="co-input" style={inputS} type="email"
+                    placeholder="Seu melhor e-mail"
+                    value={email} onChange={e => setEmail(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label style={labelS}>CPF</label>
+                  <input
+                    className="co-input" style={inputS}
+                    placeholder="000.000.000-00"
+                    value={cpf} onChange={e => setCpf(formatCpf(e.target.value))}
+                    onBlur={() => setTouched(t => ({ ...t, cpf: true }))}
+                    maxLength={14} inputMode="numeric"
+                  />
+                  {touched.cpf && cardErrors.cpf && (
+                    <p style={{ color: T.red, fontSize: 12, marginTop: 4 }}>{cardErrors.cpf}</p>
                   )}
                 </div>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    style={{ ...inputStyle(false), paddingRight: cardBrand ? 60 : 18 }}
-                    placeholder="Número do cartão" value={cardNumber}
-                    onChange={e => setCardNumber(formatCard(e.target.value))}
-                    onBlur={() => setTouched(t => ({ ...t, number: true }))}
-                    maxLength={19} inputMode="numeric" autoComplete="cc-number"
-                  />
-                  {cardBrand && (
+              </div>
+            </div>
+
+            {/* ── Forma de pagamento ── */}
+            <div style={sectionCard}>
+              <div style={sectionTitle}>Forma de pagamento</div>
+
+              {/* PIX option */}
+              <button
+                onClick={() => setPayType('pix')}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '14px 16px',
+                  border: `2px solid ${payType === 'pix' ? T.pink : '#E2D9EB'}`,
+                  borderRadius: 12, marginBottom: 10, cursor: 'pointer',
+                  background: payType === 'pix' ? T.pinkSoft : '#FAFAFA',
+                  transition: 'all 0.2s', textAlign: 'left',
+                  boxShadow: payType === 'pix' ? `0 4px 14px ${T.pink}20` : 'none',
+                }}
+              >
+                <div style={{
+                  width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+                  border: `2px solid ${payType === 'pix' ? T.pink : '#C5BAD4'}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {payType === 'pix' && <div style={{ width: 10, height: 10, borderRadius: '50%', background: T.pink }} />}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: T.ink }}>⚡ PIX</span>
                     <span style={{
-                      position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)',
-                      fontSize: 10, fontWeight: 800, color: T.inkSoft, textTransform: 'uppercase',
-                      background: T.pinkSoft, padding: '4px 8px', borderRadius: 6, letterSpacing: 0.5,
-                    }}>{cardBrand}</span>
-                  )}
-                  {touched.number && cardErrors.number && (
-                    <p style={{ color: T.red, fontSize: 12, marginTop: 4, marginLeft: 4 }}>{cardErrors.number}</p>
-                  )}
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <div>
-                    <input
-                      style={inputStyle(false)} placeholder="MM/AA" value={cardExpiry}
-                      onChange={e => setCardExpiry(formatExpiry(e.target.value))}
-                      onBlur={() => setTouched(t => ({ ...t, expiry: true }))}
-                      maxLength={5} inputMode="numeric" autoComplete="cc-exp"
-                    />
-                    {touched.expiry && cardErrors.expiry && (
-                      <p style={{ color: T.red, fontSize: 12, marginTop: 4, marginLeft: 4 }}>{cardErrors.expiry}</p>
-                    )}
+                      fontSize: 10, fontWeight: 700, color: T.greenDeep,
+                      background: T.green + '20', padding: '2px 8px', borderRadius: 99,
+                    }}>MAIS RÁPIDO</span>
                   </div>
-                  <div>
-                    <input
-                      style={inputStyle(false)} placeholder="CVV" value={cardCvv}
-                      onChange={e => setCardCvv(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                      onBlur={() => setTouched(t => ({ ...t, cvv: true }))}
-                      maxLength={4} inputMode="numeric" autoComplete="cc-csc"
-                    />
-                    {touched.cvv && cardErrors.cvv && (
-                      <p style={{ color: T.red, fontSize: 12, marginTop: 4, marginLeft: 4 }}>{cardErrors.cvv}</p>
-                    )}
+                  <div style={{ fontSize: 12, color: T.inkSoft, marginTop: 2 }}>
+                    Aprovação instantânea · R$34,90 à vista
                   </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 12 }}>
+              </button>
+
+              {/* Card option */}
+              <button
+                onClick={() => setPayType('card')}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '14px 16px',
+                  border: `2px solid ${payType === 'card' ? T.pink : '#E2D9EB'}`,
+                  borderRadius: 12, cursor: 'pointer',
+                  background: payType === 'card' ? T.pinkSoft : '#FAFAFA',
+                  transition: 'all 0.2s', textAlign: 'left',
+                  boxShadow: payType === 'card' ? `0 4px 14px ${T.pink}20` : 'none',
+                  marginBottom: payType === 'card' ? 12 : 0,
+                }}
+              >
+                <div style={{
+                  width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+                  border: `2px solid ${payType === 'card' ? T.pink : '#C5BAD4'}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {payType === 'card' && <div style={{ width: 10, height: 10, borderRadius: '50%', background: T.pink }} />}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: T.ink }}>💳 Cartão de crédito</span>
+                  <div style={{ fontSize: 12, color: T.inkSoft, marginTop: 2 }}>
+                    Em até 4x de R$8,73 sem juros
+                  </div>
+                </div>
+              </button>
+
+              {/* Card fields (expandable) */}
+              {payType === 'card' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <div>
+                    <label style={labelS}>Nome no cartão</label>
                     <input
-                      style={inputStyle(false)} placeholder="CPF" value={cpf}
-                      onChange={e => setCpf(formatCpf(e.target.value))}
-                      onBlur={() => setTouched(t => ({ ...t, cpf: true }))}
-                      maxLength={14} inputMode="numeric"
+                      className="co-input" style={inputS}
+                      placeholder="Como aparece no cartão"
+                      value={cardName} onChange={e => setCardName(e.target.value)}
+                      onBlur={() => setTouched(t => ({ ...t, name: true }))}
+                      autoComplete="cc-name"
                     />
-                    {touched.cpf && cardErrors.cpf && (
-                      <p style={{ color: T.red, fontSize: 12, marginTop: 4, marginLeft: 4 }}>{cardErrors.cpf}</p>
+                    {touched.name && cardErrors.name && <p style={{ color: T.red, fontSize: 12, marginTop: 3 }}>{cardErrors.name}</p>}
+                  </div>
+                  <div style={{ position: 'relative' }}>
+                    <label style={labelS}>Número do cartão</label>
+                    <input
+                      className="co-input"
+                      style={{ ...inputS, paddingRight: cardBrand ? 60 : 15 }}
+                      placeholder="0000 0000 0000 0000"
+                      value={cardNumber} onChange={e => setCardNumber(formatCard(e.target.value))}
+                      onBlur={() => setTouched(t => ({ ...t, number: true }))}
+                      maxLength={19} inputMode="numeric" autoComplete="cc-number"
+                    />
+                    {cardBrand && (
+                      <span style={{
+                        position: 'absolute', right: 12, bottom: 13,
+                        fontSize: 10, fontWeight: 800, color: T.inkSoft,
+                        textTransform: 'uppercase', background: T.pinkSoft,
+                        padding: '3px 7px', borderRadius: 5,
+                      }}>{cardBrand}</span>
                     )}
+                    {touched.number && cardErrors.number && <p style={{ color: T.red, fontSize: 12, marginTop: 3 }}>{cardErrors.number}</p>}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <div>
+                      <label style={labelS}>Validade</label>
+                      <input
+                        className="co-input" style={inputS} placeholder="MM/AA"
+                        value={cardExpiry} onChange={e => setCardExpiry(formatExpiry(e.target.value))}
+                        onBlur={() => setTouched(t => ({ ...t, expiry: true }))}
+                        maxLength={5} inputMode="numeric" autoComplete="cc-exp"
+                      />
+                      {touched.expiry && cardErrors.expiry && <p style={{ color: T.red, fontSize: 12, marginTop: 3 }}>{cardErrors.expiry}</p>}
+                    </div>
+                    <div>
+                      <label style={labelS}>CVV</label>
+                      <input
+                        className="co-input" style={inputS} placeholder="3 ou 4 dígitos"
+                        value={cardCvv} onChange={e => setCardCvv(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                        onBlur={() => setTouched(t => ({ ...t, cvv: true }))}
+                        maxLength={4} inputMode="numeric" autoComplete="cc-csc"
+                      />
+                      {touched.cvv && cardErrors.cvv && <p style={{ color: T.red, fontSize: 12, marginTop: 3 }}>{cardErrors.cvv}</p>}
+                    </div>
                   </div>
                   <div>
+                    <label style={labelS}>CEP (endereço de cobrança)</label>
                     <input
-                      style={inputStyle(false)} placeholder="CEP" value={cep}
-                      onChange={e => setCep(formatCep(e.target.value))}
+                      className="co-input" style={inputS} placeholder="00000-000"
+                      value={cep} onChange={e => setCep(formatCep(e.target.value))}
                       onBlur={() => setTouched(t => ({ ...t, cep: true }))}
                       maxLength={9} inputMode="numeric"
                     />
                     {cepStatus === 'ok' && cepAddress && (
-                      <p style={{ color: T.green, fontSize: 11, marginTop: 4, marginLeft: 4 }}>
-                        ✓ {cepAddress.city}/{cepAddress.state}
-                      </p>
+                      <p style={{ color: T.greenDeep, fontSize: 11, marginTop: 3, fontWeight: 600 }}>✓ {cepAddress.city} / {cepAddress.state}</p>
                     )}
-                    {cepStatus === 'loading' && (
-                      <p style={{ color: T.inkSoft, fontSize: 11, marginTop: 4, marginLeft: 4 }}>Buscando…</p>
-                    )}
-                    {touched.cep && cardErrors.cep && (
-                      <p style={{ color: T.red, fontSize: 12, marginTop: 4, marginLeft: 4 }}>{cardErrors.cep}</p>
-                    )}
+                    {cepStatus === 'loading' && <p style={{ color: T.inkSoft, fontSize: 11, marginTop: 3 }}>Buscando…</p>}
+                    {touched.cep && cardErrors.cep && <p style={{ color: T.red, fontSize: 12, marginTop: 3 }}>{cardErrors.cep}</p>}
+                  </div>
+                  <div>
+                    <label style={labelS}>Parcelas</label>
+                    <select
+                      className="co-select"
+                      style={{ ...inputS, cursor: 'pointer', appearance: 'none' }}
+                      value={installments}
+                      onChange={e => setInstallments(parseInt(e.target.value, 10))}
+                    >
+                      {INSTALLMENTS.map(i => (
+                        <option key={i.n} value={i.n}>{i.label}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <input style={inputStyle(false)} placeholder="Seu nome completo" value={name} onChange={e => setName(e.target.value)} />
-                <input style={inputStyle(false)} type="email" placeholder="Seu e-mail" value={email} onChange={e => setEmail(e.target.value)} />
-                <input style={inputStyle(false)} placeholder="CPF" value={cpf} onChange={e => setCpf(formatCpf(e.target.value))} maxLength={14} inputMode="numeric" />
-              </div>
-            )}
+              )}
+            </div>
 
+            {/* ── Resumo ── */}
+            <div style={{ ...sectionCard, marginBottom: 14 }}>
+              <div style={sectionTitle}>Resumo do pedido</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <span style={{ fontSize: 13, color: T.inkSoft }}>Plano Capilar Personalizado</span>
+                <span style={{ fontSize: 13, color: T.ink, fontWeight: 600 }}>R$34,90</span>
+              </div>
+              <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                paddingTop: 10, borderTop: '1px solid #F0EAF5',
+              }}>
+                <span style={{ fontSize: 15, fontWeight: 700, color: T.ink }}>Total</span>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: T.pinkDeep, fontFamily: fonts.display }}>
+                    {payType === 'card' && installments > 1 ? installAmt : 'R$34,90'}
+                  </div>
+                  {payType === 'card' && installments > 1 && (
+                    <div style={{ fontSize: 11, color: T.inkSoft }}>total R$34,90 sem juros</div>
+                  )}
+                  {payType === 'pix' && (
+                    <div style={{ fontSize: 11, color: T.greenDeep, fontWeight: 600 }}>⚡ Aprovação instantânea</div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Error */}
             {error && (
-              <p style={{ color: T.red, fontSize: 13, marginTop: 12, padding: '12px 16px', background: '#FEF2F2', borderRadius: 12, border: '1px solid #FECACA' }}>{error}</p>
+              <p style={{ color: T.red, fontSize: 13, padding: '12px 16px', background: '#FEF2F2', borderRadius: 12, border: '1px solid #FECACA', marginBottom: 12 }}>
+                {error}
+              </p>
             )}
 
-            <div style={{ marginTop: 20 }}>
-              <GreenButton
-                onClick={payType === 'card' ? handleCard : handlePix}
-                disabled={
-                  isSubmitting ||
-                  (payType === 'card'
-                    ? !isCardComplete
-                    : !isValidCpf(cpf) || !name.trim() || !email.includes('@'))
-                }
-              >
-                {isSubmitting ? '⏳ Processando…' : `🔒 ${payType === 'card' ? 'Pagar R$ 34,90' : 'Gerar PIX — R$ 34,90'}`}
-              </GreenButton>
+            {/* CTA */}
+            <GreenButton
+              onClick={payType === 'card' ? handleCard : handlePix}
+              disabled={
+                isSubmitting ||
+                (payType === 'card'
+                  ? !isCardComplete
+                  : !isValidCpf(cpf) || !name.trim() || !email.includes('@'))
+              }
+            >
+              {isSubmitting
+                ? '⏳ Processando…'
+                : payType === 'pix'
+                  ? '🔒 Gerar PIX — R$34,90'
+                  : `🔒 Pagar ${installAmt}`}
+            </GreenButton>
+
+            {/* Trust row */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 18, marginTop: 14, flexWrap: 'wrap' }}>
+              {['🔒 SSL 256-bit', '🛡 Anti-fraude', '💳 PagarMe', '✅ Garantia 7 dias'].map(t => (
+                <span key={t} style={{ fontSize: 11, color: T.inkSoft, fontFamily: fonts.ui }}>{t}</span>
+              ))}
             </div>
-            {/* Trust badges */}
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              gap: 14, marginTop: 14, flexWrap: 'wrap',
-            }}>
-              <span style={{ fontSize: 11, color: T.inkSoft, display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: fonts.ui }}>
-                🔒 SSL 256-bit
-              </span>
-              <span style={{ fontSize: 11, color: T.inkSoft, display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: fonts.ui }}>
-                🛡 Anti-fraude
-              </span>
-              <span style={{ fontSize: 11, color: T.inkSoft, display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: fonts.ui }}>
-                💳 PagarMe
-              </span>
-            </div>
-            <p style={{ textAlign: 'center', marginTop: 8, fontSize: 11, color: T.inkSoft, fontFamily: fonts.ui }}>
-              Garantia de 7 dias · Seus dados nunca são compartilhados
+            <p style={{ textAlign: 'center', marginTop: 8, fontSize: 11, color: T.inkMuted, fontFamily: fonts.ui }}>
+              Seus dados são criptografados e nunca compartilhados
             </p>
+
           </div>
         </div>
       </>
