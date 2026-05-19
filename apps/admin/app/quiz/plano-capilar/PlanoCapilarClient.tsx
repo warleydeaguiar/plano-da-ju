@@ -347,9 +347,10 @@ export default function PlanoCapilarClient({ data }: { data: any }) {
               )}
             </div>
 
-            {/* Header da tabela */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 60px 60px', gap: 10, padding: '6px 0', borderBottom: '2px solid #F0F0F5', marginBottom: 4 }}>
+            {/* Header da tabela — 5 colunas: label / barra / sessões / % / queda */}
+            <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr 70px 60px 60px', gap: 12, padding: '6px 0', borderBottom: '2px solid #F0F0F5', marginBottom: 4 }}>
               <div style={{ fontSize: 11, color: gray, fontWeight: 600 }}>PERGUNTA</div>
+              <div style={{ fontSize: 11, color: gray, fontWeight: 600 }}>ALCANCE</div>
               <div style={{ fontSize: 11, color: gray, fontWeight: 600, textAlign: 'right' }}>SESSÕES</div>
               <div style={{ fontSize: 11, color: gray, fontWeight: 600, textAlign: 'right' }}>% DO TOP</div>
               <div style={{ fontSize: 11, color: gray, fontWeight: 600, textAlign: 'right' }}>QUEDA</div>
@@ -362,21 +363,27 @@ export default function PlanoCapilarClient({ data }: { data: any }) {
               const barColor  = drop == null || drop === 0 ? green : drop <= 5 ? green : drop <= 15 ? orange : red
               return (
                 <div key={row.question_id} style={{
-                  display: 'grid', gridTemplateColumns: '1fr 80px 60px 60px', gap: 10,
-                  alignItems: 'center', padding: '7px 0',
+                  display: 'grid', gridTemplateColumns: '220px 1fr 70px 60px 60px', gap: 12,
+                  alignItems: 'center', padding: '8px 0',
                   borderBottom: '1px solid #F0F0F5',
-                  background: isWorst ? 'rgba(255,59,48,0.03)' : 'transparent',
+                  background: isWorst ? 'rgba(255,59,48,0.04)' : 'transparent',
                 }}>
-                  {/* Label */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: `${row.pct_of_top}%`, maxWidth: '100%', height: 6, background: barColor, borderRadius: 3, opacity: 0.7, minWidth: row.sessions > 0 ? 4 : 0, flexShrink: 0 }} />
-                    <span style={{ fontSize: 12, fontWeight: isWorst ? 700 : 500, color: isWorst ? red : '#2D1B2E', whiteSpace: 'nowrap' }}>
-                      {row.label}
-                      {isWorst && <span style={{ fontSize: 10, marginLeft: 6, color: red }}>⚠ gargalo</span>}
-                    </span>
+                  {/* Label (coluna fixa) */}
+                  <div style={{ fontSize: 12, fontWeight: isWorst ? 700 : 500, color: isWorst ? red : '#2D1B2E', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {row.label}
+                    {isWorst && <span style={{ fontSize: 10, marginLeft: 6, color: red, fontWeight: 700 }}>⚠ gargalo</span>}
+                  </div>
+                  {/* Barra (coluna própria, ocupa o resto do espaço) */}
+                  <div style={{ position: 'relative', height: 10, background: '#F0F0F5', borderRadius: 5, overflow: 'hidden' }}>
+                    <div style={{
+                      position: 'absolute', left: 0, top: 0, bottom: 0,
+                      width: `${row.pct_of_top}%`,
+                      background: barColor, borderRadius: 5, opacity: 0.75,
+                      transition: 'width 0.4s ease',
+                    }} />
                   </div>
                   {/* Sessões */}
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#2D1B2E', textAlign: 'right' }}>{row.sessions}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#2D1B2E', textAlign: 'right' }}>{row.sessions}</div>
                   {/* % do topo */}
                   <div style={{ fontSize: 12, color: gray, textAlign: 'right' }}>{row.pct_of_top}%</div>
                   {/* Queda */}
