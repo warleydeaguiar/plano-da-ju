@@ -36,6 +36,7 @@ export async function POST(req: NextRequest) {
   const name       = truncate(body.name, MAX_LEN.name)
   const email      = truncate(body.email, MAX_LEN.email)
   const phone      = truncate(body.phone, MAX_LEN.phone)
+  const session_id = truncate(body.session_id, 64)
   const utm_source   = truncate(body.utm_source, MAX_LEN.utm)
   const utm_medium   = truncate(body.utm_medium, MAX_LEN.utm)
   const utm_campaign = truncate(body.utm_campaign, MAX_LEN.utm)
@@ -62,7 +63,7 @@ export async function POST(req: NextRequest) {
   // Save lead — log but do not block the response on insert failure
   const { error: insertError } = await db.from('wg_quiz_leads' as any).insert({
     quiz_slug,
-    name, email, phone,
+    name, email, phone, session_id,
     utm_source, utm_medium, utm_campaign, utm_content, utm_term,
     group_redirected_to: groupId,
     invite_link_used: inviteLink,

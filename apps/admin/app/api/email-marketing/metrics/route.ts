@@ -9,7 +9,7 @@ export async function GET() {
 
   const [sendsResult, seqResult, leadsResult] = await Promise.all([
     (sb as any).from('wg_email_sends').select('status, sequence_id, sent_at, opened_at'),
-    (sb as any).from('wg_email_sequences').select('id, name, delay_days, enabled'),
+    (sb as any).from('wg_email_sequences').select('id, name, delay_days, delay_minutes, audience, anchor_event, enabled'),
     (sb as any).from('wg_quiz_leads').select('id, email', { count: 'exact', head: true }),
   ])
 
@@ -29,6 +29,9 @@ export async function GET() {
       id: seq.id,
       name: seq.name,
       delay_days: seq.delay_days,
+      delay_minutes: seq.delay_minutes ?? 0,
+      audience: seq.audience ?? 'no_purchase',
+      anchor_event: seq.anchor_event ?? 'lead_created',
       enabled: seq.enabled,
       sent: s.filter(e => e.status === 'sent').length,
       errors: s.filter(e => e.status === 'error').length,

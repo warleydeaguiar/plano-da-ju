@@ -45,6 +45,9 @@ interface Sequence {
   id: string
   name: string
   delay_days: number
+  delay_minutes: number
+  audience: 'all' | 'no_purchase' | 'customers'
+  anchor_event: 'lead_created' | 'purchase'
   subject: string
   html_body: string
   text_body: string
@@ -52,6 +55,30 @@ interface Sequence {
   enabled: boolean
   send_hour: number
   created_at: string
+}
+
+// ─── Helpers de delay ─────────────────────────────────────────
+function totalMinutes(seq: { delay_days: number; delay_minutes: number }): number {
+  return (Number(seq.delay_days) || 0) * 1440 + (Number(seq.delay_minutes) || 0)
+}
+function formatDelay(seq: { delay_days: number; delay_minutes: number }): string {
+  const m = totalMinutes(seq)
+  if (m === 0) return 'imediato'
+  if (m < 60) return `+${m}min`
+  if (m < 1440) return `+${Math.round(m / 60)}h`
+  const days = Math.floor(m / 1440)
+  const rest = m % 1440
+  if (rest === 0) return `+${days}d`
+  return `+${days}d${Math.round(rest / 60)}h`
+}
+const AUDIENCE_LABEL: Record<string, string> = {
+  all: 'todos',
+  no_purchase: 'não compradores',
+  customers: 'clientes',
+}
+const ANCHOR_LABEL: Record<string, string> = {
+  lead_created: 'após captura do lead',
+  purchase: 'após a compra',
 }
 
 interface Metrics {
@@ -65,6 +92,9 @@ interface Metrics {
     id: string
     name: string
     delay_days: number
+    delay_minutes?: number
+    audience?: string
+    anchor_event?: string
     enabled: boolean
     sent: number
     errors: number
@@ -183,18 +213,20 @@ function DashboardView({ metrics, loading }: { metrics: Metrics | null; loading:
                 border: `1px solid ${T.border}`,
               }}>
                 <div style={{
-                  width: 32, height: 32, borderRadius: 8,
+                  minWidth: 56, height: 32, padding: '0 10px', borderRadius: 8,
                   background: seq.enabled ? T.greenSoft : T.graySoft,
                   color: seq.enabled ? '#16A34A' : T.inkMuted,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 13, fontWeight: 800, flexShrink: 0,
+                  fontSize: 12, fontWeight: 800, flexShrink: 0, whiteSpace: 'nowrap',
                 }}>
-                  D+{seq.delay_days}
+                  {formatDelay({ delay_days: seq.delay_days, delay_minutes: seq.delay_minutes ?? 0 })}
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: T.ink }}>{seq.name}</div>
                   <div style={{ fontSize: 11, color: T.inkMuted }}>
                     {seq.enabled ? '✓ Ativa' : '— Inativa'}
+                    {seq.audience && <> · {AUDIENCE_LABEL[seq.audience] ?? seq.audience}</>}
+                    {seq.anchor_event === 'purchase' && <> · pós-compra</>}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
@@ -293,18 +325,18 @@ function SequenceEditor({ seq, onSave, onDelete }: {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
         <div style={{
-          width: 40, height: 40, borderRadius: 10,
+          minWidth: 64, height: 40, padding: '0 12px', borderRadius: 10,
           background: seq.enabled ? T.greenSoft : T.graySoft,
           color: seq.enabled ? '#16A34A' : T.inkMuted,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 14, fontWeight: 800, flexShrink: 0,
+          fontSize: 13, fontWeight: 800, flexShrink: 0, whiteSpace: 'nowrap',
         }}>
-          D+{seq.delay_days}
+          {formatDelay(seq)}
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: T.ink }}>{seq.name}</div>
           <div style={{ fontSize: 12, color: T.inkMuted }}>
-            Hora de envio: {String(seq.send_hour).padStart(2, '0')}h
+            {ANCHOR_LABEL[seq.anchor_event] ?? 'após captura'} · audiência: <strong>{AUDIENCE_LABEL[seq.audience] ?? seq.audience}</strong>
             {seq.quiz_slug && <> · quiz: <strong>{seq.quiz_slug}</strong></>}
           </div>
         </div>

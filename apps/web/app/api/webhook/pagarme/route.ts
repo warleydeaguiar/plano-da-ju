@@ -49,11 +49,24 @@ export async function POST(req: NextRequest) {
         const paymentMethod = data.charges?.[0]?.payment_method ?? data.payment_method ?? 'pix';
         const subType = paymentMethod === 'credit_card' ? 'annual_card' : 'annual_pix';
 
+        // Tenta linkar com a sessão do quiz via wg_quiz_leads (email match)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: leadMatch } = await (supabase.from('wg_quiz_leads') as any)
+          .select('session_id')
+          .ilike('email', email)
+          .not('session_id', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const quizSessionId: string | null = leadMatch?.session_id ?? null;
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (supabase.from('profiles') as any)
           .update({
             subscription_type: subType,
             subscription_status: 'active',
+            subscription_activated_at: new Date().toISOString(),
+            quiz_session_id: quizSessionId,
             subscription_expires_at: new Date(
               Date.now() + 365 * 24 * 60 * 60 * 1000,
             ).toISOString(),

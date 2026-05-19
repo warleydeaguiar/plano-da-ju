@@ -1747,6 +1747,7 @@ export default function QuizClient() {
           name: nameInput.trim(),
           email: emailInput.trim(),
           phone: phoneInput.replace(/\D/g, ''),
+          session_id:   getOrCreateSessionId(),
           utm_source:   params.get('utm_source'),
           utm_medium:   params.get('utm_medium'),
           utm_campaign: params.get('utm_campaign'),
