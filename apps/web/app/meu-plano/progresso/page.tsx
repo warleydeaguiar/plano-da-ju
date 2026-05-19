@@ -204,10 +204,18 @@ export default function ProgressoPage() {
           </div>
           <div style={{ flex: 1, position: 'relative', zIndex: 1 }}>
             <div style={{ fontSize: 17, fontWeight: 600, fontFamily: fonts.display }}>
-              {uploading ? 'Analisando…' : uploadOk ? 'Foto registrada!' : 'Registrar foto de hoje'}
+              {uploading
+                ? 'Analisando…'
+                : uploadOk
+                  ? 'Foto registrada!'
+                  : photos.length === 0
+                    ? 'Tirar sua 1ª foto (ANTES)'
+                    : 'Registrar foto de hoje'}
             </div>
             <div style={{ fontSize: 12.5, opacity: 0.88, marginTop: 2 }}>
-              IA compara com fotos anteriores e analisa a evolução
+              {photos.length === 0
+                ? 'Esse é o seu "antes" — daqui 90 dias vai ser emocionante comparar'
+                : 'IA compara com fotos anteriores e analisa a evolução'}
             </div>
           </div>
           <IconChevronRight size={22} color="rgba(255,255,255,0.7)" stroke={2.2} />

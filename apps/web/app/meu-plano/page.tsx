@@ -35,6 +35,7 @@ interface Profile {
   subscription_status: string;
   plan_status: string;
   quiz_answers: Record<string, unknown> | null;
+  avatar_url: string | null;
 }
 interface HairEvent {
   event_type: string;
@@ -195,6 +196,7 @@ export default function HojePage() {
   const [playerOpen, setPlayerOpen] = useState(false);
   const [playerStartIdx, setPlayerStartIdx] = useState(0);
   const [accessToken, setAccessToken] = useState<string>('');
+  const [photoCount, setPhotoCount] = useState(0);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -216,9 +218,9 @@ export default function HojePage() {
       .then(j => setStories(j.stories ?? []))
       .catch(() => {});
 
-    const [p, pl, hs, ev, ci] = await Promise.all([
+    const [p, pl, hs, ev, ci, ph] = await Promise.all([
       supabase.from('profiles')
-        .select('full_name,hair_type,subscription_status,plan_status,quiz_answers')
+        .select('full_name,hair_type,subscription_status,plan_status,quiz_answers,avatar_url')
         .eq('id', uid).single(),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase as any).from('hair_plans')
@@ -233,6 +235,8 @@ export default function HojePage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase as any).from('check_ins').select('id').eq('user_id', uid)
         .gte('checked_at', today + 'T00:00:00').limit(1),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase as any).from('photo_analyses').select('id', { count: 'exact', head: true }).eq('user_id', uid),
     ]);
 
     if (p.data)  setProfile(p.data as Profile);
@@ -252,6 +256,7 @@ export default function HojePage() {
       setStreak(s);
     }
     if (ci.data?.length) setCheckedInToday(true);
+    setPhotoCount(ph.count ?? 0);
 
     setLoading(false);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -316,15 +321,60 @@ export default function HojePage() {
               </div>
             )}
           </div>
-          <div style={{
-            width: 44, height: 44, borderRadius: '50%',
-            background: gradient.heroSoft,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#FFF', fontWeight: 700, fontSize: 16,
-            fontFamily: fonts.display,
-            boxShadow: '0 4px 14px rgba(190,24,93,0.30)',
-          }}>{initial}</div>
+          <button
+            onClick={() => router.push('/meu-plano/perfil')}
+            aria-label="Perfil"
+            style={{
+              width: 44, height: 44, borderRadius: '50%',
+              background: profile?.avatar_url ? '#FFF' : gradient.heroSoft,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#FFF', fontWeight: 700, fontSize: 16,
+              fontFamily: fonts.display,
+              boxShadow: '0 4px 14px rgba(190,24,93,0.30)',
+              border: profile?.avatar_url ? '2px solid #FFF' : 'none',
+              cursor: 'pointer', padding: 0, overflow: 'hidden',
+            }}
+          >
+            {profile?.avatar_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : initial}
+          </button>
         </div>
+
+        {/* Banner de primeira foto — só aparece quando user nunca registrou foto */}
+        {photoCount === 0 && (
+          <button
+            onClick={() => router.push('/meu-plano/progresso')}
+            style={{
+              margin: '0 16px 14px', width: 'calc(100% - 32px)',
+              background: gradient.hero, color: '#FFF', border: 'none',
+              borderRadius: 18, padding: '18px 18px', textAlign: 'left',
+              cursor: 'pointer', fontFamily: fonts.ui,
+              display: 'flex', alignItems: 'center', gap: 14,
+              boxShadow: '0 10px 30px rgba(190,24,93,0.25)',
+              position: 'relative', overflow: 'hidden',
+            }}
+          >
+            <div style={{ position: 'absolute', right: -22, top: -22, width: 110, height: 110, borderRadius: '50%', background: 'rgba(255,255,255,0.10)' }} />
+            <div style={{
+              width: 48, height: 48, borderRadius: 14,
+              background: 'rgba(255,255,255,0.20)',
+              border: '1px solid rgba(255,255,255,0.25)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0, fontSize: 22, position: 'relative', zIndex: 1,
+            }}>📸</div>
+            <div style={{ flex: 1, position: 'relative', zIndex: 1 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: fonts.display }}>
+                Tire a foto do seu cabelo ANTES
+              </div>
+              <div style={{ fontSize: 12, opacity: 0.92, marginTop: 2, lineHeight: 1.4 }}>
+                Faz isso agora — daqui 90 dias a comparação vai te emocionar
+              </div>
+            </div>
+            <div style={{ fontSize: 18, opacity: 0.85, position: 'relative', zIndex: 1 }}>→</div>
+          </button>
+        )}
 
         {/* Streak pills */}
         <div style={{ padding: '0 20px 16px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>

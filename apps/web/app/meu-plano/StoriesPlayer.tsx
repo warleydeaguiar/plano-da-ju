@@ -16,6 +16,29 @@ export interface Story {
 
 const AUDIO_FALLBACK_DURATION = 30;   // seconds, used if duration not yet known
 const VIDEO_FALLBACK_DURATION = 15;
+const YOUTUBE_FALLBACK_DURATION = 30;
+
+function isYouTubeUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  return url.includes('youtube.com') || url.includes('youtu.be');
+}
+
+function buildYouTubeEmbedUrl(url: string, autoplay: boolean): string {
+  // Já é embed url
+  if (url.includes('/embed/')) {
+    const sep = url.includes('?') ? '&' : '?';
+    return `${url}${sep}autoplay=${autoplay ? 1 : 0}&playsinline=1&rel=0&modestbranding=1&controls=1`;
+  }
+  // youtu.be/ID ou youtube.com/watch?v=ID — extrai ID
+  let id: string | null = null;
+  try {
+    const u = new URL(url);
+    if (u.hostname === 'youtu.be') id = u.pathname.slice(1).split('?')[0];
+    else if (u.searchParams.get('v')) id = u.searchParams.get('v');
+  } catch {}
+  if (!id) return url;
+  return `https://www.youtube.com/embed/${id}?autoplay=${autoplay ? 1 : 0}&playsinline=1&rel=0&modestbranding=1&controls=1`;
+}
 
 export default function StoriesPlayer({
   stories, initialIndex = 0, onClose, accessToken,
@@ -82,7 +105,10 @@ export default function StoriesPlayer({
       offsetRef.current = progress;
       return;
     }
-    const duration = (mediaDuration ?? story.duration_seconds ?? (story.media_type === 'video' ? VIDEO_FALLBACK_DURATION : AUDIO_FALLBACK_DURATION)) * 1000;
+    const fallback = isYouTubeUrl(story.media_url)
+      ? YOUTUBE_FALLBACK_DURATION
+      : (story.media_type === 'video' ? VIDEO_FALLBACK_DURATION : AUDIO_FALLBACK_DURATION);
+    const duration = (mediaDuration ?? story.duration_seconds ?? fallback) * 1000;
     startTimeRef.current = performance.now();
     const startOffset = offsetRef.current;
 
@@ -209,7 +235,21 @@ export default function StoriesPlayer({
         flex: 1, position: 'relative', cursor: 'pointer',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        {story.media_type === 'video' ? (
+        {isYouTubeUrl(story.media_url) ? (
+          <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={e => e.stopPropagation()}>
+            <iframe
+              key={story.id}
+              src={buildYouTubeEmbedUrl(story.media_url, !paused)}
+              title={story.title}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              style={{
+                width: '100%', maxWidth: 720, aspectRatio: '16/9',
+                border: 'none', borderRadius: 0,
+              }}
+            />
+          </div>
+        ) : story.media_type === 'video' ? (
           <video
             ref={videoRef}
             key={story.id}
