@@ -94,7 +94,7 @@ async function getData() {
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const since30 = new Date(Date.now() - 30 * 86400_000).toISOString()
 
-  const [viewsAllRows, viewsTodayRows, profiles, activeProfiles, answersAll, dailyViewsRows, stepEvents, leadsCount, checkoutEvents] = await Promise.all([
+  const [viewsAllRows, viewsTodayRows, profiles, activeProfiles, answersAll, dailyViewsRows, dailyLeadsRows, stepEvents, leadsCount, checkoutEvents] = await Promise.all([
     // Todas as views (session_id + created_at) para deduplicar em JS
     sb.from('wg_quiz_views' as any).select('session_id, created_at').eq('quiz_slug', 'plano-capilar'),
     // Views de hoje
@@ -104,6 +104,8 @@ async function getData() {
     sb.from('wg_quiz_answers' as any).select('question_id, answer').eq('quiz_slug', 'plano-capilar'),
     // Views dos últimos 30d para série diária
     sb.from('wg_quiz_views' as any).select('session_id, created_at').eq('quiz_slug', 'plano-capilar').gte('created_at', since30).order('created_at', { ascending: true }),
+    // Leads dos últimos 30d para série diária (dado mais confiável — não depende de session_id)
+    sb.from('wg_quiz_leads' as any).select('created_at').eq('quiz_slug', 'plano-capilar').gte('created_at', since30).order('created_at', { ascending: true }),
     sb.from('wg_quiz_step_events' as any).select('step_index, step_id, event_type, session_id').eq('quiz_slug', 'plano-capilar').gte('created_at', since30),
     sb.from('wg_quiz_leads' as any).select('id', { count: 'exact', head: true }).eq('quiz_slug', 'plano-capilar').gte('created_at', since30),
     sb.from('checkout_events' as any).select('event_type').gte('created_at', since30),
@@ -123,28 +125,34 @@ async function getData() {
   const totalCliques = allRows.length
   const todayCliques = todayRows.length
 
-  // Série diária: sessões únicas por dia (primeira vez que session_id aparece naquele dia)
+  // Série diária: sessões únicas + cliques + leads por dia
+  // Atenção: datas das views são UTC, leads também UTC. Alinhamos tudo em UTC para consistência.
   const days = Array.from({ length: 30 }, (_, i) => {
     const d = new Date(Date.now() - (29 - i) * 86400_000)
     return d.toISOString().slice(0, 10)
   })
-  // Para sessões únicas por dia: conta distinct session_id por dia
   const daySessionMap: Record<string, Set<string>> = {}
   const dayClickMap:   Record<string, number>      = {}
-  days.forEach(d => { daySessionMap[d] = new Set(); dayClickMap[d] = 0 })
+  const dayLeadMap:    Record<string, number>      = {}
+  days.forEach(d => { daySessionMap[d] = new Set(); dayClickMap[d] = 0; dayLeadMap[d] = 0 })
   for (const row of monthRows) {
     const k = (row.created_at as string).slice(0, 10)
     if (!(k in daySessionMap)) continue
     dayClickMap[k]++
     if (row.session_id) daySessionMap[k].add(row.session_id)
   }
+  for (const row of (dailyLeadsRows.data ?? []) as any[]) {
+    const k = (row.created_at as string).slice(0, 10)
+    if (k in dayLeadMap) dayLeadMap[k]++
+  }
   const dailySeries = days.map(d => {
     const date = new Date(d + 'T12:00:00')
     return {
       date:    d,
       label:   `${date.getDate()}/${date.getMonth() + 1}`,
-      views:   daySessionMap[d].size,   // sessões únicas
-      cliques: dayClickMap[d],          // raw cliques (inclui recarregamentos)
+      views:   daySessionMap[d].size,   // sessões únicas (só desde 19/05)
+      cliques: dayClickMap[d],          // raw cliques
+      leads:   dayLeadMap[d],           // leads capturados (nome+email) — dado mais confiável
     }
   })
 

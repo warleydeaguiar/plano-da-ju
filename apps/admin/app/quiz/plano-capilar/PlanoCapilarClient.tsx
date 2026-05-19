@@ -21,30 +21,60 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
   )
 }
 
-function ViewsChart({ series }: { series: { label: string; views: number; cliques?: number }[] }) {
-  const max = Math.max(...series.map(d => d.views), 1)
+function ViewsChart({ series }: { series: { label: string; views: number; cliques?: number; leads?: number }[] }) {
+  // Usa cliques como barra principal (dado disponível desde o início)
+  // Usa sessões únicas quando disponível (desde 19/05)
+  const hasSessionData = series.some(d => d.views > 0)
+  const barKey = hasSessionData ? 'views' : 'cliques'
+  const maxBar  = Math.max(...series.map(d => (d as any)[barKey] ?? 0), 1)
+  const maxLead = Math.max(...series.map(d => d.leads ?? 0), 1)
   const labelIndexes = new Set([0, Math.floor(series.length / 2), series.length - 1])
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 72 }}>
+      {/* Barras: cliques ou sessões */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 80 }}>
         {series.map((d, i) => {
-          const h = Math.max(Math.round((d.views / max) * 68), d.views > 0 ? 3 : 0)
-          const tip = d.cliques != null
-            ? `${d.label}: ${d.views} pessoas únicas · ${d.cliques} cliques`
-            : `${d.label}: ${d.views}`
+          const val = (d as any)[barKey] ?? 0
+          const h   = Math.max(Math.round((val / maxBar) * 72), val > 0 ? 3 : 0)
+          const tip = `${d.label}: ${d.cliques ?? 0} cliques · ${d.views} sessões únicas · ${d.leads ?? 0} leads`
           return (
-            <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
-              <div title={tip} style={{ width: '100%', height: h, background: accent, borderRadius: '2px 2px 0 0', opacity: 0.8 }} />
+            <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end', position: 'relative' }}>
+              {/* Barra de cliques */}
+              <div title={tip} style={{ width: '100%', height: h, background: accent, borderRadius: '2px 2px 0 0', opacity: 0.65 }} />
+              {/* Ponto de lead */}
+              {(d.leads ?? 0) > 0 && (
+                <div title={`${d.leads} leads`} style={{
+                  position: 'absolute',
+                  bottom: h + 2,
+                  width: 6, height: 6,
+                  borderRadius: '50%',
+                  background: green,
+                  border: '1.5px solid #fff',
+                  left: '50%', transform: 'translateX(-50%)',
+                }} />
+              )}
             </div>
           )
         })}
       </div>
+      {/* Labels de datas */}
       <div style={{ display: 'flex', marginTop: 4 }}>
         {series.map((d, i) => (
           <div key={i} style={{ flex: 1, textAlign: 'center' }}>
             {labelIndexes.has(i) && <div style={{ fontSize: 9, color: gray }}>{d.label}</div>}
           </div>
         ))}
+      </div>
+      {/* Legenda */}
+      <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <div style={{ width: 12, height: 8, background: accent, borderRadius: 2, opacity: 0.65 }} />
+          <span style={{ fontSize: 11, color: gray }}>{hasSessionData ? 'Sessões únicas' : 'Cliques'}</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: green, border: '1.5px solid #fff', boxShadow: `0 0 0 1px ${green}` }} />
+          <span style={{ fontSize: 11, color: gray }}>Leads capturados</span>
+        </div>
       </div>
     </div>
   )
@@ -274,19 +304,22 @@ export default function PlanoCapilarClient({ data }: { data: any }) {
       {/* Gráfico de views */}
       <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '20px 24px', marginBottom: 24 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E' }}>📈 Pessoas únicas por dia</div>
-          <div style={{ fontSize: 12, color: gray }}>Últimos 30 dias · passe o mouse para ver cliques</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E' }}>📈 Cliques + Leads por dia</div>
+          <div style={{ fontSize: 12, color: gray }}>Últimos 30 dias · passe o mouse para detalhes</div>
         </div>
         <ViewsChart series={dailySeries} />
-        <div style={{ marginTop: 12, display: 'flex', gap: 20 }}>
+        <div style={{ marginTop: 12, display: 'flex', gap: 24, flexWrap: 'wrap' }}>
           <div style={{ fontSize: 12, color: gray }}>
-            Pessoas únicas (30d): <strong style={{ color: '#2D1B2E' }}>{kpis.uniqueMonth ?? 0}</strong>
+            Cliques (30d): <strong style={{ color: '#2D1B2E' }}>{dailySeries.reduce((s: number, d: any) => s + (d.cliques ?? 0), 0).toLocaleString('pt-BR')}</strong>
           </div>
           <div style={{ fontSize: 12, color: gray }}>
-            Cliques (30d): <strong style={{ color: '#2D1B2E' }}>{dailySeries.reduce((s: number, d: any) => s + (d.cliques ?? 0), 0)}</strong>
+            Leads (30d): <strong style={{ color: green }}>{dailySeries.reduce((s: number, d: any) => s + (d.leads ?? 0), 0).toLocaleString('pt-BR')}</strong>
           </div>
           <div style={{ fontSize: 12, color: gray }}>
-            Média pessoas/dia: <strong style={{ color: '#2D1B2E' }}>{((kpis.uniqueMonth ?? 0) / 30).toFixed(1)}</strong>
+            Sessões únicas (30d): <strong style={{ color: (kpis.uniqueMonth ?? 0) > 0 ? '#2D1B2E' : gray }}>{(kpis.uniqueMonth ?? 0) > 0 ? kpis.uniqueMonth : '— (ativo desde 19/05)'}</strong>
+          </div>
+          <div style={{ fontSize: 12, color: gray }}>
+            Média cliques/dia: <strong style={{ color: '#2D1B2E' }}>{(dailySeries.reduce((s: number, d: any) => s + (d.cliques ?? 0), 0) / 30).toFixed(1)}</strong>
           </div>
         </div>
       </div>
