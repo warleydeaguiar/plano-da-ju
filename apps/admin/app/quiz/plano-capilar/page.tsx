@@ -255,13 +255,13 @@ async function getData() {
       profiles:         profiles.count       ?? 0,
       activeProfiles:   activeProfiles.count ?? 0,
       periodLeads:      leadsCount.count     ?? 0,
-      // Conversão: usa pessoas únicas se disponível, senão cliques brutos como aproximação
-      conversion: uniqueAll > 0
+      // Conversão: usa sessões únicas só se tiver volume suficiente (≥30), senão usa cliques brutos
+      conversion: uniqueAll >= 30
         ? Math.round(((profiles.count ?? 0) / uniqueAll) * 100)
         : totalCliques > 0
           ? Math.round(((profiles.count ?? 0) / totalCliques) * 100)
           : null,
-      conversionBase: uniqueAll > 0 ? 'sessions' : totalCliques > 0 ? 'cliques' : null,
+      conversionBase: uniqueAll >= 30 ? 'sessions' : totalCliques > 0 ? 'cliques' : null,
       offerViewed:        checkoutCounts['offer_viewed']        ?? 0,
       checkoutInitiated:  checkoutCounts['checkout_initiated']  ?? 0,
       pixGenerated:       checkoutCounts['pix_generated']       ?? 0,
