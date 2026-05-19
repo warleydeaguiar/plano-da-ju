@@ -101,7 +101,7 @@ async function getData() {
     sb.from('wg_quiz_views' as any).select('session_id, created_at').eq('quiz_slug', 'plano-capilar').gte('created_at', today.toISOString()),
     sb.from('profiles').select('id', { count: 'exact', head: true }),
     sb.from('profiles').select('id', { count: 'exact', head: true }).eq('subscription_status', 'active'),
-    sb.from('wg_quiz_answers' as any).select('question_id, answer').eq('quiz_slug', 'plano-capilar'),
+    sb.from('wg_quiz_answers' as any).select('question_id, answer, session_id').eq('quiz_slug', 'plano-capilar'),
     // Views dos últimos 30d para série diária
     sb.from('wg_quiz_views' as any).select('session_id, created_at').eq('quiz_slug', 'plano-capilar').gte('created_at', since30).order('created_at', { ascending: true }),
     // Leads dos últimos 30d para série diária (dado mais confiável — não depende de session_id)
@@ -193,6 +193,52 @@ async function getData() {
     return order.indexOf(a.questionId) - order.indexOf(b.questionId)
   })
 
+  // ── Funil por respostas (dado histórico — disponível desde o início) ────────────
+  // Conta sessões únicas que responderam cada pergunta. Muito mais confiável que
+  // step_events porque o tracking de respostas existe desde o dia 1.
+  const ANSWER_FUNNEL_ORDER = [
+    'tipo', 'cor', 'idade', 'incomoda', 'quimica',
+    'corte_quimico', 'espessura', 'oleosidade', 'porosidade', 'caspa',
+    'elasticidade', 'lavagem', 'calor', 'cronograma', 'crescimento_desigual',
+    'sol_piscina', 'agua', 'protetor', 'como_plano', 'produtos_casa',
+    'cortes', 'areas',
+    'phone', 'name', 'email',
+  ] as const
+
+  const ANSWER_FUNNEL_LABELS: Record<string, string> = {
+    ...QUESTION_LABELS,
+    phone: 'Telefone',
+    name:  'Nome',
+    email: 'E-mail',
+  }
+
+  // Conta sessões únicas por pergunta
+  const answerSessionMap: Record<string, Set<string>> = {}
+  for (const row of (answersAll.data ?? []) as any[]) {
+    const qid = row.question_id as string
+    const sid = row.session_id as string
+    if (!sid) continue
+    if (!answerSessionMap[qid]) answerSessionMap[qid] = new Set()
+    answerSessionMap[qid].add(sid)
+  }
+
+  const topAnswerSessions = Math.max(...ANSWER_FUNNEL_ORDER.map(q => answerSessionMap[q]?.size ?? 0), 1)
+
+  const answerFunnel = ANSWER_FUNNEL_ORDER.map((qid, i) => {
+    const sessions = answerSessionMap[qid]?.size ?? 0
+    const prevSessions = i > 0 ? (answerSessionMap[ANSWER_FUNNEL_ORDER[i - 1]]?.size ?? 0) : null
+    const dropoff = prevSessions != null && prevSessions > 0 && sessions < prevSessions
+      ? Math.round(((prevSessions - sessions) / prevSessions) * 100)
+      : null
+    return {
+      question_id: qid,
+      label:       ANSWER_FUNNEL_LABELS[qid] ?? qid,
+      sessions,
+      pct_of_top:  Math.round((sessions / topAnswerSessions) * 100),
+      dropoff_from_prev: dropoff,
+    }
+  }).filter(r => r.sessions > 0) // omite perguntas sem respostas ainda
+
   // ── Funil por passo ────────────────────────────────────────────
   const stepViewedMap:   Record<number, Set<string>> = {}
   const stepAnsweredMap: Record<number, Set<string>> = {}
@@ -270,6 +316,7 @@ async function getData() {
     },
     dailySeries,
     questionAnalytics,
+    answerFunnel,
     stepFunnel,
   }
 }

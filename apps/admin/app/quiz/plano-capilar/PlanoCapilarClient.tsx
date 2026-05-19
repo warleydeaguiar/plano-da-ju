@@ -208,7 +208,7 @@ function CheckoutFunnelBar({ label, count, base, color, isBase }: { label: strin
 const MIN_FUNNEL_SESSIONS = 30
 
 export default function PlanoCapilarClient({ data }: { data: any }) {
-  const { kpis, dailySeries, questionAnalytics, stepFunnel = [] } = data
+  const { kpis, dailySeries, questionAnalytics, answerFunnel = [], stepFunnel = [] } = data
 
   const topStepSessions = stepFunnel[0]?.viewed ?? 0
   const hasSufficientData = topStepSessions >= MIN_FUNNEL_SESSIONS
@@ -323,6 +323,77 @@ export default function PlanoCapilarClient({ data }: { data: any }) {
           </div>
         </div>
       </div>
+
+      {/* ── Funil por respostas (histórico desde o dia 1) ── */}
+      {answerFunnel.length > 0 && (() => {
+        const top = answerFunnel[0]?.sessions ?? 1
+        const worst = answerFunnel.reduce((w: any, r: any) =>
+          (r.dropoff_from_prev ?? 0) > (w?.dropoff_from_prev ?? 0) ? r : w, null)
+        return (
+          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '20px 24px', marginBottom: 28 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E', marginBottom: 4 }}>📋 Funil por respostas — desde o início</div>
+                <div style={{ fontSize: 12, color: gray }}>
+                  Sessões únicas que responderam cada pergunta · <strong style={{ color: '#2D1B2E' }}>{top}</strong> sessões totais · dado disponível desde o dia 1
+                </div>
+              </div>
+              {worst && worst.dropoff_from_prev > 5 && (
+                <div style={{ background: 'rgba(255,59,48,0.07)', border: '1px solid rgba(255,59,48,0.2)', borderRadius: 10, padding: '8px 14px', textAlign: 'right', flexShrink: 0, marginLeft: 16 }}>
+                  <div style={{ fontSize: 11, color: red, fontWeight: 600 }}>⚠ MAIOR ABANDONO</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: red }}>{worst.label}</div>
+                  <div style={{ fontSize: 11, color: red }}>↓{worst.dropoff_from_prev}% não responderam</div>
+                </div>
+              )}
+            </div>
+
+            {/* Header da tabela */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 60px 60px', gap: 10, padding: '6px 0', borderBottom: '2px solid #F0F0F5', marginBottom: 4 }}>
+              <div style={{ fontSize: 11, color: gray, fontWeight: 600 }}>PERGUNTA</div>
+              <div style={{ fontSize: 11, color: gray, fontWeight: 600, textAlign: 'right' }}>SESSÕES</div>
+              <div style={{ fontSize: 11, color: gray, fontWeight: 600, textAlign: 'right' }}>% DO TOP</div>
+              <div style={{ fontSize: 11, color: gray, fontWeight: 600, textAlign: 'right' }}>QUEDA</div>
+            </div>
+
+            {answerFunnel.map((row: any, i: number) => {
+              const isWorst = worst && row.question_id === worst.question_id && (worst.dropoff_from_prev ?? 0) > 5
+              const drop = row.dropoff_from_prev
+              const dropColor = drop == null ? gray : drop === 0 ? green : drop <= 5 ? green : drop <= 15 ? orange : red
+              const barColor  = drop == null || drop === 0 ? green : drop <= 5 ? green : drop <= 15 ? orange : red
+              return (
+                <div key={row.question_id} style={{
+                  display: 'grid', gridTemplateColumns: '1fr 80px 60px 60px', gap: 10,
+                  alignItems: 'center', padding: '7px 0',
+                  borderBottom: '1px solid #F0F0F5',
+                  background: isWorst ? 'rgba(255,59,48,0.03)' : 'transparent',
+                }}>
+                  {/* Label */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: `${row.pct_of_top}%`, maxWidth: '100%', height: 6, background: barColor, borderRadius: 3, opacity: 0.7, minWidth: row.sessions > 0 ? 4 : 0, flexShrink: 0 }} />
+                    <span style={{ fontSize: 12, fontWeight: isWorst ? 700 : 500, color: isWorst ? red : '#2D1B2E', whiteSpace: 'nowrap' }}>
+                      {row.label}
+                      {isWorst && <span style={{ fontSize: 10, marginLeft: 6, color: red }}>⚠ gargalo</span>}
+                    </span>
+                  </div>
+                  {/* Sessões */}
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#2D1B2E', textAlign: 'right' }}>{row.sessions}</div>
+                  {/* % do topo */}
+                  <div style={{ fontSize: 12, color: gray, textAlign: 'right' }}>{row.pct_of_top}%</div>
+                  {/* Queda */}
+                  <div style={{ fontSize: 12, fontWeight: drop != null && drop > 0 ? 700 : 400, color: dropColor, textAlign: 'right' }}>
+                    {drop == null || drop === 0 ? '—' : `↓${drop}%`}
+                  </div>
+                </div>
+              )
+            })}
+
+            <div style={{ marginTop: 12, fontSize: 11, color: gray, lineHeight: 1.6 }}>
+              💡 Perguntas com <strong>0 respostas</strong> (como steps informativos) não aparecem aqui.
+              <strong> produtos_casa</strong> pode ter menos respostas porque é opcional — usuárias sem produtos não selecionam nada.
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Funil por etapa */}
       <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '20px 24px', marginBottom: 28 }}>
