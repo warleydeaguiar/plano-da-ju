@@ -6,6 +6,9 @@ export const dynamic = 'force-dynamic'
 /**
  * GET /api/grupos/analytics?period=day|week|month
  * Retorna série temporal de entradas, saídas e cliques nos grupos.
+ *
+ * Usa RPCs SQL (get_grupo_activity_agg / get_grupo_clicks_agg) para agregar
+ * no banco e evitar o limite de 1000 linhas do PostgREST.
  */
 export async function GET(req: NextRequest) {
   const supabase = createAdminClient()
@@ -14,7 +17,7 @@ export async function GET(req: NextRequest) {
   const now = new Date()
   let points: string[]
   let labelFn: (d: Date) => string
-  let keyFn: (iso: string) => string
+  let keyFn: (bucket: string) => string   // bucket → point key
 
   if (period === 'month') {
     // Últimos 12 meses
@@ -23,7 +26,7 @@ export async function GET(req: NextRequest) {
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
     })
     labelFn = (d) => d.toLocaleString('pt-BR', { month: 'short' })
-    keyFn = (iso) => iso.slice(0, 7)  // 'YYYY-MM'
+    keyFn = (bucket) => bucket.slice(0, 7)   // 'YYYY-MM-DD' → 'YYYY-MM'
   } else if (period === 'week') {
     // Últimas 12 semanas (começa na segunda)
     points = Array.from({ length: 12 }, (_, i) => {
@@ -31,8 +34,8 @@ export async function GET(req: NextRequest) {
       d.setDate(d.getDate() - (11 - i) * 7)
       return isoWeek(d)
     })
-    labelFn = (_) => ''  // computed per point
-    keyFn = (iso) => isoWeek(new Date(iso))
+    labelFn = (_) => ''
+    keyFn = (bucket) => isoWeek(new Date(bucket + 'T12:00:00Z'))
   } else {
     // Últimos 30 dias
     points = Array.from({ length: 30 }, (_, i) => {
@@ -41,46 +44,40 @@ export async function GET(req: NextRequest) {
       return d.toISOString().slice(0, 10)
     })
     labelFn = (d) => `${d.getDate()}/${d.getMonth() + 1}`
-    keyFn = (iso) => iso.slice(0, 10)
+    keyFn = (bucket) => bucket   // bucket já é 'YYYY-MM-DD'
   }
 
-  // Calcula o range de datas
+  // startIso: primeiro ponto
   const startIso = period === 'month'
     ? `${points[0]}-01T00:00:00Z`
     : `${points[0]}T00:00:00Z`
 
-  const [eventsRes, clicksRes] = await Promise.all([
-    supabase
-      .from('wg_member_events' as any)
-      .select('action, created_at')
-      .gte('created_at', startIso),
-    supabase
-      .from('wg_redirect_clicks' as any)
-      .select('created_at')
-      .gte('created_at', startIso),
+  // ── Busca agregada no banco via RPC (evita limite de 1000 linhas do PostgREST) ──
+  const [activityRes, clicksRes] = await Promise.all([
+    supabase.rpc('get_grupo_activity_agg', { start_ts: startIso } as any),
+    supabase.rpc('get_grupo_clicks_agg',   { start_ts: startIso } as any),
   ])
 
   // Buckets
-  const joinMap: Record<string, number> = {}
+  const joinMap:  Record<string, number> = {}
   const leaveMap: Record<string, number> = {}
   const clickMap: Record<string, number> = {}
   points.forEach(p => { joinMap[p] = 0; leaveMap[p] = 0; clickMap[p] = 0 })
 
-  for (const ev of (eventsRes.data ?? []) as any[]) {
-    const key = keyFn(ev.created_at)
+  for (const row of (activityRes.data ?? []) as any[]) {
+    const key = keyFn(row.day_bucket as string)
     if (key in joinMap) {
-      if (ev.action === 'join')  joinMap[key]++
-      if (ev.action === 'leave') leaveMap[key]++
+      joinMap[key]  += Number(row.joins)  ?? 0
+      leaveMap[key] += Number(row.leaves) ?? 0
     }
   }
-  for (const cl of (clicksRes.data ?? []) as any[]) {
-    const key = keyFn(cl.created_at)
-    if (key in clickMap) clickMap[key]++
+  for (const row of (clicksRes.data ?? []) as any[]) {
+    const key = keyFn(row.day_bucket as string)
+    if (key in clickMap) clickMap[key] += Number(row.clicks) ?? 0
   }
 
   const labels: string[] = points.map(p => {
     if (period === 'week') {
-      // Monday of that week
       const d = mondayOfWeek(p)
       return `${d.getDate()}/${d.getMonth() + 1}`
     }
@@ -92,8 +89,8 @@ export async function GET(req: NextRequest) {
   })
 
   const series = points.map((p, i) => ({
-    label: labels[i],
-    joins:  joinMap[p] ?? 0,
+    label:  labels[i],
+    joins:  joinMap[p]  ?? 0,
     leaves: leaveMap[p] ?? 0,
     clicks: clickMap[p] ?? 0,
   }))
@@ -105,7 +102,6 @@ export async function GET(req: NextRequest) {
 
 function isoWeek(d: Date): string {
   const date = new Date(d)
-  // set to Monday
   const day = date.getDay() || 7
   date.setDate(date.getDate() - day + 1)
   return date.toISOString().slice(0, 10)

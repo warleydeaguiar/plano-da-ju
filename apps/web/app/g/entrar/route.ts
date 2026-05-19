@@ -51,12 +51,12 @@ export async function GET(req: NextRequest) {
   }
 
   if (finalTarget) {
-    // Log do clique (fire and forget — não bloqueia o redirect)
+    // Log do clique — await para garantir que o insert complete antes do redirect
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown'
     const { createHash } = await import('crypto')
     const ipHash = createHash('sha256').update(ip).digest('hex').slice(0, 32)
 
-    void db.from('wg_redirect_clicks' as any).insert({
+    await db.from('wg_redirect_clicks' as any).insert({
       group_id:     finalTarget.id,
       ip_hash:      ipHash,
       user_agent:   req.headers.get('user-agent') ?? null,
