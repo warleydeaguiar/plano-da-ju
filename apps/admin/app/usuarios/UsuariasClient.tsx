@@ -17,15 +17,29 @@ type User = {
   email: string
   phone: string | null
   hair_type: string | null
+  porosity: string | null
+  chemical_history: string | null
+  main_problems: string[] | null
+  hair_length_cm: number | null
+  quiz_answers: Record<string, unknown> | null
   subscription_type: string
   subscription_status: string
   subscription_expires_at: string | null
+  subscription_activated_at: string | null
   quiz_completed_at: string | null
   plan_status: string
+  plan_requested_at: string | null
+  plan_released_at: string | null
+  photo_url: string | null
+  photo_taken_at: string | null
+  avatar_url: string | null
   is_gift: boolean
   admin_notes: string | null
   refunded_at: string | null
+  pagarme_subscription_id: string | null
+  pagarme_charge_id: string | null
   created_at: string
+  updated_at: string | null
 }
 
 const HAIR_LABEL: Record<string, string> = {
@@ -450,8 +464,14 @@ function EditPanel({ user, onClose, onChanged }: { user: User; onClose: () => vo
         }}
       >{saving ? 'Salvando…' : dirty ? 'Salvar mudanças' : 'Sem alterações'}</button>
 
+      {/* Detalhes capilares (read-only) */}
+      <DetailsSection user={user} />
+
+      {/* Regenerar plano */}
+      <RegeneratePlanBtn user={user} onChanged={onChanged} />
+
       {/* Ações rápidas */}
-      <div style={{ marginTop: 24, paddingTop: 18, borderTop: '1px solid #F0F0F5' }}>
+      <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid #F0F0F5' }}>
         <div style={{ fontSize: 11, color: gray, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>Ações rápidas</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
           <ActionBtn icon="📧" label="Reenviar email de boas-vindas" onClick={() => doAction('resend_welcome', 'Reenviar email de boas-vindas')} />
@@ -461,6 +481,160 @@ function EditPanel({ user, onClose, onChanged }: { user: User; onClose: () => vo
           <ActionBtn icon="🚫" label="Cancelar acesso" color={red} onClick={() => doAction('cancel', 'Cancelar acesso')} />
         </div>
       </div>
+    </div>
+  )
+}
+
+// ─── DetailsSection: tudo readonly que está em profiles ─────────────────
+function DetailsSection({ user }: { user: User }) {
+  const [open, setOpen] = useState<'cabelo' | 'assinatura' | 'quiz' | 'sistema' | null>('cabelo')
+
+  const hair: Array<[string, string]> = [
+    ['Tipo de cabelo', user.hair_type ? (HAIR_LABEL[user.hair_type] ?? user.hair_type) : '—'],
+    ['Porosidade', user.porosity ?? '—'],
+    ['Química', user.chemical_history ?? '—'],
+    ['Problemas', (user.main_problems ?? []).join(', ') || '—'],
+    ['Comprimento', user.hair_length_cm ? `${user.hair_length_cm} cm` : '—'],
+    ['Plano', PLAN_LABEL[user.plan_status]?.label ?? user.plan_status],
+    ['Plano gerado em', fmtDate(user.plan_released_at)],
+    ['Quiz concluído em', fmtDate(user.quiz_completed_at)],
+    ['Última foto em', fmtDate(user.photo_taken_at)],
+  ]
+
+  const sub: Array<[string, string]> = [
+    ['Tipo plano', SUB_TYPE_LABEL[user.subscription_type] ?? user.subscription_type],
+    ['Status', SUB_LABEL[user.subscription_status]?.label ?? user.subscription_status],
+    ['Ativada em', fmtDate(user.subscription_activated_at)],
+    ['Expira em', fmtDate(user.subscription_expires_at)],
+    ['Reembolso em', fmtDate(user.refunded_at)],
+    ['Cobrança PagarMe', user.pagarme_charge_id ? user.pagarme_charge_id.slice(0, 16) + '…' : '—'],
+    ['Assinatura PagarMe', user.pagarme_subscription_id ? user.pagarme_subscription_id.slice(0, 16) + '…' : '—'],
+  ]
+
+  const sys: Array<[string, string]> = [
+    ['ID', user.id],
+    ['Cadastro', user.created_at ? new Date(user.created_at).toLocaleString('pt-BR') : '—'],
+    ['Última atualização', user.updated_at ? new Date(user.updated_at).toLocaleString('pt-BR') : '—'],
+    ['Foto de perfil', user.avatar_url ? 'sim' : 'não'],
+    ['Foto do cabelo', user.photo_url ? 'sim' : 'não'],
+  ]
+
+  return (
+    <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid #F0F0F5' }}>
+      <Section title="🌸 Cabelo & Diagnóstico" isOpen={open === 'cabelo'} onToggle={() => setOpen(open === 'cabelo' ? null : 'cabelo')}>
+        <KVList items={hair} />
+      </Section>
+      <Section title="💳 Assinatura & Pagamento" isOpen={open === 'assinatura'} onToggle={() => setOpen(open === 'assinatura' ? null : 'assinatura')}>
+        <KVList items={sub} />
+      </Section>
+      <Section title="📝 Respostas do quiz" isOpen={open === 'quiz'} onToggle={() => setOpen(open === 'quiz' ? null : 'quiz')}>
+        {user.quiz_answers ? (
+          <pre style={{
+            fontSize: 11, lineHeight: 1.5, color: '#2D1B2E',
+            background: '#F9F9FC', padding: 10, borderRadius: 8,
+            maxHeight: 200, overflow: 'auto', whiteSpace: 'pre-wrap',
+            fontFamily: 'ui-monospace, Menlo, monospace',
+          }}>{JSON.stringify(user.quiz_answers, null, 2)}</pre>
+        ) : (
+          <div style={{ fontSize: 12, color: gray, padding: '4px 0' }}>Quiz não respondido</div>
+        )}
+      </Section>
+      <Section title="⚙️ Sistema" isOpen={open === 'sistema'} onToggle={() => setOpen(open === 'sistema' ? null : 'sistema')}>
+        <KVList items={sys} />
+      </Section>
+    </div>
+  )
+}
+
+function Section({ title, isOpen, onToggle, children }: { title: string; isOpen: boolean; onToggle: () => void; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <button onClick={onToggle} style={{
+        width: '100%', textAlign: 'left',
+        background: 'none', border: 'none', cursor: 'pointer',
+        padding: '6px 0', fontSize: 12, fontWeight: 700, color: '#2D1B2E',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        fontFamily: 'inherit',
+      }}>
+        <span>{title}</span>
+        <span style={{ fontSize: 11, color: gray }}>{isOpen ? '▾' : '▸'}</span>
+      </button>
+      {isOpen && <div style={{ padding: '4px 0 8px' }}>{children}</div>}
+    </div>
+  )
+}
+
+function KVList({ items }: { items: Array<[string, string]> }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      {items.map(([k, v]) => (
+        <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, fontSize: 12, padding: '3px 0' }}>
+          <span style={{ color: gray, flexShrink: 0 }}>{k}</span>
+          <span style={{ color: '#2D1B2E', textAlign: 'right', wordBreak: 'break-all', fontWeight: 500 }}>{v}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ─── Regenerar plano ────────────────────────────────────────────────────
+function RegeneratePlanBtn({ user, onChanged }: { user: User; onChanged: () => void }) {
+  const [running, setRunning] = useState(false)
+  const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null)
+
+  async function regenerate() {
+    if (!user.photo_url) {
+      setResult({ ok: false, text: 'Usuária não tem foto do cabelo ainda. Ela precisa enviar uma foto primeiro pra IA analisar.' })
+      return
+    }
+    if (!confirm(`Regerar TODO o plano de 52 semanas da ${user.full_name ?? user.email}?\n\nIsso vai sobrescrever o plano atual usando o catálogo Ybera mais novo. Demora ~30s.`)) return
+    setRunning(true); setResult(null)
+    try {
+      const res = await fetch(`/api/admin/profiles/${user.id}/regenerate-plan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirm: true }),
+      })
+      const j = await res.json()
+      if (res.ok) {
+        setResult({ ok: true, text: `✓ ${j.weeks_generated} semanas regeradas · usou ${j.catalog_size} produtos do catálogo` })
+        setTimeout(onChanged, 1500)
+      } else {
+        setResult({ ok: false, text: j.error ?? 'Erro' })
+      }
+    } catch (err) {
+      setResult({ ok: false, text: err instanceof Error ? err.message : 'Erro' })
+    } finally {
+      setRunning(false)
+    }
+  }
+
+  return (
+    <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid #F0F0F5' }}>
+      <div style={{ fontSize: 11, color: gray, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+        Plano capilar (IA)
+      </div>
+      <button onClick={regenerate} disabled={running} style={{
+        width: '100%', padding: '10px 12px', borderRadius: 10,
+        background: running ? gray : '#fff',
+        border: `1px solid ${running ? gray : accent}`,
+        color: running ? '#fff' : accent,
+        fontSize: 13, fontWeight: 700, cursor: running ? 'default' : 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+        fontFamily: 'inherit',
+      }}>
+        {running ? '🧠 Gerando plano… (~30s)' : '✨ Regerar plano com catálogo atual'}
+      </button>
+      <div style={{ fontSize: 11, color: gray, marginTop: 5, lineHeight: 1.4 }}>
+        Usa a foto e respostas do quiz dela, com os produtos Ybera atuais.
+      </div>
+      {result && (
+        <div style={{
+          marginTop: 8, padding: '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: 500,
+          background: result.ok ? green + '18' : red + '18',
+          color: result.ok ? green : red,
+        }}>{result.text}</div>
+      )}
     </div>
   )
 }

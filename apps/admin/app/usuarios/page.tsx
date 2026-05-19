@@ -9,7 +9,7 @@ export default async function UsuariasPage() {
   const sb = createAdminClient()
 
   const { data } = await (sb.from('profiles') as any)
-    .select('id,full_name,email,phone,hair_type,subscription_type,subscription_status,subscription_expires_at,quiz_completed_at,plan_status,is_gift,admin_notes,refunded_at,created_at')
+    .select('id,full_name,email,phone,hair_type,porosity,chemical_history,main_problems,hair_length_cm,quiz_answers,subscription_type,subscription_status,subscription_expires_at,subscription_activated_at,quiz_completed_at,plan_status,plan_requested_at,plan_released_at,photo_url,photo_taken_at,avatar_url,is_gift,admin_notes,refunded_at,pagarme_subscription_id,pagarme_charge_id,created_at,updated_at')
     .order('created_at', { ascending: false })
     .limit(200)
 
