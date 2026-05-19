@@ -10,7 +10,6 @@ interface ProductRow {
   name: string
   brand: string | null
   category: string | null
-  price_brl: number | null
   affiliate_url: string | null
   image_url: string | null
   hair_types: string[] | null

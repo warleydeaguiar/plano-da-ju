@@ -11,7 +11,6 @@ interface ProductRow {
   name: string;
   brand: string | null;
   category: string | null;
-  price_brl: number | null;
   affiliate_url: string | null;
   image_url: string | null;
   hair_types: string[] | null;
@@ -239,15 +238,7 @@ function ProductCard({ product, index, isMatch = false, outlined = false }: {
       }}>
         {product.name}
       </div>
-      {product.price_brl && (
-        <div style={{
-          fontSize: 16, fontWeight: 800, color: T.ink, marginTop: 6,
-          fontFamily: fonts.display,
-        }}>
-          R$ {product.price_brl.toFixed(2).replace('.', ',')}
-        </div>
-      )}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, minHeight: 18 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 8, minHeight: 18 }}>
         {isMatch && (
           <span style={{
             fontSize: 9.5, fontWeight: 700, color: T.green,

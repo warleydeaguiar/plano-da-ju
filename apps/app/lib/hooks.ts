@@ -133,7 +133,6 @@ export interface Product {
   name: string;
   brand: string;
   category: string;
-  price_brl: number | null;
   affiliate_url: string | null;
   image_url: string | null;
   hair_types: string[];

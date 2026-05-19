@@ -32,7 +32,6 @@ export async function POST(req: NextRequest) {
       name: body.name?.trim(),
       brand: body.brand?.trim() || null,
       category: body.category || null,
-      price_brl: body.price_brl ? Number(body.price_brl) : null,
       affiliate_url: body.affiliate_url?.trim() || null,
       image_url: body.image_url?.trim() || null,
       hair_types: body.hair_types ?? [],
@@ -75,7 +74,6 @@ export async function PATCH(req: NextRequest) {
     if ('name' in rest)          payload.name         = rest.name?.trim()
     if ('brand' in rest)         payload.brand        = rest.brand?.trim() || null
     if ('category' in rest)      payload.category     = rest.category || null
-    if ('price_brl' in rest)     payload.price_brl    = rest.price_brl ? Number(rest.price_brl) : null
     if ('affiliate_url' in rest) payload.affiliate_url = rest.affiliate_url?.trim() || null
     if ('image_url' in rest)     payload.image_url    = rest.image_url?.trim() || null
     if ('hair_types' in rest)    payload.hair_types   = rest.hair_types ?? []

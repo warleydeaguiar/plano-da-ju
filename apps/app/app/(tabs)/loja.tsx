@@ -80,11 +80,6 @@ function ProductCard({ item }: { item: Product }) {
           {item.name}
         </Text>
         <View style={s.prodBottom}>
-          <Text style={s.prodPreco}>
-            {item.price_brl != null
-              ? `R$ ${item.price_brl.toFixed(2).replace('.', ',')}`
-              : '—'}
-          </Text>
           {item.is_iberaparis && (
             <View style={[s.tag, { backgroundColor: T.rose50 }]}>
               <Text style={[s.tagText, { color: T.accent }]}>Iberaparis</Text>

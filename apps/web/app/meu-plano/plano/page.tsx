@@ -35,7 +35,6 @@ interface ProductRow {
   name: string;
   brand: string | null;
   category: string | null;
-  price_brl: number | null;
   affiliate_url: string | null;
   image_url: string | null;
   is_ybera: boolean;
@@ -70,7 +69,7 @@ export default function PlanoPage() {
         .eq('user_id', uid).order('week_number'),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase as any).from('products')
-        .select('id,name,brand,category,price_brl,affiliate_url,image_url,is_ybera')
+        .select('id,name,brand,category,affiliate_url,image_url,is_ybera')
         .eq('active', true).limit(8),
     ]);
     if (p.data)  setProfile(p.data as Profile);
@@ -496,14 +495,6 @@ function ProductCard({ product, essential = false }: { product: ProductRow; esse
           {product.name}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-          {product.price_brl && (
-            <span style={{
-              fontSize: 14.5, fontWeight: 800, color: T.ink,
-              fontFamily: fonts.display,
-            }}>
-              R$ {product.price_brl.toFixed(2).replace('.', ',')}
-            </span>
-          )}
           {essential && (
             <span style={{
               fontSize: 10, fontWeight: 700, color: T.green,

@@ -15,7 +15,6 @@ interface ProductRow {
   name: string
   brand: string | null
   category: string | null
-  price_brl: number | null
   affiliate_url: string | null
   image_url: string | null
   hair_types: string[] | null
@@ -27,7 +26,6 @@ type FormData = {
   name: string
   brand: string
   category: string
-  price_brl: string
   affiliate_url: string
   image_url: string
   hair_types: string[]
@@ -39,7 +37,6 @@ const EMPTY_FORM: FormData = {
   name: '',
   brand: '',
   category: '',
-  price_brl: '',
   affiliate_url: '',
   image_url: '',
   hair_types: [],
@@ -67,17 +64,11 @@ const CATEGORY_LABELS: Record<string, string> = Object.fromEntries(
 )
 
 // ─── Helpers ──────────────────────────────────────────────────────
-function brl(v: number | null | undefined) {
-  if (v == null) return '—'
-  return `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-}
-
 function productToForm(p: ProductRow): FormData {
   return {
     name: p.name,
     brand: p.brand ?? '',
     category: p.category ?? '',
-    price_brl: p.price_brl != null ? String(p.price_brl) : '',
     affiliate_url: p.affiliate_url ?? '',
     image_url: p.image_url ?? '',
     hair_types: p.hair_types ?? [],
@@ -190,29 +181,15 @@ function Modal({
             </div>
           </div>
 
-          {/* Price + Image URL */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-            <div>
-              <label style={labelStyle}>Preço (R$)</label>
-              <input
-                style={inputStyle}
-                type="number"
-                step="0.01"
-                min="0"
-                value={form.price_brl}
-                onChange={e => setForm({ ...form, price_brl: e.target.value })}
-                placeholder="0,00"
-              />
-            </div>
-            <div>
-              <label style={labelStyle}>URL da imagem</label>
-              <input
-                style={inputStyle}
-                value={form.image_url}
-                onChange={e => setForm({ ...form, image_url: e.target.value })}
-                placeholder="https://…"
-              />
-            </div>
+          {/* Image URL */}
+          <div>
+            <label style={labelStyle}>URL da imagem</label>
+            <input
+              style={inputStyle}
+              value={form.image_url}
+              onChange={e => setForm({ ...form, image_url: e.target.value })}
+              placeholder="https://…"
+            />
           </div>
 
           {/* Affiliate URL */}
@@ -444,11 +421,6 @@ function ProductItem({
         {product.category ? (CATEGORY_LABELS[product.category] ?? product.category) : '—'}
       </td>
 
-      {/* Price */}
-      <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 700, color: accent }}>
-        {brl(product.price_brl)}
-      </td>
-
       {/* Hair types */}
       <td style={{ padding: '12px 16px' }}>
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
@@ -616,7 +588,6 @@ export default function ProdutosClient({ initialProducts }: { initialProducts: P
         name: form.name.trim(),
         brand: form.brand.trim() || null,
         category: form.category || null,
-        price_brl: form.price_brl ? Number(form.price_brl) : null,
         affiliate_url: form.affiliate_url.trim() || null,
         image_url: form.image_url.trim() || null,
         hair_types: form.hair_types,
@@ -839,7 +810,7 @@ export default function ProdutosClient({ initialProducts }: { initialProducts: P
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
               <thead>
                 <tr style={{ background: '#FAFAFA', borderBottom: '1px solid #F0F0F5' }}>
-                  {['Produto', 'Categoria', 'Preço', 'Tipos de cabelo', 'Link afiliado', 'Status', 'Ações'].map(h => (
+                  {['Produto', 'Categoria', 'Tipos de cabelo', 'Link afiliado', 'Status', 'Ações'].map(h => (
                     <th key={h} style={{
                       padding: '11px 16px', textAlign: 'left',
                       fontSize: 11, color: gray, fontWeight: 600,
