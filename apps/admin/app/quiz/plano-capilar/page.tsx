@@ -94,12 +94,13 @@ async function getData() {
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const since30 = new Date(Date.now() - 30 * 86400_000).toISOString()
 
-  const [viewsAllRows, viewsTodayRows, profiles, answersAll, dailyViewsRows, stepEvents, leadsCount, checkoutEvents] = await Promise.all([
+  const [viewsAllRows, viewsTodayRows, profiles, activeProfiles, answersAll, dailyViewsRows, stepEvents, leadsCount, checkoutEvents] = await Promise.all([
     // Todas as views (session_id + created_at) para deduplicar em JS
     sb.from('wg_quiz_views' as any).select('session_id, created_at').eq('quiz_slug', 'plano-capilar'),
     // Views de hoje
     sb.from('wg_quiz_views' as any).select('session_id, created_at').eq('quiz_slug', 'plano-capilar').gte('created_at', today.toISOString()),
     sb.from('profiles').select('id', { count: 'exact', head: true }),
+    sb.from('profiles').select('id', { count: 'exact', head: true }).eq('subscription_status', 'active'),
     sb.from('wg_quiz_answers' as any).select('question_id, answer').eq('quiz_slug', 'plano-capilar'),
     // Views dos últimos 30d para série diária
     sb.from('wg_quiz_views' as any).select('session_id, created_at').eq('quiz_slug', 'plano-capilar').gte('created_at', since30).order('created_at', { ascending: true }),
@@ -243,12 +244,21 @@ async function getData() {
       // Cliques brutos = bate com dados de anúncios (inclui recarregamentos)
       totalCliques,
       todayCliques,
-      profiles:         profiles.count   ?? 0,
-      periodLeads:      leadsCount.count ?? 0,
-      conversion:       uniqueAll > 0 ? Math.round(((profiles.count ?? 0) / uniqueAll) * 100) : null,
+      profiles:         profiles.count       ?? 0,
+      activeProfiles:   activeProfiles.count ?? 0,
+      periodLeads:      leadsCount.count     ?? 0,
+      // Conversão: usa pessoas únicas se disponível, senão cliques brutos como aproximação
+      conversion: uniqueAll > 0
+        ? Math.round(((profiles.count ?? 0) / uniqueAll) * 100)
+        : totalCliques > 0
+          ? Math.round(((profiles.count ?? 0) / totalCliques) * 100)
+          : null,
+      conversionBase: uniqueAll > 0 ? 'sessions' : totalCliques > 0 ? 'cliques' : null,
+      offerViewed:        checkoutCounts['offer_viewed']        ?? 0,
       checkoutInitiated:  checkoutCounts['checkout_initiated']  ?? 0,
       pixGenerated:       checkoutCounts['pix_generated']       ?? 0,
       paymentConfirmed:   checkoutCounts['payment_confirmed']   ?? 0,
+      passwordSet:        checkoutCounts['password_set']        ?? 0,
     },
     dailySeries,
     questionAnalytics,

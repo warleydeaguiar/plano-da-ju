@@ -152,19 +152,23 @@ function StepFunnelRow({ row, isWorst }: { row: any; isWorst: boolean }) {
 }
 
 // ─── Funnel de checkout ───────────────────────────────────────────
-function CheckoutFunnelBar({ label, count, total, color }: { label: string; count: number; total: number; color: string }) {
-  const pct = total > 0 ? Math.round((count / total) * 100) : 0
+function CheckoutFunnelBar({ label, count, base, color, isBase }: { label: string; count: number; base: number; color: string; isBase?: boolean }) {
+  const pct = base > 0 ? Math.round((count / base) * 100) : null
+  const barW = base > 0 ? Math.round((count / base) * 100) : (isBase ? 100 : 0)
   return (
-    <div style={{ marginBottom: 12 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-        <span style={{ fontSize: 13, color: '#2D1B2E', fontWeight: 500 }}>{label}</span>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <span style={{ fontSize: 12, color: gray }}>{count.toLocaleString('pt-BR')}</span>
-          <span style={{ fontSize: 13, fontWeight: 700, color, minWidth: 40, textAlign: 'right' }}>{pct}%</span>
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+        <span style={{ fontSize: 13, color: '#2D1B2E', fontWeight: isBase ? 700 : 500 }}>{label}</span>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#2D1B2E' }}>{count.toLocaleString('pt-BR')}</span>
+          {pct != null && !isBase && (
+            <span style={{ fontSize: 12, fontWeight: 600, color, minWidth: 40, textAlign: 'right' }}>{pct}%</span>
+          )}
+          {isBase && <span style={{ fontSize: 11, color: gray, minWidth: 40, textAlign: 'right' }}>base</span>}
         </div>
       </div>
       <div style={{ height: 8, background: '#F0F0F5', borderRadius: 4 }}>
-        <div style={{ height: '100%', borderRadius: 4, width: `${pct}%`, background: color, transition: 'width 0.6s' }} />
+        <div style={{ height: '100%', borderRadius: 4, width: `${barW}%`, background: color, transition: 'width 0.6s', opacity: isBase ? 0.5 : 1 }} />
       </div>
     </div>
   )
@@ -213,11 +217,16 @@ export default function PlanoCapilarClient({ data }: { data: any }) {
         <StatCard label="PESSOAS ÚNICAS" value={(kpis.uniqueSessions ?? 0).toLocaleString('pt-BR')} sub={`${(kpis.totalCliques ?? 0).toLocaleString('pt-BR')} cliques totais`} />
         <StatCard label="HOJE" value={kpis.uniqueToday ?? 0} sub={`${kpis.todayCliques ?? 0} cliques`} color={(kpis.uniqueToday ?? 0) > 0 ? green : '#2D1B2E'} />
         <StatCard label="LEADS (30d)" value={(kpis.periodLeads ?? 0).toLocaleString('pt-BR')} sub="email capturado" color={blue} />
-        <StatCard label="ASSINANTES" value={kpis.profiles.toLocaleString('pt-BR')} sub="clientes ativos" color={accent} />
+        <StatCard
+          label="ASSINANTES"
+          value={kpis.activeProfiles ?? kpis.profiles}
+          sub={`${kpis.profiles} cadastrados · ${kpis.activeProfiles ?? 0} ativos`}
+          color={accent}
+        />
         <StatCard
           label="CONVERSÃO"
           value={kpis.conversion != null ? `${kpis.conversion}%` : '—'}
-          sub="assinantes / pessoas únicas"
+          sub={kpis.conversionBase === 'cliques' ? 'assinantes / cliques (estimado)' : kpis.conversionBase === 'sessions' ? 'assinantes / pessoas únicas' : 'dados insuficientes'}
           color={kpis.conversion != null ? (kpis.conversion >= 5 ? green : kpis.conversion >= 2 ? orange : red) : '#2D1B2E'}
         />
       </div>
@@ -232,19 +241,32 @@ export default function PlanoCapilarClient({ data }: { data: any }) {
         <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E', marginBottom: 16 }}>💳 Funil de checkout — últimos 30 dias</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
           <div>
-            <CheckoutFunnelBar label="Iniciou checkout" count={kpis.checkoutInitiated ?? 0} total={kpis.uniqueMonth ?? 0} color={blue} />
-            <CheckoutFunnelBar label="PIX gerado" count={kpis.pixGenerated ?? 0} total={kpis.uniqueMonth ?? 0} color={orange} />
-            <CheckoutFunnelBar label="Pagamento confirmado" count={kpis.paymentConfirmed ?? 0} total={kpis.uniqueMonth ?? 0} color={green} />
+            <CheckoutFunnelBar label="Viu a oferta" count={kpis.offerViewed ?? 0} base={kpis.offerViewed ?? 0} color={accent} isBase />
+            <CheckoutFunnelBar label="Iniciou checkout" count={kpis.checkoutInitiated ?? 0} base={kpis.offerViewed ?? 0} color={blue} />
+            <CheckoutFunnelBar label="PIX gerado" count={kpis.pixGenerated ?? 0} base={kpis.offerViewed ?? 0} color={orange} />
+            <CheckoutFunnelBar label="Pagamento confirmado" count={kpis.paymentConfirmed ?? 0} base={kpis.offerViewed ?? 0} color={green} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 8, paddingLeft: 16, borderLeft: '1px solid #F0F0F5' }}>
             <div style={{ fontSize: 12, color: gray }}>Pessoas únicas (30d)</div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: '#2D1B2E' }}>{(kpis.uniqueMonth ?? 0).toLocaleString('pt-BR')}</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: (kpis.uniqueMonth ?? 0) > 0 ? '#2D1B2E' : gray }}>
+              {(kpis.uniqueMonth ?? 0) > 0 ? (kpis.uniqueMonth ?? 0).toLocaleString('pt-BR') : '—'}
+            </div>
+            {(kpis.uniqueMonth ?? 0) === 0 && (
+              <div style={{ fontSize: 11, color: orange }}>
+                ⏳ Rastreamento ativo desde 19/05 — dados acumulando
+              </div>
+            )}
             <div style={{ fontSize: 12, color: gray, marginTop: 4 }}>Taxa checkout → pagamento</div>
             <div style={{ fontSize: 22, fontWeight: 700, color: (kpis.paymentConfirmed ?? 0) > 0 ? green : gray }}>
               {(kpis.checkoutInitiated ?? 0) > 0
                 ? `${Math.round(((kpis.paymentConfirmed ?? 0) / (kpis.checkoutInitiated ?? 1)) * 100)}%`
                 : '—'}
             </div>
+            {(kpis.passwordSet ?? 0) > 0 && (
+              <div style={{ fontSize: 12, color: green, marginTop: 4 }}>
+                ✅ {kpis.passwordSet} cliente{(kpis.passwordSet ?? 0) > 1 ? 's' : ''} ativou acesso
+              </div>
+            )}
           </div>
         </div>
       </div>
