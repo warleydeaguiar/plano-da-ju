@@ -583,11 +583,12 @@ function RegeneratePlanBtn({ user, onChanged }: { user: User; onChanged: () => v
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null)
 
   async function regenerate() {
-    if (!user.photo_url) {
-      setResult({ ok: false, text: 'Usuária não tem foto do cabelo ainda. Ela precisa enviar uma foto primeiro pra IA analisar.' })
+    if (!user.quiz_answers && !user.photo_url) {
+      setResult({ ok: false, text: 'Usuária não tem quiz respondido nem foto. Sem dados pra IA gerar plano.' })
       return
     }
-    if (!confirm(`Regerar TODO o plano de 52 semanas da ${user.full_name ?? user.email}?\n\nIsso vai sobrescrever o plano atual usando o catálogo Ybera mais novo. Demora ~30s.`)) return
+    const photoNote = user.photo_url ? '' : '\n\n⚠ Sem foto — vou gerar baseado só no quiz.'
+    if (!confirm(`Regerar TODO o plano de 52 semanas da ${user.full_name ?? user.email}?\n\nIsso vai sobrescrever o plano atual usando o catálogo Ybera mais novo. Demora ~30s.${photoNote}`)) return
     setRunning(true); setResult(null)
     try {
       const res = await fetch(`/api/admin/profiles/${user.id}/regenerate-plan`, {

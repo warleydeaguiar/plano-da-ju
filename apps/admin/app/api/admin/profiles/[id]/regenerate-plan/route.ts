@@ -31,9 +31,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .single()
     if (!profile) return NextResponse.json({ error: 'Profile não encontrado' }, { status: 404 })
 
-    if (!profile.photo_url) {
+    // Foto não é obrigatória — se não tem, gera só com base no quiz
+    const hasPhoto = Boolean(profile.photo_url)
+    if (!hasPhoto && !profile.quiz_answers) {
       return NextResponse.json({
-        error: 'Usuária não tem foto cadastrada. Pra regerar o plano ela precisa subir uma foto primeiro.'
+        error: 'Usuária não tem nem foto nem quiz respondido. Sem dados pra gerar plano.'
       }, { status: 400 })
     }
 
@@ -100,6 +102,13 @@ Gere TODAS as 52 semanas (cronograma capilar: hidratação/nutrição/reconstru�
     const apiKey = process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_API_KEY
     if (!apiKey) return NextResponse.json({ error: 'OPENROUTER_API_KEY não configurado' }, { status: 500 })
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const aiContent: any[] = []
+    if (hasPhoto) {
+      aiContent.push({ type: 'image_url', image_url: { url: profile.photo_url } })
+    }
+    aiContent.push({ type: 'text', text: prompt + (hasPhoto ? '' : '\n\nObs: a cliente ainda não enviou foto — gere o plano baseado SOMENTE nas respostas do quiz, sem mencionar análise visual no diagnóstico.') })
+
     const aiResp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -111,13 +120,7 @@ Gere TODAS as 52 semanas (cronograma capilar: hidratação/nutrição/reconstru�
       body: JSON.stringify({
         model: 'anthropic/claude-sonnet-4-6',
         max_tokens: 12000,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'image_url', image_url: { url: profile.photo_url } },
-            { type: 'text', text: prompt },
-          ],
-        }],
+        messages: [{ role: 'user', content: aiContent }],
       }),
     })
 
