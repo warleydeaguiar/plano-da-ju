@@ -1648,7 +1648,11 @@ export default function QuizClient() {
 
   useEffect(() => {
     if (step?.kind === 'loading') {
-      const t = setTimeout(() => setStepIndex(i => Math.min(total - 1, i + 1)), 5000)
+      const t = setTimeout(() => {
+        // Rastreia o auto-avanço do step de loading como "answered"
+        trackStepEvent(sessionIdRef.current, stepIndexRef.current, stepIdRef.current, 'answered')
+        setStepIndex(i => Math.min(total - 1, i + 1))
+      }, 5000)
       return () => clearTimeout(t)
     }
   }, [stepIndex, step, total])

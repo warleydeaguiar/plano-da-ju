@@ -79,11 +79,16 @@ function QuestionCard({ qa }: { qa: any }) {
   )
 }
 
+// Steps que auto-avançam (sem clique do usuário)
+const AUTO_ADVANCE_STEPS = new Set(['loading'])
+
 // ─── Funil por etapa ─────────────────────────────────────────────
 function StepFunnelRow({ row, isWorst }: { row: any; isWorst: boolean }) {
   const rate = row.conversion_rate
-  const rateColor = rate == null ? gray : rate >= 80 ? green : rate >= 60 ? '#34C759CC' : rate >= 40 ? orange : red
-  const barColor  = rate == null ? '#E5E5EA' : rate >= 80 ? green : rate >= 60 ? '#5AC8FA' : rate >= 40 ? orange : red
+  const isAutoAdvance = AUTO_ADVANCE_STEPS.has(row.step_id)
+  // Loading step: trata como transparente (não é abandono real)
+  const rateColor = isAutoAdvance ? '#5AC8FA' : rate == null ? gray : rate >= 80 ? green : rate >= 60 ? '#34C759CC' : rate >= 40 ? orange : red
+  const barColor  = isAutoAdvance ? '#5AC8FA' : rate == null ? '#E5E5EA' : rate >= 80 ? green : rate >= 60 ? '#5AC8FA' : rate >= 40 ? orange : red
   const barWidth  = row.pct_of_top ?? 100
 
   return (
@@ -134,8 +139,8 @@ function StepFunnelRow({ row, isWorst }: { row: any; isWorst: boolean }) {
 
       {/* Rate */}
       <div style={{ fontSize: 14, fontWeight: 700, color: rateColor, textAlign: 'right' }}>
-        {rate != null ? `${rate}%` : '—'}
-        {row.dropoff_from_prev != null && row.dropoff_from_prev > 10 && (
+        {isAutoAdvance ? <span style={{ fontSize: 11, color: '#5AC8FA', fontWeight: 600 }}>auto</span> : rate != null ? `${rate}%` : '—'}
+        {!isAutoAdvance && row.dropoff_from_prev != null && row.dropoff_from_prev > 10 && (
           <div style={{ fontSize: 10, color: red, fontWeight: 500 }}>↓{row.dropoff_from_prev}%</div>
         )}
       </div>
@@ -162,15 +167,23 @@ function CheckoutFunnelBar({ label, count, total, color }: { label: string; coun
   )
 }
 
+// Mínimo de sessões únicas para considerar o funil estatisticamente útil
+const MIN_FUNNEL_SESSIONS = 30
+
 export default function PlanoCapilarClient({ data }: { data: any }) {
   const { kpis, dailySeries, questionAnalytics, stepFunnel = [] } = data
 
-  // Encontra passo com maior drop-off de viewers (≥ 2 passos)
-  const worstDropoffStep = stepFunnel.reduce((worst: any, row: any) => {
-    if (row.dropoff_from_prev == null) return worst
-    if (!worst || row.dropoff_from_prev > worst.dropoff_from_prev) return row
-    return worst
-  }, null)
+  const topStepSessions = stepFunnel[0]?.viewed ?? 0
+  const hasSufficientData = topStepSessions >= MIN_FUNNEL_SESSIONS
+
+  // Encontra passo com maior drop-off de viewers — só exibe se dados suficientes
+  const worstDropoffStep = hasSufficientData
+    ? stepFunnel.reduce((worst: any, row: any) => {
+        if (row.dropoff_from_prev == null) return worst
+        if (!worst || row.dropoff_from_prev > worst.dropoff_from_prev) return row
+        return worst
+      }, null)
+    : null
 
   const hasFunnelData = stepFunnel.length > 0
 
@@ -250,7 +263,9 @@ export default function PlanoCapilarClient({ data }: { data: any }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
           <div>
             <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E', marginBottom: 4 }}>🔬 Funil por etapa — últimos 30 dias</div>
-            <div style={{ fontSize: 12, color: gray }}>Quantas sessões únicas visualizaram e avançaram em cada passo do quiz</div>
+            <div style={{ fontSize: 12, color: gray }}>
+              Sessões únicas que visualizaram e avançaram em cada passo · rastreamento ativo desde 19/05/2026
+            </div>
           </div>
           {worstDropoffStep && (
             <div style={{ background: 'rgba(255,59,48,0.07)', border: '1px solid rgba(255,59,48,0.2)', borderRadius: 10, padding: '8px 14px', textAlign: 'right', flexShrink: 0, marginLeft: 16 }}>
@@ -266,11 +281,28 @@ export default function PlanoCapilarClient({ data }: { data: any }) {
             <div style={{ fontSize: 36, marginBottom: 12 }}>📊</div>
             <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E', marginBottom: 6 }}>Coletando dados por etapa</div>
             <div style={{ fontSize: 13, color: gray, maxWidth: 360, margin: '0 auto', lineHeight: 1.6 }}>
-              O rastreamento por etapa foi ativado agora. Os dados aparecerão aqui conforme as usuárias acessarem o quiz.
+              O rastreamento por etapa foi ativado recentemente. Os dados aparecerão aqui conforme as usuárias acessarem o quiz.
             </div>
           </div>
         ) : (
           <div>
+            {/* Aviso de dados insuficientes */}
+            {!hasSufficientData && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                background: 'rgba(255,149,0,0.08)', border: '1px solid rgba(255,149,0,0.25)',
+                borderRadius: 10, padding: '10px 14px', marginBottom: 16,
+              }}>
+                <span style={{ fontSize: 16 }}>⏳</span>
+                <div>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: orange }}>Dados insuficientes para análise confiável</span>
+                  <span style={{ fontSize: 12, color: gray, marginLeft: 8 }}>
+                    {topStepSessions} sessão{topStepSessions !== 1 ? 'ões' : ''} rastreada{topStepSessions !== 1 ? 's' : ''} — mínimo recomendado: {MIN_FUNNEL_SESSIONS}.
+                    Aguarde mais tráfego para identificar gargalos reais.
+                  </span>
+                </div>
+              </div>
+            )}
             {/* Legenda */}
             <div style={{ display: 'grid', gridTemplateColumns: '28px 200px 1fr 80px 80px 80px', gap: 10, paddingBottom: 8, borderBottom: '2px solid #F0F0F5', marginBottom: 4 }}>
               <div />
