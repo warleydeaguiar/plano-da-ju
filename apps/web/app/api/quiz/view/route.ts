@@ -15,13 +15,14 @@ function client() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const quiz_slug = typeof body.quiz_slug === 'string' ? body.quiz_slug : 'plano-capilar'
+    const quiz_slug  = typeof body.quiz_slug  === 'string' ? body.quiz_slug                   : 'plano-capilar'
+    const session_id = typeof body.session_id === 'string' ? body.session_id.slice(0, 64)     : null
     if (!VALID_SLUGS.has(quiz_slug)) return NextResponse.json({ ok: false })
 
     const utm_source   = typeof body.utm_source   === 'string' ? body.utm_source.slice(0, 100)   : null
     const utm_campaign = typeof body.utm_campaign === 'string' ? body.utm_campaign.slice(0, 100) : null
 
-    await client().from('wg_quiz_views' as any).insert({ quiz_slug, utm_source, utm_campaign })
+    await client().from('wg_quiz_views' as any).insert({ quiz_slug, session_id, utm_source, utm_campaign })
     return NextResponse.json({ ok: true })
   } catch {
     return NextResponse.json({ ok: false })

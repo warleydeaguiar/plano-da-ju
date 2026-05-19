@@ -94,32 +94,57 @@ async function getData() {
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const since30 = new Date(Date.now() - 30 * 86400_000).toISOString()
 
-  const [viewsAll, viewsToday, viewsMonth, profiles, answersAll, dailyViews, stepEvents, leadsCount, checkoutEvents] = await Promise.all([
-    sb.from('wg_quiz_views' as any).select('id', { count: 'exact', head: true }).eq('quiz_slug', 'plano-capilar'),
-    sb.from('wg_quiz_views' as any).select('id', { count: 'exact', head: true }).eq('quiz_slug', 'plano-capilar').gte('created_at', today.toISOString()),
-    sb.from('wg_quiz_views' as any).select('id', { count: 'exact', head: true }).eq('quiz_slug', 'plano-capilar').gte('created_at', since30),
+  const [viewsAllRows, viewsTodayRows, profiles, answersAll, dailyViewsRows, stepEvents, leadsCount, checkoutEvents] = await Promise.all([
+    // Todas as views (session_id + created_at) para deduplicar em JS
+    sb.from('wg_quiz_views' as any).select('session_id, created_at').eq('quiz_slug', 'plano-capilar'),
+    // Views de hoje
+    sb.from('wg_quiz_views' as any).select('session_id, created_at').eq('quiz_slug', 'plano-capilar').gte('created_at', today.toISOString()),
     sb.from('profiles').select('id', { count: 'exact', head: true }),
     sb.from('wg_quiz_answers' as any).select('question_id, answer').eq('quiz_slug', 'plano-capilar'),
-    sb.from('wg_quiz_views' as any).select('created_at').eq('quiz_slug', 'plano-capilar').gte('created_at', since30).order('created_at', { ascending: true }),
+    // Views dos últimos 30d para série diária
+    sb.from('wg_quiz_views' as any).select('session_id, created_at').eq('quiz_slug', 'plano-capilar').gte('created_at', since30).order('created_at', { ascending: true }),
     sb.from('wg_quiz_step_events' as any).select('step_index, step_id, event_type, session_id').eq('quiz_slug', 'plano-capilar').gte('created_at', since30),
     sb.from('wg_quiz_leads' as any).select('id', { count: 'exact', head: true }).eq('quiz_slug', 'plano-capilar').gte('created_at', since30),
     sb.from('checkout_events' as any).select('event_type').gte('created_at', since30),
   ])
 
-  // Série diária de views
+  // ── Contagens de sessões únicas ──────────────────────────────
+  const allRows      = (viewsAllRows.data ?? []) as any[]
+  const todayRows    = (viewsTodayRows.data ?? []) as any[]
+  const monthRows    = (dailyViewsRows.data ?? []) as any[]
+
+  // Sessões únicas = distinct session_id (exclui nulos — registros antigos sem session_id)
+  const uniqueAll   = new Set(allRows.filter(r => r.session_id).map((r: any) => r.session_id)).size
+  const uniqueToday = new Set(todayRows.filter(r => r.session_id).map((r: any) => r.session_id)).size
+  const uniqueMonth = new Set(monthRows.filter(r => r.session_id).map((r: any) => r.session_id)).size
+
+  // Raw cliques (para compatibilidade com dados de anúncios — inclui todos os acessos)
+  const totalCliques = allRows.length
+  const todayCliques = todayRows.length
+
+  // Série diária: sessões únicas por dia (primeira vez que session_id aparece naquele dia)
   const days = Array.from({ length: 30 }, (_, i) => {
     const d = new Date(Date.now() - (29 - i) * 86400_000)
     return d.toISOString().slice(0, 10)
   })
-  const dayMap: Record<string, number> = {}
-  days.forEach(d => { dayMap[d] = 0 })
-  for (const row of (dailyViews.data ?? []) as any[]) {
+  // Para sessões únicas por dia: conta distinct session_id por dia
+  const daySessionMap: Record<string, Set<string>> = {}
+  const dayClickMap:   Record<string, number>      = {}
+  days.forEach(d => { daySessionMap[d] = new Set(); dayClickMap[d] = 0 })
+  for (const row of monthRows) {
     const k = (row.created_at as string).slice(0, 10)
-    if (k in dayMap) dayMap[k]++
+    if (!(k in daySessionMap)) continue
+    dayClickMap[k]++
+    if (row.session_id) daySessionMap[k].add(row.session_id)
   }
   const dailySeries = days.map(d => {
     const date = new Date(d + 'T12:00:00')
-    return { date: d, label: `${date.getDate()}/${date.getMonth() + 1}`, views: dayMap[d] }
+    return {
+      date:    d,
+      label:   `${date.getDate()}/${date.getMonth() + 1}`,
+      views:   daySessionMap[d].size,   // sessões únicas
+      cliques: dayClickMap[d],          // raw cliques (inclui recarregamentos)
+    }
   })
 
   // Agregar respostas por pergunta
@@ -211,12 +236,16 @@ async function getData() {
 
   return {
     kpis: {
-      views:            viewsAll.count   ?? 0,
-      today:            viewsToday.count ?? 0,
-      viewsMonth:       viewsMonth.count ?? 0,
+      // Sessões únicas = pessoas reais (localStorage, deduplicado)
+      uniqueSessions:   uniqueAll,
+      uniqueToday:      uniqueToday,
+      uniqueMonth:      uniqueMonth,
+      // Cliques brutos = bate com dados de anúncios (inclui recarregamentos)
+      totalCliques,
+      todayCliques,
       profiles:         profiles.count   ?? 0,
       periodLeads:      leadsCount.count ?? 0,
-      conversion:       (viewsAll.count ?? 0) > 0 ? Math.round(((profiles.count ?? 0) / (viewsAll.count ?? 1)) * 100) : null,
+      conversion:       uniqueAll > 0 ? Math.round(((profiles.count ?? 0) / uniqueAll) * 100) : null,
       checkoutInitiated:  checkoutCounts['checkout_initiated']  ?? 0,
       pixGenerated:       checkoutCounts['pix_generated']       ?? 0,
       paymentConfirmed:   checkoutCounts['payment_confirmed']   ?? 0,

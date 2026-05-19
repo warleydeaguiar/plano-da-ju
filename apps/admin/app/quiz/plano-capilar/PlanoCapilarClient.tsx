@@ -21,7 +21,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
   )
 }
 
-function ViewsChart({ series }: { series: { label: string; views: number }[] }) {
+function ViewsChart({ series }: { series: { label: string; views: number; cliques?: number }[] }) {
   const max = Math.max(...series.map(d => d.views), 1)
   const labelIndexes = new Set([0, Math.floor(series.length / 2), series.length - 1])
   return (
@@ -29,9 +29,12 @@ function ViewsChart({ series }: { series: { label: string; views: number }[] }) 
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 72 }}>
         {series.map((d, i) => {
           const h = Math.max(Math.round((d.views / max) * 68), d.views > 0 ? 3 : 0)
+          const tip = d.cliques != null
+            ? `${d.label}: ${d.views} pessoas únicas · ${d.cliques} cliques`
+            : `${d.label}: ${d.views}`
           return (
             <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
-              <div title={`${d.label}: ${d.views}`} style={{ width: '100%', height: h, background: accent, borderRadius: '2px 2px 0 0', opacity: 0.8 }} />
+              <div title={tip} style={{ width: '100%', height: h, background: accent, borderRadius: '2px 2px 0 0', opacity: 0.8 }} />
             </div>
           )
         })}
@@ -206,17 +209,22 @@ export default function PlanoCapilarClient({ data }: { data: any }) {
       </div>
 
       {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14, marginBottom: 24 }}>
-        <StatCard label="VIEWS TOTAL" value={kpis.views.toLocaleString('pt-BR')} sub="acessos ao quiz" />
-        <StatCard label="HOJE" value={kpis.today} sub="desde meia-noite" color={kpis.today > 0 ? green : '#2D1B2E'} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14, marginBottom: 8 }}>
+        <StatCard label="PESSOAS ÚNICAS" value={(kpis.uniqueSessions ?? 0).toLocaleString('pt-BR')} sub={`${(kpis.totalCliques ?? 0).toLocaleString('pt-BR')} cliques totais`} />
+        <StatCard label="HOJE" value={kpis.uniqueToday ?? 0} sub={`${kpis.todayCliques ?? 0} cliques`} color={(kpis.uniqueToday ?? 0) > 0 ? green : '#2D1B2E'} />
         <StatCard label="LEADS (30d)" value={(kpis.periodLeads ?? 0).toLocaleString('pt-BR')} sub="email capturado" color={blue} />
         <StatCard label="ASSINANTES" value={kpis.profiles.toLocaleString('pt-BR')} sub="clientes ativos" color={accent} />
         <StatCard
           label="CONVERSÃO"
           value={kpis.conversion != null ? `${kpis.conversion}%` : '—'}
-          sub="assinantes / views"
+          sub="assinantes / pessoas únicas"
           color={kpis.conversion != null ? (kpis.conversion >= 5 ? green : kpis.conversion >= 2 ? orange : red) : '#2D1B2E'}
         />
+      </div>
+      {/* Nota explicativa sobre sessões */}
+      <div style={{ fontSize: 11, color: gray, marginBottom: 20, paddingLeft: 4 }}>
+        💡 <strong>Pessoas únicas</strong> = sessões identificadas por localStorage (1 pessoa = 1 sessão mesmo fechando e reabrindo o quiz) ·{' '}
+        <strong>Cliques</strong> = cada carregamento da página (bate com dados de anúncios)
       </div>
 
       {/* Funil de checkout (30d) */}
@@ -224,13 +232,13 @@ export default function PlanoCapilarClient({ data }: { data: any }) {
         <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E', marginBottom: 16 }}>💳 Funil de checkout — últimos 30 dias</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
           <div>
-            <CheckoutFunnelBar label="Iniciou checkout" count={kpis.checkoutInitiated ?? 0} total={kpis.viewsMonth} color={blue} />
-            <CheckoutFunnelBar label="PIX gerado" count={kpis.pixGenerated ?? 0} total={kpis.viewsMonth} color={orange} />
-            <CheckoutFunnelBar label="Pagamento confirmado" count={kpis.paymentConfirmed ?? 0} total={kpis.viewsMonth} color={green} />
+            <CheckoutFunnelBar label="Iniciou checkout" count={kpis.checkoutInitiated ?? 0} total={kpis.uniqueMonth ?? 0} color={blue} />
+            <CheckoutFunnelBar label="PIX gerado" count={kpis.pixGenerated ?? 0} total={kpis.uniqueMonth ?? 0} color={orange} />
+            <CheckoutFunnelBar label="Pagamento confirmado" count={kpis.paymentConfirmed ?? 0} total={kpis.uniqueMonth ?? 0} color={green} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 8, paddingLeft: 16, borderLeft: '1px solid #F0F0F5' }}>
-            <div style={{ fontSize: 12, color: gray }}>Views (30d)</div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: '#2D1B2E' }}>{(kpis.viewsMonth ?? 0).toLocaleString('pt-BR')}</div>
+            <div style={{ fontSize: 12, color: gray }}>Pessoas únicas (30d)</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: '#2D1B2E' }}>{(kpis.uniqueMonth ?? 0).toLocaleString('pt-BR')}</div>
             <div style={{ fontSize: 12, color: gray, marginTop: 4 }}>Taxa checkout → pagamento</div>
             <div style={{ fontSize: 22, fontWeight: 700, color: (kpis.paymentConfirmed ?? 0) > 0 ? green : gray }}>
               {(kpis.checkoutInitiated ?? 0) > 0
@@ -244,16 +252,19 @@ export default function PlanoCapilarClient({ data }: { data: any }) {
       {/* Gráfico de views */}
       <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '20px 24px', marginBottom: 24 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E' }}>📈 Cliques por dia</div>
-          <div style={{ fontSize: 12, color: gray }}>Últimos 30 dias</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E' }}>📈 Pessoas únicas por dia</div>
+          <div style={{ fontSize: 12, color: gray }}>Últimos 30 dias · passe o mouse para ver cliques</div>
         </div>
         <ViewsChart series={dailySeries} />
         <div style={{ marginTop: 12, display: 'flex', gap: 20 }}>
           <div style={{ fontSize: 12, color: gray }}>
-            Total: <strong style={{ color: '#2D1B2E' }}>{dailySeries.reduce((s: number, d: any) => s + d.views, 0)}</strong>
+            Pessoas únicas (30d): <strong style={{ color: '#2D1B2E' }}>{kpis.uniqueMonth ?? 0}</strong>
           </div>
           <div style={{ fontSize: 12, color: gray }}>
-            Média/dia: <strong style={{ color: '#2D1B2E' }}>{(dailySeries.reduce((s: number, d: any) => s + d.views, 0) / 30).toFixed(1)}</strong>
+            Cliques (30d): <strong style={{ color: '#2D1B2E' }}>{dailySeries.reduce((s: number, d: any) => s + (d.cliques ?? 0), 0)}</strong>
+          </div>
+          <div style={{ fontSize: 12, color: gray }}>
+            Média pessoas/dia: <strong style={{ color: '#2D1B2E' }}>{((kpis.uniqueMonth ?? 0) / 30).toFixed(1)}</strong>
           </div>
         </div>
       </div>

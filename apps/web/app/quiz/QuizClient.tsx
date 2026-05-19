@@ -40,22 +40,25 @@ const fonts = {
 function getOrCreateSessionId(): string {
   if (typeof window === 'undefined') return ''
   const key = 'quiz_session_id'
-  let id = sessionStorage.getItem(key)
+  // localStorage persiste entre fechamentos de aba/browser no mesmo dispositivo
+  // garantindo que uma pessoa real = uma sessão, mesmo se fechar e voltar
+  let id = localStorage.getItem(key)
   if (!id) {
     id = Math.random().toString(36).slice(2) + Date.now().toString(36)
-    sessionStorage.setItem(key, id)
+    localStorage.setItem(key, id)
   }
   return id
 }
-function trackView() {
+function trackView(sessionId: string) {
   if (typeof window === 'undefined') return
   const params = new URLSearchParams(window.location.search)
   fetch('/api/quiz/view', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      quiz_slug: 'plano-capilar',
-      utm_source: params.get('utm_source'),
+      session_id:   sessionId,
+      quiz_slug:    'plano-capilar',
+      utm_source:   params.get('utm_source'),
       utm_campaign: params.get('utm_campaign'),
     }),
   }).catch(() => {})
@@ -1631,10 +1634,12 @@ export default function QuizClient() {
   useEffect(() => { stepIndexRef.current = stepIndex }, [stepIndex])
   useEffect(() => { stepIdRef.current = step?.id ?? '' }, [step])
 
-  // Inicializa sessionId uma única vez no mount
-  useEffect(() => { sessionIdRef.current = getOrCreateSessionId() }, [])
-
-  useEffect(() => { trackView() }, [])
+  // Inicializa sessionId e dispara trackView juntos (session antes de view)
+  useEffect(() => {
+    const sid = getOrCreateSessionId()
+    sessionIdRef.current = sid
+    trackView(sid)
+  }, [])
 
   useEffect(() => {
     // cache: 'no-store' garante dados frescos sem cache do browser
