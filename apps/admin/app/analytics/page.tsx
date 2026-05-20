@@ -155,6 +155,8 @@ export default async function AnalyticsPage() {
     leadsToday, leadsYesterday, leadsMonth,
     offerViewsToday, offerViewsYesterday,
     checkoutToday, checkoutYesterday,
+    offerViewsMonth, checkoutMonth,
+    interactTodayRaw, interactYestRaw, interactMonthRaw,
     // Grupos
     groupJoinsToday,
     groupJoinsYesterday,
@@ -205,6 +207,19 @@ export default async function AnalyticsPage() {
     (sb.from('checkout_events') as any).select('*', { count: 'exact', head: true }).eq('event_type', 'checkout_initiated').gte('created_at', todayStartBR.toISOString()),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sb.from('checkout_events') as any).select('*', { count: 'exact', head: true }).eq('event_type', 'checkout_initiated').gte('created_at', yesterdayStartBR.toISOString()).lt('created_at', todayStartBR.toISOString()),
+    // Offer/checkout 30d (pra coluna mês do funil)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sb.from('checkout_events') as any).select('*', { count: 'exact', head: true }).eq('event_type', 'offer_viewed').gte('created_at', day30agoBR.toISOString()),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sb.from('checkout_events') as any).select('*', { count: 'exact', head: true }).eq('event_type', 'checkout_initiated').gte('created_at', day30agoBR.toISOString()),
+    // "Interagiu" = sessions únicas com step_index=0 answered
+    // (clicou em alguma opção da página inicial do quiz)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sb.from('wg_quiz_step_events') as any).select('session_id').eq('quiz_slug', 'plano-capilar').eq('step_index', 0).eq('event_type', 'answered').gte('created_at', todayStartBR.toISOString()).limit(5000),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sb.from('wg_quiz_step_events') as any).select('session_id').eq('quiz_slug', 'plano-capilar').eq('step_index', 0).eq('event_type', 'answered').gte('created_at', yesterdayStartBR.toISOString()).lt('created_at', todayStartBR.toISOString()).limit(5000),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sb.from('wg_quiz_step_events') as any).select('session_id').eq('quiz_slug', 'plano-capilar').eq('step_index', 0).eq('event_type', 'answered').gte('created_at', day30agoBR.toISOString()).limit(20000),
     // Grupos — joins (cadastros novos) e cliques
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sb.from('wg_member_events') as any).select('*', { count: 'exact', head: true }).eq('action', 'join').gte('created_at', todayStartBR.toISOString()),
@@ -267,15 +282,41 @@ export default async function AnalyticsPage() {
   const cpjToday = joinsToday > 0 ? gruposSpendToday / joinsToday : null   // custo por cadastro hoje
   const cpjMonth = joinsMonth > 0 ? gruposSpendMonth / joinsMonth : null
 
-  // Funil
+  // Funil — Meta Ads (top of funnel)
+  const adClicksToday = metaAds.plano.funnelToday.clicks
+  const adClicksYest  = metaAds.plano.funnelYesterday.clicks
+  const adClicksMonth = metaAds.plano.funnelMonth.clicks
+  const lpvToday      = metaAds.plano.funnelToday.landing_page_views
+  const lpvYest       = metaAds.plano.funnelYesterday.landing_page_views
+  const lpvMonth      = metaAds.plano.funnelMonth.landing_page_views
+
+  // Funil — Interagiu com o quiz (clicou em alguma opção da página inicial)
+  // Dedupe session_id em JS porque Supabase JS não tem count distinct nativo
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const uniq = (rows: any): number => {
+    if (!rows?.data) return 0
+    const s = new Set<string>()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const r of rows.data as any[]) if (r.session_id) s.add(r.session_id)
+    return s.size
+  }
+  const iToday = uniq(interactTodayRaw)
+  const iYest  = uniq(interactYestRaw)
+  const iMonth = uniq(interactMonthRaw)
+
+  // Funil — quiz interno
   const qToday = quizViewsToday.count ?? 0
   const qYest  = quizViewsYesterday.count ?? 0
+  const qMonth = quizViewsMonth.count ?? 0
   const lToday = leadsToday.count ?? 0
   const lYest  = leadsYesterday.count ?? 0
+  const lMonth = leadsMonth.count ?? 0
   const oToday = offerViewsToday.count ?? 0
   const oYest  = offerViewsYesterday.count ?? 0
+  const oMonth = offerViewsMonth.count ?? 0
   const cToday = checkoutToday.count ?? 0
   const cYest  = checkoutYesterday.count ?? 0
+  const cMonth = checkoutMonth.count ?? 0
 
   function pct(a: number, b: number) {
     if (!b) return '—'
@@ -372,15 +413,18 @@ export default async function AnalyticsPage() {
           </div>
         </div>
 
-        {/* Funil Plano */}
+        {/* Funil Plano — completo: Meta Ads → Quiz → Compra */}
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', marginBottom: 36, overflow: 'hidden' }}>
           <div style={{ padding: '14px 20px', borderBottom: '1px solid #F0F0F5', fontSize: 12, fontWeight: 700, color: '#2D1B2E', letterSpacing: 0.2 }}>
-            Funil de conversão — Quiz → Compra
+            Funil de conversão — Anúncio → Compra
+            <span style={{ marginLeft: 8, fontSize: 10.5, fontWeight: 500, color: gray, textTransform: 'none' }}>
+              · Conv. = % que avança da etapa anterior
+            </span>
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#FAFAFA', borderBottom: '1px solid #F0F0F5' }}>
-                {['Etapa', 'Hoje', 'Conv.', 'Ontem', 'Conv.', '30d'].map((h, i) => (
+                {['Etapa', 'Hoje', 'Conv.', 'Ontem', 'Conv.', '30d', 'Conv. 30d'].map((h, i) => (
                   <th key={i} style={{
                     padding: '11px 20px', textAlign: i === 0 ? 'left' : 'right',
                     fontSize: 11, color: gray, fontWeight: 600,
@@ -391,25 +435,91 @@ export default async function AnalyticsPage() {
             </thead>
             <tbody>
               {[
-                { icon: '🔵', label: 'Entrou no quiz',   today: qToday, yest: qYest,  month: quizViewsMonth.count ?? 0, convToday: null,                convYest: null },
-                { icon: '📋', label: 'Completou (lead)', today: lToday, yest: lYest,  month: leadsMonth.count ?? 0,     convToday: pct(lToday, qToday), convYest: pct(lYest, qYest) },
-                { icon: '🛒', label: 'Viu a oferta',     today: oToday, yest: oYest,  month: null,                       convToday: pct(oToday, lToday), convYest: pct(oYest, lYest) },
-                { icon: '💳', label: 'Iniciou checkout', today: cToday, yest: cYest,  month: null,                       convToday: pct(cToday, oToday), convYest: pct(cYest, oYest) },
-                { icon: '✅', label: 'Comprou',          today: salesToday, yest: salesYesterday, month: salesMonth,    convToday: pct(salesToday, qToday), convYest: pct(salesYesterday, qYest) },
-              ].map((row, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid #F9F9FC' }}>
-                  <td style={{ padding: '12px 20px', fontSize: 13, color: '#2D1B2E', fontWeight: 600 }}>
-                    <span style={{ marginRight: 6 }}>{row.icon}</span>{row.label}
-                  </td>
-                  <td style={{ padding: '12px 20px', textAlign: 'right', fontSize: 14, fontWeight: 700, color: accent }}>{row.today}</td>
-                  <td style={{ padding: '12px 20px', textAlign: 'right', fontSize: 12, color: row.convToday === '—' ? gray : green, fontWeight: 600 }}>{row.convToday ?? '—'}</td>
-                  <td style={{ padding: '12px 20px', textAlign: 'right', fontSize: 14, fontWeight: 700, color: '#2D1B2E' }}>{row.yest}</td>
-                  <td style={{ padding: '12px 20px', textAlign: 'right', fontSize: 12, color: row.convYest === '—' ? gray : green, fontWeight: 600 }}>{row.convYest ?? '—'}</td>
-                  <td style={{ padding: '12px 20px', textAlign: 'right', fontSize: 13, color: gray }}>{row.month ?? '—'}</td>
-                </tr>
-              ))}
+                // Top of funnel — Meta Ads
+                { icon: '🖱️', label: 'Cliques no link (Meta)', today: adClicksToday, yest: adClicksYest, month: adClicksMonth,
+                  convToday: null, convYest: null, convMonth: null,
+                  source: 'meta', highlight: false },
+                { icon: '👁️', label: 'Visualização de página',  today: lpvToday,      yest: lpvYest,      month: lpvMonth,
+                  convToday: pct(lpvToday, adClicksToday),
+                  convYest:  pct(lpvYest, adClicksYest),
+                  convMonth: pct(lpvMonth, adClicksMonth),
+                  source: 'meta', highlight: false },
+                // Interação com o quiz — métrica chave de qualidade do tráfego
+                { icon: '✍️', label: 'Interagiu (clicou na 1ª opção)', today: iToday, yest: iYest, month: iMonth,
+                  convToday: pct(iToday, lpvToday || qToday),
+                  convYest:  pct(iYest,  lpvYest  || qYest),
+                  convMonth: pct(iMonth, lpvMonth || qMonth),
+                  source: 'quiz', highlight: true },
+                // Mid funnel — quiz interno
+                { icon: '📋', label: 'Completou (lead)', today: lToday, yest: lYest, month: lMonth,
+                  convToday: pct(lToday, iToday),
+                  convYest:  pct(lYest,  iYest),
+                  convMonth: pct(lMonth, iMonth),
+                  source: 'quiz', highlight: false },
+                { icon: '🛒', label: 'Viu a oferta', today: oToday, yest: oYest, month: oMonth,
+                  convToday: pct(oToday, lToday),
+                  convYest:  pct(oYest,  lYest),
+                  convMonth: pct(oMonth, lMonth),
+                  source: 'quiz', highlight: false },
+                { icon: '💳', label: 'Iniciou checkout', today: cToday, yest: cYest, month: cMonth,
+                  convToday: pct(cToday, oToday),
+                  convYest:  pct(cYest,  oYest),
+                  convMonth: pct(cMonth, oMonth),
+                  source: 'quiz', highlight: false },
+                { icon: '✅', label: 'Comprou', today: salesToday, yest: salesYesterday, month: salesMonth,
+                  convToday: pct(salesToday, cToday),
+                  convYest:  pct(salesYesterday, cYest),
+                  convMonth: pct(salesMonth,  cMonth),
+                  source: 'sale', highlight: true },
+              ].map((row, i) => {
+                const isMeta = row.source === 'meta'
+                const isSale = row.source === 'sale'
+                const valueColor = isMeta ? blue : isSale ? green : accent
+                return (
+                  <tr key={i} style={{
+                    borderBottom: '1px solid #F9F9FC',
+                    background: row.highlight ? 'rgba(196,96,122,0.04)' : 'transparent',
+                  }}>
+                    <td style={{ padding: '12px 20px', fontSize: 13, color: '#2D1B2E', fontWeight: 600 }}>
+                      <span style={{ marginRight: 6 }}>{row.icon}</span>{row.label}
+                      {isMeta && (
+                        <span style={{
+                          marginLeft: 6, fontSize: 9.5, fontWeight: 700,
+                          padding: '2px 6px', borderRadius: 4,
+                          background: blue + '15', color: blue,
+                          letterSpacing: 0.3,
+                        }}>META</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '12px 20px', textAlign: 'right', fontSize: 14, fontWeight: 700, color: valueColor }}>
+                      {row.today.toLocaleString('pt-BR')}
+                    </td>
+                    <td style={{ padding: '12px 20px', textAlign: 'right', fontSize: 12, color: row.convToday === null || row.convToday === '—' ? gray : green, fontWeight: 600 }}>
+                      {row.convToday ?? '—'}
+                    </td>
+                    <td style={{ padding: '12px 20px', textAlign: 'right', fontSize: 14, fontWeight: 700, color: '#2D1B2E' }}>
+                      {row.yest.toLocaleString('pt-BR')}
+                    </td>
+                    <td style={{ padding: '12px 20px', textAlign: 'right', fontSize: 12, color: row.convYest === null || row.convYest === '—' ? gray : green, fontWeight: 600 }}>
+                      {row.convYest ?? '—'}
+                    </td>
+                    <td style={{ padding: '12px 20px', textAlign: 'right', fontSize: 13, color: '#2D1B2E', fontWeight: 600 }}>
+                      {row.month.toLocaleString('pt-BR')}
+                    </td>
+                    <td style={{ padding: '12px 20px', textAlign: 'right', fontSize: 12, color: row.convMonth === null || row.convMonth === '—' ? gray : green, fontWeight: 600 }}>
+                      {row.convMonth ?? '—'}
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
+          <div style={{
+            padding: '11px 20px', borderTop: '1px solid #F0F0F5',
+            fontSize: 11, color: gray, lineHeight: 1.55,
+          }}>
+            💡 <strong>Interagiu</strong> é a taxa de qualidade do tráfego — quem entra e clica na primeira opção do quiz mostra que o anúncio atraiu a pessoa certa. Quanto maior essa taxa, melhor o match anúncio×audiência.
+          </div>
         </div>
 
         {/* ════════════════════════════════════════════════════════════════ */}

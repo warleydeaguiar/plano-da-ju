@@ -35,10 +35,16 @@ export interface CampaignInsight {
   spend:         number
   impressions:   number
   clicks:        number
+  landing_page_views: number  // ← novo: action_type=landing_page_view
   reach:         number
   cpc:           number | null
   cpm:           number | null
   ctr:           number | null
+}
+
+export interface FunnelTotals {
+  clicks:             number  // soma de clicks (todos cliques)
+  landing_page_views: number  // soma de landing_page_view
 }
 
 export interface AdGroupResult {
@@ -48,6 +54,10 @@ export interface AdGroupResult {
   lastMonth:  number
   campaigns:  CampaignInsight[]
   daily:      Array<{ date: string; spend: number; label: string }>
+  // Totais de funil top-of-funnel — relevantes pra cruzar com nosso quiz
+  funnelToday:     FunnelTotals
+  funnelYesterday: FunnelTotals
+  funnelMonth:     FunnelTotals
 }
 
 export interface QuizAdsResult {
@@ -58,9 +68,14 @@ export interface QuizAdsResult {
   outros: AdGroupResult  // campanhas que não batem nenhum dos dois
 }
 
+const EMPTY_FUNNEL: FunnelTotals = { clicks: 0, landing_page_views: 0 }
+
 const EMPTY_GROUP: AdGroupResult = {
   today: 0, yesterday: 0, thisMonth: 0, lastMonth: 0,
   campaigns: [], daily: [],
+  funnelToday:     { ...EMPTY_FUNNEL },
+  funnelYesterday: { ...EMPTY_FUNNEL },
+  funnelMonth:     { ...EMPTY_FUNNEL },
 }
 
 const EMPTY: QuizAdsResult = {
@@ -108,6 +123,33 @@ function sumSpendOfType(rows: any[], type: CampaignType): number {
   }, 0)
 }
 
+/** Extrai uma action específica do array `actions` retornado pela API. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function actionValue(actions: any, actionType: string): number {
+  if (!Array.isArray(actions)) return 0
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const found = actions.find((a: any) => a.action_type === actionType)
+  return found ? parseInt(found.value ?? '0', 10) : 0
+}
+
+/** Soma cliques (clicks) de campanhas do tipo dado. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function sumClicksOfType(rows: any[], type: CampaignType): number {
+  return rows.reduce((s, r) => {
+    if (classifyCampaign(r.campaign_name) !== type) return s
+    return s + parseInt(r.clicks ?? '0', 10)
+  }, 0)
+}
+
+/** Soma landing_page_view de campanhas do tipo dado. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function sumLandingPageViewsOfType(rows: any[], type: CampaignType): number {
+  return rows.reduce((s, r) => {
+    if (classifyCampaign(r.campaign_name) !== type) return s
+    return s + actionValue(r.actions, 'landing_page_view')
+  }, 0)
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function dailyOfType(rows: any[], type: CampaignType): Array<{ date: string; spend: number; label: string }> {
   const dailyMap: Record<string, number> = {}
@@ -151,6 +193,7 @@ function buildGroup(
       spend:         parseFloat(r.spend ?? '0'),
       impressions:   parseInt(r.impressions ?? '0', 10),
       clicks:        parseInt(r.clicks ?? '0', 10),
+      landing_page_views: actionValue(r.actions, 'landing_page_view'),
       reach:         parseInt(r.reach ?? '0', 10),
       cpc:           r.cpc ? parseFloat(r.cpc) : null,
       cpm:           r.cpm ? parseFloat(r.cpm) : null,
@@ -165,6 +208,18 @@ function buildGroup(
     lastMonth: sumSpendOfType(lastMonthRows, type),
     campaigns,
     daily:     dailyOfType(last7Rows, type),
+    funnelToday:     {
+      clicks:             sumClicksOfType(todayRows, type),
+      landing_page_views: sumLandingPageViewsOfType(todayRows, type),
+    },
+    funnelYesterday: {
+      clicks:             sumClicksOfType(yestRows, type),
+      landing_page_views: sumLandingPageViewsOfType(yestRows, type),
+    },
+    funnelMonth: {
+      clicks:             sumClicksOfType(monthRows, type),
+      landing_page_views: sumLandingPageViewsOfType(monthRows, type),
+    },
   }
 }
 
@@ -183,7 +238,7 @@ export async function getQuizAdSpend(): Promise<QuizAdsResult> {
     const lastMonthStart = toDate(lastMonthD)
     const lastMonthEnd   = toDate(new Date(now.getFullYear(), now.getMonth(), 0))
 
-    const fields = 'campaign_id,campaign_name,spend,impressions,clicks,reach,cpc,cpm,ctr'
+    const fields = 'campaign_id,campaign_name,spend,impressions,clicks,reach,cpc,cpm,ctr,actions'
 
     // Buscar tudo em paralelo
     const [todayRows, yestRows, monthRows, lastMonthRows, last7Rows] = await Promise.all([
