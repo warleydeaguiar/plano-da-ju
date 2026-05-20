@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { QUIZ_STEPS, QuizAnswers, QuizStep } from '../../lib/quiz-questions'
+import type { ActiveExperiment } from './page'
 
 // ╔══════════════════════════════════════════════════════════╗
 // ║  V2 — Design moderno feminino                            ║
@@ -49,7 +50,78 @@ function getOrCreateSessionId(): string {
   }
   return id
 }
-function trackView(sessionId: string) {
+
+// ─── A/B Testing — assignment determinístico por session_id ─────
+// Hash simples (FNV-like) — determinístico, mesma session_id sempre cai
+// no mesmo bucket. Inclui experiment_id pra cada experimento ter buckets
+// independentes (sem correlação entre testes).
+function hashStr(s: string): number {
+  let h = 2166136261
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return Math.abs(h | 0)
+}
+
+type VariantSide = 'control' | 'variant'
+
+/**
+ * Pega o variant pra essa sessão neste experimento.
+ * - bucket = hash(sessionId + experimentId) % 100
+ * - bucket < traffic_pct → 'variant', senão → 'control'
+ * Sticky: mesma session sempre cai no mesmo lado (durante o experimento).
+ */
+function pickVariant(sessionId: string, exp: ActiveExperiment): VariantSide {
+  if (!sessionId) return 'control'
+  const bucket = hashStr(sessionId + exp.id) % 100
+  return bucket < exp.traffic_pct ? 'variant' : 'control'
+}
+
+/**
+ * Constrói um mapa step_id → "flag_key:control" ou "flag_key:variant"
+ * com base nos experimentos rodando e na session_id.
+ * Esse valor vai no campo ab_variant pra todas as tabelas de tracking.
+ */
+function buildVariantMap(
+  sessionId: string,
+  experiments: ActiveExperiment[],
+): Map<string, { flagKey: string; side: VariantSide; experimentId: string; content: Record<string, unknown> }> {
+  const map = new Map<string, { flagKey: string; side: VariantSide; experimentId: string; content: Record<string, unknown> }>()
+  for (const exp of experiments) {
+    map.set(exp.target_step_id, {
+      flagKey:      exp.flag_key,
+      side:         pickVariant(sessionId, exp),
+      experimentId: exp.id,
+      content:      exp.variant_content ?? {},
+    })
+  }
+  return map
+}
+
+/** Pega o ab_variant pra escrever no event do step atual. */
+function getStepVariantLabel(
+  variantMap: Map<string, { flagKey: string; side: VariantSide }>,
+  stepId: string,
+): string | null {
+  const v = variantMap.get(stepId)
+  return v ? `${v.flagKey}:${v.side}` : null
+}
+
+/** Pega o ab_variant geral da sessão (1º experimento aplicado — pra views/leads). */
+function getSessionVariantLabel(
+  variantMap: Map<string, { flagKey: string; side: VariantSide }>,
+): string | null {
+  // Pega o primeiro experimento (geralmente o do step 'tipo' = primeira página).
+  // Se houver múltiplos, agregamos os labels com vírgula.
+  const labels: string[] = []
+  for (const v of variantMap.values()) {
+    labels.push(`${v.flagKey}:${v.side}`)
+  }
+  return labels.length > 0 ? labels.join(',') : null
+}
+
+function trackView(sessionId: string, abVariant: string | null) {
   if (typeof window === 'undefined') return
   const params = new URLSearchParams(window.location.search)
   fetch('/api/quiz/view', {
@@ -60,6 +132,7 @@ function trackView(sessionId: string) {
       quiz_slug:    'plano-capilar',
       utm_source:   params.get('utm_source'),
       utm_campaign: params.get('utm_campaign'),
+      ab_variant:   abVariant,
     }),
   }).catch(() => {})
 }
@@ -78,7 +151,13 @@ function trackAnswers(answersData: QuizAnswers) {
     }),
   }).catch(() => {})
 }
-function trackStepEvent(sessionId: string, stepIndex: number, stepId: string, eventType: 'viewed' | 'answered') {
+function trackStepEvent(
+  sessionId: string,
+  stepIndex: number,
+  stepId: string,
+  eventType: 'viewed' | 'answered',
+  abVariant: string | null,
+) {
   if (typeof window === 'undefined' || !sessionId || !stepId) return
   fetch('/api/quiz/step-event', {
     method: 'POST',
@@ -89,6 +168,7 @@ function trackStepEvent(sessionId: string, stepIndex: number, stepId: string, ev
       step_index: stepIndex,
       step_id:    stepId,
       event_type: eventType,
+      ab_variant: abVariant,
     }),
   }).catch(() => {})
 }
@@ -1612,7 +1692,7 @@ function MiniTestiScreen({ q, name, onContinue }: { q: QuizStep; name: string; o
 // ╔═══════════════════════════════════════════════════════════╗
 // ║                Main component                             ║
 // ╚═══════════════════════════════════════════════════════════╝
-export default function QuizClient() {
+export default function QuizClient({ experiments = [] }: { experiments?: ActiveExperiment[] }) {
   const router = useRouter()
   const [stepIndex, setStepIndex] = useState(0)
   const [answers, setAnswers] = useState<QuizAnswers>({})
@@ -1628,18 +1708,34 @@ export default function QuizClient() {
   const trackedRef = useRef(false)
 
   // Refs para acesso em callbacks sem stale closure
-  const sessionIdRef  = useRef<string>('')
-  const stepIndexRef  = useRef(stepIndex)
-  const stepIdRef     = useRef(step?.id ?? '')
+  const sessionIdRef    = useRef<string>('')
+  const stepIndexRef    = useRef(stepIndex)
+  const stepIdRef       = useRef(step?.id ?? '')
+  const variantMapRef   = useRef<ReturnType<typeof buildVariantMap>>(new Map())
+  const sessionLabelRef = useRef<string | null>(null)
   useEffect(() => { stepIndexRef.current = stepIndex }, [stepIndex])
   useEffect(() => { stepIdRef.current = step?.id ?? '' }, [step])
 
-  // Inicializa sessionId e dispara trackView juntos (session antes de view)
+  // Variant assignment em STATE (não ref) pra disparar re-render no JSX
+  const [variantMap, setVariantMap] = useState<ReturnType<typeof buildVariantMap>>(new Map())
+
+  // Inicializa sessionId, computa variants, dispara trackView (em ordem)
   useEffect(() => {
     const sid = getOrCreateSessionId()
     sessionIdRef.current = sid
-    trackView(sid)
-  }, [])
+    // Variant assignment determinístico (sticky via hash do session_id)
+    const map = buildVariantMap(sid, experiments)
+    setVariantMap(map)
+    variantMapRef.current = map
+    sessionLabelRef.current = getSessionVariantLabel(map)
+    trackView(sid, sessionLabelRef.current)
+  }, [experiments])
+
+  // Variant atual pro step renderizado — usado no JSX (re-renderiza com variant)
+  const currentVariant = useMemo(() => {
+    if (!step?.id) return null
+    return variantMap.get(step.id) ?? null
+  }, [step?.id, variantMap])
 
   useEffect(() => {
     // cache: 'no-store' garante dados frescos sem cache do browser
@@ -1655,7 +1751,7 @@ export default function QuizClient() {
     if (step?.kind === 'loading') {
       const t = setTimeout(() => {
         // Rastreia o auto-avanço do step de loading como "answered"
-        trackStepEvent(sessionIdRef.current, stepIndexRef.current, stepIdRef.current, 'answered')
+        trackStepEvent(sessionIdRef.current, stepIndexRef.current, stepIdRef.current, 'answered', getStepVariantLabel(variantMapRef.current, stepIdRef.current))
         setStepIndex(i => Math.min(total - 1, i + 1))
       }, 5000)
       return () => clearTimeout(t)
@@ -1684,12 +1780,12 @@ export default function QuizClient() {
   // Rastreia cada etapa visualizada (taxa de visualização por passo)
   useEffect(() => {
     if (!step || !sessionIdRef.current) return
-    trackStepEvent(sessionIdRef.current, stepIndex, step.id, 'viewed')
+    trackStepEvent(sessionIdRef.current, stepIndex, step.id, 'viewed', getStepVariantLabel(variantMapRef.current, step.id))
   }, [stepIndex]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Helper para rastrear "respondeu e avançou" no passo atual
   const trackAnswered = useCallback(() => {
-    trackStepEvent(sessionIdRef.current, stepIndexRef.current, stepIdRef.current, 'answered')
+    trackStepEvent(sessionIdRef.current, stepIndexRef.current, stepIdRef.current, 'answered', getStepVariantLabel(variantMapRef.current, stepIdRef.current))
   }, [])
 
   const goNext = useCallback(() => {
@@ -1700,7 +1796,7 @@ export default function QuizClient() {
 
   const choose = useCallback((qid: string, v: string) => {
     setAnswers(a => ({ ...a, [qid]: v }))
-    trackStepEvent(sessionIdRef.current, stepIndexRef.current, stepIdRef.current, 'answered')
+    trackStepEvent(sessionIdRef.current, stepIndexRef.current, stepIdRef.current, 'answered', getStepVariantLabel(variantMapRef.current, stepIdRef.current))
     setTimeout(() => setStepIndex(i => Math.min(total - 1, i + 1)), 320)
   }, [total])
 
@@ -1715,14 +1811,14 @@ export default function QuizClient() {
   const saveTextarea = useCallback(() => {
     if (!step) return
     setAnswers(a => ({ ...a, [step.id]: textInput.trim() }))
-    trackStepEvent(sessionIdRef.current, stepIndexRef.current, stepIdRef.current, 'answered')
+    trackStepEvent(sessionIdRef.current, stepIndexRef.current, stepIdRef.current, 'answered', getStepVariantLabel(variantMapRef.current, stepIdRef.current))
     setTimeout(() => setStepIndex(i => Math.min(total - 1, i + 1)), 100)
   }, [step, textInput, total])
 
   const savePhone = useCallback(() => {
     if (!step) return
     setAnswers(a => ({ ...a, phone: phoneInput.replace(/\D/g, '') }))
-    trackStepEvent(sessionIdRef.current, stepIndexRef.current, stepIdRef.current, 'answered')
+    trackStepEvent(sessionIdRef.current, stepIndexRef.current, stepIdRef.current, 'answered', getStepVariantLabel(variantMapRef.current, stepIdRef.current))
     setTimeout(() => setStepIndex(i => Math.min(total - 1, i + 1)), 100)
   }, [step, phoneInput, total])
 
@@ -1753,6 +1849,7 @@ export default function QuizClient() {
           utm_campaign: params.get('utm_campaign'),
           utm_content:  params.get('utm_content'),
           utm_term:     params.get('utm_term'),
+          ab_variant:   sessionLabelRef.current,
         }),
       })
     } catch { /* silencia erros — não impede o avanço do quiz */ }
@@ -1785,12 +1882,12 @@ export default function QuizClient() {
     } catch {}
 
     setSubmitting(false)
-    trackStepEvent(sessionIdRef.current, stepIndexRef.current, stepIdRef.current, 'answered')
+    trackStepEvent(sessionIdRef.current, stepIndexRef.current, stepIdRef.current, 'answered', getStepVariantLabel(variantMapRef.current, stepIdRef.current))
     setStepIndex(i => Math.min(total - 1, i + 1))
   }, [answers, nameInput, emailInput, phoneInput, total])
 
   const finalContinue = useCallback(() => {
-    trackStepEvent(sessionIdRef.current, stepIndexRef.current, stepIdRef.current, 'answered')
+    trackStepEvent(sessionIdRef.current, stepIndexRef.current, stepIdRef.current, 'answered', getStepVariantLabel(variantMapRef.current, stepIdRef.current))
     if (stepIndex >= total - 1) {
       try { localStorage.setItem('quiz_answers', JSON.stringify(answers)) } catch {}
       router.push('/roleta')
@@ -1869,6 +1966,26 @@ export default function QuizClient() {
             animation: 'pageFade 0.5s cubic-bezier(.2,.85,.25,1)',
             paddingTop: 8,
           }}>
+            {/* ─── A/B Test: imagem da variante (se aplicável) ──────
+                Renderizada acima da pergunta. Determinada pelo session_id +
+                experimento ativo pro step atual. Sticky via hash. */}
+            {currentVariant?.side === 'variant' && typeof currentVariant.content.image_url === 'string' && (
+              <div style={{
+                margin: '4px 18px 18px',
+                borderRadius: 18, overflow: 'hidden',
+                aspectRatio: '16/10',
+                background: T.cream,
+                animation: 'mediaZoomIn 0.5s cubic-bezier(.2,.85,.25,1)',
+                boxShadow: '0 10px 28px rgba(190,24,93,0.18)',
+              }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={currentVariant.content.image_url}
+                  alt={typeof currentVariant.content.image_alt === 'string' ? currentVariant.content.image_alt : ''}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                />
+              </div>
+            )}
             {step?.kind === 'single' && (
               <SingleScreen q={step} value={answers[step.id] as string | undefined} onChoose={(v) => choose(step.id, v)} />
             )}

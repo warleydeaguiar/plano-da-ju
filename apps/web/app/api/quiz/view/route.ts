@@ -21,8 +21,10 @@ export async function POST(req: NextRequest) {
 
     const utm_source   = typeof body.utm_source   === 'string' ? body.utm_source.slice(0, 100)   : null
     const utm_campaign = typeof body.utm_campaign === 'string' ? body.utm_campaign.slice(0, 100) : null
+    const ab_variant   = typeof body.ab_variant   === 'string' ? body.ab_variant.slice(0, 200)   : null
 
-    await client().from('wg_quiz_views' as any).insert({ quiz_slug, session_id, utm_source, utm_campaign })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await client().from('wg_quiz_views' as any).insert({ quiz_slug, session_id, utm_source, utm_campaign, ab_variant })
     return NextResponse.json({ ok: true })
   } catch {
     return NextResponse.json({ ok: false })

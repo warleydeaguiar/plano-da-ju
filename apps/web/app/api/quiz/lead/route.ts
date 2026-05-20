@@ -42,6 +42,8 @@ export async function POST(req: NextRequest) {
   const utm_campaign = truncate(body.utm_campaign, MAX_LEN.utm)
   const utm_content  = truncate(body.utm_content, MAX_LEN.utm)
   const utm_term     = truncate(body.utm_term, MAX_LEN.utm)
+  // A/B test variant (sticky, vem do client via session_id hash)
+  const ab_variant   = truncate(body.ab_variant, 200)
 
   const db = adminClient()
 
@@ -61,12 +63,14 @@ export async function POST(req: NextRequest) {
   const groupId: string | null = (target as any)?.id ?? null
 
   // Save lead — log but do not block the response on insert failure
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error: insertError } = await db.from('wg_quiz_leads' as any).insert({
     quiz_slug,
     name, email, phone, session_id,
     utm_source, utm_medium, utm_campaign, utm_content, utm_term,
     group_redirected_to: groupId,
     invite_link_used: inviteLink,
+    ab_variant,
   })
 
   if (insertError) {
