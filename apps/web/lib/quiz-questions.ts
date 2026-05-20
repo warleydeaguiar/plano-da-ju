@@ -278,15 +278,9 @@ export const QUIZ_STEPS: QuizStep[] = [
       { id: 'trocar_todos',  label: 'Posso trocar todos os meus produtos **(Se a ju achar necessário)**' },
     ],
   },
-  // ── 21
-  {
-    id: 'produtos_casa',
-    kind: 'textarea',
-    title: 'Quais produtos voce já tem em casa?',
-    subtitle: 'Liste os produtos',
-    placeholder: 'Produtos que você já tem',
-    ctaText: 'Continuar',
-  },
+  // ── 21 (removida — campo de texto livre causava 84% de abandono no funil
+  // do quiz. Reposicionada como pergunta opcional no onboarding pós-compra,
+  // depois do upload da foto.)
   // ── 22
   {
     id: 'cortes',

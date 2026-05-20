@@ -196,11 +196,14 @@ async function getData() {
   // ── Funil por respostas (dado histórico — disponível desde o início) ────────────
   // Conta sessões únicas que responderam cada pergunta. Muito mais confiável que
   // step_events porque o tracking de respostas existe desde o dia 1.
+  // NOTA: 'produtos_casa' foi removido do funil porque migrou pro onboarding
+  // pós-compra (causava 84% de abandono aqui). Quem responder agora, responde
+  // dentro do app, depois de pagar — sem impacto no funnel pré-venda.
   const ANSWER_FUNNEL_ORDER = [
     'tipo', 'cor', 'idade', 'incomoda', 'quimica',
     'corte_quimico', 'espessura', 'oleosidade', 'porosidade', 'caspa',
     'elasticidade', 'lavagem', 'calor', 'cronograma', 'crescimento_desigual',
-    'sol_piscina', 'agua', 'protetor', 'como_plano', 'produtos_casa',
+    'sol_piscina', 'agua', 'protetor', 'como_plano',
     'cortes', 'areas',
     'phone', 'name', 'email',
   ] as const

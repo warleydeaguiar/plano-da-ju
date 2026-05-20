@@ -396,7 +396,7 @@ export default function PlanoCapilarClient({ data }: { data: any }) {
 
             <div style={{ marginTop: 12, fontSize: 11, color: gray, lineHeight: 1.6 }}>
               💡 Perguntas com <strong>0 respostas</strong> (como steps informativos) não aparecem aqui.
-              <strong> produtos_casa</strong> pode ter menos respostas porque é opcional — usuárias sem produtos não selecionam nada.
+              A pergunta <strong>produtos_casa</strong> foi movida para o onboarding pós-compra (causava 84% de abandono no funil).
             </div>
           </div>
         )

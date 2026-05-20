@@ -9,23 +9,33 @@ import { IconCamera, IconSparkles } from '../icons';
 /**
  * Onboarding — primeira tela após login.
  * Bloqueia o app até a usuária enviar a foto do cabelo.
- * Comprimento (cm) é opcional — nem todas conseguem medir na hora.
  *
- * Ao enviar a foto:
- *  - upload para /api/meu-plano/photo
- *  - se for a 1ª foto E plan_status=='pending_photo' → API dispara plan/generate
- *  - usuária redirecionada para /meu-plano (banner "preparando" cuida do resto)
+ * Fluxo em 2 etapas:
+ *  1. 'photo'    — foto (obrigatória) + comprimento cm (opcional)
+ *  2. 'products' — quais produtos já tem em casa (opcional)
+ *                  → pergunta migrada do quiz porque causava 84% de abandono
+ *                    no funil pré-compra. Aqui ela já comprou, então skip ≠ perda.
+ *
+ *  Ao final → router.replace('/meu-plano') (banner "plano em preparação")
  */
+type Step = 'photo' | 'submitting' | 'products' | 'saving';
+
 export default function OnboardingPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [firstName, setFirstName] = useState('');
+  const [step, setStep] = useState<Step>('photo');
+
+  // Etapa 1: foto + comprimento
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState('');
   const [lengthCm, setLengthCm] = useState('');
   const [skipLength, setSkipLength] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+
+  // Etapa 2: produtos em casa
+  const [productsText, setProductsText] = useState('');
+
   const [error, setError] = useState('');
   const [checkingProfile, setCheckingProfile] = useState(true);
 
@@ -34,7 +44,7 @@ export default function OnboardingPage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   );
 
-  // Verifica auth + se já tem foto (e nesse caso pula o onboarding)
+  // Auth check + pula onboarding se já tem foto
   useEffect(() => {
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -53,35 +63,27 @@ export default function OnboardingPage() {
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) {
-      setError('Foto muito grande (máx. 10 MB)');
-      return;
-    }
-    if (!file.type.startsWith('image/')) {
-      setError('Arquivo precisa ser uma imagem');
-      return;
-    }
+    if (file.size > 10 * 1024 * 1024) { setError('Foto muito grande (máx. 10 MB)'); return; }
+    if (!file.type.startsWith('image/')) { setError('Arquivo precisa ser uma imagem'); return; }
     setError('');
     setPhotoFile(file);
     setPhotoPreview(URL.createObjectURL(file));
   }
 
-  async function handleSubmit() {
-    if (!photoFile || submitting) return;
+  // ── Etapa 1 → enviar foto + length ─────────────────────────
+  async function submitPhoto() {
+    if (!photoFile || step !== 'photo') return;
     setError('');
-    setSubmitting(true);
+    setStep('submitting');
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { router.replace('/login'); return; }
 
       const fd = new FormData();
       fd.append('photo', photoFile);
-      // Comprimento opcional — só envia se ela digitou e não marcou "pular"
       if (!skipLength && lengthCm) {
         const n = parseFloat(lengthCm.replace(',', '.'));
-        if (!isNaN(n) && n > 0 && n < 200) {
-          fd.append('hair_length_cm', String(n));
-        }
+        if (!isNaN(n) && n > 0 && n < 200) fd.append('hair_length_cm', String(n));
       }
 
       const res = await fetch('/api/meu-plano/photo', {
@@ -92,34 +94,171 @@ export default function OnboardingPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Erro ao enviar foto');
 
-      // Vai pro app — a tela home vai mostrar "plano em preparação"
-      router.replace('/meu-plano');
+      // Avança pra etapa 2 (produtos em casa)
+      setStep('products');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro inesperado');
-      setSubmitting(false);
+      setStep('photo');
     }
   }
 
+  // ── Etapa 2 → salvar produtos (ou pular) e ir pro app ──────
+  async function submitProducts(skip: boolean) {
+    setError('');
+    setStep('saving');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { router.replace('/login'); return; }
+
+      if (!skip && productsText.trim()) {
+        // Salva no quiz_answers via API
+        await fetch('/api/meu-plano/quiz-extra', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ produtos_casa: productsText.trim() }),
+        }).catch(err => console.error('[onboarding/products]', err));
+      }
+
+      router.replace('/meu-plano');
+    } catch {
+      // Se falhar salvar produtos, segue mesmo assim — não bloqueia o acesso ao app
+      router.replace('/meu-plano');
+    }
+  }
+
+  // ── Loading inicial ────────────────────────────────────────
   if (checkingProfile) {
     return (
-      <div style={{
-        minHeight: '100vh', background: T.bg,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        <div style={{
-          width: 40, height: 40, border: `3px solid ${T.pinkSoft}`,
-          borderTopColor: T.pink, borderRadius: '50%', animation: 'spin 0.9s linear infinite',
-        }} />
+      <div style={{ minHeight: '100vh', background: T.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: 40, height: 40, border: `3px solid ${T.pinkSoft}`, borderTopColor: T.pink, borderRadius: '50%', animation: 'spin 0.9s linear infinite' }} />
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
     );
   }
 
+  const isSubmittingPhoto = step === 'submitting';
+  const isSaving          = step === 'saving';
+
+  // ────────────────────────────────────────────────────────────
+  // ETAPA 2: produtos em casa (após foto enviada)
+  // ────────────────────────────────────────────────────────────
+  if (step === 'products' || isSaving) {
+    return (
+      <div style={{ minHeight: '100vh', background: T.bg, padding: '32px 20px 40px', fontFamily: fonts.ui }}>
+        <div style={{ maxWidth: 440, margin: '0 auto' }}>
+          {/* Header */}
+          <div style={{ textAlign: 'center', marginBottom: 24 }}>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              background: T.greenSoft, color: T.green,
+              fontSize: 11, fontWeight: 700, letterSpacing: 1,
+              padding: '6px 12px', borderRadius: 99,
+              textTransform: 'uppercase', marginBottom: 16,
+            }}>
+              ✓ Foto enviada
+            </div>
+            <h1 style={{
+              fontSize: 24, fontWeight: 700, color: T.ink,
+              margin: '0 0 10px', letterSpacing: -0.5,
+              fontFamily: fonts.display, lineHeight: 1.2,
+            }}>
+              Última pergunta {firstName ? firstName + ', ' : ''}— quais produtos você já tem em casa?
+            </h1>
+            <p style={{ fontSize: 14, color: T.inkSoft, lineHeight: 1.6, margin: 0, padding: '0 4px' }}>
+              Isso ajuda a Juliane a aproveitar o que você já tem ao montar o cronograma.
+              Pode <strong>pular essa pergunta</strong> e responder depois no perfil.
+            </p>
+          </div>
+
+          {/* Textarea */}
+          <div style={{
+            background: T.surface, borderRadius: 18, padding: 18,
+            marginBottom: 16, boxShadow: shadow.card,
+            border: `1px solid ${T.borderSoft}`,
+          }}>
+            <label htmlFor="onb-products" style={{
+              display: 'block', fontSize: 13, fontWeight: 700, color: T.ink,
+              fontFamily: fonts.display, marginBottom: 10,
+            }}>
+              Produtos que você já tem
+            </label>
+            <textarea
+              id="onb-products"
+              value={productsText}
+              onChange={e => setProductsText(e.target.value)}
+              placeholder="Ex: shampoo Ybera Hydra, máscara hidratação Salon Line, óleo de coco, leave-in…"
+              rows={5}
+              maxLength={2000}
+              style={{
+                width: '100%', padding: '12px 14px', fontSize: 14,
+                border: `1.5px solid ${T.border}`, borderRadius: 12,
+                background: '#FFF', color: T.ink,
+                outline: 'none', fontFamily: fonts.ui,
+                resize: 'vertical', minHeight: 100, lineHeight: 1.5,
+                boxSizing: 'border-box',
+              }}
+            />
+            <p style={{ fontSize: 11.5, color: T.inkMuted, margin: '8px 0 0', lineHeight: 1.5 }}>
+              Pode escrever do jeito que lembrar — não precisa ser nome exato.
+            </p>
+          </div>
+
+          {error && (
+            <p style={{ color: '#C0392B', fontSize: 13, marginBottom: 12, textAlign: 'center', padding: '11px 16px', background: '#FDE8EE', borderRadius: 12 }}>
+              {error}
+            </p>
+          )}
+
+          {/* Action buttons */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <button
+              onClick={() => submitProducts(false)}
+              disabled={isSaving || !productsText.trim()}
+              style={{
+                width: '100%', padding: 16,
+                background: isSaving || !productsText.trim()
+                  ? '#D4A0AC' : `linear-gradient(135deg, ${T.pink}, ${T.pinkDeep})`,
+                border: 'none', borderRadius: 14,
+                fontSize: 15, fontWeight: 800, color: '#FFF',
+                cursor: isSaving || !productsText.trim() ? 'not-allowed' : 'pointer',
+                fontFamily: fonts.ui,
+                boxShadow: !productsText.trim() ? 'none' : '0 8px 22px rgba(190,24,93,0.28)',
+                transition: 'all 0.18s',
+              }}
+            >
+              {isSaving ? 'Salvando…' : 'Salvar e entrar no app →'}
+            </button>
+            <button
+              onClick={() => submitProducts(true)}
+              disabled={isSaving}
+              style={{
+                width: '100%', padding: 12,
+                background: 'transparent',
+                border: `1px solid ${T.border}`, borderRadius: 12,
+                fontSize: 13, color: T.inkSoft, cursor: isSaving ? 'not-allowed' : 'pointer',
+                fontFamily: fonts.ui,
+              }}
+            >
+              {isSaving ? '…' : 'Pular por agora'}
+            </button>
+          </div>
+
+          <p style={{ textAlign: 'center', color: T.inkMuted, fontSize: 11, marginTop: 14, lineHeight: 1.6 }}>
+            Você pode adicionar/editar essa lista a qualquer momento no perfil.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ────────────────────────────────────────────────────────────
+  // ETAPA 1: foto + comprimento (default)
+  // ────────────────────────────────────────────────────────────
   return (
-    <div style={{
-      minHeight: '100vh', background: T.bg,
-      padding: '32px 20px 40px', fontFamily: fonts.ui,
-    }}>
+    <div style={{ minHeight: '100vh', background: T.bg, padding: '32px 20px 40px', fontFamily: fonts.ui }}>
       <div style={{ maxWidth: 440, margin: '0 auto' }}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
@@ -139,10 +278,7 @@ export default function OnboardingPage() {
           }}>
             {firstName ? `${firstName}, ` : ''}envie a foto do seu cabelo
           </h1>
-          <p style={{
-            fontSize: 14, color: T.inkSoft, lineHeight: 1.6,
-            margin: 0, padding: '0 4px',
-          }}>
+          <p style={{ fontSize: 14, color: T.inkSoft, lineHeight: 1.6, margin: 0, padding: '0 4px' }}>
             A Juliane vai analisar seu cabelo na foto + suas respostas do quiz
             e montar um plano <strong style={{ color: T.ink }}>100% personalizado</strong> pra você.
           </p>
@@ -161,28 +297,21 @@ export default function OnboardingPage() {
           }}>
             {photoPreview ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={photoPreview} alt="Prévia"
-                   style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img src={photoPreview} alt="Prévia" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : (
               <>
                 <div style={{
                   width: 64, height: 64, borderRadius: 18,
                   background: gradient.heroSoft, color: '#fff',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  marginBottom: 14,
-                  boxShadow: '0 8px 22px rgba(190,24,93,0.28)',
+                  marginBottom: 14, boxShadow: '0 8px 22px rgba(190,24,93,0.28)',
                 }}>
                   <IconCamera size={30} stroke={1.6} color="#fff" />
                 </div>
-                <p style={{
-                  color: T.ink, fontSize: 16, fontWeight: 700,
-                  margin: '0 0 4px', fontFamily: fonts.display,
-                }}>
+                <p style={{ color: T.ink, fontSize: 16, fontWeight: 700, margin: '0 0 4px', fontFamily: fonts.display }}>
                   Toque para enviar foto
                 </p>
-                <p style={{ color: T.inkSoft, fontSize: 12, margin: 0 }}>
-                  Câmera ou galeria
-                </p>
+                <p style={{ color: T.inkSoft, fontSize: 12, margin: 0 }}>Câmera ou galeria</p>
               </>
             )}
           </div>
@@ -217,10 +346,7 @@ export default function OnboardingPage() {
           border: `1px solid ${T.borderSoft}`,
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
-            <label htmlFor="onb-length" style={{
-              fontSize: 13, fontWeight: 700, color: T.ink,
-              fontFamily: fonts.display,
-            }}>
+            <label htmlFor="onb-length" style={{ fontSize: 13, fontWeight: 700, color: T.ink, fontFamily: fonts.display }}>
               Comprimento do cabelo
             </label>
             <span style={{ fontSize: 11, color: T.inkSoft }}>Opcional</span>
@@ -244,9 +370,7 @@ export default function OnboardingPage() {
                 opacity: skipLength ? 0.5 : 1,
               }}
             />
-            <span style={{ fontSize: 14, color: T.inkSoft, fontWeight: 600, paddingRight: 4 }}>
-              cm
-            </span>
+            <span style={{ fontSize: 14, color: T.inkSoft, fontWeight: 600, paddingRight: 4 }}>cm</span>
           </div>
           <button
             onClick={() => { setSkipLength(s => !s); if (!skipLength) setLengthCm(''); }}
@@ -277,38 +401,31 @@ export default function OnboardingPage() {
         </div>
 
         {error && (
-          <p style={{
-            color: '#C0392B', fontSize: 13, marginBottom: 12,
-            textAlign: 'center', padding: '11px 16px',
-            background: '#FDE8EE', borderRadius: 12,
-          }}>
+          <p style={{ color: '#C0392B', fontSize: 13, marginBottom: 12, textAlign: 'center', padding: '11px 16px', background: '#FDE8EE', borderRadius: 12 }}>
             {error}
           </p>
         )}
 
         {/* Submit */}
         <button
-          onClick={handleSubmit}
-          disabled={!photoFile || submitting}
+          onClick={submitPhoto}
+          disabled={!photoFile || isSubmittingPhoto}
           style={{
             width: '100%', padding: 16,
-            background: !photoFile || submitting
+            background: !photoFile || isSubmittingPhoto
               ? '#D4A0AC' : `linear-gradient(135deg, ${T.pink}, ${T.pinkDeep})`,
             border: 'none', borderRadius: 14,
             fontSize: 15, fontWeight: 800, color: '#FFF',
-            cursor: !photoFile || submitting ? 'not-allowed' : 'pointer',
+            cursor: !photoFile || isSubmittingPhoto ? 'not-allowed' : 'pointer',
             fontFamily: fonts.ui,
             boxShadow: !photoFile ? 'none' : '0 8px 22px rgba(190,24,93,0.28)',
             transition: 'all 0.18s',
           }}
         >
-          {submitting ? 'Enviando…' : '✨ Enviar e começar meu plano'}
+          {isSubmittingPhoto ? 'Enviando…' : '✨ Enviar foto e continuar'}
         </button>
 
-        <p style={{
-          textAlign: 'center', color: T.inkMuted, fontSize: 11,
-          marginTop: 14, lineHeight: 1.6,
-        }}>
+        <p style={{ textAlign: 'center', color: T.inkMuted, fontSize: 11, marginTop: 14, lineHeight: 1.6 }}>
           Sua foto é privada — só a Juliane e você têm acesso.
         </p>
       </div>
