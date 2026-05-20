@@ -121,41 +121,138 @@ const PLAN_TABS: Array<{ key: 'cronograma' | 'produtos' | 'dicas'; label: string
   { key: 'dicas',      label: 'Dicas'      },
 ];
 
-// ── Quiz answer labels ────────────────────────────────────────────────────────
+// ── Quiz answer labels (cobre TODOS os valores reais encontrados no banco) ────
 const Q: Record<string, Record<string, string>> = {
-  tipo:        { liso:'Liso', ondulado:'Ondulado', cacheado:'Cacheado', crespo:'Crespo' },
-  espessura:   { fino:'Fino', medio:'Médio', grosso:'Grosso' },
-  oleosidade:  { muito_seco:'Muito seco', seco:'Seco', normal:'Normal', oleoso:'Oleoso', muito_oleoso:'Muito oleoso' },
-  porosidade:  { nao_demora:'Baixa (não demora molhar)', rapido:'Alta (absorve rápido)', normal:'Média', outro:'Outro' },
-  elasticidade:{ quebra:'Quebra muito', estica:'Estica e não volta', normais:'Normal', boa:'Boa elasticidade' },
-  lavagem:     { todos_dias:'Todos os dias', '2_3_sem':'2–3x por semana', '1_sem':'1x por semana', quinzenal:'Quinzenal', mensal:'Mensal' },
-  cortes:      { '1_2':'A cada 1–2 meses', '3_6':'A cada 3–6 meses', '6_mais':'Mais de 6 meses', nao_corto:'Não corta' },
-  idade:       { '13_18':'13–18 anos', '19_30':'19–30 anos', '31_45':'31–45 anos', '46_mais':'46+ anos' },
-  agua:        { '0':'Sem filtro', '1':'Com filtro', '2':'Tratamento completo' },
-  como_plano:  { aproveitar:'Aproveitar ao máximo', resolver:'Resolver problemas específicos', manter:'Manter resultado', crescer:'Crescer o cabelo' },
-  protetor:    { sim:'Sim', nao:'Não' },
-  cronograma:  { sim:'Já faz cronograma', nao:'Não faz cronograma' },
-  caspa:       { sim:'Tem caspa', nao:'Sem caspa' },
-  sol_piscina: { sim:'Expõe frequentemente', nao:'Não expõe' },
-  corte_quimico:{ sim:'Sim, planeja', nao:'Não planeja' },
+  // Tipo de cabelo
+  tipo: { liso:'Liso', ondulado:'Ondulado', cacheado:'Cacheado', crespo:'Crespo' },
+  hair_type: { liso:'Liso', ondulado:'Ondulado', cacheado:'Cacheado', crespo:'Crespo' },
+
+  // Espessura
+  espessura:    { fino:'Fino', medio:'Médio', grosso:'Grosso' },
+  hair_thickness:{ fino:'Fino', medio:'Médio', grosso:'Grosso' },
+
+  // Oleosidade / condição
+  oleosidade:    { muito_seco:'Muito seco', seco:'Seco', normal:'Normal', oleoso:'Oleoso', muito_oleoso:'Muito oleoso' },
+  hair_condition:{ muito_seco:'Muito seco', seco:'Seco', normal:'Normal', oleoso:'Oleoso', muito_oleoso:'Muito oleoso' },
+
+  // Porosidade — valores reais do quiz
+  porosidade: {
+    nao_demora: 'Baixa (não absorve rápido)',
+    sim_absorve: 'Alta (absorve rápido)',
+    normal:     'Média',
+    rapido:     'Alta (absorve rápido)',
+    outro:      'Outro',
+  },
+  porosity: { baixa:'Baixa', media:'Média', alta:'Alta' },
+
+  // Elasticidade — valores reais: normais, elasticos, quebradicos
+  elasticidade: {
+    quebra:      'Quebra muito',
+    quebradicos: 'Quebradiços',
+    estica:      'Estica e não volta',
+    elasticos:   'Elástico',
+    normais:     'Normal',
+    boa:         'Boa elasticidade',
+  },
+  hair_elasticity: {
+    quebradicos:'Quebradiços', elasticos:'Elástico', normais:'Normal',
+  },
+
+  // Lavagem
+  lavagem: {
+    todos_dias:'Todos os dias', '2_3_sem':'2–3x por semana',
+    '1_sem':'1x por semana', menos_2:'Menos de 2x/semana',
+    quinzenal:'Quinzenal', mensal:'Mensal',
+  },
+  wash_frequency: {
+    '2_3_dias':'2–3x por semana', todos_dias:'Todos os dias',
+    '1_sem':'1x por semana', quinzenal:'Quinzenal',
+  },
+
+  // Frequência de corte
+  cortes: {
+    '1_2':'A cada 1–2 meses', '3_6':'A cada 3–6 meses', '3_6_meses':'A cada 3–6 meses',
+    '6_mais':'Mais de 6 meses', menos_1_ano:'Menos de 1x por ano',
+    nao_corto:'Não corta',
+  },
+  cut_frequency: { '3_6_meses':'A cada 3–6 meses', nao_corto:'Não corta' },
+
+  // Faixa etária — valores reais: 13_18, 19_30, 31_50, 46_mais
+  idade:     { '13_18':'13–18 anos', '19_30':'19–30 anos', '31_50':'31–50 anos', '31_45':'31–45 anos', '46_mais':'46+ anos' },
+  age_range: { '13_18':'13–18 anos', '19_30':'19–30 anos', '31_50':'31–50 anos', '46_mais':'46+ anos' },
+
+  // Qualidade da água (1=filtro, 2=filtrado, 3=sem)
+  agua: { '0':'Sem filtro', '1':'Com filtro', '2':'Água filtrada', '3':'Tratamento completo' },
+  water_intake: { '1l':'1 litro/dia', '2l':'2 litros/dia', '3l':'3+ litros/dia' },
+
+  // Como quer usar o plano
+  como_plano: {
+    aproveitar:   'Aproveitar ao máximo',
+    resolver:     'Resolver problemas específicos',
+    manter:       'Manter resultado',
+    crescer:      'Crescer o cabelo',
+    trocar_todos: 'Renovar todos os produtos',
+    sem_dinheiro: 'Com orçamento limitado',
+  },
+  budget_approach: { minimo:'Orçamento mínimo', medio:'Orçamento médio', premium:'Premium' },
+
+  // Sim/Não com variantes
+  protetor:     { sim:'Sim', nao:'Não' },
+  heat_protector:{ sim:'Sim', nao:'Não' },
+  cronograma:   { sim:'Já faz cronograma', nao:'Não faz', nao_sei:'Não sabe' },
+  caspa:        { sim:'Tem caspa', as_vezes:'Às vezes', nao:'Não tem' },
+  scalp_dandruff:{ sim:'Tem caspa', as_vezes:'Às vezes', nao:'Não tem' },
+  sol_piscina:  { sim:'Expõe frequentemente', nao:'Não expõe' },
+  sun_exposure: { sim:'Expõe frequentemente', nao:'Não expõe' },
+  corte_quimico:     { sim:'Sim, planeja', nao:'Não planeja' },
+  chemical_cut:      { sim:'Sim, planeja', nao:'Não planeja' },
   crescimento_desigual:{ sim:'Sim', nao:'Não' },
+  uneven_growth:     { sim:'Sim', nao:'Não' },
+
+  // O que incomoda — valores reais: frizz, pontas, volume, queda, quebra, cresc
   incomoda: {
     frizz:'Frizz', volume:'Volume excessivo', queda:'Queda',
-    ressecamento:'Ressecamento', oleosidade_p:'Oleosidade', pontas:'Pontas duplas',
+    quebra:'Quebra', cresc:'Crescimento lento', ressecamento:'Ressecamento',
+    oleosidade_p:'Oleosidade', pontas:'Pontas duplas',
     caspa:'Caspa', lentidao:'Crescimento lento', coloracao:'Cor desbotando',
     brilho:'Falta de brilho', porosidade:'Alta porosidade',
+    falta_crescimento:'Crescimento lento', pontas_ralas:'Pontas ralas',
   },
+  main_problems: {
+    frizz:'Frizz', volume:'Volume excessivo', queda:'Queda', quebra:'Quebra',
+    falta_crescimento:'Crescimento lento', pontas_ralas:'Pontas ralas',
+  },
+
+  // Ferramentas de calor — valores reais: secador, chapinha, babyliss, nenhum
   calor: {
-    secador:'Secador', prancha:'Prancha', babyliss:'Babyliss/Modelador',
-    escova_eletrica:'Escova elétrica', nao:'Não usa calor',
+    secador:'Secador', prancha:'Prancha', chapinha:'Chapinha',
+    babyliss:'Babyliss/Modelador', escova_eletrica:'Escova elétrica',
+    nao:'Não usa calor', nenhum:'Não usa calor',
   },
+  heat_usage: {
+    secador:'Secador', chapinha:'Chapinha', prancha:'Prancha',
+    babyliss:'Babyliss', nenhum:'Não usa calor',
+  },
+
+  // Química — valores reais: tintura, mechas, progressiva, botox, descolorante
   quimica: {
     tintura:'Tintura', mechas:'Mechas/Luzes', relaxamento:'Relaxamento',
-    progressiva:'Progressiva', coloracao:'Coloração temporária',
-    descoloracao:'Descoloração', nao:'Sem química',
+    progressiva:'Progressiva', botox:'Botox capilar',
+    coloracao:'Coloração temporária', descoloracao:'Descoloração',
+    descolorante:'Descoloração', nao:'Sem química',
   },
+  chemical_history: {
+    tintura:'Tintura', mechas:'Mechas/Luzes', descolorante:'Descoloração',
+    progressiva:'Progressiva', botox:'Botox capilar',
+  },
+
+  // Áreas de atenção — valor real é "comprimento" (não "meio")
   areas: {
-    raiz:'Raiz', meio:'Comprimento', pontas:'Pontas',
+    raiz:'Raiz', comprimento:'Comprimento', meio:'Comprimento',
+    pontas:'Pontas', couro:'Couro cabeludo', tudo:'Todo o cabelo',
+  },
+  concern_areas: {
+    raiz:'Raiz', comprimento:'Comprimento', pontas:'Pontas',
     couro:'Couro cabeludo', tudo:'Todo o cabelo',
   },
 };
@@ -213,19 +310,66 @@ function ClientProfile({ card, expanded, onToggle }: {
 }) {
   const q = (card.quiz_answers ?? {}) as Record<string, unknown>;
 
-  // Tags de resumo rápido sempre visíveis
+  // Helper: lê valor preferindo campo novo, fallback para campo antigo
+  function qv(newField: string, oldField: string, fallback?: string | null): string {
+    const v = q[newField] ?? q[oldField] ?? fallback ?? null;
+    if (!v) return '—';
+    return qLabel(newField, String(v)) !== String(v)
+      ? qLabel(newField, String(v))
+      : qLabel(oldField, String(v));
+  }
+  function qa(newField: string, oldField: string, fallbackArr?: string[] | null): string {
+    const v = q[newField] ?? q[oldField] ?? fallbackArr ?? null;
+    if (!v) return '—';
+    const field = Array.isArray(q[newField]) || q[newField] ? newField : oldField;
+    return qArr(field, v);
+  }
+
+  // Tipo de cabelo legível
+  const hairTypeRaw = (q.tipo ?? q.hair_type ?? card.hair_type ?? '') as string;
+  const hairTypeLabel = qLabel('tipo', hairTypeRaw) || hairTypeRaw;
+
+  // Porosidade legível — usa o valor cru do quiz (sim_absorve, nao_demora) preferentemente
+  const porosidadeRaw = (q.porosidade ?? card.porosity ?? '') as string;
+  const porosidadeLabel = qLabel('porosidade', porosidadeRaw) || porosidadeRaw;
+
+  // Espessura
+  const espessuraRaw = (q.espessura ?? q.hair_thickness ?? '') as string;
+  const espessuraLabel = qLabel('espessura', espessuraRaw) || espessuraRaw;
+
+  // Oleosidade
+  const oleosidadeRaw = (q.oleosidade ?? q.hair_condition ?? '') as string;
+  const oleosidadeLabel = qLabel('oleosidade', oleosidadeRaw) || oleosidadeRaw;
+
+  // Problemas — combina incomoda + main_problems
+  const incomodaRaw = (q.incomoda ?? q.main_problems ?? card.main_problems ?? []) as string[];
+  const problems = Array.isArray(incomodaRaw)
+    ? incomodaRaw.map(v => qLabel('incomoda', String(v)))
+    : [qLabel('incomoda', String(incomodaRaw))];
+
+  // Químicas — combina quimica + chemical_history (do profile)
+  const quimicaRaw = q.quimica ?? null;
+  const chemFromProfile = card.chemical_history
+    ? card.chemical_history.split(',').map(c => qLabel('quimica', c.trim()))
+    : [];
+  const chemicals = Array.isArray(quimicaRaw)
+    ? (quimicaRaw as string[]).map(v => qLabel('quimica', v))
+    : chemFromProfile;
+
+  // Calor — combina calor + heat_usage
+  const calorRaw = q.calor ?? q.heat_usage ?? null;
+
+  // Areas — combina areas + concern_areas
+  const areasRaw = q.areas ?? q.concern_areas ?? null;
+
+  // Tags rápidas no header
   const summaryTags: string[] = [
-    card.hair_type ? qLabel('tipo', card.hair_type) : null,
-    q.espessura    ? qLabel('espessura', String(q.espessura)) : null,
-    card.porosity  ? qLabel('porosidade', card.porosity) : null,
-    q.oleosidade   ? qLabel('oleosidade', String(q.oleosidade)) : null,
+    hairTypeLabel || null,
+    espessuraLabel || null,
+    porosidadeLabel || null,
+    oleosidadeLabel || null,
     card.hair_length_cm ? `${card.hair_length_cm} cm` : null,
   ].filter(Boolean) as string[];
-
-  const problems = Array.isArray(q.incomoda) ? q.incomoda.map(v => qLabel('incomoda', String(v))) : [];
-  const chemicals = card.chemical_history
-    ? card.chemical_history.split(',').map(c => qLabel('quimica', c.trim()))
-    : Array.isArray(q.quimica) ? (q.quimica as string[]).map(v => qLabel('quimica', v)) : [];
 
   return (
     <div style={{
@@ -242,7 +386,7 @@ function ClientProfile({ card, expanded, onToggle }: {
           display: 'flex', alignItems: 'center', gap: 10,
         }}
       >
-        <span style={{ fontSize: 12, fontWeight: 700, color: '#8A8A8E', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: '#8A8A8E', textTransform: 'uppercase', letterSpacing: 0.5, flexShrink: 0 }}>
           📋 Perfil da Cliente
         </span>
         <div style={{ flex: 1, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -261,7 +405,7 @@ function ClientProfile({ card, expanded, onToggle }: {
             }}>{p}</span>
           ))}
         </div>
-        <span style={{ fontSize: 14, color: '#8A8A8E', transition: 'transform 0.2s', transform: expanded ? 'rotate(180deg)' : 'none' }}>
+        <span style={{ fontSize: 14, color: '#8A8A8E', transition: 'transform 0.2s', transform: expanded ? 'rotate(180deg)' : 'none', flexShrink: 0 }}>
           ▾
         </span>
       </button>
@@ -276,81 +420,80 @@ function ClientProfile({ card, expanded, onToggle }: {
           {/* Col 1 */}
           <div>
             <ProfileGroup title="Cabelo" icon="💇">
-              <ProfileRow label="Tipo"         value={qVal('tipo', q.tipo ?? card.hair_type)} accent />
-              <ProfileRow label="Espessura"    value={qVal('espessura', q.espessura)} />
-              <ProfileRow label="Porosidade"   value={qVal('porosidade', q.porosidade ?? card.porosity)} />
-              <ProfileRow label="Oleosidade"   value={qVal('oleosidade', q.oleosidade)} />
-              <ProfileRow label="Comprimento"  value={card.hair_length_cm ? `${card.hair_length_cm} cm` : qVal('_', q.comprimento)} />
-              <ProfileRow label="Cor"          value={String(q.cor ?? '—')} />
-              <ProfileRow label="Elasticidade" value={qVal('elasticidade', q.elasticidade)} />
+              <ProfileRow label="Tipo"         value={hairTypeLabel}     accent />
+              <ProfileRow label="Espessura"    value={espessuraLabel} />
+              <ProfileRow label="Porosidade"   value={porosidadeLabel} />
+              <ProfileRow label="Oleosidade"   value={oleosidadeLabel} />
+              <ProfileRow label="Elasticidade" value={qv('hair_elasticity','elasticidade')} />
+              <ProfileRow label="Comprimento"  value={card.hair_length_cm ? `${card.hair_length_cm} cm` : '—'} />
+              <ProfileRow label="Cor"          value={String(q.cor ?? q.hair_color ?? '—')} />
             </ProfileGroup>
 
             <ProfileGroup title="Química & Calor" icon="⚗️">
-              <ProfileRow label="Histórico químico" value={chemicals.join(', ') || '—'} accent={chemicals.length > 0} />
-              <ProfileRow label="Ferramentas de calor" value={qArr('calor', q.calor)} />
-              <ProfileRow label="Usa protetor térmico" value={qVal('protetor', q.protetor)} />
-              <ProfileRow label="Corte/química planejado" value={qVal('corte_quimico', q.corte_quimico)} />
+              <ProfileRow label="Histórico químico"     value={chemicals.join(', ') || '—'} accent={chemicals.length > 0} />
+              <ProfileRow label="Ferramentas de calor"   value={qArr('calor', calorRaw)} />
+              <ProfileRow label="Usa protetor térmico"   value={qv('heat_protector','protetor')} />
+              <ProfileRow label="Planeja corte/química"  value={qv('chemical_cut','corte_quimico')} />
             </ProfileGroup>
 
             <ProfileGroup title="Rotina Atual" icon="🔄">
-              <ProfileRow label="Frequência de lavagem" value={qVal('lavagem', q.lavagem)} />
-              <ProfileRow label="Tem cronograma" value={qVal('cronograma', q.cronograma)} />
-              <ProfileRow label="Frequência de corte" value={qVal('cortes', q.cortes)} />
-              <ProfileRow label="Qualidade da água" value={qVal('agua', q.agua)} />
-              <ProfileRow label="Sol/piscina" value={qVal('sol_piscina', q.sol_piscina)} />
+              <ProfileRow label="Frequência de lavagem" value={qv('wash_frequency','lavagem')} />
+              <ProfileRow label="Tem cronograma"        value={qVal('cronograma', q.cronograma)} />
+              <ProfileRow label="Frequência de corte"   value={qv('cut_frequency','cortes')} />
+              <ProfileRow label="Qualidade da água"     value={qVal('agua', q.agua)} />
+              <ProfileRow label="Consumo de água/dia"   value={qVal('water_intake', q.water_intake)} />
+              <ProfileRow label="Sol/piscina"           value={qv('sun_exposure','sol_piscina')} />
             </ProfileGroup>
           </div>
 
           {/* Col 2 */}
           <div>
             <ProfileGroup title="Problemas & Objetivos" icon="🎯">
-              <ProfileRow
-                label="O que incomoda"
-                value={qArr('incomoda', q.incomoda ?? card.main_problems)}
-                accent
-              />
-              <ProfileRow label="Áreas de atenção" value={qArr('areas', q.areas)} />
-              <ProfileRow label="Tem caspa" value={qVal('caspa', q.caspa)} />
-              <ProfileRow label="Crescimento desigual" value={qVal('crescimento_desigual', q.crescimento_desigual)} />
-              <ProfileRow label="Como quer usar o plano" value={qVal('como_plano', q.como_plano)} />
+              <ProfileRow label="O que incomoda"        value={problems.join(', ') || '—'} accent />
+              <ProfileRow label="Áreas de atenção"      value={qa('concern_areas','areas')} />
+              <ProfileRow label="Crescimento desigual"  value={qv('uneven_growth','crescimento_desigual')} />
+              <ProfileRow label="Caspa"                 value={qv('scalp_dandruff','caspa')} />
+              <ProfileRow label="Como quer usar o plano"value={qVal('como_plano', q.como_plano)} />
+              {(q.budget_approach || card.budget_range) && (
+                <ProfileRow label="Abordagem de orçamento" value={
+                  q.budget_approach ? qLabel('budget_approach', String(q.budget_approach))
+                  : (card.budget_range ?? '—')
+                } />
+              )}
             </ProfileGroup>
 
-            <ProfileGroup title="Produtos Atuais" icon="🧴">
-              {q.produtos_casa ? (
+            <ProfileGroup title="Produtos em Casa" icon="🧴">
+              {(q.produtos_casa || q.products_at_home) ? (
                 <div style={{
-                  fontSize: 12.5, color: '#2D1B2E', lineHeight: 1.5,
-                  padding: '6px 0', borderBottom: '1px solid #F5F5F7',
+                  fontSize: 12.5, color: '#2D1B2E', lineHeight: 1.6,
+                  padding: '6px 0 8px', borderBottom: '1px solid #F5F5F7',
                 }}>
-                  {String(q.produtos_casa)}
+                  {String(q.produtos_casa ?? q.products_at_home)}
                 </div>
               ) : (
-                <ProfileRow label="Produtos em casa" value="—" />
-              )}
-              {card.budget_range && (
-                <ProfileRow label="Orçamento" value={card.budget_range} />
+                <div style={{ fontSize: 12, color: '#8A8A8E', padding: '6px 0' }}>Não informado</div>
               )}
             </ProfileGroup>
 
             <ProfileGroup title="Perfil" icon="👤">
-              <ProfileRow label="Faixa etária" value={qVal('idade', q.idade)} />
-              <ProfileRow label="E-mail" value={card.email} />
+              <ProfileRow label="Faixa etária" value={qv('age_range','idade')} />
+              <ProfileRow label="E-mail"        value={card.email} />
               {card.phone && <ProfileRow label="Telefone" value={card.phone} />}
             </ProfileGroup>
 
-            {/* Foto se existir */}
+            {/* Foto */}
             {card.photo_url && (
-              <div style={{ marginTop: 10 }}>
+              <div style={{ marginTop: 12 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#8A8A8E', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 }}>
                   📸 Foto enviada
                 </div>
-                <a href={card.photo_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block' }}>
+                <a href={card.photo_url} target="_blank" rel="noopener noreferrer">
                   <img
                     src={card.photo_url}
                     alt="Foto do cabelo"
                     style={{
                       width: 140, height: 140, objectFit: 'cover',
-                      borderRadius: 10, border: '2px solid #F2F2F7',
-                      display: 'block',
+                      borderRadius: 10, border: '2px solid #F2F2F7', display: 'block',
                     }}
                     onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
                   />
@@ -575,8 +718,13 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ confirm: true }),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? 'Erro desconhecido');
+      // Lê como texto primeiro para evitar SyntaxError quando API retorna HTML de erro
+      const rawText = await res.text();
+      let json: Record<string, unknown> = {};
+      try { json = JSON.parse(rawText); } catch {
+        throw new Error(`Erro ${res.status}: ${rawText.slice(0, 300)}`);
+      }
+      if (!res.ok) throw new Error((json.error as string) ?? `Erro ${res.status}`);
       // Reload weeks
       const wRes  = await fetch(`/api/plans/${selectedUserId}`);
       const wData = await wRes.json();
