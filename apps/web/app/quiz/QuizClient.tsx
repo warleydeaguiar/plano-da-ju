@@ -635,32 +635,44 @@ function MultiCard({ option, selected, onClick, indexDelay }: {
 }
 
 // ─── Tela: pergunta single ────────────────────────────────────
-function SingleScreen({ q, value, onChoose }: {
+function SingleScreen({ q, value, onChoose, compact }: {
   q: QuizStep
   value: string | undefined
   onChoose: (v: string) => void
+  /** Modo compacto — usado quando há imagem A/B acima ocupando espaço.
+   *  Reduz fontSize do intro/title e espaçamentos pra todas as opções
+   *  ficarem visíveis sem scroll na viewport mobile. */
+  compact?: boolean
 }) {
   const opts = q.options ?? []
   const isCor = q.id === 'cor'
   const useGrid = !isCor && opts.length === 4
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 24px 24px', position: 'relative' }}>
+    <div style={{
+      flex: 1, display: 'flex', flexDirection: 'column',
+      justifyContent: compact ? 'flex-start' : 'center',
+      padding: compact ? '0 24px 16px' : '0 24px 24px',
+      position: 'relative',
+    }}>
       {q.intro && (
         <div style={{
-          fontSize: 26, lineHeight: 1.3, fontWeight: 500,
+          fontSize: compact ? 20 : 26,
+          lineHeight: compact ? 1.25 : 1.3,
+          fontWeight: 500,
           fontFamily: fonts.display, color: T.ink,
-          marginBottom: 32, textAlign: 'center',
+          marginBottom: compact ? 14 : 32,
+          textAlign: 'center',
           letterSpacing: -0.3,
         }}>
           <FmtText>{q.intro}</FmtText>
         </div>
       )}
       <h2 style={{
-        fontSize: q.intro ? 22 : 28,
+        fontSize: q.intro ? (compact ? 19 : 22) : 28,
         fontFamily: fonts.display, fontWeight: 600, color: T.ink,
         lineHeight: 1.2, textAlign: 'center',
-        margin: q.intro ? '0 0 24px' : '0 0 24px',
+        margin: compact ? '0 0 14px' : (q.intro ? '0 0 24px' : '0 0 24px'),
         letterSpacing: -0.4,
       }}>{q.title}</h2>
 
@@ -672,8 +684,8 @@ function SingleScreen({ q, value, onChoose }: {
 
       <div
         style={useGrid
-          ? { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }
-          : { display: 'flex', flexDirection: 'column', gap: 12 }
+          ? { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: compact ? 10 : 12 }
+          : { display: 'flex', flexDirection: 'column', gap: compact ? 10 : 12 }
         }
       >
         {opts.map((opt, i) => (
@@ -2002,16 +2014,18 @@ export default function QuizClient({ experiments = [] }: { experiments?: ActiveE
             {/* ─── A/B Test: imagem da variante (se aplicável) ──────
                 Renderizada acima da pergunta. Determinada pelo session_id +
                 experimento ativo pro step atual. Sticky via hash.
+                aspectRatio 2/1 (mais retangular que natural) pra deixar
+                espaço pras opções da pergunta na mesma viewport mobile.
                 onError esconde o wrapper se a imagem 404 — não deixa
                 "buraco" visível no layout. */}
             {currentVariant?.side === 'variant' && typeof currentVariant.content.image_url === 'string' && (
               <div style={{
-                margin: '4px 18px 18px',
-                borderRadius: 18, overflow: 'hidden',
-                aspectRatio: '16/10',
+                margin: '0 18px 12px',
+                borderRadius: 16, overflow: 'hidden',
+                aspectRatio: '2/1',
                 background: T.cream,
                 animation: 'mediaZoomIn 0.5s cubic-bezier(.2,.85,.25,1)',
-                boxShadow: '0 10px 28px rgba(190,24,93,0.18)',
+                boxShadow: '0 8px 22px rgba(190,24,93,0.16)',
               }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -2019,7 +2033,12 @@ export default function QuizClient({ experiments = [] }: { experiments?: ActiveE
                   alt={typeof currentVariant.content.image_alt === 'string' ? currentVariant.content.image_alt : ''}
                   loading="eager"
                   decoding="async"
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  style={{
+                    width: '100%', height: '100%',
+                    objectFit: 'cover',
+                    objectPosition: 'center 35%',  // bias top pra preservar rostos
+                    display: 'block',
+                  }}
                   onError={(e) => {
                     // Imagem quebrou — esconde wrapper inteiro pra não deixar
                     // box vazio. Quiz continua funcional.
@@ -2030,7 +2049,17 @@ export default function QuizClient({ experiments = [] }: { experiments?: ActiveE
               </div>
             )}
             {step?.kind === 'single' && (
-              <SingleScreen q={step} value={answers[step.id] as string | undefined} onChoose={(v) => choose(step.id, v)} />
+              <SingleScreen
+                q={step}
+                value={answers[step.id] as string | undefined}
+                onChoose={(v) => choose(step.id, v)}
+                /* compact = true quando há imagem A/B ocupando topo, pra
+                 * reduzir fontes/spacings e caber tudo numa tela mobile */
+                compact={
+                  currentVariant?.side === 'variant' &&
+                  typeof currentVariant.content.image_url === 'string'
+                }
+              />
             )}
             {step?.kind === 'multi' && (
               <MultiScreen q={step} value={(answers[step.id] as string[] | undefined) ?? []} onToggle={(v) => toggleMulti(step.id, v)} onContinue={goNext} />
