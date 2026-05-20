@@ -31,10 +31,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'CPF inválido — obrigatório para pagamento via PIX' }, { status: 400 });
     }
 
-    // Telefone: DDD (2 dígitos) + número (8-9 dígitos)
-    const cleanPhone = (phone ?? '').replace(/\D/g, '');
-    const areaCode = cleanPhone.length >= 10 ? cleanPhone.slice(0, 2) : '11';
-    const phoneNumber = cleanPhone.length >= 10 ? cleanPhone.slice(2) : '999999999';
+    // Telefone: prefere form, fallback quiz_answers (coletado no quiz)
+    const rawPhone = phone ?? (quiz_answers as Record<string, unknown>)?.phone
+                           ?? (quiz_answers as Record<string, unknown>)?.telefone ?? '';
+    const cleanPhone = String(rawPhone).replace(/\D/g, '');
+    const areaCode = cleanPhone.length >= 10 ? cleanPhone.slice(0, 2) : '';
+    const phoneNumber = cleanPhone.length >= 10 ? cleanPhone.slice(2) : '';
 
     const supabase = await createServiceClient();
 
@@ -78,13 +80,11 @@ export async function POST(req: NextRequest) {
         type: 'individual',
         document: cleanCpf,
         document_type: 'CPF',
-        phones: {
-          mobile_phone: {
-            country_code: '55',
-            area_code: areaCode,
-            number: phoneNumber,
+        ...(areaCode && phoneNumber ? {
+          phones: {
+            mobile_phone: { country_code: '55', area_code: areaCode, number: phoneNumber },
           },
-        },
+        } : {}),
       },
       items: [
         {

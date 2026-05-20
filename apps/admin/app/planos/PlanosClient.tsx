@@ -548,8 +548,8 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
   // Product catalog for autocomplete
   const [catalog, setCatalog]         = useState<CatalogProduct[]>([]);
 
-  // Profile panel expanded state
-  const [profileExpanded, setProfileExpanded] = useState(true);
+  // Profile panel expanded state — começa fechado (tags sempre visíveis no header do toggle)
+  const [profileExpanded, setProfileExpanded] = useState(false);
 
   // Load catalog once
   useEffect(() => {
@@ -604,21 +604,35 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
 
   // ── Edit mode helpers ──────────────────────────────────────────────────────
   function enterEditMode() {
-    if (!currentWeek) return;
-    setEditDraft({
-      ...currentWeek,
-      focus: currentWeek.focus ?? '',
-      tasks: (currentWeek.tasks ?? []).map((t, i) => {
-        const obj = typeof t === 'string' ? { title: t } : t;
-        return {
-          day:         typeof obj.day === 'number' ? obj.day : i + 1,
-          title:       typeof obj.title === 'string' ? obj.title : '',
-          description: typeof obj.description === 'string' ? obj.description : '',
+    // Se existe semana carregada, edita ela; caso contrário cria semana 1 em branco
+    const weekToEdit: EditablePlanWeek = currentWeek
+      ? {
+          week_number:          currentWeek.week_number,
+          focus:                currentWeek.focus ?? '',
+          approved_by_juliane:  currentWeek.approved_by_juliane ?? false,
+          juliane_notes:        currentWeek.juliane_notes ?? null,
+          tasks: (currentWeek.tasks ?? []).map((t, i) => {
+            const obj = typeof t === 'string' ? { title: t } : t;
+            return {
+              day:         typeof obj.day === 'number' ? obj.day : i + 1,
+              title:       typeof obj.title === 'string' ? obj.title : '',
+              description: typeof obj.description === 'string' ? obj.description : '',
+            };
+          }),
+          products: [...(currentWeek.products ?? [])],
+          tips:     [...(currentWeek.tips     ?? [])],
+        }
+      : {
+          // Semana nova em branco
+          week_number: activeWeek || 1,
+          focus: '',
+          approved_by_juliane: false,
+          juliane_notes: null,
+          tasks: [{ day: 1, title: '', description: '' }],
+          products: [''],
+          tips: [''],
         };
-      }),
-      products: [...(currentWeek.products ?? [])],
-      tips:     [...(currentWeek.tips     ?? [])],
-    });
+    setEditDraft(weekToEdit);
     setEditMode(true);
     setRegenMessage(null);
     setShowRegenConfirm(false);
@@ -896,14 +910,7 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.4 }}>{selected.full_name}</div>
-                    <div style={{ fontSize: 13, color: '#8A8A8E', marginTop: 3 }}>
-                      {[
-                        selected.hair_type ? HAIR_TYPE_LABEL[selected.hair_type] ?? selected.hair_type : null,
-                        selected.porosity  ? POROSITY_LABEL[selected.porosity]   ?? selected.porosity  : null,
-                        ...(selected.main_problems ?? []),
-                      ].filter(Boolean).join(' · ') || 'Sem perfil capilar definido'}
-                    </div>
-                    <div style={{ fontSize: 12, color: '#AEAEB2', marginTop: 2 }}>{selected.email}</div>
+                    <div style={{ fontSize: 12, color: '#AEAEB2', marginTop: 3 }}>{selected.email}</div>
                     {selected.stage && STAGE_CONFIG[selected.stage] && (
                       <span style={{
                         display: 'inline-block', marginTop: 8,
@@ -981,7 +988,7 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                     </button>
                     <button
                       onClick={editMode ? cancelEdit : enterEditMode}
-                      disabled={regenerating || (!currentWeek && !editMode)}
+                      disabled={regenerating}
                       style={{
                         display: 'inline-flex', alignItems: 'center', gap: 6,
                         fontSize: 13, fontWeight: 600,
@@ -1131,8 +1138,8 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                       <div style={{ fontSize: 14, fontWeight: 600, color: '#2D1B2E' }}>Gerando plano com IA…</div>
                       <div style={{ fontSize: 13, color: '#8A8A8E', marginTop: 6 }}>Isso pode levar ~1 minuto. Aguarde.</div>
                     </div>
-                  ) : !currentWeek && !editDraft ? (
-                    /* Empty state */
+                  ) : (!currentWeek && !editMode && !editDraft) ? (
+                    /* Empty state — só exibido quando não há plano e NÃO está editando */
                     <div style={{ padding: '40px 20px', textAlign: 'center' }}>
                       <div style={{ fontSize: 36, marginBottom: 12 }}>
                         {selected.stage === 'awaiting_photo' ? '📸' : selected.stage === 'processing' ? '⚙️' : '📋'}

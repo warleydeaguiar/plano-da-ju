@@ -41,9 +41,13 @@ export async function POST(req: NextRequest) {
     const totalCents = installTotalCents(n);
 
     const cleanCpf   = typeof cpf   === 'string' ? cpf.replace(/\D/g, '')   : '';
-    const cleanPhone = (phone ?? '').replace(/\D/g, '');
-    const areaCode   = cleanPhone.length >= 10 ? cleanPhone.slice(0, 2)  : '11';
-    const phoneNum   = cleanPhone.length >= 10 ? cleanPhone.slice(2)     : '999999999';
+    // Phone: prefere o que veio do form, fallback pra quiz_answers (já coletado no quiz)
+    // Não enviar número falso ao PagarMe — antifraude usa este dado
+    const rawPhone   = phone ?? (quiz_answers as Record<string, unknown>)?.phone
+                              ?? (quiz_answers as Record<string, unknown>)?.telefone ?? '';
+    const cleanPhone = String(rawPhone).replace(/\D/g, '');
+    const areaCode   = cleanPhone.length >= 10 ? cleanPhone.slice(0, 2)  : '';
+    const phoneNum   = cleanPhone.length >= 10 ? cleanPhone.slice(2)     : '';
     const cleanCep   = billing_address?.cep?.replace(/\D/g, '') ?? '01310100';
 
     // ── PagarMe v5 Order (one-time charge) ──────────────────────────────────
@@ -56,13 +60,11 @@ export async function POST(req: NextRequest) {
         ...(cleanCpf.length === 11
           ? { document: cleanCpf, document_type: 'CPF' }
           : {}),
-        phones: {
-          mobile_phone: {
-            country_code: '55',
-            area_code: areaCode,
-            number: phoneNum,
+        ...(areaCode && phoneNum ? {
+          phones: {
+            mobile_phone: { country_code: '55', area_code: areaCode, number: phoneNum },
           },
-        },
+        } : {}),
       },
       items: [
         {
