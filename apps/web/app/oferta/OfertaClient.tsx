@@ -415,7 +415,7 @@ function OfferCard({ countdown, name, onBuy }: { countdown: string; name: string
           padding: '8px 12px', background: T.cream, borderRadius: 99,
           border: `1px solid ${T.border}`,
         }}>
-          ⚡ PIX à vista · 💳 Cartão em até 4x sem juros
+          ⚡ PIX à vista · 💳 Cartão em até 4x
         </div>
         <GreenButton onClick={onBuy} variant="green">Quero meu plano agora →</GreenButton>
       </div>
@@ -1167,7 +1167,7 @@ export default function OfertaClient() {
                 <div style={{ flex: 1 }}>
                   <span style={{ fontSize: 14, fontWeight: 700, color: T.ink }}>💳 Cartão de crédito</span>
                   <div style={{ fontSize: 12, color: T.inkSoft, marginTop: 2 }}>
-                    Em até 4x de R$8,73 sem juros
+                    Em até 4x — escolha as parcelas abaixo
                   </div>
                 </div>
               </button>
@@ -1276,7 +1276,9 @@ export default function OfertaClient() {
                     {payType === 'card' && installments > 1 ? installAmt : 'R$34,90'}
                   </div>
                   {payType === 'card' && installments > 1 && (
-                    <div style={{ fontSize: 11, color: T.inkSoft }}>total R$34,90 sem juros</div>
+                    <div style={{ fontSize: 11, color: T.inkSoft }}>
+                      total R${(installTotalCents(installments) / 100).toFixed(2).replace('.', ',')}
+                    </div>
                   )}
                   {payType === 'pix' && (
                     <div style={{ fontSize: 11, color: T.greenDeep, fontWeight: 600 }}>⚡ Aprovação instantânea</div>
