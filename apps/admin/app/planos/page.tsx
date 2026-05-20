@@ -8,6 +8,7 @@ interface PlanCardData {
   user_id: string;
   full_name: string;
   email: string;
+  phone: string | null;
   hair_type: string | null;
   porosity: string | null;
   main_problems: string[] | null;
@@ -27,7 +28,7 @@ export default async function PlanosPage() {
   // 1) Todas as assinantes ATIVAS (incluindo as sem plano ainda)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: profiles } = await (sb.from('profiles') as any)
-    .select('id,full_name,email,hair_type,porosity,main_problems,plan_status,photo_url,subscription_status,subscription_activated_at,created_at')
+    .select('id,full_name,email,phone,hair_type,porosity,main_problems,plan_status,photo_url,subscription_status,subscription_activated_at,created_at')
     .eq('subscription_status', 'active')
     .order('subscription_activated_at', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false })
@@ -37,6 +38,7 @@ export default async function PlanosPage() {
     id: string;
     full_name: string | null;
     email: string;
+    phone: string | null;
     hair_type: string | null;
     porosity: string | null;
     main_problems: string[] | null;
@@ -77,6 +79,7 @@ export default async function PlanosPage() {
       user_id:        p.id,
       full_name:      p.full_name ?? p.email.split('@')[0] ?? 'Anônima',
       email:          p.email,
+      phone:          p.phone ?? null,
       hair_type:      p.hair_type,
       porosity:       p.porosity,
       main_problems:  p.main_problems,
