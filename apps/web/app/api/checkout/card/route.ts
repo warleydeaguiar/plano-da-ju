@@ -3,6 +3,7 @@ import { pagarme } from '@/lib/pagarme/client';
 import { createServiceClient } from '@/lib/supabase/server';
 import { resolveAuthUserId } from '@/lib/supabase/auth-resolve';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
+import { extractFieldsFromQuiz } from '@/lib/quiz-to-profile';
 import type { PagarMeOrder } from '@/lib/pagarme/types';
 
 export const dynamic = 'force-dynamic';
@@ -108,13 +109,18 @@ export async function POST(req: NextRequest) {
     const isReallyPaid = order.status === 'paid' ||
                          charge?.status === 'paid';
 
+    const extracted = extractFieldsFromQuiz(quiz_answers);
+
     await (supabase.from('profiles') as any).upsert({
       id:                   userId,
       email,
       full_name:            name,
       quiz_answers,
+      ...extracted,
+      quiz_session_id:      typeof session_id === 'string' ? session_id : null,
       subscription_type:    isReallyPaid ? 'one_time_card' : 'none',
       subscription_status:  isReallyPaid ? 'active' : 'pending',
+      subscription_activated_at: isReallyPaid ? new Date().toISOString() : null,
       subscription_expires_at: isReallyPaid
         ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
         : null,

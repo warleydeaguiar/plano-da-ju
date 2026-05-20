@@ -58,6 +58,12 @@ interface PlanCard {
   full_name: string;
   email: string;
   hair_type: string | null;
+  stage?: 'awaiting_photo' | 'processing' | 'needs_review' | 'approved' | 'no_subscription';
+  plan_status?: string;
+  has_plan?: boolean;
+  has_photo?: boolean;
+  // [legado abaixo]
+  // (campos seguintes vêm da interface antiga preservada)
   porosity: string | null;
   main_problems: string[] | null;
   approved: boolean;

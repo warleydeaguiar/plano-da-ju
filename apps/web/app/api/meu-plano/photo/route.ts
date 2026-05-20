@@ -125,9 +125,54 @@ export async function POST(req: NextRequest) {
       ...analysis,
     });
 
-    // Note: photo doesn't have an event_type — streak comes from photo_analyses table directly
+    // Atualiza profile com a foto mais recente (usada por /api/plan/generate)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: profile } = await (supabase.from('profiles') as any)
+      .select('email, plan_status, photo_url')
+      .eq('id', user.id)
+      .single();
 
-    return NextResponse.json({ ok: true, photo_url: photoUrl, analysis });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from('profiles') as any)
+      .update({
+        photo_url: photoUrl,
+        photo_taken_at: new Date().toISOString(),
+      })
+      .eq('id', user.id);
+
+    // Se é a 1ª foto E o plano ainda está pendente, dispara geração
+    // Falha graciosamente — não bloqueia a response (cliente vê foto OK; plano vem depois)
+    let planTriggered = false;
+    if (profile?.plan_status === 'pending_photo' && !profile.photo_url && profile.email) {
+      try {
+        const apiKey = process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_API_KEY;
+        const hasRealKey = !!apiKey && !apiKey.startsWith('X');
+        if (hasRealKey) {
+          // Atualiza status pra "processing" antes de chamar IA
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (supabase.from('profiles') as any)
+            .update({ plan_status: 'processing', plan_requested_at: new Date().toISOString() })
+            .eq('id', user.id);
+
+          // Chama plan/generate (assíncrono — fire-and-forget já que demora ~30s)
+          const origin = req.nextUrl.origin;
+          void fetch(`${origin}/api/plan/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: profile.email,
+              photo_base64: Buffer.from(buffer).toString('base64'),
+              photo_mime_type: f.type,
+            }),
+          }).catch(e => console.error('[photo→plan trigger]', e));
+          planTriggered = true;
+        }
+      } catch (e) {
+        console.error('[photo→plan check]', e);
+      }
+    }
+
+    return NextResponse.json({ ok: true, photo_url: photoUrl, analysis, plan_triggered: planTriggered });
   } catch (err) {
     console.error('[api/meu-plano/photo]', err);
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });

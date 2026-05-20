@@ -3,6 +3,7 @@ import { pagarme } from '@/lib/pagarme/client';
 import { createServiceClient } from '@/lib/supabase/server';
 import { resolveAuthUserId } from '@/lib/supabase/auth-resolve';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
+import { extractFieldsFromQuiz } from '@/lib/quiz-to-profile';
 import type { PagarMeOrder } from '@/lib/pagarme/types';
 
 const PRICE_CENTS = 3490; // R$34,90
@@ -112,6 +113,9 @@ export async function POST(req: NextRequest) {
       throw new Error('QR Code PIX não retornado pelo PagarMe');
     }
 
+    // Extrai campos do quiz pras colunas individuais (hair_type, porosity, etc.)
+    const extracted = extractFieldsFromQuiz(quiz_answers);
+
     // Upsert do perfil (cria se não existir, atualiza se existir)
     if (!existing) {
       const userId = await resolveAuthUserId(supabase, email);
@@ -121,6 +125,8 @@ export async function POST(req: NextRequest) {
         email,
         full_name: name,
         quiz_answers,
+        ...extracted,
+        quiz_session_id: typeof session_id === 'string' ? session_id : null,
         subscription_type: 'none',
         subscription_status: 'pending',
         plan_status: 'pending_photo',
@@ -133,6 +139,8 @@ export async function POST(req: NextRequest) {
         .update({
           full_name: name,
           quiz_answers,
+          ...extracted,
+          quiz_session_id: typeof session_id === 'string' ? session_id : null,
           pagarme_pix_order_id: order.id,
           checkout_session_id: session_id ?? null,
         })
