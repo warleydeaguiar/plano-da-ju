@@ -12,23 +12,27 @@ interface PlanCardData {
   hair_type: string | null;
   porosity: string | null;
   main_problems: string[] | null;
+  chemical_history: string | null;
+  hair_length_cm: number | null;
+  budget_range: string | null;
+  quiz_answers: Record<string, unknown> | null;
   approved: boolean;
   created_at: string;
   juliane_notes: string | null;
-  // Novo: estado da pipeline pra Juliane saber o que cada cliente precisa
   stage: 'awaiting_photo' | 'processing' | 'needs_review' | 'approved' | 'no_subscription';
   plan_status: string;
   has_plan: boolean;
   has_photo: boolean;
+  photo_url: string | null;
 }
 
 export default async function PlanosPage() {
   const sb = createAdminClient();
 
-  // 1) Todas as assinantes ATIVAS (incluindo as sem plano ainda)
+  // 1) Todas as assinantes ATIVAS — agora com quiz_answers + campos de perfil
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: profiles } = await (sb.from('profiles') as any)
-    .select('id,full_name,email,phone,hair_type,porosity,main_problems,plan_status,photo_url,subscription_status,subscription_activated_at,created_at')
+    .select('id,full_name,email,phone,hair_type,porosity,main_problems,chemical_history,hair_length_cm,budget_range,quiz_answers,plan_status,photo_url,subscription_status,subscription_activated_at,created_at')
     .eq('subscription_status', 'active')
     .order('subscription_activated_at', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false })
@@ -42,13 +46,17 @@ export default async function PlanosPage() {
     hair_type: string | null;
     porosity: string | null;
     main_problems: string[] | null;
+    chemical_history: string | null;
+    hair_length_cm: number | null;
+    budget_range: string | null;
+    quiz_answers: Record<string, unknown> | null;
     plan_status: string;
     photo_url: string | null;
     subscription_activated_at: string | null;
     created_at: string;
   }>;
 
-  // 2) Para cada profile, pega o hair_plan da semana 1 (se existir) para o status de aprovação
+  // 2) hair_plan semana 1 de cada ativa (aprovação + notas)
   const userIds = profileList.map(p => p.id);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: weekOnePlans } = userIds.length > 0
@@ -64,32 +72,37 @@ export default async function PlanosPage() {
   );
 
   const cards: PlanCardData[] = profileList.map(p => {
-    const plan = planMap.get(p.id);
+    const plan    = planMap.get(p.id);
     const hasPlan = !!plan;
     const hasPhoto = !!p.photo_url;
 
     let stage: PlanCardData['stage'];
     if (plan?.approved_by_juliane) stage = 'approved';
-    else if (hasPlan) stage = 'needs_review';
+    else if (hasPlan)               stage = 'needs_review';
     else if (p.plan_status === 'processing') stage = 'processing';
-    else if (!hasPhoto) stage = 'awaiting_photo';
-    else stage = 'processing'; // tem foto mas plano ainda não foi gerado
+    else if (!hasPhoto)             stage = 'awaiting_photo';
+    else                            stage = 'processing';
 
     return {
-      user_id:        p.id,
-      full_name:      p.full_name ?? p.email.split('@')[0] ?? 'Anônima',
-      email:          p.email,
-      phone:          p.phone ?? null,
-      hair_type:      p.hair_type,
-      porosity:       p.porosity,
-      main_problems:  p.main_problems,
-      approved:       plan?.approved_by_juliane ?? false,
-      created_at:     plan?.created_at ?? p.subscription_activated_at ?? p.created_at,
-      juliane_notes:  plan?.juliane_notes ?? null,
+      user_id:          p.id,
+      full_name:        p.full_name ?? p.email.split('@')[0] ?? 'Anônima',
+      email:            p.email,
+      phone:            p.phone ?? null,
+      hair_type:        p.hair_type,
+      porosity:         p.porosity,
+      main_problems:    p.main_problems,
+      chemical_history: p.chemical_history,
+      hair_length_cm:   p.hair_length_cm,
+      budget_range:     p.budget_range,
+      quiz_answers:     p.quiz_answers ?? null,
+      approved:         plan?.approved_by_juliane ?? false,
+      created_at:       plan?.created_at ?? p.subscription_activated_at ?? p.created_at,
+      juliane_notes:    plan?.juliane_notes ?? null,
       stage,
-      plan_status:    p.plan_status,
-      has_plan:       hasPlan,
-      has_photo:      hasPhoto,
+      plan_status:      p.plan_status,
+      has_plan:         hasPlan,
+      has_photo:        hasPhoto,
+      photo_url:        p.photo_url ?? null,
     };
   });
 

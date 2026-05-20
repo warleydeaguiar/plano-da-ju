@@ -62,6 +62,11 @@ interface PlanCard {
   hair_type: string | null;
   porosity: string | null;
   main_problems: string[] | null;
+  chemical_history: string | null;
+  hair_length_cm: number | null;
+  budget_range: string | null;
+  quiz_answers: Record<string, unknown> | null;
+  photo_url: string | null;
   approved: boolean;
   created_at: string;
   juliane_notes: string | null;
@@ -116,6 +121,249 @@ const PLAN_TABS: Array<{ key: 'cronograma' | 'produtos' | 'dicas'; label: string
   { key: 'dicas',      label: 'Dicas'      },
 ];
 
+// ── Quiz answer labels ────────────────────────────────────────────────────────
+const Q: Record<string, Record<string, string>> = {
+  tipo:        { liso:'Liso', ondulado:'Ondulado', cacheado:'Cacheado', crespo:'Crespo' },
+  espessura:   { fino:'Fino', medio:'Médio', grosso:'Grosso' },
+  oleosidade:  { muito_seco:'Muito seco', seco:'Seco', normal:'Normal', oleoso:'Oleoso', muito_oleoso:'Muito oleoso' },
+  porosidade:  { nao_demora:'Baixa (não demora molhar)', rapido:'Alta (absorve rápido)', normal:'Média', outro:'Outro' },
+  elasticidade:{ quebra:'Quebra muito', estica:'Estica e não volta', normais:'Normal', boa:'Boa elasticidade' },
+  lavagem:     { todos_dias:'Todos os dias', '2_3_sem':'2–3x por semana', '1_sem':'1x por semana', quinzenal:'Quinzenal', mensal:'Mensal' },
+  cortes:      { '1_2':'A cada 1–2 meses', '3_6':'A cada 3–6 meses', '6_mais':'Mais de 6 meses', nao_corto:'Não corta' },
+  idade:       { '13_18':'13–18 anos', '19_30':'19–30 anos', '31_45':'31–45 anos', '46_mais':'46+ anos' },
+  agua:        { '0':'Sem filtro', '1':'Com filtro', '2':'Tratamento completo' },
+  como_plano:  { aproveitar:'Aproveitar ao máximo', resolver:'Resolver problemas específicos', manter:'Manter resultado', crescer:'Crescer o cabelo' },
+  protetor:    { sim:'Sim', nao:'Não' },
+  cronograma:  { sim:'Já faz cronograma', nao:'Não faz cronograma' },
+  caspa:       { sim:'Tem caspa', nao:'Sem caspa' },
+  sol_piscina: { sim:'Expõe frequentemente', nao:'Não expõe' },
+  corte_quimico:{ sim:'Sim, planeja', nao:'Não planeja' },
+  crescimento_desigual:{ sim:'Sim', nao:'Não' },
+  incomoda: {
+    frizz:'Frizz', volume:'Volume excessivo', queda:'Queda',
+    ressecamento:'Ressecamento', oleosidade_p:'Oleosidade', pontas:'Pontas duplas',
+    caspa:'Caspa', lentidao:'Crescimento lento', coloracao:'Cor desbotando',
+    brilho:'Falta de brilho', porosidade:'Alta porosidade',
+  },
+  calor: {
+    secador:'Secador', prancha:'Prancha', babyliss:'Babyliss/Modelador',
+    escova_eletrica:'Escova elétrica', nao:'Não usa calor',
+  },
+  quimica: {
+    tintura:'Tintura', mechas:'Mechas/Luzes', relaxamento:'Relaxamento',
+    progressiva:'Progressiva', coloracao:'Coloração temporária',
+    descoloracao:'Descoloração', nao:'Sem química',
+  },
+  areas: {
+    raiz:'Raiz', meio:'Comprimento', pontas:'Pontas',
+    couro:'Couro cabeludo', tudo:'Todo o cabelo',
+  },
+};
+
+function qLabel(field: string, value: string): string {
+  return Q[field]?.[value] ?? value;
+}
+
+function qArr(field: string, raw: unknown): string {
+  if (!raw) return '—';
+  const arr = Array.isArray(raw) ? raw : [raw];
+  return arr.map(v => qLabel(field, String(v))).join(', ') || '—';
+}
+
+function qVal(field: string, raw: unknown): string {
+  if (raw === null || raw === undefined || raw === '') return '—';
+  return qLabel(field, String(raw));
+}
+
+// ── ClientProfile section component ──────────────────────────────────────────
+function ProfileRow({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <div style={{ display: 'flex', gap: 8, padding: '7px 0', borderBottom: '1px solid #F5F5F7' }}>
+      <span style={{ fontSize: 12, color: '#8A8A8E', minWidth: 130, flexShrink: 0 }}>{label}</span>
+      <span style={{
+        fontSize: 12.5, color: accent ? ACCENT : '#2D1B2E', fontWeight: accent ? 600 : 400,
+        lineHeight: 1.4,
+      }}>
+        {value || '—'}
+      </span>
+    </div>
+  );
+}
+
+function ProfileGroup({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: 2 }}>
+      <div style={{
+        fontSize: 11, fontWeight: 700, color: '#8A8A8E',
+        textTransform: 'uppercase', letterSpacing: 0.6,
+        padding: '10px 0 4px',
+        display: 'flex', alignItems: 'center', gap: 5,
+      }}>
+        <span>{icon}</span> {title}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function ClientProfile({ card, expanded, onToggle }: {
+  card: PlanCard;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const q = (card.quiz_answers ?? {}) as Record<string, unknown>;
+
+  // Tags de resumo rápido sempre visíveis
+  const summaryTags: string[] = [
+    card.hair_type ? qLabel('tipo', card.hair_type) : null,
+    q.espessura    ? qLabel('espessura', String(q.espessura)) : null,
+    card.porosity  ? qLabel('porosidade', card.porosity) : null,
+    q.oleosidade   ? qLabel('oleosidade', String(q.oleosidade)) : null,
+    card.hair_length_cm ? `${card.hair_length_cm} cm` : null,
+  ].filter(Boolean) as string[];
+
+  const problems = Array.isArray(q.incomoda) ? q.incomoda.map(v => qLabel('incomoda', String(v))) : [];
+  const chemicals = card.chemical_history
+    ? card.chemical_history.split(',').map(c => qLabel('quimica', c.trim()))
+    : Array.isArray(q.quimica) ? (q.quimica as string[]).map(v => qLabel('quimica', v)) : [];
+
+  return (
+    <div style={{
+      background: '#fff', borderRadius: 12,
+      boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+      overflow: 'hidden',
+    }}>
+      {/* Header / Toggle */}
+      <button
+        onClick={onToggle}
+        style={{
+          width: '100%', textAlign: 'left', border: 'none', background: 'none',
+          padding: '14px 20px', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}
+      >
+        <span style={{ fontSize: 12, fontWeight: 700, color: '#8A8A8E', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+          📋 Perfil da Cliente
+        </span>
+        <div style={{ flex: 1, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {summaryTags.map((t, i) => (
+            <span key={i} style={{
+              fontSize: 11, fontWeight: 500,
+              padding: '2px 8px', borderRadius: 5,
+              background: 'rgba(196,96,122,0.08)', color: ACCENT,
+            }}>{t}</span>
+          ))}
+          {problems.slice(0, 3).map((p, i) => (
+            <span key={i} style={{
+              fontSize: 11, fontWeight: 500,
+              padding: '2px 8px', borderRadius: 5,
+              background: 'rgba(255,149,0,0.08)', color: '#CC7700',
+            }}>{p}</span>
+          ))}
+        </div>
+        <span style={{ fontSize: 14, color: '#8A8A8E', transition: 'transform 0.2s', transform: expanded ? 'rotate(180deg)' : 'none' }}>
+          ▾
+        </span>
+      </button>
+
+      {/* Expanded content */}
+      {expanded && (
+        <div style={{
+          borderTop: '1px solid #F2F2F7',
+          padding: '4px 20px 16px',
+          display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 32px',
+        }}>
+          {/* Col 1 */}
+          <div>
+            <ProfileGroup title="Cabelo" icon="💇">
+              <ProfileRow label="Tipo"         value={qVal('tipo', q.tipo ?? card.hair_type)} accent />
+              <ProfileRow label="Espessura"    value={qVal('espessura', q.espessura)} />
+              <ProfileRow label="Porosidade"   value={qVal('porosidade', q.porosidade ?? card.porosity)} />
+              <ProfileRow label="Oleosidade"   value={qVal('oleosidade', q.oleosidade)} />
+              <ProfileRow label="Comprimento"  value={card.hair_length_cm ? `${card.hair_length_cm} cm` : qVal('_', q.comprimento)} />
+              <ProfileRow label="Cor"          value={String(q.cor ?? '—')} />
+              <ProfileRow label="Elasticidade" value={qVal('elasticidade', q.elasticidade)} />
+            </ProfileGroup>
+
+            <ProfileGroup title="Química & Calor" icon="⚗️">
+              <ProfileRow label="Histórico químico" value={chemicals.join(', ') || '—'} accent={chemicals.length > 0} />
+              <ProfileRow label="Ferramentas de calor" value={qArr('calor', q.calor)} />
+              <ProfileRow label="Usa protetor térmico" value={qVal('protetor', q.protetor)} />
+              <ProfileRow label="Corte/química planejado" value={qVal('corte_quimico', q.corte_quimico)} />
+            </ProfileGroup>
+
+            <ProfileGroup title="Rotina Atual" icon="🔄">
+              <ProfileRow label="Frequência de lavagem" value={qVal('lavagem', q.lavagem)} />
+              <ProfileRow label="Tem cronograma" value={qVal('cronograma', q.cronograma)} />
+              <ProfileRow label="Frequência de corte" value={qVal('cortes', q.cortes)} />
+              <ProfileRow label="Qualidade da água" value={qVal('agua', q.agua)} />
+              <ProfileRow label="Sol/piscina" value={qVal('sol_piscina', q.sol_piscina)} />
+            </ProfileGroup>
+          </div>
+
+          {/* Col 2 */}
+          <div>
+            <ProfileGroup title="Problemas & Objetivos" icon="🎯">
+              <ProfileRow
+                label="O que incomoda"
+                value={qArr('incomoda', q.incomoda ?? card.main_problems)}
+                accent
+              />
+              <ProfileRow label="Áreas de atenção" value={qArr('areas', q.areas)} />
+              <ProfileRow label="Tem caspa" value={qVal('caspa', q.caspa)} />
+              <ProfileRow label="Crescimento desigual" value={qVal('crescimento_desigual', q.crescimento_desigual)} />
+              <ProfileRow label="Como quer usar o plano" value={qVal('como_plano', q.como_plano)} />
+            </ProfileGroup>
+
+            <ProfileGroup title="Produtos Atuais" icon="🧴">
+              {q.produtos_casa ? (
+                <div style={{
+                  fontSize: 12.5, color: '#2D1B2E', lineHeight: 1.5,
+                  padding: '6px 0', borderBottom: '1px solid #F5F5F7',
+                }}>
+                  {String(q.produtos_casa)}
+                </div>
+              ) : (
+                <ProfileRow label="Produtos em casa" value="—" />
+              )}
+              {card.budget_range && (
+                <ProfileRow label="Orçamento" value={card.budget_range} />
+              )}
+            </ProfileGroup>
+
+            <ProfileGroup title="Perfil" icon="👤">
+              <ProfileRow label="Faixa etária" value={qVal('idade', q.idade)} />
+              <ProfileRow label="E-mail" value={card.email} />
+              {card.phone && <ProfileRow label="Telefone" value={card.phone} />}
+            </ProfileGroup>
+
+            {/* Foto se existir */}
+            {card.photo_url && (
+              <div style={{ marginTop: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#8A8A8E', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 }}>
+                  📸 Foto enviada
+                </div>
+                <a href={card.photo_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block' }}>
+                  <img
+                    src={card.photo_url}
+                    alt="Foto do cabelo"
+                    style={{
+                      width: 140, height: 140, objectFit: 'cover',
+                      borderRadius: 10, border: '2px solid #F2F2F7',
+                      display: 'block',
+                    }}
+                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                </a>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Shared input style ────────────────────────────────────────────────────────
 const fieldBase: React.CSSProperties = {
   border: '1.5px solid #E5E5EA',
@@ -157,6 +405,9 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
   // Product catalog for autocomplete
   const [catalog, setCatalog]         = useState<CatalogProduct[]>([]);
 
+  // Profile panel expanded state
+  const [profileExpanded, setProfileExpanded] = useState(true);
+
   // Load catalog once
   useEffect(() => {
     fetch('/api/produtos')
@@ -196,6 +447,7 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
     setEditDraft(null);
     setRegenMessage(null);
     setShowRegenConfirm(false);
+    setProfileExpanded(true);
     fetch(`/api/plans/${selectedUserId}`)
       .then(r => r.json())
       .then((d: { weeks: PlanWeek[] }) => {
@@ -645,6 +897,13 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                     </button>
                   </div>
                 )}
+
+                {/* Profile panel */}
+                <ClientProfile
+                  card={selected}
+                  expanded={profileExpanded}
+                  onToggle={() => setProfileExpanded(v => !v)}
+                />
 
                 {/* Edit mode indicator */}
                 {editMode && (
