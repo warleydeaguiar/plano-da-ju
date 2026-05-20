@@ -20,46 +20,82 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400 * 1000).toISOString();
   const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+  // 1º dia do mês corrente
+  const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
 
-  const [active, pending, weekNew, weekCanceled, todayCk] = await Promise.all([
+  const [active, activeProfiles, plansData, weekActivations, weekRefunds, todayCk, paymentsThisMonth] = await Promise.all([
+    // 1) Total ativas
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sb.from('profiles') as any)
       .select('*', { count: 'exact', head: true })
       .eq('subscription_status', 'active'),
+
+    // 2) Lista de IDs ativos (pra cruzar com hair_plans)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sb.from('profiles') as any)
+      .select('id')
+      .eq('subscription_status', 'active'),
+
+    // 3) hair_plans semana 1 das ativas
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sb.from('hair_plans') as any)
-      .select('user_id', { count: 'exact', head: true })
-      .eq('approved_by_juliane', false)
+      .select('user_id,approved_by_juliane')
       .eq('week_number', 1),
+
+    // 4) Novas ativações (uso subscription_activated_at — refletindo ativação real, não cadastro)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sb.from('profiles') as any)
       .select('*', { count: 'exact', head: true })
       .eq('subscription_status', 'active')
-      .gte('created_at', sevenDaysAgo),
+      .gte('subscription_activated_at', sevenDaysAgo),
+
+    // 5) Reembolsos esta semana (campo dedicado, não confiar em updated_at)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sb.from('profiles') as any)
       .select('*', { count: 'exact', head: true })
-      .eq('subscription_status', 'cancelled')
-      .gte('updated_at', sevenDaysAgo),
+      .eq('subscription_status', 'refunded')
+      .gte('refunded_at', sevenDaysAgo),
+
+    // 6) Check-ins hoje
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sb.from('check_ins') as any)
       .select('*', { count: 'exact', head: true })
       .gte('checked_at', todayStart.toISOString()),
+
+    // 7) Pagamentos confirmados neste mês (dedupe por order_id pois webhook duplica order.paid + charge.paid)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sb.from('checkout_events') as any)
+      .select('order_id,amount_cents')
+      .eq('event_type', 'payment_confirmed')
+      .gte('created_at', monthStart.toISOString()),
   ]);
 
-  // Receita mensal estimada com base em assinaturas ativas
-  // Anual cartão: R$ 34,90 / 12 ≈ R$ 2,91 por assinante por mês
-  // Anual PIX: pago de uma vez — R$ 49,90 / 12 ≈ R$ 4,16 (one-time já contabilizado)
   const activeCount = active.count ?? 0;
-  const monthlyRevenueBrl = Math.round(activeCount * 2.91);
+  const activeIds = new Set(((activeProfiles.data ?? []) as Array<{ id: string }>).map(p => p.id));
+  const plans = (plansData.data ?? []) as Array<{ user_id: string; approved_by_juliane: boolean }>;
+
+  // "Planos pra revisar" = ativas SEM plano + ativas COM plano não aprovado
+  const usersWithPlan = new Set(plans.map(p => p.user_id));
+  const activeWithoutPlan = [...activeIds].filter(id => !usersWithPlan.has(id)).length;
+  const plansNotApproved = plans.filter(p => activeIds.has(p.user_id) && !p.approved_by_juliane).length;
+  const pendingPlansCount = activeWithoutPlan + plansNotApproved;
+
+  // Receita do mês: soma pagamentos únicos por order_id
+  const dedupedOrders = new Map<string, number>();
+  for (const e of (paymentsThisMonth.data ?? []) as Array<{ order_id: string | null; amount_cents: number | null }>) {
+    const key = e.order_id ?? Math.random().toString(36); // se não tem order_id, conta como único
+    if (!dedupedOrders.has(key)) dedupedOrders.set(key, e.amount_cents ?? 0);
+  }
+  const monthlyRevenueCents = Array.from(dedupedOrders.values()).reduce((a, b) => a + b, 0);
+  const monthlyRevenueBrl = Math.round(monthlyRevenueCents / 100);
 
   return {
     activeSubscribers: activeCount,
-    pendingPlans: pending.count ?? 0,
+    pendingPlans: pendingPlansCount,
     monthlyRevenueBrl,
     todayCheckIns: todayCk.count ?? 0,
-    newSubscribersThisWeek: weekNew.count ?? 0,
-    cancellationsThisWeek: weekCanceled.count ?? 0,
+    newSubscribersThisWeek: weekActivations.count ?? 0,
+    cancellationsThisWeek: weekRefunds.count ?? 0,
   };
 }
 
@@ -76,44 +112,51 @@ export interface PlanRow {
 export async function getPendingPlans(limit = 8): Promise<PlanRow[]> {
   const sb = createAdminClient();
 
-  // Pega 1 row por user_id (a primeira semana que está pendente)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: plans } = await (sb.from('hair_plans') as any)
-    .select('user_id,approved_by_juliane,created_at,juliane_notes,week_number')
-    .eq('week_number', 1)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-
-  if (!plans?.length) return [];
-
-  const userIds = (plans as Array<{ user_id: string }>).map(p => p.user_id);
+  // 1) Pega todas as ativas — qualquer uma pode estar precisando de revisão
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: profs } = await (sb.from('profiles') as any)
-    .select('id,full_name,email,hair_type')
-    .in('id', userIds);
+    .select('id,full_name,email,hair_type,subscription_activated_at,created_at')
+    .eq('subscription_status', 'active')
+    .order('subscription_activated_at', { ascending: false, nullsFirst: false });
 
-  const profMap = new Map(
-    (profs as Array<{ id: string; full_name: string | null; email: string; hair_type: string | null }>)?.map(p => [p.id, p]) ??
-      [],
+  if (!profs?.length) return [];
+
+  const activeProfiles = profs as Array<{
+    id: string; full_name: string | null; email: string; hair_type: string | null;
+    subscription_activated_at: string | null; created_at: string;
+  }>;
+
+  // 2) Hair plans semana 1 dessas ativas
+  const userIds = activeProfiles.map(p => p.id);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: plans } = await (sb.from('hair_plans') as any)
+    .select('user_id,approved_by_juliane,created_at,juliane_notes')
+    .eq('week_number', 1)
+    .in('user_id', userIds);
+
+  const planMap = new Map(
+    (plans as Array<{ user_id: string; approved_by_juliane: boolean; created_at: string; juliane_notes: string | null }>)
+      ?.map(p => [p.user_id, p]) ?? [],
   );
 
-  return (plans as Array<{
-    user_id: string;
-    approved_by_juliane: boolean;
-    created_at: string;
-    juliane_notes: string | null;
-  }>).map(p => {
-    const prof = profMap.get(p.user_id);
+  // 3) Cards para revisão: ativas COM plano não aprovado primeiro, depois ativas SEM plano (aguardando IA)
+  const cards: PlanRow[] = activeProfiles.map(prof => {
+    const plan = planMap.get(prof.id);
     return {
-      user_id: p.user_id,
-      full_name: prof?.full_name ?? null,
-      email: prof?.email ?? '',
-      hair_type: prof?.hair_type ?? null,
-      approved_by_juliane: p.approved_by_juliane,
-      created_at: p.created_at,
-      juliane_notes: p.juliane_notes,
+      user_id: prof.id,
+      full_name: prof.full_name,
+      email: prof.email,
+      hair_type: prof.hair_type,
+      approved_by_juliane: plan?.approved_by_juliane ?? false,
+      created_at: plan?.created_at ?? prof.subscription_activated_at ?? prof.created_at,
+      juliane_notes: plan?.juliane_notes ?? null,
     };
   });
+
+  // Mostra primeiro as que precisam mais atenção (não aprovadas)
+  return cards
+    .filter(c => !c.approved_by_juliane)
+    .slice(0, limit);
 }
 
 export interface RecentCheckIn {
@@ -160,17 +203,20 @@ export async function getRecentCheckIns(limit = 6): Promise<RecentCheckIn[]> {
 }
 
 export async function getNewPlansByDay(): Promise<Array<{ day: string; count: number; isToday: boolean }>> {
+  // Renomeado conceitualmente: agora retorna VENDAS por dia (era planos, mas a IA
+  // não está gerando consistentemente — vendas é a métrica mais real pra Juliane).
   const sb = createAdminClient();
 
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
   sevenDaysAgo.setHours(0, 0, 0, 0);
 
+  // Usa subscription_activated_at — momento em que o pagamento foi confirmado
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data } = await (sb.from('hair_plans') as any)
-    .select('created_at,week_number')
-    .eq('week_number', 1)
-    .gte('created_at', sevenDaysAgo.toISOString());
+  const { data } = await (sb.from('profiles') as any)
+    .select('subscription_activated_at')
+    .eq('subscription_status', 'active')
+    .gte('subscription_activated_at', sevenDaysAgo.toISOString());
 
   const days: Array<{ day: string; count: number; isToday: boolean }> = [];
   const today = new Date();
@@ -183,8 +229,8 @@ export async function getNewPlansByDay(): Promise<Array<{ day: string; count: nu
     const isToday = i === 0;
     const dayKey = d.toISOString().slice(0, 10);
     const count =
-      ((data as Array<{ created_at: string }>) ?? []).filter(
-        r => r.created_at.slice(0, 10) === dayKey,
+      ((data as Array<{ subscription_activated_at: string | null }>) ?? []).filter(
+        r => r.subscription_activated_at?.slice(0, 10) === dayKey,
       ).length;
     days.push({
       day: isToday ? 'Hoje' : dayLetters[d.getDay()],

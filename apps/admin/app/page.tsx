@@ -171,12 +171,12 @@ export default async function DashboardPage() {
             },
             {
               icon: '💰',
-              label: 'Receita Mensal',
+              label: 'Receita do Mês',
               value: `R$ ${stats.monthlyRevenueBrl.toLocaleString('pt-BR')}`,
               sub:
-                stats.activeSubscribers > 0
-                  ? `${stats.activeSubscribers} assinantes ativos`
-                  : 'Sem assinaturas ativas',
+                stats.monthlyRevenueBrl > 0
+                  ? 'pagamentos confirmados neste mês'
+                  : 'sem pagamentos este mês',
             },
             {
               icon: '📊',
@@ -506,7 +506,7 @@ export default async function DashboardPage() {
                 }}
               >
                 <span style={{ fontSize: 14, fontWeight: 600 }}>
-                  Cancelamentos esta semana
+                  Reembolsos esta semana
                 </span>
               </div>
               <div
@@ -549,7 +549,7 @@ export default async function DashboardPage() {
           }}
         >
           <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 20 }}>
-            Novos planos por dia
+            Vendas por dia (últimos 7 dias)
           </div>
           <div
             style={{
