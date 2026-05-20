@@ -1067,19 +1067,6 @@ export default function OfertaClient() {
                   <span key={t} style={{ fontSize: 11, color: T.greenDeep, fontWeight: 600 }}>{t}</span>
                 ))}
               </div>
-              {/* Aviso sobre necessidade de enviar foto após a compra */}
-              <div style={{
-                marginTop: 14, padding: '12px 14px',
-                background: '#FFF7ED',
-                border: '1px solid #FED7AA',
-                borderRadius: 12,
-                display: 'flex', gap: 10, alignItems: 'flex-start',
-              }}>
-                <span style={{ fontSize: 18, lineHeight: 1.1, flexShrink: 0 }}>📸</span>
-                <div style={{ fontSize: 12, color: '#9A3412', lineHeight: 1.5 }}>
-                  <strong style={{ color: '#7C2D12' }}>Importante:</strong> seu plano personalizado é montado depois que você envia uma <strong>foto do seu cabelo</strong> no app. Sem a foto a Juliane não consegue analisar e gerar o plano sob medida pra você.
-                </div>
-              </div>
             </div>
 
             {/* ── Dados pessoais ── */}
