@@ -56,12 +56,17 @@ function whatsappLink(phone: string | null, name: string | null) {
   return `https://wa.me/${num}?text=${msg}`
 }
 
+type FunnelWindow = { views: number; starts: number; leads: number; sales: number }
+type Funnel = { today: FunnelWindow; last7: FunnelWindow; last30: FunnelWindow }
+
 export default function LeadsClient({
   leads,
   checkoutAbandoned,
+  funnel,
 }: {
   leads: Lead[]
   checkoutAbandoned: Abandoned[]
+  funnel: Funnel
 }) {
   const [tab, setTab] = useState<'quiz' | 'checkout'>('quiz')
   const [search, setSearch] = useState('')
@@ -88,31 +93,89 @@ export default function LeadsClient({
     )
   }, [checkoutAbandoned, search])
 
-  const clientesCount  = leads.filter(l => l.isCliente).length
-  const leadsCount     = leads.filter(l => !l.isCliente).length
-  const convRate       = leads.length > 0 ? ((clientesCount / leads.length) * 100).toFixed(1) : '0'
+  function pct(a: number, b: number) {
+    if (!b) return '—'
+    return `${Math.round((a / b) * 100)}%`
+  }
+
+  function FunnelTable({ title, w }: { title: string; w: FunnelWindow }) {
+    const rows: { icon: string; label: string; value: number; from: number | null }[] = [
+      { icon: '👁️', label: 'Entrou no quiz',           value: w.views,  from: null },
+      { icon: '✍️', label: 'Começou a responder',      value: w.starts, from: w.views },
+      { icon: '📋', label: 'Completou (lead)',          value: w.leads,  from: w.starts },
+      { icon: '💳', label: 'Comprou',                    value: w.sales,  from: w.leads },
+    ]
+    return (
+      <div style={{
+        background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)',
+        padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 0,
+      }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: gray, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>
+          {title}
+        </div>
+        {rows.map((r, i) => {
+          const conv = r.from === null ? null : pct(r.value, r.from)
+          const isLast = i === rows.length - 1
+          return (
+            <div key={i} style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '9px 0', borderBottom: isLast ? 'none' : '1px solid #F5F5F7',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: dark, fontWeight: 500 }}>
+                <span style={{ fontSize: 14 }}>{r.icon}</span>
+                {r.label}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                {conv !== null && (
+                  <span style={{ fontSize: 11, color: conv === '—' ? gray : green, fontWeight: 600 }}>
+                    {conv === '—' ? '' : `(${conv})`}
+                  </span>
+                )}
+                <span style={{ fontSize: 16, fontWeight: 800, color: isLast ? green : dark }}>
+                  {r.value}
+                </span>
+              </div>
+            </div>
+          )
+        })}
+        {/* Overall conv view→sales */}
+        <div style={{
+          marginTop: 8, paddingTop: 10, borderTop: '1px dashed #E5E5EA',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          fontSize: 11, color: gray, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4,
+        }}>
+          <span>Quiz → compra</span>
+          <span style={{ color: w.sales > 0 ? green : gray, fontSize: 13 }}>
+            {pct(w.sales, w.views)}
+          </span>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div style={{ padding: '32px 40px', maxWidth: 1200 }}>
+    <div style={{ padding: '32px 40px', maxWidth: 1280 }}>
       {/* Header */}
-      <div style={{ marginBottom: 28 }}>
+      <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 26, fontWeight: 800, color: dark, margin: '0 0 4px' }}>Leads</h1>
-        <p style={{ fontSize: 13, color: gray, margin: 0 }}>Pessoas que preencheram o quiz mas ainda não compraram</p>
+        <p style={{ fontSize: 13, color: gray, margin: 0 }}>
+          Funil completo do quiz — todas pessoas que entraram, começaram, viraram leads e compraram.
+        </p>
       </div>
 
-      {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
-        {[
-          { label: 'Total de Leads', value: leads.length, color: dark },
-          { label: 'Converteram', value: clientesCount, color: green },
-          { label: 'Não compraram', value: leadsCount, color: accent },
-          { label: 'Taxa de conversão', value: `${convRate}%`, color: clientesCount > 0 ? green : gray },
-        ].map(s => (
-          <div key={s.label} style={{ background: '#fff', borderRadius: 14, padding: '18px 22px', border: '1px solid rgba(0,0,0,0.06)' }}>
-            <div style={{ fontSize: 11, color: gray, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>{s.label}</div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: s.color, lineHeight: 1 }}>{s.value}</div>
-          </div>
-        ))}
+      {/* Funil em 3 janelas */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 24 }}>
+        <FunnelTable title="Hoje"        w={funnel.today} />
+        <FunnelTable title="Últimos 7 dias"  w={funnel.last7} />
+        <FunnelTable title="Últimos 30 dias" w={funnel.last30} />
+      </div>
+
+      <div style={{
+        marginBottom: 24, padding: '12px 16px',
+        background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: 12,
+        fontSize: 12.5, color: '#7C2D12', lineHeight: 1.6,
+      }}>
+        <strong>📊 Como ler isso:</strong> &ldquo;Entrou no quiz&rdquo; é quem abriu a página. &ldquo;Começou a responder&rdquo; é quem clicou em pelo menos uma resposta. &ldquo;Completou&rdquo; é quem deixou nome + e-mail no final (são esses que aparecem na lista abaixo). &ldquo;Comprou&rdquo; é quem virou cliente. A queda mais importante é normalmente entre &ldquo;Começou&rdquo; e &ldquo;Completou&rdquo;.
       </div>
 
       {/* Tabs */}

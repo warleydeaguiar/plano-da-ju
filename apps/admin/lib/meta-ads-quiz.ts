@@ -1,8 +1,14 @@
 /**
- * Meta Marketing API — Plano da Ju (Quiz Capilar)
+ * Meta Marketing API — Plano da Ju
  *
- * Busca investimento e resultados das campanhas do quiz capilar.
+ * Busca investimento das campanhas do Plano Capilar.
  * Conta: DIN - decisões inteligentes (act_306090736984417)
+ *
+ * Particiona as campanhas em 2 grupos de operação separados:
+ *   - PLANO    : campaign_name contém "plano"   → venda do plano capilar
+ *   - GRUPOS   : campaign_name contém "grupos"  → cadastro nos grupos Ybera
+ *
+ * Cada grupo tem seu próprio ROAS / custo por aquisição.
  *
  * Setup:
  *  1. business.facebook.com → Configurações do negócio → Usuários do sistema
@@ -20,10 +26,12 @@ const API_VER    = 'v20.0'
 const BASE       = `https://graph.facebook.com/${API_VER}`
 
 export type QuizAdsStatus = 'ok' | 'not_configured' | 'error'
+export type CampaignType  = 'plano' | 'grupos' | 'outros'
 
 export interface CampaignInsight {
   campaign_id:   string
   campaign_name: string
+  type:          CampaignType
   spend:         number
   impressions:   number
   clicks:        number
@@ -33,25 +41,33 @@ export interface CampaignInsight {
   ctr:           number | null
 }
 
+export interface AdGroupResult {
+  today:      number
+  yesterday:  number
+  thisMonth:  number
+  lastMonth:  number
+  campaigns:  CampaignInsight[]
+  daily:      Array<{ date: string; spend: number; label: string }>
+}
+
 export interface QuizAdsResult {
-  status:      QuizAdsStatus
-  error?:      string
-  totalSpend:  number
-  campaigns:   CampaignInsight[]
-  // Resumo por período
-  today:       number
-  yesterday:   number
-  thisMonth:   number
-  lastMonth:   number
-  // Últimos 7 dias por dia (para gráfico)
-  daily:       Array<{ date: string; spend: number; label: string }>
+  status: QuizAdsStatus
+  error?: string
+  plano:  AdGroupResult
+  grupos: AdGroupResult
+  outros: AdGroupResult  // campanhas que não batem nenhum dos dois
+}
+
+const EMPTY_GROUP: AdGroupResult = {
+  today: 0, yesterday: 0, thisMonth: 0, lastMonth: 0,
+  campaigns: [], daily: [],
 }
 
 const EMPTY: QuizAdsResult = {
   status: 'not_configured',
-  totalSpend: 0, campaigns: [],
-  today: 0, yesterday: 0, thisMonth: 0, lastMonth: 0,
-  daily: [],
+  plano:  { ...EMPTY_GROUP },
+  grupos: { ...EMPTY_GROUP },
+  outros: { ...EMPTY_GROUP },
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────
@@ -59,14 +75,23 @@ function toDate(d: Date) {
   return d.toISOString().slice(0, 10) // YYYY-MM-DD
 }
 
-async function fetchInsights(
-  params: Record<string, string>,
-  revalidate = 1800
-): Promise<any[]> {
+/**
+ * Classifica uma campanha pelo nome.
+ * - "plano" no nome → plano capilar
+ * - "grupos" no nome → grupos Ybera
+ * - senão → outros (ignorado nos cards principais)
+ */
+function classifyCampaign(name: string): CampaignType {
+  const n = (name ?? '').toLowerCase()
+  if (n.includes('plano'))  return 'plano'
+  if (n.includes('grupos')) return 'grupos'
+  return 'outros'
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function fetchInsights(params: Record<string, string>, revalidate = 1800): Promise<any[]> {
   const qs = new URLSearchParams({ ...params, access_token: TOKEN!, limit: '200' })
-  const res = await fetch(`${BASE}/${ACCOUNT_ID}/insights?${qs}`, {
-    next: { revalidate },
-  })
+  const res = await fetch(`${BASE}/${ACCOUNT_ID}/insights?${qs}`, { next: { revalidate } })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error(err?.error?.message ?? `HTTP ${res.status}`)
@@ -75,8 +100,72 @@ async function fetchInsights(
   return json.data ?? []
 }
 
-function sumSpend(rows: any[]): number {
-  return rows.reduce((s, r) => s + parseFloat(r.spend ?? '0'), 0)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function sumSpendOfType(rows: any[], type: CampaignType): number {
+  return rows.reduce((s, r) => {
+    if (classifyCampaign(r.campaign_name) !== type) return s
+    return s + parseFloat(r.spend ?? '0')
+  }, 0)
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function dailyOfType(rows: any[], type: CampaignType): Array<{ date: string; spend: number; label: string }> {
+  const dailyMap: Record<string, number> = {}
+  for (const row of rows) {
+    if (classifyCampaign(row.campaign_name) !== type) continue
+    const date: string = row.date_start ?? ''
+    if (!date) continue
+    dailyMap[date] = (dailyMap[date] ?? 0) + parseFloat(row.spend ?? '0')
+  }
+  return Object.entries(dailyMap)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, spend]) => {
+      const d = new Date(date + 'T12:00:00')
+      return {
+        date, spend,
+        label: d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+      }
+    })
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildGroup(
+  monthRows: any[],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  todayRows: any[],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  yestRows: any[],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  lastMonthRows: any[],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  last7Rows: any[],
+  type: CampaignType,
+): AdGroupResult {
+  const campaigns: CampaignInsight[] = monthRows
+    .filter(r => classifyCampaign(r.campaign_name) === type)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((r: any) => ({
+      campaign_id:   r.campaign_id,
+      campaign_name: r.campaign_name,
+      type,
+      spend:         parseFloat(r.spend ?? '0'),
+      impressions:   parseInt(r.impressions ?? '0', 10),
+      clicks:        parseInt(r.clicks ?? '0', 10),
+      reach:         parseInt(r.reach ?? '0', 10),
+      cpc:           r.cpc ? parseFloat(r.cpc) : null,
+      cpm:           r.cpm ? parseFloat(r.cpm) : null,
+      ctr:           r.ctr ? parseFloat(r.ctr) : null,
+    }))
+    .sort((a, b) => b.spend - a.spend)
+
+  return {
+    today:     sumSpendOfType(todayRows, type),
+    yesterday: sumSpendOfType(yestRows, type),
+    thisMonth: sumSpendOfType(monthRows, type),
+    lastMonth: sumSpendOfType(lastMonthRows, type),
+    campaigns,
+    daily:     dailyOfType(last7Rows, type),
+  }
 }
 
 // ─── Main export ──────────────────────────────────────────────────
@@ -89,8 +178,8 @@ export async function getQuizAdSpend(): Promise<QuizAdsResult> {
     const yesterday = new Date(now); yesterday.setDate(yesterday.getDate() - 1)
     const yestStr   = toDate(yesterday)
 
-    const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
-    const lastMonthD = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const monthStart     = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+    const lastMonthD     = new Date(now.getFullYear(), now.getMonth() - 1, 1)
     const lastMonthStart = toDate(lastMonthD)
     const lastMonthEnd   = toDate(new Date(now.getFullYear(), now.getMonth(), 0))
 
@@ -98,55 +187,20 @@ export async function getQuizAdSpend(): Promise<QuizAdsResult> {
 
     // Buscar tudo em paralelo
     const [todayRows, yestRows, monthRows, lastMonthRows, last7Rows] = await Promise.all([
-      fetchInsights({ level: 'campaign', fields, time_range: JSON.stringify({ since: todayStr,      until: todayStr      }) }),
-      fetchInsights({ level: 'campaign', fields, time_range: JSON.stringify({ since: yestStr,       until: yestStr       }) }),
-      fetchInsights({ level: 'campaign', fields, time_range: JSON.stringify({ since: monthStart,    until: todayStr      }) }),
+      fetchInsights({ level: 'campaign', fields, time_range: JSON.stringify({ since: todayStr,       until: todayStr      }) }),
+      fetchInsights({ level: 'campaign', fields, time_range: JSON.stringify({ since: yestStr,        until: yestStr       }) }),
+      fetchInsights({ level: 'campaign', fields, time_range: JSON.stringify({ since: monthStart,     until: todayStr      }) }),
       fetchInsights({ level: 'campaign', fields, time_range: JSON.stringify({ since: lastMonthStart, until: lastMonthEnd }) }),
       fetchInsights({ level: 'campaign', fields: 'campaign_id,campaign_name,spend', date_preset: 'last_7d', time_increment: '1' }, 900),
     ])
 
-    // Campanhas deste mês ordenadas por gasto
-    const campaigns: CampaignInsight[] = monthRows
-      .map((r: any) => ({
-        campaign_id:   r.campaign_id,
-        campaign_name: r.campaign_name,
-        spend:         parseFloat(r.spend   ?? '0'),
-        impressions:   parseInt(r.impressions ?? '0', 10),
-        clicks:        parseInt(r.clicks    ?? '0', 10),
-        reach:         parseInt(r.reach     ?? '0', 10),
-        cpc:           r.cpc  ? parseFloat(r.cpc)  : null,
-        cpm:           r.cpm  ? parseFloat(r.cpm)  : null,
-        ctr:           r.ctr  ? parseFloat(r.ctr)  : null,
-      }))
-      .sort((a, b) => b.spend - a.spend)
-
-    // Gasto diário últimos 7 dias
-    const dailyMap: Record<string, number> = {}
-    for (const row of last7Rows) {
-      const date: string = row.date_start ?? ''
-      dailyMap[date] = (dailyMap[date] ?? 0) + parseFloat(row.spend ?? '0')
-    }
-    const daily = Object.entries(dailyMap)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, spend]) => {
-        const d = new Date(date + 'T12:00:00')
-        return {
-          date,
-          spend,
-          label: d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-        }
-      })
-
     return {
-      status:     'ok',
-      totalSpend: sumSpend(monthRows),
-      campaigns,
-      today:      sumSpend(todayRows),
-      yesterday:  sumSpend(yestRows),
-      thisMonth:  sumSpend(monthRows),
-      lastMonth:  sumSpend(lastMonthRows),
-      daily,
+      status: 'ok',
+      plano:  buildGroup(monthRows, todayRows, yestRows, lastMonthRows, last7Rows, 'plano'),
+      grupos: buildGroup(monthRows, todayRows, yestRows, lastMonthRows, last7Rows, 'grupos'),
+      outros: buildGroup(monthRows, todayRows, yestRows, lastMonthRows, last7Rows, 'outros'),
     }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (e: any) {
     console.error('[meta-ads-quiz]', e?.message)
     return { ...EMPTY, status: 'error', error: e?.message }
