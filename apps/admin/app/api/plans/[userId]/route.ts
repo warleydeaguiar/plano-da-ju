@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/supabase';
+import { sendPlanReadyEmail } from '../../../../lib/plan-ready-email';
 
 export async function GET(
   _req: NextRequest,
@@ -96,10 +97,28 @@ export async function PATCH(
     }
 
     if (action === 'approve') {
+      // Lê o estado anterior pra saber se está TRANSICIONANDO pra ready (evita re-envio do email)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: priorProfile } = await (sb.from('profiles') as any)
+        .select('email, full_name, plan_status, checkout_session_id')
+        .eq('id', userId)
+        .maybeSingle();
+
+      const wasNotReady = priorProfile && priorProfile.plan_status !== 'ready';
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (sb.from('profiles') as any)
         .update({ plan_status: 'ready', plan_released_at: new Date().toISOString() })
         .eq('id', userId);
+
+      // Dispara email de "Plano pronto" só na transição (fire-and-forget — não bloqueia approve)
+      if (wasNotReady && priorProfile?.email) {
+        sendPlanReadyEmail(sb, {
+          email: priorProfile.email,
+          name: priorProfile.full_name ?? null,
+          session_id: priorProfile.checkout_session_id ?? null,
+        }).catch(err => console.error('[plan-ready-email]', err));
+      }
     }
 
     return NextResponse.json({ ok: true });

@@ -28,6 +28,14 @@ export async function POST(req: NextRequest) {
     if (f.size > 10 * 1024 * 1024) return NextResponse.json({ error: 'Foto muito grande (máx. 10 MB)' }, { status: 400 });
     if (!f.type.startsWith('image/')) return NextResponse.json({ error: 'Arquivo precisa ser uma imagem' }, { status: 400 });
 
+    // Optional hair length (cm) — vem do onboarding ou progresso
+    const rawLength = form.get('hair_length_cm');
+    let hairLengthCm: number | null = null;
+    if (rawLength && typeof rawLength === 'string') {
+      const n = parseFloat(rawLength.replace(',', '.'));
+      if (!isNaN(n) && n > 0 && n < 200) hairLengthCm = n;
+    }
+
     const supabase = await createServiceClient();
     const ext = f.type === 'image/png' ? 'png' : f.type === 'image/webp' ? 'webp' : 'jpg';
     const fileName = `${user.id}/${Date.now()}.${ext}`;
@@ -137,6 +145,7 @@ export async function POST(req: NextRequest) {
       .update({
         photo_url: photoUrl,
         photo_taken_at: new Date().toISOString(),
+        ...(hairLengthCm !== null ? { hair_length_cm: hairLengthCm } : {}),
       })
       .eq('id', user.id);
 

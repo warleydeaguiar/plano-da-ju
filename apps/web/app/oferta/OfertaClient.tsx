@@ -1063,9 +1063,22 @@ export default function OfertaClient() {
                 </div>
               </div>
               <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #F0EAF5', display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                {['✓ Garantia 7 dias', '✓ Acesso imediato', '✓ Suporte WhatsApp'].map(t => (
+                {['✓ Garantia 7 dias', '✓ Acesso ao app na hora', '✓ Suporte WhatsApp'].map(t => (
                   <span key={t} style={{ fontSize: 11, color: T.greenDeep, fontWeight: 600 }}>{t}</span>
                 ))}
+              </div>
+              {/* Aviso sobre necessidade de enviar foto após a compra */}
+              <div style={{
+                marginTop: 14, padding: '12px 14px',
+                background: '#FFF7ED',
+                border: '1px solid #FED7AA',
+                borderRadius: 12,
+                display: 'flex', gap: 10, alignItems: 'flex-start',
+              }}>
+                <span style={{ fontSize: 18, lineHeight: 1.1, flexShrink: 0 }}>📸</span>
+                <div style={{ fontSize: 12, color: '#9A3412', lineHeight: 1.5 }}>
+                  <strong style={{ color: '#7C2D12' }}>Importante:</strong> seu plano personalizado é montado depois que você envia uma <strong>foto do seu cabelo</strong> no app. Sem a foto a Juliane não consegue analisar e gerar o plano sob medida pra você.
+                </div>
               </div>
             </div>
 
@@ -1529,7 +1542,7 @@ export default function OfertaClient() {
             marginBottom: 32, overflow: 'hidden',
           }}>
             {[
-              { q: 'Quando eu adquirir o plano, ele já estará disponível?', a: 'Sim, todo o conteúdo do plano é liberado imediatamente, porém a parte personalizada será entregue em até 3 dias pois preciso ler cada resposta para fazer algo feito para você.' },
+              { q: 'Quando eu adquirir o plano, ele já estará disponível?', a: 'Você acessa o app imediatamente após o pagamento. Pra eu montar seu plano personalizado, você precisa enviar uma foto do seu cabelo no app (é a primeira coisa que aparece quando entra). A partir daí, em até 3 dias úteis eu analiso sua foto + suas respostas e libero o plano completo. Você é avisada por e-mail quando estiver pronto.' },
               { q: 'Os produtos indicados são difíceis de encontrar?', a: 'Não! Eu tenho parceria com as marcas de produtos de cabelo e por isso tenho preços abaixo do mercado para vocês.' },
               { q: 'E se eu tiver dúvidas ao longo do processo?', a: 'Você terá suporte diário através do WhatsApp, vou ficar disponível para falar com você e te ajudar.' },
               { q: 'Quando posso começar a ver resultados?', a: 'Cada cabelo tem seu ritmo, mas a maioria começa a notar mudanças significativas já nas primeiras semanas, especialmente com a combinação de rotina de cuidados e os produtos certos.' },

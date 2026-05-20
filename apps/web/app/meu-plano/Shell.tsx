@@ -15,7 +15,10 @@ const TABS = [
   { href: '/meu-plano/promocoes', Icon: IconSparkles, label: 'Promoções' },
 ];
 
-const HIDE_NAV_ON = ['/meu-plano/check-in'];
+const HIDE_NAV_ON = ['/meu-plano/check-in', '/meu-plano/onboarding'];
+
+// Rotas que não exigem foto enviada (onboarding, perfil pra ela poder consertar conta)
+const ALLOWED_WITHOUT_PHOTO = ['/meu-plano/onboarding', '/meu-plano/perfil'];
 
 export default function MeuPlanoShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -28,11 +31,28 @@ export default function MeuPlanoShell({ children }: { children: React.ReactNode 
   );
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) router.push('/login');
-      else setReady(true);
-    });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { router.push('/login'); return; }
+
+      // Gate: se ainda não enviou foto → força onboarding
+      // (exceto se já estiver na onboarding ou /perfil)
+      const allowedHere = ALLOWED_WITHOUT_PHOTO.some(p => pathname.startsWith(p));
+      if (!allowedHere) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: prof } = await (supabase.from('profiles') as any)
+          .select('photo_url')
+          .eq('id', session.user.id)
+          .maybeSingle();
+        if (!prof?.photo_url) {
+          router.replace('/meu-plano/onboarding');
+          return;
+        }
+      }
+
+      setReady(true);
+    })();
+  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const hideNav = HIDE_NAV_ON.some(p => pathname.startsWith(p));
 

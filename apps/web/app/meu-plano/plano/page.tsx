@@ -82,6 +82,14 @@ export default function PlanoPage() {
 
   if (loading) return null;
 
+  // ── Estado "preparando" — plano ainda não aprovado pela Juliane ─────────
+  // Bloqueia a view do plano completo até admin aprovar (plan_status === 'ready').
+  // Mostra um card claro: "Juliane está lendo suas respostas e preparando".
+  const planReady = profile?.plan_status === 'ready';
+  if (!planReady) {
+    return <PreparingState profile={profile} />;
+  }
+
   const currentPlan = plans.find(p => p.week_number === activeWeek);
 
   const chips: { label: string; tone: 'pink' | 'gold' | 'cream' }[] = [];
@@ -529,6 +537,180 @@ function EmptyState({ emoji, title, description }: { emoji: string; title: strin
         fontFamily: fonts.display,
       }}>{title}</div>
       <div style={{ fontSize: 13, color: T.inkSoft, lineHeight: 1.5 }}>{description}</div>
+    </div>
+  );
+}
+
+// ── Preparando: plano ainda não aprovado pela Juliane ─────────────────────
+function PreparingState({ profile }: { profile: Profile | null }) {
+  const firstName = profile?.full_name?.split(' ')[0] ?? '';
+  return (
+    <div>
+      <div style={{ maxWidth: 480, margin: '0 auto' }}>
+        {/* Hero compacto */}
+        <div style={{
+          padding: '36px 24px 56px',
+          background: gradient.hero,
+          borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
+          color: '#FFF', position: 'relative', overflow: 'hidden',
+        }}>
+          <div style={{ position: 'absolute', right: -50, top: -50, width: 220, height: 220, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
+          <div style={{ position: 'absolute', left: -30, bottom: -60, width: 140, height: 140, borderRadius: '50%', background: 'rgba(201,168,119,0.18)' }} />
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <div style={{
+              fontSize: 11, fontWeight: 700, letterSpacing: 1.4,
+              opacity: 0.85, textTransform: 'uppercase',
+            }}>
+              Seu plano personalizado
+            </div>
+            <h1 style={{
+              fontSize: 28, fontWeight: 600, letterSpacing: -0.5,
+              margin: '8px 0 6px',
+              fontFamily: fonts.display,
+            }}>
+              Em preparação
+            </h1>
+            <div style={{ fontSize: 13, opacity: 0.92, marginTop: 4, lineHeight: 1.5 }}>
+              {firstName ? `${firstName}, a` : 'A'} Juliane está analisando suas respostas agora.
+            </div>
+          </div>
+        </div>
+
+        {/* Card overlapping hero — status + steps */}
+        <div style={{
+          margin: '-34px 16px 18px',
+          background: T.surface, borderRadius: 20,
+          padding: '20px 18px',
+          boxShadow: shadow.raised,
+          position: 'relative', zIndex: 2,
+          border: `1px solid ${T.borderSoft}`,
+        }}>
+          {/* Ju avatar + status */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
+            <div style={{
+              width: 52, height: 52, borderRadius: '50%',
+              overflow: 'hidden',
+              border: `2.5px solid ${T.gold}`,
+              boxShadow: '0 4px 12px rgba(190,24,93,0.18)',
+              position: 'relative', flexShrink: 0,
+            }}>
+              <Image
+                src="/images/ju-depois.png"
+                alt="Juliane Cost"
+                width={52} height={52}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{
+                fontSize: 15.5, fontWeight: 700, color: T.ink,
+                fontFamily: fonts.display,
+              }}>
+                Juliane Cost
+              </div>
+              <div style={{
+                fontSize: 12, color: T.pinkDeep, marginTop: 2,
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                fontWeight: 600,
+              }}>
+                <span style={{
+                  width: 7, height: 7, borderRadius: '50%',
+                  background: T.pink, display: 'inline-block',
+                  animation: 'pulse 1.6s ease-in-out infinite',
+                }} />
+                trabalhando no seu plano…
+              </div>
+            </div>
+          </div>
+
+          {/* Steps */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <PrepStep
+              done
+              title="Foto recebida"
+              description="A Juliane já recebeu sua foto e suas respostas do quiz."
+            />
+            <PrepStep
+              active
+              title="Lendo suas respostas e analisando o cabelo"
+              description="Cruzando seu tipo de cabelo, química, problemas e a foto enviada."
+            />
+            <PrepStep
+              title="Montando seu cronograma personalizado"
+              description="Lavagens, hidratações, reconstruções e produtos pra você."
+            />
+            <PrepStep
+              title="Plano liberado no app"
+              description="Você vai receber um e-mail e o cronograma aparece aqui na hora."
+            />
+          </div>
+        </div>
+
+        {/* Aviso prazo */}
+        <div style={{
+          margin: '0 16px 18px',
+          background: gradient.warm,
+          border: `1px solid ${T.gold}55`,
+          borderRadius: 14, padding: '14px 16px',
+          display: 'flex', gap: 12, alignItems: 'flex-start',
+        }}>
+          <span style={{ fontSize: 22, lineHeight: 1, flexShrink: 0 }}>⏳</span>
+          <div style={{ fontSize: 13, color: T.ink, lineHeight: 1.55 }}>
+            Plano fica pronto em até <strong>3 dias úteis</strong>. Você pode
+            seguir usando o app normalmente enquanto isso —
+            registre suas lavagens, hidratações e veja as dicas da Juliane.
+          </div>
+        </div>
+
+        {/* CTA explorar app enquanto espera */}
+        <div style={{ padding: '0 16px 30px' }}>
+          <a href="/meu-plano" style={{
+            display: 'block', width: '100%',
+            background: T.surface, color: T.pinkDeep,
+            border: `1.5px solid ${T.pink}`,
+            borderRadius: 14, padding: 14, textAlign: 'center',
+            fontSize: 14, fontWeight: 700, textDecoration: 'none',
+            fontFamily: fonts.ui,
+          }}>
+            Explorar o app
+          </a>
+        </div>
+
+        <style>{`@keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.85); } }`}</style>
+      </div>
+    </div>
+  );
+}
+
+function PrepStep({ done, active, title, description }: { done?: boolean; active?: boolean; title: string; description: string }) {
+  const bg = done ? T.greenSoft : active ? T.pinkSoft : '#F5F1F2';
+  const fg = done ? T.green : active ? T.pinkDeep : T.inkMuted;
+  return (
+    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+      <div style={{
+        width: 32, height: 32, borderRadius: 10,
+        background: bg, color: fg,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0, fontSize: 16, fontWeight: 700,
+      }}>
+        {done ? <IconCheck size={16} stroke={2.5} /> : active ? (
+          <span style={{
+            width: 8, height: 8, borderRadius: '50%',
+            background: T.pink,
+            animation: 'pulse 1.4s ease-in-out infinite',
+          }} />
+        ) : '·'}
+      </div>
+      <div style={{ flex: 1, paddingTop: 2 }}>
+        <div style={{
+          fontSize: 13.5, fontWeight: 700,
+          color: active ? T.pinkDeep : done ? T.ink : T.inkSoft,
+          fontFamily: fonts.display,
+        }}>{title}</div>
+        <div style={{
+          fontSize: 12, color: T.inkSoft, marginTop: 2, lineHeight: 1.5,
+        }}>{description}</div>
+      </div>
     </div>
   );
 }
