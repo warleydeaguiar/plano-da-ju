@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { Suspense } from 'react';
 import ObrigadoClient from './ObrigadoClient';
 
 export const metadata: Metadata = {
@@ -6,5 +7,9 @@ export const metadata: Metadata = {
 };
 
 export default function ObrigadoPage() {
-  return <ObrigadoClient />;
+  return (
+    <Suspense fallback={<div style={{ minHeight: '100vh', background: '#FFFAF5' }} />}>
+      <ObrigadoClient />
+    </Suspense>
+  );
 }

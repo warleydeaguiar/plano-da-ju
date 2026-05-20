@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 
 const BG = '#F5EFF9';
@@ -10,12 +10,19 @@ const PINK = '#C4607A';
 const MID = '#6B5370';
 const BORDER = '#EDE6F2';
 
-export default function LoginPage() {
+function LoginInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Pré-preenche email da URL (ex: vindo do /obrigado quando autologin falha)
+  useEffect(() => {
+    const q = searchParams.get('email');
+    if (q) setEmail(decodeURIComponent(q).toLowerCase().trim());
+  }, [searchParams]);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -101,5 +108,14 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Wrapper com Suspense — exigido pelo Next 15 quando usa useSearchParams
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '100vh', background: BG }} />}>
+      <LoginInner />
+    </Suspense>
   );
 }
