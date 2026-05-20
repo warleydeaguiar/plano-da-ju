@@ -11,6 +11,7 @@ export interface ExtractedQuizFields {
   chemical_history:  string | null;
   main_problems:     string[];
   quiz_completed_at: string;
+  phone:             string | null;
 }
 
 export function extractFieldsFromQuiz(quiz: Record<string, unknown> | null | undefined): ExtractedQuizFields {
@@ -20,6 +21,7 @@ export function extractFieldsFromQuiz(quiz: Record<string, unknown> | null | und
     chemical_history:  null,
     main_problems:     [],
     quiz_completed_at: new Date().toISOString(),
+    phone:             null,
   };
   if (!quiz || typeof quiz !== 'object') return empty;
 
@@ -42,11 +44,18 @@ export function extractFieldsFromQuiz(quiz: Record<string, unknown> | null | und
       ? [incomodaRaw]
       : [];
 
+  // Telefone: quiz_answers.phone (campo preenchido pelo quiz)
+  const rawPhone = quiz.phone ?? quiz.telefone ?? quiz.celular ?? null;
+  const phone = typeof rawPhone === 'string' && rawPhone
+    ? rawPhone.replace(/\D/g, '') || null
+    : null;
+
   return {
     hair_type:         tipo,
     porosity:          porosidade,
     chemical_history,
     main_problems,
     quiz_completed_at: new Date().toISOString(),
+    phone,
   };
 }

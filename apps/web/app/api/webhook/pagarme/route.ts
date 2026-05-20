@@ -89,9 +89,18 @@ export async function POST(req: NextRequest) {
 
         // Meta CAPI — Purchase server-side
         const ans = (profile?.quiz_answers ?? {}) as Record<string, unknown>;
-        const phoneDigits = String(ans.phone ?? '').replace(/\D/g, '');
+        // Phone: da coluna profile (já salvo no checkout) ou fallback pelo quiz_answers
+        const phoneDigits = String(profile?.phone ?? ans.phone ?? '').replace(/\D/g, '');
         const phoneE164 = phoneDigits.length === 10 || phoneDigits.length === 11
           ? '55' + phoneDigits : phoneDigits || undefined;
+
+        // Garante que phone ficou salvo no profile (segurança para compras antigas)
+        if (phoneDigits && !profile?.phone) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (supabase.from('profiles') as any)
+            .update({ phone: phoneDigits })
+            .eq('email', email);
+        }
         const fullName = String(ans.name ?? profile?.full_name ?? '').trim().split(/\s+/);
 
         await sendCapiEvent({

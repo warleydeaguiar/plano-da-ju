@@ -110,6 +110,8 @@ export async function POST(req: NextRequest) {
                          charge?.status === 'paid';
 
     const extracted = extractFieldsFromQuiz(quiz_answers);
+    // phone: prefere o que veio do form (cleanPhone), fallback pro quiz_answers
+    const profilePhone = cleanPhone || extracted.phone || null;
 
     await (supabase.from('profiles') as any).upsert({
       id:                   userId,
@@ -117,6 +119,7 @@ export async function POST(req: NextRequest) {
       full_name:            name,
       quiz_answers,
       ...extracted,
+      phone:                profilePhone,
       quiz_session_id:      typeof session_id === 'string' ? session_id : null,
       subscription_type:    isReallyPaid ? 'one_time_card' : 'none',
       subscription_status:  isReallyPaid ? 'active' : 'pending',
