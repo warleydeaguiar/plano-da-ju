@@ -899,13 +899,16 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
           </div>
 
           {/* ── Right detail ────────────────────────────────────────────── */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* IMPORTANTE: o container externo SÓ faz scroll (sem flex column),
+              senão os cards filhos ficam squashed quando a soma deles excede
+              a altura do container. O wrapper interno faz o stacking. */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px 80px', minHeight: 0 }}>
             {!selected ? (
               <div style={{ color: '#8A8A8E', fontSize: 14 }}>
                 Selecione uma usuária na lista para ver o plano.
               </div>
             ) : (
-              <>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {/* Header */}
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
                   <div style={{ flex: 1 }}>
@@ -1413,7 +1416,10 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                     style={{
                       width: '100%', border: 'none', outline: 'none', resize: 'vertical',
                       fontFamily: 'inherit', fontSize: 13, color: '#2D1B2E',
-                      padding: '16px 20px', minHeight: 90, background: 'transparent', lineHeight: 1.5,
+                      padding: '16px 20px',
+                      minHeight: 90, maxHeight: 280, overflowY: 'auto',
+                      background: 'transparent', lineHeight: 1.5,
+                      display: 'block', boxSizing: 'border-box',
                     }}
                   />
                 </div>
@@ -1490,7 +1496,7 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
 
                 {/* Spinning keyframe */}
                 <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
-              </>
+              </div>
             )}
           </div>
         </div>
