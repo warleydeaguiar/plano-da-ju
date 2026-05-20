@@ -377,7 +377,7 @@ function EditPanel({ user, onClose, onChanged }: { user: User; onClose: () => vo
   }
 
   const label: React.CSSProperties = { fontSize: 11, color: gray, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 5, display: 'block' }
-  const input: React.CSSProperties = { width: '100%', padding: '8px 11px', borderRadius: 8, border: '1px solid #E0E0E8', fontSize: 13, outline: 'none', boxSizing: 'border-box', background: '#fff', fontFamily: 'inherit' }
+  const input: React.CSSProperties = { width: '100%', padding: '8px 11px', borderRadius: 8, border: '1px solid #E0E0E8', fontSize: 13, color: '#2D1B2E', fontWeight: 500, outline: 'none', boxSizing: 'border-box', background: '#fff', fontFamily: 'inherit' }
 
   return (
     <div style={{
@@ -688,7 +688,7 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
   }
 
   const label: React.CSSProperties = { fontSize: 11, color: gray, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 5, display: 'block' }
-  const input: React.CSSProperties = { width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #E0E0E8', fontSize: 13, outline: 'none', boxSizing: 'border-box', background: '#fff', fontFamily: 'inherit' }
+  const input: React.CSSProperties = { width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #E0E0E8', fontSize: 13, color: '#2D1B2E', fontWeight: 500, outline: 'none', boxSizing: 'border-box', background: '#fff', fontFamily: 'inherit' }
 
   return (
     <div style={{
