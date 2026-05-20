@@ -34,8 +34,9 @@ export interface CampaignInsight {
   type:          CampaignType
   spend:         number
   impressions:   number
-  clicks:        number
-  landing_page_views: number  // ← novo: action_type=landing_page_view
+  clicks:           number  // todos cliques (CTA + like + share + perfil etc.) — só pra ref.
+  link_clicks:      number  // inline_link_clicks — só cliques no link (saída pra LP)
+  landing_page_views: number  // action_type=landing_page_view
   reach:         number
   cpc:           number | null
   cpm:           number | null
@@ -43,8 +44,8 @@ export interface CampaignInsight {
 }
 
 export interface FunnelTotals {
-  clicks:             number  // soma de clicks (todos cliques)
-  landing_page_views: number  // soma de landing_page_view
+  link_clicks:        number  // inline_link_clicks (alinhado com "Cliques no link" do Meta UI)
+  landing_page_views: number  // landing_page_view
 }
 
 export interface AdGroupResult {
@@ -68,7 +69,7 @@ export interface QuizAdsResult {
   outros: AdGroupResult  // campanhas que não batem nenhum dos dois
 }
 
-const EMPTY_FUNNEL: FunnelTotals = { clicks: 0, landing_page_views: 0 }
+const EMPTY_FUNNEL: FunnelTotals = { link_clicks: 0, landing_page_views: 0 }
 
 const EMPTY_GROUP: AdGroupResult = {
   today: 0, yesterday: 0, thisMonth: 0, lastMonth: 0,
@@ -132,12 +133,12 @@ function actionValue(actions: any, actionType: string): number {
   return found ? parseInt(found.value ?? '0', 10) : 0
 }
 
-/** Soma cliques (clicks) de campanhas do tipo dado. */
+/** Soma cliques no link (inline_link_clicks) de campanhas do tipo dado. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function sumClicksOfType(rows: any[], type: CampaignType): number {
+function sumLinkClicksOfType(rows: any[], type: CampaignType): number {
   return rows.reduce((s, r) => {
     if (classifyCampaign(r.campaign_name) !== type) return s
-    return s + parseInt(r.clicks ?? '0', 10)
+    return s + parseInt(r.inline_link_clicks ?? '0', 10)
   }, 0)
 }
 
@@ -193,6 +194,7 @@ function buildGroup(
       spend:         parseFloat(r.spend ?? '0'),
       impressions:   parseInt(r.impressions ?? '0', 10),
       clicks:        parseInt(r.clicks ?? '0', 10),
+      link_clicks:   parseInt(r.inline_link_clicks ?? '0', 10),
       landing_page_views: actionValue(r.actions, 'landing_page_view'),
       reach:         parseInt(r.reach ?? '0', 10),
       cpc:           r.cpc ? parseFloat(r.cpc) : null,
@@ -209,15 +211,15 @@ function buildGroup(
     campaigns,
     daily:     dailyOfType(last7Rows, type),
     funnelToday:     {
-      clicks:             sumClicksOfType(todayRows, type),
+      link_clicks:        sumLinkClicksOfType(todayRows, type),
       landing_page_views: sumLandingPageViewsOfType(todayRows, type),
     },
     funnelYesterday: {
-      clicks:             sumClicksOfType(yestRows, type),
+      link_clicks:        sumLinkClicksOfType(yestRows, type),
       landing_page_views: sumLandingPageViewsOfType(yestRows, type),
     },
     funnelMonth: {
-      clicks:             sumClicksOfType(monthRows, type),
+      link_clicks:        sumLinkClicksOfType(monthRows, type),
       landing_page_views: sumLandingPageViewsOfType(monthRows, type),
     },
   }
@@ -238,7 +240,7 @@ export async function getQuizAdSpend(): Promise<QuizAdsResult> {
     const lastMonthStart = toDate(lastMonthD)
     const lastMonthEnd   = toDate(new Date(now.getFullYear(), now.getMonth(), 0))
 
-    const fields = 'campaign_id,campaign_name,spend,impressions,clicks,reach,cpc,cpm,ctr,actions'
+    const fields = 'campaign_id,campaign_name,spend,impressions,clicks,inline_link_clicks,reach,cpc,cpm,ctr,actions'
 
     // Buscar tudo em paralelo
     const [todayRows, yestRows, monthRows, lastMonthRows, last7Rows] = await Promise.all([

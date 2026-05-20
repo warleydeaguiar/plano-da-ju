@@ -110,7 +110,7 @@ function CampaignList({ campaigns, color }: { campaigns: AdGroupResult['campaign
               {c.campaign_name}
             </div>
             <div style={{ fontSize: 10.5, color: gray, marginTop: 2 }}>
-              {c.impressions.toLocaleString('pt-BR')} imp · {c.clicks.toLocaleString('pt-BR')} cliques
+              {c.impressions.toLocaleString('pt-BR')} imp · {c.link_clicks.toLocaleString('pt-BR')} cliques no link
               {c.ctr != null && ` · CTR ${c.ctr.toFixed(2)}%`}
               {c.cpc != null && ` · CPC R$${c.cpc.toFixed(2)}`}
             </div>
@@ -283,9 +283,11 @@ export default async function AnalyticsPage() {
   const cpjMonth = joinsMonth > 0 ? gruposSpendMonth / joinsMonth : null
 
   // Funil — Meta Ads (top of funnel)
-  const adClicksToday = metaAds.plano.funnelToday.clicks
-  const adClicksYest  = metaAds.plano.funnelYesterday.clicks
-  const adClicksMonth = metaAds.plano.funnelMonth.clicks
+  // Importante: usar inline_link_clicks ("Cliques no link"), NÃO clicks (todos).
+  // Cliques "todos" inclui CTA, like, share, perfil — não corresponde a tráfego pra LP.
+  const adClicksToday = metaAds.plano.funnelToday.link_clicks
+  const adClicksYest  = metaAds.plano.funnelYesterday.link_clicks
+  const adClicksMonth = metaAds.plano.funnelMonth.link_clicks
   const lpvToday      = metaAds.plano.funnelToday.landing_page_views
   const lpvYest       = metaAds.plano.funnelYesterday.landing_page_views
   const lpvMonth      = metaAds.plano.funnelMonth.landing_page_views
