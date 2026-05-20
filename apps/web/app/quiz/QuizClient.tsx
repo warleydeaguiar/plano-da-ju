@@ -38,21 +38,30 @@ const fonts = {
 }
 
 // ─── Helpers de analytics ─────────────────────────────────────
+// Wrappers seguros pra localStorage — Safari Private Mode strict throws
+// no .setItem(), o que quebraria o quiz inteiro se não tratado.
+function safeGetItem(key: string): string | null {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+function safeSetItem(key: string, value: string): void {
+  try { localStorage.setItem(key, value); } catch { /* ignore — private mode */ }
+}
+
 function getOrCreateSessionId(): string {
   if (typeof window === 'undefined') return ''
   const key = 'quiz_session_id'
   // localStorage persiste entre fechamentos de aba/browser no mesmo dispositivo
   // garantindo que uma pessoa real = uma sessão, mesmo se fechar e voltar
-  let id = localStorage.getItem(key)
+  let id = safeGetItem(key)
   if (!id) {
     id = Math.random().toString(36).slice(2) + Date.now().toString(36)
-    localStorage.setItem(key, id)
+    safeSetItem(key, id)
   }
   return id
 }
 
 // ─── A/B Testing — assignment determinístico por session_id ─────
-// Hash simples (FNV-like) — determinístico, mesma session_id sempre cai
+// Hash simples (FNV-1a) — determinístico, mesma session_id sempre cai
 // no mesmo bucket. Inclui experiment_id pra cada experimento ter buckets
 // independentes (sem correlação entre testes).
 function hashStr(s: string): number {
@@ -61,7 +70,10 @@ function hashStr(s: string): number {
     h ^= s.charCodeAt(i)
     h = Math.imul(h, 16777619)
   }
-  return Math.abs(h | 0)
+  // >>> 0 converte pra unsigned 32-bit — evita o edge case do Math.abs com
+  // -2147483648 (que retorna o mesmo valor negativo em JS). Distribuição
+  // uniforme garantida em [0, 2^32-1].
+  return h >>> 0
 }
 
 type VariantSide = 'control' | 'variant'
@@ -85,16 +97,29 @@ function pickVariant(sessionId: string, exp: ActiveExperiment): VariantSide {
  */
 function buildVariantMap(
   sessionId: string,
-  experiments: ActiveExperiment[],
+  experiments: ActiveExperiment[] | null | undefined,
 ): Map<string, { flagKey: string; side: VariantSide; experimentId: string; content: Record<string, unknown> }> {
   const map = new Map<string, { flagKey: string; side: VariantSide; experimentId: string; content: Record<string, unknown> }>()
+  if (!Array.isArray(experiments)) return map  // fail-safe: nada falha se DB devolveu null
   for (const exp of experiments) {
-    map.set(exp.target_step_id, {
-      flagKey:      exp.flag_key,
-      side:         pickVariant(sessionId, exp),
-      experimentId: exp.id,
-      content:      exp.variant_content ?? {},
-    })
+    try {
+      // Sanity check — se faltar campo essencial, pula esse experimento
+      if (!exp || !exp.id || !exp.flag_key || !exp.target_step_id) continue
+      // flag_key NÃO pode ter ',' ou ':' (quebram o parser do label depois)
+      if (exp.flag_key.includes(',') || exp.flag_key.includes(':')) continue
+      const trafficPct = typeof exp.traffic_pct === 'number' && exp.traffic_pct >= 0 && exp.traffic_pct <= 100
+        ? exp.traffic_pct : 50
+      const safeExp = { ...exp, traffic_pct: trafficPct }
+      map.set(exp.target_step_id, {
+        flagKey:      exp.flag_key,
+        side:         pickVariant(sessionId, safeExp),
+        experimentId: exp.id,
+        content:      (exp.variant_content && typeof exp.variant_content === 'object')
+          ? exp.variant_content : {},
+      })
+    } catch {
+      // Experimento individual com defeito não deve afetar os outros nem o quiz
+    }
   }
   return map
 }
@@ -1720,15 +1745,23 @@ export default function QuizClient({ experiments = [] }: { experiments?: ActiveE
   const [variantMap, setVariantMap] = useState<ReturnType<typeof buildVariantMap>>(new Map())
 
   // Inicializa sessionId, computa variants, dispara trackView (em ordem)
+  // CRÍTICO: este useEffect está PRIMEIRO depois dos refs — outros tracking
+  // useEffects abaixo dependem de sessionIdRef.current estar setado.
+  // Qualquer erro aqui NÃO pode quebrar o quiz — try/catch em volta.
   useEffect(() => {
-    const sid = getOrCreateSessionId()
-    sessionIdRef.current = sid
-    // Variant assignment determinístico (sticky via hash do session_id)
-    const map = buildVariantMap(sid, experiments)
-    setVariantMap(map)
-    variantMapRef.current = map
-    sessionLabelRef.current = getSessionVariantLabel(map)
-    trackView(sid, sessionLabelRef.current)
+    try {
+      const sid = getOrCreateSessionId()
+      sessionIdRef.current = sid
+      const map = buildVariantMap(sid, experiments)
+      setVariantMap(map)
+      variantMapRef.current = map
+      sessionLabelRef.current = getSessionVariantLabel(map)
+      trackView(sid, sessionLabelRef.current)
+    } catch (err) {
+      // Loga mas NÃO propaga — quiz continua funcional sem A/B
+      // eslint-disable-next-line no-console
+      console.error('[A/B init]', err)
+    }
   }, [experiments])
 
   // Variant atual pro step renderizado — usado no JSX (re-renderiza com variant)
@@ -1968,7 +2001,9 @@ export default function QuizClient({ experiments = [] }: { experiments?: ActiveE
           }}>
             {/* ─── A/B Test: imagem da variante (se aplicável) ──────
                 Renderizada acima da pergunta. Determinada pelo session_id +
-                experimento ativo pro step atual. Sticky via hash. */}
+                experimento ativo pro step atual. Sticky via hash.
+                onError esconde o wrapper se a imagem 404 — não deixa
+                "buraco" visível no layout. */}
             {currentVariant?.side === 'variant' && typeof currentVariant.content.image_url === 'string' && (
               <div style={{
                 margin: '4px 18px 18px',
@@ -1982,7 +2017,15 @@ export default function QuizClient({ experiments = [] }: { experiments?: ActiveE
                 <img
                   src={currentVariant.content.image_url}
                   alt={typeof currentVariant.content.image_alt === 'string' ? currentVariant.content.image_alt : ''}
+                  loading="eager"
+                  decoding="async"
                   style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  onError={(e) => {
+                    // Imagem quebrou — esconde wrapper inteiro pra não deixar
+                    // box vazio. Quiz continua funcional.
+                    const wrapper = (e.target as HTMLImageElement).parentElement
+                    if (wrapper) wrapper.style.display = 'none'
+                  }}
                 />
               </div>
             )}

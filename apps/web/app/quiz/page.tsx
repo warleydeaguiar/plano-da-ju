@@ -26,11 +26,17 @@ async function fetchExperiments(): Promise<ActiveExperiment[]> {
   if (!url || !key) return [];
   try {
     const sb = createClient(url, key, { auth: { persistSession: false } });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await (sb.from('wg_experiments' as any) as any)
+    // Timeout 3s — se Supabase travar, quiz não fica esperando.
+    // Sem experimentos é melhor que quiz não carregar.
+    const fetchPromise = (sb.from('wg_experiments' as never) as never as
+      { select: (s: string) => { eq: (k: string, v: string) => { eq: (k: string, v: string) => Promise<{ data: ActiveExperiment[] | null }> } } })
       .select('id, flag_key, target_step_id, traffic_pct, control_name, variant_name, variant_content')
       .eq('target_quiz_slug', 'plano-capilar')
       .eq('status', 'running');
+    const timeoutPromise = new Promise<{ data: null }>(resolve =>
+      setTimeout(() => resolve({ data: null }), 3000),
+    );
+    const { data } = await Promise.race([fetchPromise, timeoutPromise]);
     return (data ?? []) as ActiveExperiment[];
   } catch {
     // Fail open — quiz funciona normalmente se experimentos falharem
