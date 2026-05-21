@@ -38,6 +38,7 @@ const NAV: NavItem[] = [
   },
   { icon: '🎬', label: 'Stories da Juliane', href: '/stories' },
   { icon: '🎧', label: 'Suporte Plano Capilar', href: '/suporte' },
+  { icon: '💬', label: 'Conversas (Chatwoot)', href: 'https://conversas.julianecost.com' },
   { icon: '🛍️', label: 'Produtos', href: '/produtos' },
   { icon: '🌿', label: 'Ybera', href: '/ybera' },
   { icon: '📈', label: 'Analytics', href: '/analytics' },
@@ -62,31 +63,48 @@ export default function Sidebar() {
 
       <nav style={{ flex: 1, padding: '16px 0', overflowY: 'auto' }}>
         {NAV.map(item => {
-          const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+          // Link externo (Chatwoot etc.) — abre em nova aba e nunca fica 'active'
+          const isExternal = item.href.startsWith('http://') || item.href.startsWith('https://');
+          const isActive = isExternal
+            ? false
+            : item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
           const hasChildren = item.children && item.children.length > 0;
           const isExpanded = hasChildren && isActive;
 
+          const itemStyle: React.CSSProperties = {
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '10px 20px', fontSize: 13.5, fontWeight: 500,
+            color: isActive ? '#C4607A' : 'rgba(255,255,255,0.55)',
+            background: isActive && !hasChildren ? 'rgba(196,96,122,0.1)' : 'transparent',
+            textDecoration: 'none', transition: 'color 0.15s',
+            borderLeft: isActive ? '3px solid #C4607A' : '3px solid transparent',
+          };
+          const innerContent = (
+            <>
+              <span style={{ fontSize: 15, width: 18, textAlign: 'center', flexShrink: 0 }}>{item.icon}</span>
+              <span style={{ flex: 1 }}>{item.label}</span>
+              {isExternal && (
+                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginRight: -4 }}>↗</span>
+              )}
+              {hasChildren && (
+                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginRight: -4 }}>
+                  {isExpanded ? '▾' : '▸'}
+                </span>
+              )}
+            </>
+          );
+
           return (
             <div key={item.href}>
-              <Link
-                href={item.href}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '10px 20px', fontSize: 13.5, fontWeight: 500,
-                  color: isActive ? '#C4607A' : 'rgba(255,255,255,0.55)',
-                  background: isActive && !hasChildren ? 'rgba(196,96,122,0.1)' : 'transparent',
-                  textDecoration: 'none', transition: 'color 0.15s',
-                  borderLeft: isActive ? '3px solid #C4607A' : '3px solid transparent',
-                }}
-              >
-                <span style={{ fontSize: 15, width: 18, textAlign: 'center', flexShrink: 0 }}>{item.icon}</span>
-                <span style={{ flex: 1 }}>{item.label}</span>
-                {hasChildren && (
-                  <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginRight: -4 }}>
-                    {isExpanded ? '▾' : '▸'}
-                  </span>
-                )}
-              </Link>
+              {isExternal ? (
+                <a href={item.href} target="_blank" rel="noopener noreferrer" style={itemStyle}>
+                  {innerContent}
+                </a>
+              ) : (
+                <Link href={item.href} style={itemStyle}>
+                  {innerContent}
+                </Link>
+              )}
               {/* Submenus */}
               {isExpanded && item.children && (
                 <div style={{ borderLeft: '3px solid #C4607A20', marginLeft: 20 }}>
