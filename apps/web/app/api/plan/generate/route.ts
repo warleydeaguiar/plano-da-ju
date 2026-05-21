@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { generatePlanWithClaude, savePlanToDb } from '@/lib/plan-generator';
 
-export const maxDuration = 120;
+// 300s = max do Vercel Pro plan. Era 120 antes mas estouramos com 52 semanas.
+// Plan-generator agora gera 16 semanas (4 meses) — cabe folgado em 300s.
+export const maxDuration = 300;
 
 /**
  * POST /api/plan/generate

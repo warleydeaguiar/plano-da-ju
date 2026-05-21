@@ -2,7 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
-export const maxDuration = 120
+// Max do Vercel Pro = 300s. Antes era 120 — mas com 52 semanas de Claude
+// (~12k tokens output) podia estourar 60s do Hobby ou 120 nosso.
+export const maxDuration = 300
+
+// Gerar 52 semanas de UMA vez = ~3-4min. Estouramos timeout do Vercel.
+// 16 semanas (4 meses) = ~45-90s, MUITO mais seguro e ainda é
+// conteúdo suficiente pra cliente começar. Admin pode pedir "extender"
+// no futuro pra gerar mais semanas.
+const WEEKS_TO_GENERATE = 16
+const CLAUDE_TIMEOUT_MS = 240_000  // 4min — deixa buffer dentro dos 300s do Vercel
 
 /**
  * POST /api/admin/profiles/[id]/regenerate-plan
@@ -96,7 +105,7 @@ Responda SOMENTE com JSON válido (sem markdown, sem texto extra):
   "mensagem_juliane": "Mensagem pessoal mencionando algo específico do quiz/foto"
 }
 
-Gere TODAS as 52 semanas (cronograma capilar: hidratação/nutrição/reconstrução em rotação).`
+Gere ${WEEKS_TO_GENERATE} semanas (cronograma capilar: hidratação/nutrição/reconstrução em rotação).`
 
     // 3) Chama Claude com foto via URL
     const apiKey = process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_API_KEY
@@ -109,20 +118,39 @@ Gere TODAS as 52 semanas (cronograma capilar: hidratação/nutrição/reconstru�
     }
     aiContent.push({ type: 'text', text: prompt + (hasPhoto ? '' : '\n\nObs: a cliente ainda não enviou foto — gere o plano baseado SOMENTE nas respostas do quiz, sem mencionar análise visual no diagnóstico.') })
 
-    const aiResp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://planodaju.julianecost.com',
-        'X-Title': 'Plano da Ju Admin',
-      },
-      body: JSON.stringify({
-        model: 'anthropic/claude-sonnet-4-6',
-        max_tokens: 12000,
-        messages: [{ role: 'user', content: aiContent }],
-      }),
-    })
+    // AbortController pra parar a chamada se a Claude ficar pendurada
+    // antes do Vercel encerrar o function por timeout (que mata o processo)
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), CLAUDE_TIMEOUT_MS)
+
+    let aiResp: Response
+    try {
+      aiResp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://planodaju.julianecost.com',
+          'X-Title': 'Plano da Ju Admin',
+        },
+        body: JSON.stringify({
+          model: 'anthropic/claude-sonnet-4-6',
+          // 16 semanas × ~250 tokens cada + JSON overhead = ~5000 tokens safety net
+          max_tokens: 6000,
+          messages: [{ role: 'user', content: aiContent }],
+        }),
+        signal: controller.signal,
+      })
+    } catch (err) {
+      clearTimeout(timeoutId)
+      const isAbort = err instanceof Error && err.name === 'AbortError'
+      return NextResponse.json({
+        error: isAbort
+          ? `Timeout: a IA demorou mais de ${CLAUDE_TIMEOUT_MS / 1000}s. Tenta de novo.`
+          : `Erro de rede ao chamar IA: ${err instanceof Error ? err.message : 'desconhecido'}`,
+      }, { status: 504 })
+    }
+    clearTimeout(timeoutId)
 
     if (!aiResp.ok) {
       const txt = await aiResp.text()

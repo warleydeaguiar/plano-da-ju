@@ -60,7 +60,7 @@ Retorne SOMENTE um JSON válido, sem markdown, sem texto extra:
   "mensagem_juliane": "Mensagem pessoal, em 2–3 frases, mencionando algo específico do quiz ou da foto"
 }
 
-Gere TODAS as 52 semanas seguindo cronograma capilar correto (hidratação → nutrição → reconstrução em rotação adequada ao tipo de cabelo da cliente).`;
+Gere 16 semanas (4 meses) seguindo cronograma capilar correto (hidratação → nutrição → reconstrução em rotação adequada ao tipo de cabelo da cliente). O admin pode estender depois.`;
 
 function buildCatalogBlock(products: CatalogProduct[]): string {
   if (products.length === 0) {
@@ -143,20 +143,31 @@ export async function generatePlanWithClaude(
   const apiKey = process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('OPENROUTER_API_KEY não configurado');
 
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': 'https://planodaju.julianecost.com',
-      'X-Title': 'Plano da Ju',
-    },
-    body: JSON.stringify({
-      model: 'anthropic/claude-sonnet-4-6',
-      max_tokens: 12000,
-      messages: [{ role: 'user', content }],
-    }),
-  });
+  // AbortController + max_tokens reduzido — antes (52 semanas/12k tokens)
+  // estourava 504 do Vercel. 16 semanas/6k tokens fica em ~45-90s.
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 240_000);
+
+  let response: Response;
+  try {
+    response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://planodaju.julianecost.com',
+        'X-Title': 'Plano da Ju',
+      },
+      body: JSON.stringify({
+        model: 'anthropic/claude-sonnet-4-6',
+        max_tokens: 6000,
+        messages: [{ role: 'user', content }],
+      }),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!response.ok) {
     const errBody = await response.text();
