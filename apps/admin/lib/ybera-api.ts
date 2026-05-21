@@ -94,6 +94,34 @@ export async function fetchCurrentMonthOrders(): Promise<YberaOrdersResult> {
   return fetchYberaOrders(`${y}-${m}-01`, `${y}-${m}-${d}`)
 }
 
+/**
+ * % de comissão que recebemos sobre o subtotal vendido pelo grupo na Ybera.
+ * Painel deles mostra 15% mas o pagamento real é 20% — documentado no código.
+ */
+export const YBERA_COMMISSION_RATE = 0.20
+
+/**
+ * Soma o subtotal das orders dentro de uma data BR (YYYY-MM-DD).
+ * Aceita timezone BR — uma order com registerDate '2026-05-21T10:30:00Z'
+ * conta como '21/05' (BR), não '21/05' (UTC).
+ */
+export function salesOnDateBR(orders: YberaOrder[], dateBR: string): number {
+  return orders
+    .filter(o => {
+      // Converte UTC → BR (UTC-3)
+      const utcDate = new Date(o.registerDate)
+      const brDate = new Date(utcDate.getTime() - 3 * 60 * 60 * 1000)
+      const brStr = brDate.toISOString().slice(0, 10)
+      return brStr === dateBR
+    })
+    .reduce((s, o) => s + (o.subtotal ?? 0), 0)
+}
+
+/** Soma o subtotal de todas as orders no array (para totais mensais). */
+export function salesTotal(orders: YberaOrder[]): number {
+  return orders.reduce((s, o) => s + (o.subtotal ?? 0), 0)
+}
+
 /** Group orders by YYYY-MM and compute monthly totals */
 export interface MonthlyYberaSales {
   yearMonth: string

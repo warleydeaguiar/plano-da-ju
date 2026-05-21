@@ -1,5 +1,6 @@
 import { createAdminClient } from '../../lib/supabase'
 import { getQuizAdSpend, type AdGroupResult } from '../../lib/meta-ads-quiz'
+import { fetchYberaOrders, salesOnDateBR, salesTotal, YBERA_COMMISSION_RATE } from '../../lib/ybera-api'
 import Sidebar from '../components/Sidebar'
 
 export const revalidate = 60
@@ -172,6 +173,8 @@ export default async function AnalyticsPage() {
     checkInsLast30,
     // Meta Ads
     metaAds,
+    // Ybera orders (pra calcular vendas/comissão dos grupos)
+    yberaMonthOrders,
   ] = await Promise.all([
     // Plano
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -246,6 +249,13 @@ export default async function AnalyticsPage() {
     (sb.from('check_ins') as any).select('*', { count: 'exact', head: true }).gte('checked_at', day30agoBR.toISOString()),
     // Meta Ads
     getQuizAdSpend(),
+    // Vendas Ybera do mês até hoje (usado pra cruzar com investimento Grupos)
+    // Fetch só uma vez do mês inteiro — distribuímos por dia em JS.
+    (async () => {
+      const since = `${yyyy}-${mm}-01`
+      const until = `${yyyy}-${mm}-${dd}`
+      return await fetchYberaOrders(since, until)
+    })(),
   ])
 
   // ── PLANO: KPIs derivados ────────────────────────────────────────
@@ -281,6 +291,29 @@ export default async function AnalyticsPage() {
 
   const cpjToday = joinsToday > 0 ? gruposSpendToday / joinsToday : null   // custo por cadastro hoje
   const cpjMonth = joinsMonth > 0 ? gruposSpendMonth / joinsMonth : null
+
+  // ── YBERA: vendas + comissão (20%) cruzando com investimento Grupos ─
+  const yberaOrders = yberaMonthOrders.orders ?? []
+  const yberaStatus = yberaMonthOrders.status
+  const todayBR     = `${yyyy}-${mm}-${dd}`
+  const ddYest      = String(new Date(todayStartBR.getTime() - 86400_000).getUTCDate()).padStart(2, '0')
+  const yesterdayBR = `${yyyy}-${mm}-${ddYest}`  // simplificação — assume mesmo mês (vira do mês precisa ajuste)
+
+  const yberaSalesToday     = salesOnDateBR(yberaOrders, todayBR)
+  const yberaSalesYesterday = salesOnDateBR(yberaOrders, yesterdayBR)
+  const yberaSalesMonth     = salesTotal(yberaOrders)
+
+  const commissionToday     = yberaSalesToday     * YBERA_COMMISSION_RATE
+  const commissionYesterday = yberaSalesYesterday * YBERA_COMMISSION_RATE
+  const commissionMonth     = yberaSalesMonth     * YBERA_COMMISSION_RATE
+
+  // Lucro líquido = comissão - investimento (não inclui custos operacionais)
+  const gruposProfitToday = commissionToday - gruposSpendToday
+  const gruposProfitMonth = commissionMonth - gruposSpendMonth
+
+  // ROAS dos Grupos = comissão / investimento (verde se ≥1x)
+  const gruposRoasToday = gruposSpendToday > 0 ? commissionToday / gruposSpendToday : null
+  const gruposRoasMonth = gruposSpendMonth > 0 ? commissionMonth / gruposSpendMonth : null
 
   // Funil — Meta Ads (top of funnel)
   // Importante: usar inline_link_clicks ("Cliques no link"), NÃO clicks (todos).
@@ -530,12 +563,12 @@ export default async function AnalyticsPage() {
         <SectionHeader
           icon="📱"
           title="Grupos Ybera — Anúncios com 'Grupos' no nome"
-          subtitle="Custo por cadastro = investimento do dia / pessoas que entraram nos grupos."
+          subtitle={`Cruzamento: investimento (Meta) × vendas Ybera × comissão (${(YBERA_COMMISSION_RATE * 100).toFixed(0)}%). Comissão é o que recebemos.`}
           accentColor={blue}
         />
 
-        {/* KPIs Grupos */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20 }}>
+        {/* KPIs Grupos — linha 1: investimento + cadastros + custo/cadastro */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 14 }}>
           <StatCard
             icon="💸"
             label="Investimento hoje"
@@ -565,6 +598,73 @@ export default async function AnalyticsPage() {
             sub={`${joinsMonth} cadastro${joinsMonth !== 1 ? 's' : ''} · ${brl(gruposSpendMonth)} gasto`}
           />
         </div>
+
+        {/* KPIs Grupos — linha 2: vendas Ybera + comissão (que recebemos) */}
+        {yberaStatus === 'ok' ? (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 14 }}>
+              <StatCard
+                icon="🛍️"
+                label="Vendas Ybera hoje"
+                value={brl(yberaSalesToday)}
+                color="#2D1B2E"
+                sub={`ontem ${brl(yberaSalesYesterday)}`}
+              />
+              <StatCard
+                icon="🤝"
+                label="Comissão hoje"
+                value={brl(commissionToday)}
+                color={green}
+                sub={`${(YBERA_COMMISSION_RATE * 100).toFixed(0)}% das vendas`}
+              />
+              <StatCard
+                icon="📊"
+                label="ROAS hoje"
+                value={gruposRoasToday !== null ? `${gruposRoasToday.toFixed(2)}x` : '—'}
+                color={gruposRoasToday !== null && gruposRoasToday >= 1 ? green : gruposRoasToday !== null ? red : gray}
+                sub={gruposRoasToday !== null ? (gruposRoasToday >= 1 ? 'lucrativo' : 'no prejuízo') : 'sem investimento hoje'}
+              />
+              <StatCard
+                icon={gruposProfitToday >= 0 ? '📈' : '📉'}
+                label="Lucro hoje"
+                value={brl(gruposProfitToday)}
+                color={gruposProfitToday >= 0 ? green : red}
+                sub="comissão − investimento"
+              />
+            </div>
+
+            {/* Mês — totais consolidados */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20 }}>
+              <StatCard label="Vendas Ybera mês" value={brl(yberaSalesMonth)} color="#2D1B2E" sub={`${yberaOrders.length} pedido${yberaOrders.length !== 1 ? 's' : ''}`} />
+              <StatCard label="Comissão mês"     value={brl(commissionMonth)} color={green} />
+              <StatCard
+                label="ROAS mês"
+                value={gruposRoasMonth !== null ? `${gruposRoasMonth.toFixed(2)}x` : '—'}
+                color={gruposRoasMonth !== null && gruposRoasMonth >= 1 ? green : gruposRoasMonth !== null ? red : gray}
+              />
+              <StatCard
+                label="Lucro mês"
+                value={brl(gruposProfitMonth)}
+                color={gruposProfitMonth >= 0 ? green : red}
+              />
+            </div>
+          </>
+        ) : (
+          <div style={{
+            background: '#fff', borderRadius: 14, border: `1px solid ${orange}30`,
+            padding: '14px 18px', marginBottom: 20,
+            display: 'flex', gap: 12, alignItems: 'center',
+          }}>
+            <span style={{ fontSize: 22 }}>⚠️</span>
+            <div style={{ fontSize: 13, color: gray }}>
+              <strong style={{ color: '#2D1B2E' }}>Vendas Ybera indisponíveis</strong> — {
+                yberaStatus === 'no_token'
+                  ? 'configure YBERA_API_TOKEN no Vercel para ver comissão/lucro.'
+                  : 'erro ao chamar API da Ybera. Tente recarregar.'
+              }
+            </div>
+          </div>
+        )}
 
         {/* Grupos — gráfico + campanhas */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>

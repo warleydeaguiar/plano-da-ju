@@ -76,16 +76,31 @@ export async function POST(req: NextRequest) {
           })
           .eq('email', email);
 
+        // Idempotência: PagarMe dispara order.paid + charge.paid pra mesma
+        // venda. Antes gravávamos 2 events 'payment_confirmed' por session
+        // → inflava /checkout (3 vendas quando era 1). Agora só grava o
+        // primeiro que chega; o segundo é silenciosamente ignorado.
+        const sessionKey = profile?.checkout_session_id ?? data.id ?? email;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase.from('checkout_events') as any).insert({
-          session_id: profile?.checkout_session_id ?? data.id ?? email,
-          event_type: 'payment_confirmed',
-          email,
-          payment_type: subType === 'annual_card' ? 'card' : 'pix',
-          amount_cents: data.amount ?? 3490,
-          order_id: data.id,
-          metadata: { webhook_event: eventType },
-        });
+        const { data: existingEvent } = await (supabase.from('checkout_events') as any)
+          .select('id')
+          .eq('session_id', sessionKey)
+          .eq('event_type', 'payment_confirmed')
+          .limit(1)
+          .maybeSingle();
+
+        if (!existingEvent) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (supabase.from('checkout_events') as any).insert({
+            session_id: sessionKey,
+            event_type: 'payment_confirmed',
+            email,
+            payment_type: subType === 'annual_card' ? 'card' : 'pix',
+            amount_cents: data.amount ?? 3490,
+            order_id: data.id,
+            metadata: { webhook_event: eventType },
+          });
+        }
 
         // Meta CAPI — Purchase server-side
         const ans = (profile?.quiz_answers ?? {}) as Record<string, unknown>;

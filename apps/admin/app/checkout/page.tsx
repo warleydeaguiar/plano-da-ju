@@ -47,25 +47,38 @@ export default async function CheckoutFunnelPage({
 }) {
   const params = await searchParams
   const days = parseInt(params.days ?? '7', 10)
-  const since = new Date(Date.now() - days * 86400000).toISOString()
+
+  // Janela: dias INTEIROS em Brasília (UTC-3), não sliding window 24h.
+  // days=1 → desde meia-noite de hoje em BR (NÃO 'últimas 24h' que pegava ontem)
+  const now = new Date()
+  const brasiliaOffsetMs = 3 * 60 * 60 * 1000
+  const brasiliaNow = new Date(now.getTime() - brasiliaOffsetMs)
+  const yyyy = brasiliaNow.getUTCFullYear()
+  const mm   = String(brasiliaNow.getUTCMonth() + 1).padStart(2, '0')
+  const dd   = String(brasiliaNow.getUTCDate()).padStart(2, '0')
+  const todayStartBR = new Date(`${yyyy}-${mm}-${dd}T03:00:00.000Z`)  // 03:00 UTC = 00:00 BR
+  const since = days === 1
+    ? todayStartBR.toISOString()
+    : new Date(todayStartBR.getTime() - (days - 1) * 86400_000).toISOString()
 
   const sb = createAdminClient()
 
   // Eventos do período
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: events } = await (sb as any)
     .from('checkout_events')
-    .select('event_type, session_id, email, payment_type, amount_cents, created_at')
+    .select('event_type, session_id, email, payment_type, amount_cents, order_id, created_at')
     .gte('created_at', since)
     .order('created_at', { ascending: false })
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const allEvents: any[] = events ?? []
 
-  // Conta SESSIONS únicas por step (não eventos)
+  // Conta SESSIONS únicas por step (não eventos). Set já deduplica.
   const sessionsByStep = new Map<string, Set<string>>()
   FUNNEL_STEPS.forEach(s => sessionsByStep.set(s.key, new Set()))
   for (const e of allEvents) {
-    if (sessionsByStep.has(e.event_type)) {
+    if (sessionsByStep.has(e.event_type) && e.session_id) {
       sessionsByStep.get(e.event_type)!.add(e.session_id)
     }
   }
@@ -82,21 +95,33 @@ export default async function CheckoutFunnelPage({
     }
   })
 
-  // Métricas-chave
-  const paidCount = sessionsByStep.get('payment_confirmed')?.size ?? 0
+  // ── Vendas reais: dedup por session_id ────────────────────────
+  // Webhook PagarMe dispara em 'order.paid' E 'charge.paid' — grava 2 events
+  // por venda real (ch_xxx + or_xxx). Aqui colapsamos por session_id pra
+  // contar 1 vez só.
+  const paidBySession = new Map<string, { amount_cents: number; payment_type: string }>()
+  for (const e of allEvents) {
+    if (e.event_type !== 'payment_confirmed' || !e.session_id) continue
+    // Primeiro evento ganha — events seguintes pra mesma session são duplicatas
+    if (!paidBySession.has(e.session_id)) {
+      paidBySession.set(e.session_id, {
+        amount_cents: e.amount_cents ?? 3490,
+        payment_type: e.payment_type ?? 'pix',
+      })
+    }
+  }
+
+  const paidCount = paidBySession.size
   const failedCount = allEvents.filter(e => e.event_type === 'payment_failed').length
   const conversionRate = topCount > 0 ? (paidCount / topCount) * 100 : 0
-  const totalRevenue = allEvents
-    .filter(e => e.event_type === 'payment_confirmed')
-    .reduce((acc, e) => acc + (e.amount_cents ?? 0), 0) / 100
+  const totalRevenue = Array.from(paidBySession.values())
+    .reduce((acc, p) => acc + p.amount_cents, 0) / 100
 
-  // Quebra por método de pagamento (compras confirmadas)
+  // Quebra por método (já deduplicado)
   const paymentBreakdown = { pix: 0, card: 0 }
-  for (const e of allEvents) {
-    if (e.event_type === 'payment_confirmed') {
-      if (e.payment_type === 'pix') paymentBreakdown.pix++
-      if (e.payment_type === 'card') paymentBreakdown.card++
-    }
+  for (const p of paidBySession.values()) {
+    if (p.payment_type === 'pix')  paymentBreakdown.pix++
+    if (p.payment_type === 'card') paymentBreakdown.card++
   }
 
   // Lista de eventos recentes (top 50)
