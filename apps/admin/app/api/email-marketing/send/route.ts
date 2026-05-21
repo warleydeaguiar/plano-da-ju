@@ -2,6 +2,75 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { sendEmail, fillTemplate } from '@/lib/ses-mailer'
 import { buildPersonalizationVars, fillRichTemplate } from '@/lib/email-personalization'
+import { injectTracking } from '@/lib/email-tracking'
+
+/**
+ * Helper que faz o ciclo completo de envio com tracking:
+ *  1. INSERT pending → ganha send_id
+ *  2. injectTracking(html, sendId) → pixel + link rewrite
+ *  3. SES envia
+ *  4. UPDATE com status final + message_id
+ *
+ * Se o INSERT falhar, envia sem tracking pra não bloquear entrega.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function sendWithTracking(sb: any, params: {
+  to: string
+  toName?: string | null
+  subject: string
+  html: string
+  text?: string
+  sequence_id?: string | null
+  campaign_id?: string | null
+  lead_id?: string | null
+}): Promise<{ ok: boolean; error?: string; messageId?: string }> {
+  // 1) Insert pending
+  const { data: inserted, error: insertErr } = await sb
+    .from('wg_email_sends')
+    .insert({
+      lead_id:     params.lead_id     ?? null,
+      sequence_id: params.sequence_id ?? null,
+      campaign_id: params.campaign_id ?? null,
+      to_email:    params.to,
+      to_name:     params.toName ?? null,
+      subject:     params.subject,
+      status:      'pending',
+    })
+    .select('id')
+    .single()
+
+  if (insertErr || !inserted) {
+    // Sem tracking — envia direto
+    return await sendEmail({
+      to: params.to,
+      toName: params.toName ?? undefined,
+      subject: params.subject,
+      html: params.html,
+      text: params.text,
+    })
+  }
+
+  const sendId = inserted.id as string
+  const htmlTracked = injectTracking(params.html, sendId)
+
+  const result = await sendEmail({
+    to: params.to,
+    toName: params.toName ?? undefined,
+    subject: params.subject,
+    html: htmlTracked,
+    text: params.text,
+  })
+
+  await sb.from('wg_email_sends')
+    .update({
+      status: result.ok ? 'sent' : 'error',
+      message_id: result.messageId ?? null,
+      error_message: result.error ?? null,
+    })
+    .eq('id', sendId)
+
+  return result
+}
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -139,23 +208,14 @@ async function runSequence(sb: any, seq: any, opts: { dryRun?: boolean; toleranc
         session_id: r.session_id,
       })
 
-      const result = await sendEmail({
+      const result = await sendWithTracking(sb, {
         to: r.to_email,
-        toName: r.to_name ?? undefined,
+        toName: r.to_name,
         subject: fillRichTemplate(seq.subject, vars),
         html: fillRichTemplate(seq.html_body, vars),
         text: seq.text_body ? fillRichTemplate(seq.text_body, vars) : undefined,
-      })
-
-      await sb.from('wg_email_sends').insert({
-        lead_id: r.lead_id,
         sequence_id: seq.id,
-        to_email: r.to_email,
-        to_name: r.to_name,
-        subject: fillRichTemplate(seq.subject, vars),
-        status: result.ok ? 'sent' : 'error',
-        message_id: result.messageId ?? null,
-        error_message: result.error ?? null,
+        lead_id: r.lead_id,
       })
 
       if (result.ok) sent++
@@ -192,23 +252,14 @@ export async function POST(req: NextRequest) {
       session_id: session_id ?? null,
     })
 
-    const result = await sendEmail({
+    const result = await sendWithTracking(sb, {
       to: to_email,
       toName: to_name,
       subject: fillRichTemplate(subject, vars),
       html: fillRichTemplate(html_body, vars),
       text: text_body ? fillRichTemplate(text_body, vars) : undefined,
-    })
-
-    await (sb as any).from('wg_email_sends').insert({
       lead_id: lead_id || null,
       sequence_id: sequence_id || null,
-      to_email,
-      to_name,
-      subject: fillRichTemplate(subject, vars),
-      status: result.ok ? 'sent' : 'error',
-      message_id: result.messageId ?? null,
-      error_message: result.error ?? null,
     })
 
     return NextResponse.json({ ok: result.ok, error: result.error, used_vars: Object.keys(vars).length })
@@ -270,20 +321,14 @@ export async function POST(req: NextRequest) {
         const vars = await buildPersonalizationVars(sb as any, {
           name: lead.name, email: lead.email, session_id: lead.session_id,
         })
-        const result = await sendEmail({
+        const result = await sendWithTracking(sb, {
           to: lead.email,
           toName: lead.name,
           subject: fillRichTemplate(subject, vars),
           html: fillRichTemplate(html_body, vars),
           text: text_body ? fillRichTemplate(text_body, vars) : undefined,
-        })
-        await (sb as any).from('wg_email_sends').insert({
-          lead_id: lead.id, campaign_id,
-          to_email: lead.email, to_name: lead.name,
-          subject: fillRichTemplate(subject, vars),
-          status: result.ok ? 'sent' : 'error',
-          message_id: result.messageId ?? null,
-          error_message: result.error ?? null,
+          lead_id: lead.id,
+          campaign_id,
         })
         if (result.ok) sent++; else errors++
       }))

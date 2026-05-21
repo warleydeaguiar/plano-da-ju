@@ -8,23 +8,32 @@ export async function GET() {
   const sb = createAdminClient()
 
   const [sendsResult, seqResult, leadsResult] = await Promise.all([
-    (sb as any).from('wg_email_sends').select('status, sequence_id, sent_at, opened_at'),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sb as any).from('wg_email_sends').select('status, sequence_id, sent_at, opened_at, clicked_at, open_count, click_count'),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sb as any).from('wg_email_sequences').select('id, name, delay_days, delay_minutes, audience, anchor_event, enabled'),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sb as any).from('wg_quiz_leads').select('id, email', { count: 'exact', head: true }),
   ])
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sends: any[] = sendsResult.data ?? []
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sequences: any[] = seqResult.data ?? []
   const totalLeads = leadsResult.count ?? 0
 
-  const total = sends.length
-  const sent = sends.filter(s => s.status === 'sent').length
-  const errors = sends.filter(s => s.status === 'error').length
-  const opened = sends.filter(s => s.opened_at != null).length
+  const total   = sends.length
+  const sent    = sends.filter(s => s.status === 'sent').length
+  const errors  = sends.filter(s => s.status === 'error').length
+  const opened  = sends.filter(s => s.opened_at  != null).length
+  const clicked = sends.filter(s => s.clicked_at != null).length
 
-  // Per-sequence stats
+  // Per-sequence stats — agora inclui opened/clicked + taxas
   const bySequence = sequences.map(seq => {
     const s = sends.filter(e => e.sequence_id === seq.id)
+    const seqSent    = s.filter(e => e.status === 'sent').length
+    const seqOpened  = s.filter(e => e.opened_at  != null).length
+    const seqClicked = s.filter(e => e.clicked_at != null).length
     return {
       id: seq.id,
       name: seq.name,
@@ -33,8 +42,12 @@ export async function GET() {
       audience: seq.audience ?? 'no_purchase',
       anchor_event: seq.anchor_event ?? 'lead_created',
       enabled: seq.enabled,
-      sent: s.filter(e => e.status === 'sent').length,
-      errors: s.filter(e => e.status === 'error').length,
+      sent:    seqSent,
+      errors:  s.filter(e => e.status === 'error').length,
+      opened:  seqOpened,
+      clicked: seqClicked,
+      openRate:  seqSent > 0 ? Math.round((seqOpened  / seqSent) * 100) : 0,
+      clickRate: seqSent > 0 ? Math.round((seqClicked / seqSent) * 100) : 0,
     }
   })
 
@@ -62,7 +75,10 @@ export async function GET() {
     sent,
     errors,
     opened,
-    openRate: sent > 0 ? Math.round((opened / sent) * 100) : 0,
+    clicked,
+    openRate:    sent > 0 ? Math.round((opened  / sent) * 100) : 0,
+    clickRate:   sent > 0 ? Math.round((clicked / sent) * 100) : 0,
+    ctor:        opened > 0 ? Math.round((clicked / opened) * 100) : 0,  // click-to-open
     totalLeads,
     bySequence,
     daily: dailyArray,

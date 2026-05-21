@@ -86,7 +86,10 @@ interface Metrics {
   sent: number
   errors: number
   opened: number
-  openRate: number
+  clicked: number
+  openRate:  number  // opened/sent
+  clickRate: number  // clicked/sent
+  ctor:      number  // clicked/opened (click-to-open rate)
   totalLeads: number
   bySequence: Array<{
     id: string
@@ -98,6 +101,10 @@ interface Metrics {
     enabled: boolean
     sent: number
     errors: number
+    opened?: number
+    clicked?: number
+    openRate?:  number
+    clickRate?: number
   }>
   daily: Array<{ date: string; count: number; label: string }>
 }
@@ -169,16 +176,51 @@ function DashboardView({ metrics, loading }: { metrics: Metrics | null; loading:
 
   return (
     <div>
-      {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 24 }}>
-        <StatCard icon="📧" label="Total enviados" value={metrics.sent.toLocaleString('pt-BR')} />
-        <StatCard icon="👥" label="Leads na base" value={metrics.totalLeads.toLocaleString('pt-BR')} color={T.blue} />
+      {/* Stats — linha principal (envios + engajamento) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 14 }}>
         <StatCard
-          icon="📭" label="Erros de envio"
-          value={metrics.errors}
-          color={metrics.errors > 0 ? T.red : T.green}
+          icon="📧"
+          label="Enviados"
+          value={metrics.sent.toLocaleString('pt-BR')}
+          sub={metrics.errors > 0 ? `${metrics.errors} com erro` : 'todos com sucesso'}
         />
-        <StatCard icon="📊" label="Total de registros" value={metrics.total.toLocaleString('pt-BR')} color={T.gray} />
+        <StatCard
+          icon="👁️"
+          label="Aberturas"
+          value={`${metrics.openRate}%`}
+          sub={`${metrics.opened.toLocaleString('pt-BR')} de ${metrics.sent.toLocaleString('pt-BR')}`}
+          color={T.blue}
+        />
+        <StatCard
+          icon="🖱️"
+          label="Cliques"
+          value={`${metrics.clickRate}%`}
+          sub={`${metrics.clicked.toLocaleString('pt-BR')} de ${metrics.sent.toLocaleString('pt-BR')}`}
+          color={T.pink}
+        />
+        <StatCard
+          icon="🎯"
+          label="CTOR"
+          value={`${metrics.ctor}%`}
+          sub="cliques entre quem abriu"
+          color={T.green}
+        />
+      </div>
+
+      {/* Stats — linha secundária (base + erros) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 14 }}>
+        <StatCard icon="👥" label="Leads na base" value={metrics.totalLeads.toLocaleString('pt-BR')} color={T.gray} />
+        <StatCard icon="📭" label="Erros" value={metrics.errors} color={metrics.errors > 0 ? T.red : T.green} />
+        <StatCard icon="📊" label="Total registros" value={metrics.total.toLocaleString('pt-BR')} color={T.gray} />
+      </div>
+
+      {/* Aviso sobre Mail Privacy */}
+      <div style={{
+        background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: 10,
+        padding: '10px 14px', marginBottom: 24,
+        fontSize: 12, color: '#9A3412', lineHeight: 1.5,
+      }}>
+        ℹ️ Aberturas incluem o <strong>Apple Mail Privacy Protection</strong> e o Gmail Image Proxy, que pré-carregam imagens server-side. Isso pode inflar o número em ~20-30% (especialmente em iPhones). <strong>Cliques são mais confiáveis</strong> como métrica real de engajamento.
       </div>
 
       {/* Daily chart */}
@@ -229,12 +271,24 @@ function DashboardView({ metrics, loading }: { metrics: Metrics | null; loading:
                     {seq.anchor_event === 'purchase' && <> · pós-compra</>}
                   </div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
+                <div style={{ textAlign: 'right', minWidth: 56 }}>
                   <div style={{ fontSize: 16, fontWeight: 800, color: T.ink }}>{seq.sent}</div>
                   <div style={{ fontSize: 11, color: T.inkMuted }}>enviados</div>
                 </div>
+                <div style={{ textAlign: 'right', minWidth: 64 }}>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: seq.sent > 0 ? T.blue : T.inkMuted }}>
+                    {seq.openRate ?? 0}%
+                  </div>
+                  <div style={{ fontSize: 11, color: T.inkMuted }}>{seq.opened ?? 0} abertos</div>
+                </div>
+                <div style={{ textAlign: 'right', minWidth: 64 }}>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: seq.sent > 0 ? T.pink : T.inkMuted }}>
+                    {seq.clickRate ?? 0}%
+                  </div>
+                  <div style={{ fontSize: 11, color: T.inkMuted }}>{seq.clicked ?? 0} cliques</div>
+                </div>
                 {seq.errors > 0 && (
-                  <div style={{ textAlign: 'right' }}>
+                  <div style={{ textAlign: 'right', minWidth: 50 }}>
                     <div style={{ fontSize: 16, fontWeight: 800, color: T.red }}>{seq.errors}</div>
                     <div style={{ fontSize: 11, color: T.inkMuted }}>erros</div>
                   </div>
