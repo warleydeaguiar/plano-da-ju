@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { T, fonts, gradient } from '../theme';
 
 type NavItem = {
   icon: string
@@ -51,18 +52,29 @@ export default function Sidebar() {
 
   return (
     <aside style={{
-      width: 220, minWidth: 220, background: '#1C1C1E',
+      width: 234, minWidth: 234, background: T.cream,
       display: 'flex', flexDirection: 'column', height: '100vh',
       position: 'fixed', left: 0, top: 0,
+      borderRight: `1px solid ${T.border}`,
+      fontFamily: fonts.ui,
     }}>
-      <div style={{ padding: '28px 20px 24px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-        <div style={{ fontSize: 17, fontWeight: 700, color: '#fff', letterSpacing: -0.3 }}>Plano da Ju</div>
-        <div style={{ fontSize: 11, fontWeight: 500, color: '#C4607A', letterSpacing: 0.5, textTransform: 'uppercase', marginTop: 2 }}>Admin</div>
+      {/* Brand */}
+      <div style={{ padding: '26px 22px 22px', borderBottom: `1px solid ${T.border}` }}>
+        <div style={{
+          fontSize: 21, fontWeight: 600, color: T.ink, letterSpacing: -0.4,
+          fontFamily: fonts.display,
+        }}>
+          Plano da <em style={{ fontStyle: 'italic', color: T.pinkDeep }}>Ju</em>
+        </div>
+        <div style={{
+          fontSize: 10, fontWeight: 700, color: T.gold, letterSpacing: 1.5,
+          textTransform: 'uppercase', marginTop: 3,
+        }}>Painel Admin</div>
       </div>
 
-      <nav style={{ flex: 1, padding: '16px 0', overflowY: 'auto' }}>
+      {/* Nav */}
+      <nav style={{ flex: 1, padding: '14px 12px', overflowY: 'auto' }}>
         {NAV.map(item => {
-          // Link externo (Chatwoot etc.) — abre em nova aba e nunca fica 'active'
           const isExternal = item.href.startsWith('http://') || item.href.startsWith('https://');
           const isActive = isExternal
             ? false
@@ -71,22 +83,32 @@ export default function Sidebar() {
           const isExpanded = hasChildren && isActive;
 
           const itemStyle: React.CSSProperties = {
-            display: 'flex', alignItems: 'center', gap: 10,
-            padding: '10px 20px', fontSize: 13.5, fontWeight: 500,
-            color: isActive ? '#C4607A' : 'rgba(255,255,255,0.55)',
-            background: isActive && !hasChildren ? 'rgba(196,96,122,0.1)' : 'transparent',
-            textDecoration: 'none', transition: 'color 0.15s',
-            borderLeft: isActive ? '3px solid #C4607A' : '3px solid transparent',
+            display: 'flex', alignItems: 'center', gap: 11,
+            padding: '10px 13px', fontSize: 13.5, fontWeight: isActive ? 600 : 500,
+            color: isActive ? '#fff' : T.inkSoft,
+            background: isActive && !hasChildren ? gradient.heroSoft : 'transparent',
+            textDecoration: 'none',
+            borderRadius: 11,
+            marginBottom: 2,
+            transition: 'all 0.15s',
+            boxShadow: isActive && !hasChildren ? '0 4px 12px rgba(190,24,93,0.22)' : 'none',
           };
+          // Item-pai com filhos quando ativo: fundo rosa suave (não gradiente)
+          if (isActive && hasChildren) {
+            itemStyle.background = T.pinkSoft;
+            itemStyle.color = T.pinkDeep;
+            itemStyle.boxShadow = 'none';
+          }
+
           const innerContent = (
             <>
               <span style={{ fontSize: 15, width: 18, textAlign: 'center', flexShrink: 0 }}>{item.icon}</span>
               <span style={{ flex: 1 }}>{item.label}</span>
               {isExternal && (
-                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginRight: -4 }}>↗</span>
+                <span style={{ fontSize: 10, color: T.inkMuted, marginRight: -2 }}>↗</span>
               )}
               {hasChildren && (
-                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginRight: -4 }}>
+                <span style={{ fontSize: 10, color: isActive ? T.pinkDeep : T.inkMuted, marginRight: -2 }}>
                   {isExpanded ? '▾' : '▸'}
                 </span>
               )}
@@ -106,7 +128,7 @@ export default function Sidebar() {
               )}
               {/* Submenus */}
               {isExpanded && item.children && (
-                <div style={{ borderLeft: '3px solid #C4607A20', marginLeft: 20 }}>
+                <div style={{ margin: '2px 0 6px 18px', paddingLeft: 12, borderLeft: `2px solid ${T.pinkBlush}` }}>
                   {item.children.map(child => {
                     const childActive = pathname === child.href || pathname.startsWith(child.href + '/')
                     return (
@@ -115,13 +137,13 @@ export default function Sidebar() {
                         href={child.href}
                         style={{
                           display: 'block',
-                          padding: '8px 20px 8px 24px',
+                          padding: '7px 12px',
                           fontSize: 12.5, fontWeight: childActive ? 700 : 500,
-                          color: childActive ? '#C4607A' : 'rgba(255,255,255,0.45)',
+                          color: childActive ? T.pinkDeep : T.inkSoft,
                           textDecoration: 'none',
-                          background: childActive ? 'rgba(196,96,122,0.08)' : 'transparent',
-                          borderLeft: childActive ? '2px solid #C4607A' : '2px solid transparent',
-                          marginLeft: -3,
+                          background: childActive ? T.pinkSoft : 'transparent',
+                          borderRadius: 8,
+                          marginBottom: 1,
                         }}
                       >
                         {child.label}
@@ -135,15 +157,20 @@ export default function Sidebar() {
         })}
       </nav>
 
-      <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', gap: 10 }}>
+      {/* User */}
+      <div style={{
+        padding: '14px 18px', borderTop: `1px solid ${T.border}`,
+        display: 'flex', alignItems: 'center', gap: 11,
+      }}>
         <div style={{
-          width: 32, height: 32, borderRadius: '50%', background: '#C4607A',
+          width: 36, height: 36, borderRadius: '50%', background: gradient.hero,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0,
+          fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0,
+          boxShadow: '0 4px 12px rgba(190,24,93,0.25)',
         }}>JC</div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 12.5, fontWeight: 600, color: 'rgba(255,255,255,0.85)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Juliane Cost</div>
-          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', cursor: 'pointer' }}>Sair</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: T.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Juliane Cost</div>
+          <div style={{ fontSize: 11, color: T.inkMuted, cursor: 'pointer' }}>Sair</div>
         </div>
       </div>
     </aside>
