@@ -43,6 +43,7 @@ const NAV: NavItem[] = [
   { icon: '🌿', label: 'Ybera', href: '/ybera' },
   { icon: '🧪', label: 'Experimentos A/B', href: '/experimentos' },
   { icon: '🛒', label: 'Checkout', href: '/checkout' },
+  { icon: '🚨', label: 'Erros de Checkout', href: '/erros' },
   { icon: '⚙️', label: 'Configurações', href: '/configuracoes' },
 ];
 

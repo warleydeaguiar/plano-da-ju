@@ -5,6 +5,7 @@ import { resolveAuthUserId } from '@/lib/supabase/auth-resolve';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { extractFieldsFromQuiz } from '@/lib/quiz-to-profile';
 import type { PagarMeOrder } from '@/lib/pagarme/types';
+import { logCheckoutError } from '@/lib/checkout-log';
 
 const PRICE_CENTS = 3490; // R$34,90
 
@@ -19,8 +20,13 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  let logEmail: string | null = null;
+  let logSession: string | null = null;
+
   try {
     const { name, email, cpf, phone, quiz_answers, session_id } = await req.json();
+    logEmail = email ?? null;
+    logSession = typeof session_id === 'string' ? session_id : null;
 
     if (!name || !email) {
       return NextResponse.json({ error: 'Nome e e-mail são obrigatórios' }, { status: 400 });
@@ -173,6 +179,13 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     console.error('[checkout/pix]', err);
+    await logCheckoutError({
+      route: 'checkout/pix',
+      email: logEmail,
+      payment_type: 'pix',
+      session_id: logSession,
+      err,
+    });
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Erro ao gerar PIX' },
       { status: 500 },

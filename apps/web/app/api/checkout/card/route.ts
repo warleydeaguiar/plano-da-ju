@@ -6,6 +6,7 @@ import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { extractFieldsFromQuiz } from '@/lib/quiz-to-profile';
 import { getOrCreateCardPlan } from '@/lib/pagarme/plans';
 import type { PagarMeSubscription } from '@/lib/pagarme/types';
+import { logCheckoutError } from '@/lib/checkout-log';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,12 +19,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Muitas tentativas. Aguarde 1 minuto.' }, { status: 429 });
   }
 
+  // Capturados fora do try pra estarem disponíveis no log de erro
+  let logEmail: string | null = null;
+  let logSession: string | null = null;
+  let logInstallments = 1;
+
   try {
     const {
       name, email, cpf, phone,
       card_token, quiz_answers, session_id, billing_address,
       installments: rawInstallments,
     } = await req.json();
+    logEmail = email ?? null;
+    logSession = typeof session_id === 'string' ? session_id : null;
 
     if (!name || !email || !card_token) {
       return NextResponse.json(
@@ -34,6 +42,7 @@ export async function POST(req: NextRequest) {
 
     // Parcelas: 1..4 sem juros (validado server-side)
     const n = Math.max(1, Math.min(4, parseInt(String(rawInstallments ?? '1'), 10) || 1));
+    logInstallments = n;
 
     const cleanCpf   = typeof cpf   === 'string' ? cpf.replace(/\D/g, '')   : '';
     // Phone: prefere o que veio do form, fallback pra quiz_answers (já coletado no quiz)
@@ -95,8 +104,10 @@ export async function POST(req: NextRequest) {
           },
         } : {}),
       },
+      // card_token vai no TOP-LEVEL — dentro de `card` a PagarMe ignora o token
+      // e exige número/validade do cartão (erro "The card number is required").
+      card_token,
       card: {
-        card_token,
         billing_address: {
           line_1: billing_address?.line_1 ?? billing_address?.street ?? 'Não informado',
           zip_code: cleanCep,
@@ -171,6 +182,14 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     console.error('[checkout/card]', err);
+    await logCheckoutError({
+      route: 'checkout/card',
+      email: logEmail,
+      payment_type: 'card',
+      session_id: logSession,
+      err,
+      context: { installments: logInstallments },
+    });
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Erro ao processar cartão' },
       { status: 500 },
