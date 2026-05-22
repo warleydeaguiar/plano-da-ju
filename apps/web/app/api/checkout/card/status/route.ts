@@ -22,6 +22,31 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    if (orderId.startsWith('sub_')) {
+      // ── Subscription ID (caso o charge ainda não exista) ─────
+      const sub = await pagarme.get<{
+        id: string;
+        status: string;
+        customer?: { email?: string };
+        charges?: Array<{ status: string }>;
+      }>(`/subscriptions/${orderId}`);
+
+      if (sub.customer?.email?.toLowerCase().trim() !== email.toLowerCase().trim()) {
+        return NextResponse.json({ error: 'Assinatura não pertence a esse email' }, { status: 403 });
+      }
+
+      const chargeStatus = sub.charges?.[0]?.status;
+      const isPaid   = chargeStatus === 'paid';
+      const isFailed = ['failed', 'canceled', 'not_authorized', 'chargedback'].includes(chargeStatus ?? '')
+                    || ['canceled', 'expired'].includes(sub.status);
+
+      return NextResponse.json({
+        paid:   isPaid,
+        failed: isFailed,
+        status: sub.status,
+      });
+    }
+
     if (orderId.startsWith('ch_')) {
       // ── Charge ID (subscription flow) ───────────────────────────
       const charge = await pagarme.get<{
@@ -36,7 +61,7 @@ export async function GET(req: NextRequest) {
       }
 
       const isPaid   = charge.status === 'paid';
-      const isFailed = ['failed', 'canceled'].includes(charge.status);
+      const isFailed = ['failed', 'canceled', 'not_authorized', 'chargedback'].includes(charge.status);
 
       return NextResponse.json({
         paid:   isPaid,

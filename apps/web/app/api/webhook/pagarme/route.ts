@@ -17,6 +17,20 @@ const HANDLED_EVENTS = new Set([
 
 export async function POST(req: NextRequest) {
   try {
+    // Basic Auth — só rejeita se env vars estiverem setadas (permite deploy gradual)
+    const expectedUser = process.env.PAGARME_WEBHOOK_USER;
+    const expectedPass = process.env.PAGARME_WEBHOOK_PASS;
+    if (expectedUser && expectedPass) {
+      const auth = req.headers.get('authorization') ?? '';
+      const expected = 'Basic ' + Buffer.from(`${expectedUser}:${expectedPass}`).toString('base64');
+      if (auth !== expected) {
+        console.warn('[webhook/pagarme] basic auth mismatch — request rejected');
+        return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+      }
+    } else {
+      console.warn('[webhook/pagarme] PAGARME_WEBHOOK_USER/PASS not set — accepting unauthenticated requests (TEMPORARY)');
+    }
+
     const body = await req.json();
     const eventType: string = body.type;
 
@@ -43,7 +57,12 @@ export async function POST(req: NextRequest) {
 
         if (profile?.subscription_status === 'active') {
           // Já ativo — idempotente, mas ainda salva o subscriptionId se ainda não foi gravado
-          const subscriptionIdIdem: string | null = (data as any).subscription?.id ?? (data as any).subscription_id ?? null;
+          const subscriptionIdIdem: string | null =
+            (data as any).subscription?.id ??
+            (data as any).subscription_id ??
+            (data as any).invoice?.subscription_id ??
+            (data as any).invoice?.subscription?.id ??
+            null;
           if (subscriptionIdIdem && !profile?.pagarme_subscription_id) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             await (supabase.from('profiles') as any)
@@ -67,7 +86,12 @@ export async function POST(req: NextRequest) {
           .maybeSingle();
         const quizSessionId: string | null = leadMatch?.session_id ?? null;
 
-        const subscriptionId: string | null = (data as any).subscription?.id ?? (data as any).subscription_id ?? null;
+        const subscriptionId: string | null =
+          (data as any).subscription?.id ??
+          (data as any).subscription_id ??
+          (data as any).invoice?.subscription_id ??
+          (data as any).invoice?.subscription?.id ??
+          null;
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (supabase.from('profiles') as any)
@@ -198,12 +222,17 @@ export async function POST(req: NextRequest) {
       case 'subscription.renewed': {
         const sub = body.data;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase.from('profiles') as any)
+        const { data: renewed, error: renewErr } = await (supabase.from('profiles') as any)
           .update({
             subscription_status: 'active',
             subscription_expires_at: sub.current_cycle?.end_at ?? null,
           })
-          .eq('pagarme_subscription_id', sub.id);
+          .eq('pagarme_subscription_id', sub.id)
+          .select('id');
+        if (renewErr) console.error('[webhook subscription.renewed]', renewErr);
+        if (!renewed || renewed.length === 0) {
+          console.warn(`[webhook subscription.renewed] no profile found for pagarme_subscription_id=${sub.id}`);
+        }
         break;
       }
 

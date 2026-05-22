@@ -61,13 +61,15 @@ export async function POST(req: NextRequest) {
           },
         } : {}),
       },
-      card_token,
-      billing_address: {
-        line_1: 'Endereço cadastrado',
-        zip_code: cleanCep,
-        city:  billing_address?.city  ?? 'São Paulo',
-        state: billing_address?.state ?? 'SP',
-        country: 'BR',
+      card: {
+        card_token,
+        billing_address: {
+          line_1: billing_address?.line_1 ?? billing_address?.street ?? 'Não informado',
+          zip_code: cleanCep,
+          city:  billing_address?.city  ?? 'São Paulo',
+          state: billing_address?.state ?? 'SP',
+          country: 'BR',
+        },
       },
       metadata: {
         source:       'plano-da-ju-web',
@@ -79,11 +81,12 @@ export async function POST(req: NextRequest) {
     const supabase = await createServiceClient();
     const userId   = await resolveAuthUserId(supabase, email);
 
-    // subscription.status === 'active' → cobrança aprovada imediatamente
-    // first charge status === 'paid' → same
-    const chargeId     = subscription.charges?.[0]?.id ?? null;
-    const isReallyPaid = subscription.status === 'active' ||
-                         subscription.charges?.[0]?.status === 'paid';
+    // Confia primariamente no status da primeira charge — subscription.status
+    // pode ser 'active' enquanto a cobrança ainda está em processamento.
+    const charge = subscription.charges?.[0];
+    const chargeId = charge?.id ?? null;
+    const isReallyPaid = charge?.status === 'paid' ||
+                         (subscription.status === 'active' && !charge); // fallback
 
     const extracted = extractFieldsFromQuiz(quiz_answers);
     // phone: prefere o que veio do form (cleanPhone), fallback pro quiz_answers

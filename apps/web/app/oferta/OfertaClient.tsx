@@ -452,13 +452,13 @@ export default function OfertaClient() {
   const [payType, setPayType] = useState<'card' | 'pix'>('pix');
   const [images, setImages] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [installments, setInstallments] = useState(1);
+  const installments = 1; // forçado: subscription cobra valor único anual
 
   // Detalhes do cartão (validação inline)
   const [cardBrand, setCardBrand] = useState<string>('');
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [cepStatus, setCepStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
-  const [cepAddress, setCepAddress] = useState<{ city: string; state: string } | null>(null);
+  const [cepAddress, setCepAddress] = useState<{ city: string; state: string; street: string; neighborhood: string } | null>(null);
   const [cardOrderId, setCardOrderId] = useState('');
   const [cardPolling, setCardPolling] = useState(false);
 
@@ -547,7 +547,7 @@ export default function OfertaClient() {
         const data = await res.json();
         if (data.paid) {
           localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now() }));
-          await logEvent({ event_type: 'payment_confirmed', email, payment_type: 'card', amount_cents: installTotalCents(installments) });
+          await logEvent({ event_type: 'payment_confirmed', email, payment_type: 'card', amount_cents: 3490 });
           router.push('/obrigado');
         } else if (data.failed) {
           setCardPolling(false);
@@ -617,7 +617,12 @@ export default function OfertaClient() {
           setCepAddress(null);
         } else {
           setCepStatus('ok');
-          setCepAddress({ city: data.localidade, state: data.uf });
+          setCepAddress({
+            city: data.localidade,
+            state: data.uf,
+            street: data.logradouro || '',
+            neighborhood: data.bairro || '',
+          });
         }
       })
       .catch(() => setCepStatus('error'));
@@ -717,7 +722,9 @@ export default function OfertaClient() {
             exp_year: parseInt('20' + cardExpiry.split('/')[1], 10),
             cvv: cardCvv,
             billing_address: {
-              line_1: 'Endereço cadastrado',
+              line_1: cepAddress?.street && cepAddress?.neighborhood
+                ? `${cepAddress.street}, ${cepAddress.neighborhood}`
+                : cepAddress?.street || 'Não informado',
               zip_code: cleanCep,
               city: billingCity,
               state: billingState,
@@ -740,7 +747,14 @@ export default function OfertaClient() {
           quiz_answers: quizAnswers,
           session_id: getSessionId(),
           installments,
-          billing_address: { city: billingCity, state: billingState, cep: cleanCep },
+          billing_address: {
+            city: billingCity,
+            state: billingState,
+            cep: cleanCep,
+            line_1: cepAddress?.street && cepAddress?.neighborhood
+              ? `${cepAddress.street}, ${cepAddress.neighborhood}`
+              : cepAddress?.street || 'Não informado',
+          },
         }),
       });
       const data = await res.json();
@@ -749,7 +763,7 @@ export default function OfertaClient() {
       // Cobrança aprovada imediatamente?
       if (data.paid) {
         localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now() }));
-        await logEvent({ event_type: 'payment_confirmed', email, payment_type: 'card', amount_cents: installTotalCents(installments) });
+        await logEvent({ event_type: 'payment_confirmed', email, payment_type: 'card', amount_cents: 3490 });
         router.push('/obrigado');
       } else {
         // Order criado mas cobrança ainda pendente — inicia polling
@@ -1243,17 +1257,14 @@ export default function OfertaClient() {
                     {touched.cep && cardErrors.cep && <p style={{ color: T.red, fontSize: 12, marginTop: 3 }}>{cardErrors.cep}</p>}
                   </div>
                   <div>
-                    <label style={labelS}>Parcelas</label>
-                    <select
-                      className="co-select"
-                      style={{ ...inputS, cursor: 'pointer', appearance: 'none' }}
-                      value={installments}
-                      onChange={e => setInstallments(parseInt(e.target.value, 10))}
-                    >
-                      {INSTALLMENTS.map(i => (
-                        <option key={i.n} value={i.n}>{i.label}</option>
-                      ))}
-                    </select>
+                    <label style={labelS}>Cobrança</label>
+                    <div style={{
+                      ...inputS,
+                      display: 'flex', alignItems: 'center',
+                      background: '#FAF7FB', color: T.inkSoft, fontWeight: 600,
+                    }}>
+                      R$ 34,90/ano · renova auto
+                    </div>
                   </div>
                 </div>
               )}
