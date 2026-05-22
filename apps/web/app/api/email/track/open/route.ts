@@ -59,48 +59,51 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Fire-and-forget — não bloqueia a resposta
-  (async () => {
-    try {
-      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-      if (!url || !key) return;
-
-      const sb = createClient(url, key, { auth: { persistSession: false } });
-      const ua = req.headers.get('user-agent') ?? '';
-      const ip = (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim();
-
-      // UPDATE: incrementa contador, marca timestamps
-      // Usa RPC inline via raw SQL pra incrementar atomicamente
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (sb.from('wg_email_sends') as any)
-        .select('id, open_count, opened_at')
-        .eq('id', sendId)
-        .single()
-        .then(async ({ data }: { data: { id: string; open_count: number; opened_at: string | null } | null }) => {
-          if (!data) return;
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (sb.from('wg_email_sends') as any)
-            .update({
-              opened_at: data.opened_at ?? new Date().toISOString(),
-              last_opened_at: new Date().toISOString(),
-              open_count: (data.open_count ?? 0) + 1,
-            })
-            .eq('id', sendId);
-
-          // Detail event (Phase 2 — opcional, mas barato adicionar agora)
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (sb.from('wg_email_events' as any) as any).insert({
-            send_id: sendId,
-            event_type: 'open',
-            user_agent: ua.slice(0, 500),
-            ip: ip || null,
-          });
-        });
-    } catch (err) {
-      console.error('[email/track/open]', err);
-    }
-  })();
+  // IMPORTANTE: gravar ANTES de retornar (await). Fire-and-forget NÃO funciona
+  // em serverless (Vercel) — a função congela após a resposta e o write nunca
+  // completa. Era esse o bug do 0% de abertura. O atraso de ~50-100ms num pixel
+  // é imperceptível. Timeout de 2.5s pra nunca segurar a resposta além disso.
+  await Promise.race([
+    recordOpen(sendId, req).catch(err => console.error('[email/track/open]', err)),
+    new Promise(resolve => setTimeout(resolve, 2500)),
+  ]);
 
   return pixelResponse();
+}
+
+async function recordOpen(sendId: string, req: NextRequest): Promise<void> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return;
+
+  const sb = createClient(url, key, { auth: { persistSession: false } });
+  const ua = req.headers.get('user-agent') ?? '';
+  const ip = (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data } = await (sb.from('wg_email_sends') as any)
+    .select('id, open_count, opened_at')
+    .eq('id', sendId)
+    .single();
+  if (!data) return;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (sb.from('wg_email_sends') as any)
+    .update({
+      opened_at: data.opened_at ?? new Date().toISOString(),
+      last_opened_at: new Date().toISOString(),
+      open_count: (data.open_count ?? 0) + 1,
+    })
+    .eq('id', sendId);
+
+  // Evento detalhado (best-effort — tabela de eventos é opcional)
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (sb.from('wg_email_events' as any) as any).insert({
+      send_id: sendId,
+      event_type: 'open',
+      user_agent: ua.slice(0, 500),
+      ip: ip || null,
+    });
+  } catch { /* ignore */ }
 }

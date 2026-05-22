@@ -58,46 +58,52 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Fire-and-forget logging
-  (async () => {
-    try {
-      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-      if (!url || !key) return;
-      const sb = createClient(url, key, { auth: { persistSession: false } });
-      const ua = req.headers.get('user-agent') ?? '';
-      const ip = (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim();
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (sb.from('wg_email_sends') as any)
-        .select('id, click_count, clicked_at')
-        .eq('id', sendId)
-        .single()
-        .then(async ({ data }: { data: { id: string; click_count: number; clicked_at: string | null } | null }) => {
-          if (!data) return;
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (sb.from('wg_email_sends') as any)
-            .update({
-              clicked_at: data.clicked_at ?? new Date().toISOString(),
-              last_clicked_at: new Date().toISOString(),
-              click_count: (data.click_count ?? 0) + 1,
-            })
-            .eq('id', sendId);
-
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (sb.from('wg_email_events' as any) as any).insert({
-            send_id: sendId,
-            event_type: 'click',
-            url: destination.slice(0, 1000),
-            user_agent: ua.slice(0, 500),
-            ip: ip || null,
-          });
-        });
-    } catch (err) {
-      console.error('[email/track/click]', err);
-    }
-  })();
+  // IMPORTANTE: gravar ANTES de redirecionar (await). Fire-and-forget não
+  // completa em serverless. Timeout de 2.5s pra nunca segurar o redirect além disso.
+  await Promise.race([
+    recordClick(sendId, destination, req).catch(err => console.error('[email/track/click]', err)),
+    new Promise(resolve => setTimeout(resolve, 2500)),
+  ]);
 
   // 302 redirect pro destino verificado
   return NextResponse.redirect(destination, 302);
+}
+
+async function recordClick(sendId: string, destination: string, req: NextRequest): Promise<void> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return;
+  const sb = createClient(url, key, { auth: { persistSession: false } });
+  const ua = req.headers.get('user-agent') ?? '';
+  const ip = (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data } = await (sb.from('wg_email_sends') as any)
+    .select('id, click_count, clicked_at, opened_at, open_count')
+    .eq('id', sendId)
+    .single();
+  if (!data) return;
+
+  // Um clique implica abertura — se ainda não tinha aberto, marca também
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (sb.from('wg_email_sends') as any)
+    .update({
+      clicked_at: data.clicked_at ?? new Date().toISOString(),
+      last_clicked_at: new Date().toISOString(),
+      click_count: (data.click_count ?? 0) + 1,
+      opened_at: data.opened_at ?? new Date().toISOString(),
+      open_count: data.open_count > 0 ? data.open_count : 1,
+    })
+    .eq('id', sendId);
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (sb.from('wg_email_events' as any) as any).insert({
+      send_id: sendId,
+      event_type: 'click',
+      url: destination.slice(0, 1000),
+      user_agent: ua.slice(0, 500),
+      ip: ip || null,
+    });
+  } catch { /* ignore */ }
 }
