@@ -1066,11 +1066,11 @@ export default function OfertaClient() {
                   <img
                     src={images['plano_capilar_juliane_bio']}
                     alt="Juliane Cost"
-                    style={{ width: 60, height: 60, borderRadius: 12, flexShrink: 0, objectFit: 'cover', border: `2px solid ${T.pinkSoft}` }}
+                    style={{ width: 78, height: 104, borderRadius: 12, flexShrink: 0, objectFit: 'contain', background: T.cream, border: `2px solid ${T.pinkSoft}` }}
                   />
                 ) : (
                   <div style={{
-                    width: 60, height: 60, borderRadius: 12, flexShrink: 0,
+                    width: 78, height: 104, borderRadius: 12, flexShrink: 0,
                     background: `linear-gradient(135deg, ${T.pink}, ${T.pinkDeep})`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24,
                   }}>🌿</div>
