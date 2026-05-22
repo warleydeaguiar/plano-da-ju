@@ -14,8 +14,13 @@ type NavItem = {
 const NAV: NavItem[] = [
   { icon: '📊', label: 'Dashboard', href: '/' },
   { icon: '🔍', label: 'Revisão de Planos', href: '/planos' },
-  { icon: '👥', label: 'Usuárias', href: '/usuarios' },
-  { icon: '💳', label: 'Assinaturas', href: '/assinaturas' },
+  {
+    icon: '👥', label: 'Usuárias', href: '/usuarios',
+    children: [
+      { label: 'Assinaturas', href: '/assinaturas' },
+      { label: 'Leads', href: '/leads' },
+    ],
+  },
   {
     icon: '💬', label: 'Grupos de Promoções', href: '/grupos',
     children: [
@@ -25,7 +30,6 @@ const NAV: NavItem[] = [
       { label: 'Conexões Evolution', href: '/grupos/conexao' },
     ],
   },
-  { icon: '🎯', label: 'Leads', href: '/leads' },
   { icon: '📞', label: 'Followup', href: '/followup' },
   { icon: '📧', label: 'Email Marketing', href: '/email-marketing' },
   {
@@ -81,10 +85,17 @@ export default function Sidebar() {
       <nav style={{ flex: 1, padding: '14px 12px', overflowY: 'auto' }}>
         {NAV.map(item => {
           const isExternal = item.href.startsWith('http://') || item.href.startsWith('https://');
+          const hasChildren = item.children && item.children.length > 0;
+          // Filho casa com a rota atual mesmo quando não fica sob o href do pai
+          // (ex: Assinaturas /assinaturas e Leads /leads sob Usuárias /usuarios).
+          const childMatch = hasChildren
+            ? item.children!.some(c => pathname === c.href || pathname.startsWith(c.href + '/'))
+            : false;
           const isActive = isExternal
             ? false
-            : item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
-          const hasChildren = item.children && item.children.length > 0;
+            : item.href === '/'
+              ? pathname === '/'
+              : (pathname.startsWith(item.href) || childMatch);
           const isExpanded = hasChildren && isActive;
 
           const itemStyle: React.CSSProperties = {
