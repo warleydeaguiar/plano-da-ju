@@ -55,9 +55,10 @@ const SUB_LABEL: Record<string, { label: string; color: string }> = {
 }
 
 const SUB_TYPE_LABEL: Record<string, string> = {
-  annual_card: 'Anual (cartão)',
-  annual_pix:  'Anual (PIX)',
-  none:        '—',
+  annual_card:   'Anual (cartão)',
+  annual_pix:    'Anual (PIX)',
+  one_time_card: 'Único (cartão)',
+  none:          '—',
 }
 
 const PLAN_LABEL: Record<string, { label: string; color: string }> = {

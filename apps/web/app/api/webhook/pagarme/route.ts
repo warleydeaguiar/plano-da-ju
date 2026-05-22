@@ -42,7 +42,14 @@ export async function POST(req: NextRequest) {
           .maybeSingle();
 
         if (profile?.subscription_status === 'active') {
-          // Já ativo — idempotente
+          // Já ativo — idempotente, mas ainda salva o subscriptionId se ainda não foi gravado
+          const subscriptionIdIdem: string | null = (data as any).subscription?.id ?? (data as any).subscription_id ?? null;
+          if (subscriptionIdIdem && !profile?.pagarme_subscription_id) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await (supabase.from('profiles') as any)
+              .update({ pagarme_subscription_id: subscriptionIdIdem })
+              .eq('email', email);
+          }
           break;
         }
 
@@ -60,6 +67,8 @@ export async function POST(req: NextRequest) {
           .maybeSingle();
         const quizSessionId: string | null = leadMatch?.session_id ?? null;
 
+        const subscriptionId: string | null = (data as any).subscription?.id ?? (data as any).subscription_id ?? null;
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (supabase.from('profiles') as any)
           .update({
@@ -71,6 +80,7 @@ export async function POST(req: NextRequest) {
               Date.now() + 365 * 24 * 60 * 60 * 1000,
             ).toISOString(),
             pagarme_charge_id: data.charges?.[0]?.id ?? data.id ?? null,
+            ...(subscriptionId ? { pagarme_subscription_id: subscriptionId } : {}),
             plan_status: 'pending_photo',
             plan_requested_at: new Date().toISOString(),
           })

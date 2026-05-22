@@ -3,7 +3,9 @@ import { pagarme } from '@/lib/pagarme/client';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 
 // GET /api/checkout/card/status?order_id=xxx&email=yyy
-// Verifica se o pedido ficou 'paid' (cobrança aprovada) ou 'failed'.
+// Suporta:
+//   - charge IDs (começam com 'ch_'): rota nova — subscriptions
+//   - order IDs: backwards compat para cobranças one-time antigas
 export async function GET(req: NextRequest) {
   const ip = getClientIp(req);
   const rl = checkRateLimit(`card-status:${ip}`, { max: 200, windowMs: 60_000 });
@@ -20,6 +22,30 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    if (orderId.startsWith('ch_')) {
+      // ── Charge ID (subscription flow) ───────────────────────────
+      const charge = await pagarme.get<{
+        id: string;
+        status: string;
+        customer?: { email?: string };
+      }>(`/charges/${orderId}`);
+
+      // Segurança: email tem que bater com o da cobrança
+      if (charge.customer?.email?.toLowerCase().trim() !== email.toLowerCase().trim()) {
+        return NextResponse.json({ error: 'Cobrança não pertence a esse email' }, { status: 403 });
+      }
+
+      const isPaid   = charge.status === 'paid';
+      const isFailed = ['failed', 'canceled'].includes(charge.status);
+
+      return NextResponse.json({
+        paid:   isPaid,
+        failed: isFailed,
+        status: charge.status,
+      });
+    }
+
+    // ── Order ID (backwards compat — one-time orders) ────────────
     const order = await pagarme.get<{
       id: string;
       status: string;

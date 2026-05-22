@@ -38,7 +38,8 @@ export interface PagarMeSubscription {
   status: string;
   customer: { id: string; email: string };
   plan: PagarMePlan;
-  current_cycle?: { billing_at: string };
+  current_cycle?: { billing_at: string; end_at?: string };
+  charges?: Array<{ id: string; status: string; customer?: { email?: string } }>;
 }
 
 export interface PagarMeOrder {

@@ -4,17 +4,12 @@ import { createServiceClient } from '@/lib/supabase/server';
 import { resolveAuthUserId } from '@/lib/supabase/auth-resolve';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { extractFieldsFromQuiz } from '@/lib/quiz-to-profile';
-import type { PagarMeOrder } from '@/lib/pagarme/types';
+import { getOrCreateCardPlan } from '@/lib/pagarme/plans';
+import type { PagarMeSubscription } from '@/lib/pagarme/types';
 
 export const dynamic = 'force-dynamic';
 
-// Juros simples de 1,99%/mês repassados ao cliente para parcelamento
-const MONTHLY_RATE = 1.99;
-
-function installTotalCents(n: number): number {
-  if (n <= 1) return 3490;
-  return Math.round(3490 * (1 + (MONTHLY_RATE / 100) * n));
-}
+const PRICE_CENTS = 3490;
 
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
@@ -27,7 +22,8 @@ export async function POST(req: NextRequest) {
     const {
       name, email, cpf, phone,
       card_token, quiz_answers, session_id, billing_address,
-      installments: rawInstallments,
+      // installments may come from frontend — ignored (subscription is always full price)
+      installments: _installments,
     } = await req.json();
 
     if (!name || !email || !card_token) {
@@ -36,9 +32,6 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
-
-    const n = Math.max(1, Math.min(4, parseInt(rawInstallments ?? '1', 10) || 1));
-    const totalCents = installTotalCents(n);
 
     const cleanCpf   = typeof cpf   === 'string' ? cpf.replace(/\D/g, '')   : '';
     // Phone: prefere o que veio do form, fallback pra quiz_answers (já coletado no quiz)
@@ -50,9 +43,11 @@ export async function POST(req: NextRequest) {
     const phoneNum   = cleanPhone.length >= 10 ? cleanPhone.slice(2)     : '';
     const cleanCep   = billing_address?.cep?.replace(/\D/g, '') ?? '01310100';
 
-    // ── PagarMe v5 Order (one-time charge) ──────────────────────────────────
-    const order = await pagarme.post<PagarMeOrder & { status: string }>('/orders', {
-      code: `PDJ-${Date.now()}`,
+    // ── PagarMe v5 Subscription (annual, auto-renews) ────────────────────────
+    const plan = await getOrCreateCardPlan();
+    const subscription = await pagarme.post<PagarMeSubscription>('/subscriptions', {
+      plan_id: plan.id,
+      payment_method: 'credit_card',
       customer: {
         name,
         email,
@@ -66,38 +61,17 @@ export async function POST(req: NextRequest) {
           },
         } : {}),
       },
-      items: [
-        {
-          amount: totalCents,
-          description: 'Plano Capilar Personalizado — Ju Cost',
-          quantity: 1,
-          code: 'PLANO-CAPILAR',
-        },
-      ],
-      payments: [
-        {
-          payment_method: 'credit_card',
-          amount: totalCents,
-          credit_card: {
-            installments: n,
-            statement_descriptor: 'JU COST',
-            card_token,
-            card: {
-              billing_address: {
-                line_1: 'Endereço cadastrado',
-                zip_code: cleanCep,
-                city:  billing_address?.city  ?? 'São Paulo',
-                state: billing_address?.state ?? 'SP',
-                country: 'BR',
-              },
-            },
-          },
-        },
-      ],
+      card_token,
+      billing_address: {
+        line_1: 'Endereço cadastrado',
+        zip_code: cleanCep,
+        city:  billing_address?.city  ?? 'São Paulo',
+        state: billing_address?.state ?? 'SP',
+        country: 'BR',
+      },
       metadata: {
         source:       'plano-da-ju-web',
         payment_type: 'card',
-        installments:  n,
         session_id:    session_id ?? '',
       },
     });
@@ -105,11 +79,11 @@ export async function POST(req: NextRequest) {
     const supabase = await createServiceClient();
     const userId   = await resolveAuthUserId(supabase, email);
 
-    // order.status === 'paid' → cobrança aprovada imediatamente
-    // order.status === 'pending' → aguardando confirmação async
-    const charge    = (order as any).charges?.[0];
-    const isReallyPaid = order.status === 'paid' ||
-                         charge?.status === 'paid';
+    // subscription.status === 'active' → cobrança aprovada imediatamente
+    // first charge status === 'paid' → same
+    const chargeId     = subscription.charges?.[0]?.id ?? null;
+    const isReallyPaid = subscription.status === 'active' ||
+                         subscription.charges?.[0]?.status === 'paid';
 
     const extracted = extractFieldsFromQuiz(quiz_answers);
     // phone: prefere o que veio do form (cleanPhone), fallback pro quiz_answers
@@ -123,13 +97,14 @@ export async function POST(req: NextRequest) {
       ...extracted,
       phone:                profilePhone,
       quiz_session_id:      typeof session_id === 'string' ? session_id : null,
-      subscription_type:    isReallyPaid ? 'one_time_card' : 'none',
+      subscription_type:    isReallyPaid ? 'annual_card' : 'none',
       subscription_status:  isReallyPaid ? 'active' : 'pending',
       subscription_activated_at: isReallyPaid ? new Date().toISOString() : null,
       subscription_expires_at: isReallyPaid
         ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
         : null,
-      pagarme_order_id:     order.id,
+      pagarme_subscription_id: subscription.id,
+      pagarme_charge_id:    chargeId,
       plan_status:          isReallyPaid ? 'pending_photo' : 'awaiting_payment',
       plan_requested_at:    isReallyPaid ? new Date().toISOString() : null,
       checkout_session_id:  session_id ?? null,
@@ -141,20 +116,20 @@ export async function POST(req: NextRequest) {
         event_type:   isReallyPaid ? 'payment_confirmed' : 'card_submitted',
         email,
         payment_type: 'card',
-        amount_cents: totalCents,
-        order_id:     order.id,
+        amount_cents: PRICE_CENTS,
+        order_id:     chargeId ?? subscription.id,
         metadata: {
-          order_status:    order.status,
-          installments:    n,
-          billing_address: billing_address ?? null,
+          subscription_status: subscription.status,
+          subscription_id:     subscription.id,
+          billing_address:     billing_address ?? null,
         },
       });
     }
 
     return NextResponse.json({
-      order_id: order.id,
-      status:   order.status,
-      paid:     isReallyPaid,
+      order_id:     chargeId ?? subscription.id,
+      status:       subscription.status,
+      paid:         isReallyPaid,
       redirect_url: isReallyPaid ? '/obrigado' : null,
     });
   } catch (err) {
