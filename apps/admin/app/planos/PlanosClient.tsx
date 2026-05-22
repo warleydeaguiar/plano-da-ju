@@ -694,6 +694,7 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
           tasks:       editDraft.tasks,
           products:    editDraft.products.filter(p => p.trim()),
           tips:        editDraft.tips.filter(t => t.trim()),
+          notes:       obs, // ← salva observações no mesmo PATCH
         }),
       });
       if (!res.ok) throw new Error(await res.text());
@@ -708,6 +709,7 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
         tasks:    normalizedTasks,
         products: editDraft.products.filter(p => p.trim()),
         tips:     editDraft.tips.filter(t => t.trim()),
+        juliane_notes: obs,
       };
       setWeeks(prev => prev ? prev.map(w => w.week_number === editDraft.week_number ? { ...w, ...saved } : w) : prev);
       setEditMode(false);

@@ -42,6 +42,10 @@ export async function PATCH(
     const tasks    = Array.isArray(body.tasks)    ? body.tasks    : [];
     const products = Array.isArray(body.products) ? body.products : [];
     const tips     = Array.isArray(body.tips)     ? body.tips     : [];
+    // Observações da Ju vão junto no mesmo save — antes ficavam órfãs e só
+    // eram persistidas no momento do approve.
+    const hasNotes = typeof body.notes === 'string';
+    const notes    = hasNotes ? body.notes : null;
 
     // Verifica se a semana já existe
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -52,16 +56,19 @@ export async function PATCH(
       .maybeSingle();
 
     if (existing) {
+      const update: Record<string, unknown> = { focus, tasks, products, tips };
+      if (hasNotes) update.juliane_notes = notes;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (sb.from('hair_plans') as any)
-        .update({ focus, tasks, products, tips })
+        .update(update)
         .eq('user_id', userId)
         .eq('week_number', weekNumber);
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     } else {
+      const insertRow: Record<string, unknown> = { user_id: userId, week_number: weekNumber, focus, tasks, products, tips };
+      if (hasNotes) insertRow.juliane_notes = notes;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (sb.from('hair_plans') as any)
-        .insert({ user_id: userId, week_number: weekNumber, focus, tasks, products, tips });
+      const { error } = await (sb.from('hair_plans') as any).insert(insertRow);
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
       // Garante que o profile tem plano
