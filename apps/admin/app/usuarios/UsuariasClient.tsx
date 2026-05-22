@@ -593,7 +593,7 @@ function RegeneratePlanBtn({ user, onChanged }: { user: User; onChanged: () => v
       return
     }
     const photoNote = user.photo_url ? '' : '\n\n⚠ Sem foto — vou gerar baseado só no quiz.'
-    if (!confirm(`Regerar TODO o plano de 52 semanas da ${user.full_name ?? user.email}?\n\nIsso vai sobrescrever o plano atual usando o catálogo Ybera mais novo. Demora ~30s.${photoNote}`)) return
+    if (!confirm(`Regerar TODO o plano de 12 semanas (90 dias) da ${user.full_name ?? user.email}?\n\nIsso vai sobrescrever o plano atual usando o catálogo Ybera mais novo. Demora ~30s.${photoNote}`)) return
     setRunning(true); setResult(null)
     try {
       const res = await fetch(`/api/admin/profiles/${user.id}/regenerate-plan`, {

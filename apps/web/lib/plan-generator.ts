@@ -81,7 +81,7 @@ function buildQuizBlock(quizAnswers: Record<string, unknown> | null): string {
 
 /**
  * Busca os produtos ativos do catálogo, priorizando os que casam com o tipo de cabelo.
- * Retorna até 30 produtos (suficiente pra diversificar nas 52 semanas).
+ * Retorna até 30 produtos (suficiente pra diversificar nas 12 semanas).
  */
 async function loadCatalog(sb: SupabaseClient, hairType: string | null): Promise<CatalogProduct[]> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -143,8 +143,8 @@ export async function generatePlanWithClaude(
   const apiKey = process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('OPENROUTER_API_KEY não configurado');
 
-  // AbortController + max_tokens reduzido — antes (52 semanas/12k tokens)
-  // estourava 504 do Vercel. 16 semanas/6k tokens fica em ~45-90s.
+  // AbortController + max_tokens reduzido — antes (mais semanas/12k tokens)
+  // estourava 504 do Vercel. 12 semanas/6k tokens fica em ~30-60s.
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 240_000);
 

@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
-// Max do Vercel Pro = 300s. Antes era 120 — mas com 52 semanas de Claude
+// Max do Vercel Pro = 300s. Antes era 120 — com muitas semanas de Claude
 // (~12k tokens output) podia estourar 60s do Hobby ou 120 nosso.
 export const maxDuration = 300
 
-// Gerar 52 semanas de UMA vez = ~3-4min. Estouramos timeout do Vercel.
-// 16 semanas (4 meses) = ~45-90s, MUITO mais seguro e ainda é
+// Plano de 90 dias = 12 semanas (~30-60s).
+// 12 semanas (90 dias) — seguro e suficiente; é
 // conteúdo suficiente pra cliente começar. Admin pode pedir "extender"
 // no futuro pra gerar mais semanas.
 const WEEKS_TO_GENERATE = 12  // plano de 90 dias = 12 semanas
@@ -135,7 +135,7 @@ Gere ${WEEKS_TO_GENERATE} semanas (cronograma capilar: hidratação/nutrição/r
         },
         body: JSON.stringify({
           model: 'anthropic/claude-sonnet-4-6',
-          // 16 semanas × ~250 tokens cada + JSON overhead = ~5000 tokens safety net
+          // 12 semanas × ~250 tokens cada + JSON overhead = ~5000 tokens safety net
           max_tokens: 6000,
           messages: [{ role: 'user', content: aiContent }],
         }),
