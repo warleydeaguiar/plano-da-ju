@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { pagarme } from '@/lib/pagarme/client';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
+import { logCheckoutError } from '@/lib/checkout-log';
 
 // GET /api/checkout/card/status?order_id=xxx&email=yyy
 // Suporta:
@@ -95,6 +96,12 @@ export async function GET(req: NextRequest) {
     });
   } catch (err) {
     console.error('[card/status]', err);
+    await logCheckoutError({
+      route: 'checkout/card/status',
+      email, payment_type: 'card',
+      err,
+      context: { order_id: orderId },
+    });
     return NextResponse.json({ error: 'Erro ao verificar status' }, { status: 500 });
   }
 }

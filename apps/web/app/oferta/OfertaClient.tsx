@@ -709,6 +709,8 @@ export default function OfertaClient() {
     }
     setIsSubmitting(true);
     setStep('loading');
+    // Rastreia em qual etapa o erro aconteceu (pro log de erros)
+    let stage: 'tokenization' | 'checkout' = 'tokenization';
     try {
       const cleanCpf = cpf.replace(/\D/g, '');
       const cleanCep = cep.replace(/\D/g, '');
@@ -751,6 +753,7 @@ export default function OfertaClient() {
       if (!tokenRes.ok) {
         throw new Error(tokenData?.errors?.[0]?.message ?? tokenData?.message ?? 'Erro ao validar cartão');
       }
+      stage = 'checkout';
       const res = await fetch('/api/checkout/card', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -794,7 +797,16 @@ export default function OfertaClient() {
         setLoadingMsg('Confirmando seu pagamento…');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao processar cartão');
+      const msg = err instanceof Error ? err.message : 'Erro ao processar cartão';
+      // Reporta o erro pro log (tokenização do cartão acontece no browser e
+      // de outra forma nunca chegaria ao servidor)
+      logEvent({
+        event_type: 'checkout_error',
+        email,
+        payment_type: 'card',
+        metadata: { route: `frontend/card/${stage}`, message: msg, installments },
+      });
+      setError(msg);
       setStep('card_form');
     } finally {
       setIsSubmitting(false);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { sendCapiEvent } from '@/lib/meta/capi';
 import { notifyNewSale } from '@/lib/discord';
+import { logCheckoutError } from '@/lib/checkout-log';
 
 // Eventos do PagarMe que tratamos
 // IMPORTANTE: NÃO ativar perfil em 'subscription.created' — esse evento dispara
@@ -16,6 +17,8 @@ const HANDLED_EVENTS = new Set([
 ]);
 
 export async function POST(req: NextRequest) {
+  let logEventType: string | null = null;
+  let logEmail: string | null = null;
   try {
     // Basic Auth — só rejeita se env vars estiverem setadas (permite deploy gradual)
     const expectedUser = process.env.PAGARME_WEBHOOK_USER;
@@ -33,6 +36,8 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const eventType: string = body.type;
+    logEventType = eventType;
+    logEmail = body.data?.customer?.email ?? null;
 
     if (!HANDLED_EVENTS.has(eventType)) {
       return NextResponse.json({ ok: true, ignored: true });
@@ -272,6 +277,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('[webhook/pagarme]', err);
+    // CRÍTICO: erro aqui pode significar pagamento recebido mas perfil não ativado.
+    await logCheckoutError({
+      route: 'webhook/pagarme',
+      email: logEmail,
+      err,
+      context: { webhook_event: logEventType },
+    });
     return NextResponse.json({ ok: true }); // sempre 200 para PagarMe não retentar
   }
 }

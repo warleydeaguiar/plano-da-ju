@@ -13,6 +13,7 @@ const VALID_EVENT_TYPES = new Set([
   'photo_uploaded',
   'plan_generated',
   'abandoned',
+  'checkout_error',   // erros reportados pelo frontend (ex: tokenização do cartão)
 ]);
 
 export async function POST(req: NextRequest) {

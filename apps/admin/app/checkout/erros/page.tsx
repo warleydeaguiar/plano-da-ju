@@ -1,7 +1,7 @@
-import { createAdminClient } from '../../lib/supabase';
-import Sidebar from '../components/Sidebar';
-import { T, fonts, shadow } from '../theme';
-import { IconWarning, IconCreditCard, IconBolt, IconClock } from '../icons';
+import { createAdminClient } from '../../../lib/supabase';
+import Sidebar from '../../components/Sidebar';
+import { T, fonts, shadow } from '../../theme';
+import { IconWarning, IconCreditCard, IconBolt, IconClock } from '../../icons';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Erros de Checkout — Admin Plano da Ju' };

@@ -3,6 +3,7 @@ import { pagarme } from '@/lib/pagarme/client';
 import { createServiceClient } from '@/lib/supabase/server';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { sendCapiEvent } from '@/lib/meta/capi';
+import { logCheckoutError } from '@/lib/checkout-log';
 
 // GET /api/checkout/pix/status?order_id=xxx&email=yyy
 // Polling do PIX — chamado a cada 5s pelo frontend.
@@ -112,6 +113,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ paid: isPaid, order_status: order.status });
   } catch (err) {
     console.error('[pix/status]', err);
+    await logCheckoutError({
+      route: 'checkout/pix/status',
+      email, payment_type: 'pix',
+      err,
+      context: { order_id: orderId },
+    });
     return NextResponse.json({ error: 'Erro ao verificar status' }, { status: 500 });
   }
 }
