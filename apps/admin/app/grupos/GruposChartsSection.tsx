@@ -5,11 +5,11 @@ import { useState, useEffect } from 'react'
 type Period = 'day' | 'week' | 'month'
 type DataPoint = { label: string; joins: number; leaves: number; clicks: number }
 
-const green  = '#34C759'
-const red    = '#FF3B30'
-const accent = '#C4607A'
-const blue   = '#007AFF'
-const gray   = '#8A8A8E'
+const green  = '#22A06B'
+const red    = '#DC2626'
+const accent = '#BE185D'
+const blue   = '#2563EB'
+const gray   = '#7C6B7E'
 
 function BarChart({
   data,
@@ -81,12 +81,12 @@ function ChartCard({
         <div>
           <div style={{ fontSize: 12, color: gray, fontWeight: 600, marginBottom: 4 }}>{title}</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-            <div style={{ fontSize: 26, fontWeight: 700, color: '#2D1B2E', lineHeight: 1 }}>{avg.toLocaleString('pt-BR')}</div>
+            <div style={{ fontSize: 26, fontWeight: 700, color: '#2A1E2C', lineHeight: 1 }}>{avg.toLocaleString('pt-BR')}</div>
             <div style={{ fontSize: 12, color: gray, fontWeight: 500 }}>/ {periodUnit} (média)</div>
           </div>
           <div style={{ fontSize: 11, color: gray, marginTop: 4 }}>
-            total <strong style={{ color: '#2D1B2E' }}>{total.toLocaleString('pt-BR')}</strong>
-            {max > 0 && <> · pico <strong style={{ color: '#2D1B2E' }}>{max.toLocaleString('pt-BR')}</strong></>}
+            total <strong style={{ color: '#2A1E2C' }}>{total.toLocaleString('pt-BR')}</strong>
+            {max > 0 && <> · pico <strong style={{ color: '#2A1E2C' }}>{max.toLocaleString('pt-BR')}</strong></>}
           </div>
         </div>
         <span style={{ fontSize: 12, fontWeight: 700, color: trendColor, background: trendColor + '15', padding: '3px 9px', borderRadius: 20 }}>
@@ -135,7 +135,7 @@ export default function GruposChartsSection() {
     <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '20px 24px', marginBottom: 28 }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: '#2D1B2E' }}>📊 Atividade dos grupos</div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#2A1E2C' }}>📊 Atividade dos grupos</div>
         <div style={{ display: 'flex', gap: 6 }}>
           {(['day', 'week', 'month'] as Period[]).map(p => (
             <button
@@ -143,8 +143,8 @@ export default function GruposChartsSection() {
               onClick={() => setPeriod(p)}
               style={{
                 padding: '5px 13px', borderRadius: 8, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer',
-                background: period === p ? '#2D1B2E' : '#F5F5F7',
-                color: period === p ? '#fff' : '#2D1B2E',
+                background: period === p ? '#2A1E2C' : '#FFFAF5',
+                color: period === p ? '#fff' : '#2A1E2C',
               }}
             >
               {p === 'day' ? 'Dias' : p === 'week' ? 'Semanas' : 'Meses'}

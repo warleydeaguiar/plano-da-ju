@@ -2,12 +2,12 @@
 
 import { useState, useMemo } from 'react';
 
-const accent = '#C4607A';
+const accent = '#BE185D';
 const accent2 = '#9B4A6A';
 const dark = '#1C1C1E';
-const gray = '#8A8A8E';
-const green = '#34C759';
-const red = '#FF3B30';
+const gray = '#7C6B7E';
+const green = '#22A06B';
+const red = '#DC2626';
 
 interface Story {
   id: string;
@@ -187,7 +187,7 @@ function StoryCard({
           <span style={{
             fontSize: 10, fontWeight: 700,
             color: story.active ? green : gray,
-            background: story.active ? '#E8F8EF' : '#F5F5F7',
+            background: story.active ? '#E8F8EF' : '#FFFAF5',
             borderRadius: 4, padding: '2px 6px',
           }}>
             {story.active ? 'ATIVA' : 'INATIVA'}
@@ -204,9 +204,9 @@ function StoryCard({
           {story.description.length > 140 ? story.description.slice(0, 140) + '…' : story.description}
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
-          {story.target_hair_types.map(t => <Tag key={t} color="#C4607A">{t}</Tag>)}
-          {story.target_problems.map(t => <Tag key={t} color="#FF9500">{t}</Tag>)}
-          {story.target_porosity.map(t => <Tag key={t} color="#007AFF">{t} porosidade</Tag>)}
+          {story.target_hair_types.map(t => <Tag key={t} color="#BE185D">{t}</Tag>)}
+          {story.target_problems.map(t => <Tag key={t} color="#D97706">{t}</Tag>)}
+          {story.target_porosity.map(t => <Tag key={t} color="#2563EB">{t} porosidade</Tag>)}
           {story.target_chemicals.map(t => <Tag key={t} color="#5856D6">{t}</Tag>)}
           {story.target_hair_types.length + story.target_problems.length + story.target_porosity.length + story.target_chemicals.length === 0 && (
             <Tag color={gray}>qualquer perfil</Tag>
@@ -402,7 +402,7 @@ export default function StoriesClient({ initialStories }: { initialStories: Stor
                 ...inputStyle,
                 borderColor: form.youtube_url
                   ? (previewVideoId ? `${green}80` : `${red}80`)
-                  : '#E5E5EA',
+                  : '#EDE0D2',
               }}
             />
             {form.youtube_url && !previewVideoId && (
@@ -554,7 +554,7 @@ export default function StoriesClient({ initialStories }: { initialStories: Stor
 // ─── Small helpers ─────────────────────────────────────────────────
 const inputStyle: React.CSSProperties = {
   width: '100%', padding: '9px 12px', fontSize: 13,
-  border: '1.5px solid #E5E5EA', borderRadius: 8, outline: 'none',
+  border: '1.5px solid #EDE0D2', borderRadius: 8, outline: 'none',
   background: '#fff', color: dark, marginTop: 4, boxSizing: 'border-box',
 };
 

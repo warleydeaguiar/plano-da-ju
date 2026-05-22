@@ -41,17 +41,17 @@ async function getGruposStats() {
   }
 }
 
-const accent = '#C4607A'
-const green  = '#34C759'
-const orange = '#FF9500'
-const red    = '#FF3B30'
-const gray   = '#8A8A8E'
+const accent = '#BE185D'
+const green  = '#22A06B'
+const orange = '#D97706'
+const red    = '#DC2626'
+const gray   = '#7C6B7E'
 
 function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) {
   return (
     <div style={{ background: '#fff', borderRadius: 14, padding: '20px 24px', border: '1px solid rgba(0,0,0,0.06)' }}>
       <div style={{ fontSize: 13, color: gray, fontWeight: 500, marginBottom: 8 }}>{label}</div>
-      <div style={{ fontSize: 28, fontWeight: 700, color: color ?? '#2D1B2E', lineHeight: 1 }}>{value}</div>
+      <div style={{ fontSize: 28, fontWeight: 700, color: color ?? '#2A1E2C', lineHeight: 1 }}>{value}</div>
       {sub && <div style={{ fontSize: 12, color: gray, marginTop: 6 }}>{sub}</div>}
     </div>
   )
@@ -98,10 +98,10 @@ export default async function GruposPage() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 32 }}>
         <div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: '#2D1B2E' }}>Grupos de Promoções</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#2A1E2C' }}>Grupos de Promoções</div>
           <div style={{ fontSize: 14, color: gray, marginTop: 4 }}>
             Distribuição proporcional via link único —{' '}
-            <code style={{ background: '#F5F5F7', padding: '2px 6px', borderRadius: 4, fontSize: 12 }}>
+            <code style={{ background: '#FFFAF5', padding: '2px 6px', borderRadius: 4, fontSize: 12 }}>
               planodaju.julianecost.com/g/entrar
             </code>
           </div>
@@ -109,7 +109,7 @@ export default async function GruposPage() {
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <SyncButton />
           <Link href="/grupos/broadcast" style={{
-            background: '#F5F5F7', color: '#2D1B2E', padding: '9px 18px',
+            background: '#FFFAF5', color: '#2A1E2C', padding: '9px 18px',
             borderRadius: 10, fontSize: 14, fontWeight: 600, textDecoration: 'none',
           }}>
             📢 Enviar mensagem
@@ -129,13 +129,13 @@ export default async function GruposPage() {
         padding: '18px 24px', marginBottom: 24,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#2D1B2E' }}>📱 Números WhatsApp</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#2A1E2C' }}>📱 Números WhatsApp</div>
           <a
             href={EVOLUTION_MANAGER_URL}
             target="_blank"
             rel="noopener noreferrer"
             style={{
-              background: '#2D1B2E', color: '#fff', padding: '7px 14px', borderRadius: 9,
+              background: '#2A1E2C', color: '#fff', padding: '7px 14px', borderRadius: 9,
               fontSize: 12, fontWeight: 600, textDecoration: 'none',
             }}
           >
@@ -173,7 +173,7 @@ export default async function GruposPage() {
                     )}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#2D1B2E', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#2A1E2C', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {inst.profileName ?? inst.name}
                     </div>
                     <div style={{ fontSize: 11, color: gray, marginTop: 1 }}>
@@ -204,7 +204,7 @@ export default async function GruposPage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         <StatCard label="Total de membros" value={totalMembers.toLocaleString('pt-BR')} sub={`em ${totalGroups} grupos`} />
         <StatCard label="Recebendo agora" value={activeCount} sub="grupos ativos" color={green} />
-        <StatCard label="Grupos cheios" value={fullCount} sub="capacity 1.024" color={fullCount > 0 ? red : '#2D1B2E'} />
+        <StatCard label="Grupos cheios" value={fullCount} sub="capacity 1.024" color={fullCount > 0 ? red : '#2A1E2C'} />
         <StatCard label="Cliques hoje" value={clicksToday} sub="redirecionamentos" color={accent} />
       </div>
 
@@ -214,7 +214,7 @@ export default async function GruposPage() {
       {/* Lista de grupos */}
       <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', marginBottom: 28 }}>
         <div style={{ padding: '18px 24px', borderBottom: '1px solid #F0F0F5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#2D1B2E' }}>Grupos cadastrados</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#2A1E2C' }}>Grupos cadastrados</div>
           <Link href="/grupos/gerenciar" style={{ fontSize: 13, color: accent, fontWeight: 600, textDecoration: 'none' }}>
             Gerenciar →
           </Link>
@@ -241,10 +241,10 @@ export default async function GruposPage() {
                 return (
                   <tr key={g.id} style={{ borderBottom: '1px solid #F9F9FC' }}>
                     <td style={{ padding: '14px 24px' }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: '#2D1B2E' }}>{g.name}</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: '#2A1E2C' }}>{g.name}</div>
                       {g.jid && <div style={{ fontSize: 11, color: gray, marginTop: 2 }}>{g.jid}</div>}
                     </td>
-                    <td style={{ padding: '14px 24px', fontSize: 14, fontWeight: 600, color: '#2D1B2E' }}>
+                    <td style={{ padding: '14px 24px', fontSize: 14, fontWeight: 600, color: '#2A1E2C' }}>
                       {g.member_count} <span style={{ color: gray, fontWeight: 400 }}>/ {g.capacity ?? 1024}</span>
                     </td>
                     <td style={{ padding: '14px 24px' }}>
@@ -281,7 +281,7 @@ export default async function GruposPage() {
       {recentBroadcasts.length > 0 && (
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)' }}>
           <div style={{ padding: '18px 24px', borderBottom: '1px solid #F0F0F5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#2D1B2E' }}>Mensagens recentes</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#2A1E2C' }}>Mensagens recentes</div>
             <Link href="/grupos/broadcast" style={{ fontSize: 13, color: accent, fontWeight: 600, textDecoration: 'none' }}>
               Enviar nova →
             </Link>
@@ -290,7 +290,7 @@ export default async function GruposPage() {
             {recentBroadcasts.map((b: any) => (
               <div key={b.id} style={{ padding: '12px 24px', borderBottom: '1px solid #F9F9FC', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#2D1B2E', marginBottom: 2 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#2A1E2C', marginBottom: 2 }}>
                     {b.title || b.message.slice(0, 60) + (b.message.length > 60 ? '…' : '')}
                   </div>
                   <div style={{ fontSize: 12, color: gray }}>

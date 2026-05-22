@@ -12,7 +12,7 @@ const T = {
   border:     '#E5E7EB',
   borderSoft: '#F1F5F9',
 
-  pink:       '#C4607A',
+  pink:       '#BE185D',
   pinkSoft:   '#FCE4EA',
   pinkBg:     '#FFF5F7',
 

@@ -5,11 +5,11 @@ import Link from 'next/link'
 export const revalidate = 60
 export const metadata = { title: 'Assinaturas — Admin Plano da Ju' }
 
-const accent  = '#C4607A'
-const green   = '#34C759'
-const orange  = '#FF9500'
-const red     = '#FF3B30'
-const gray    = '#8A8A8E'
+const accent  = '#BE185D'
+const green   = '#22A06B'
+const orange  = '#D97706'
+const red     = '#DC2626'
+const gray    = '#7C6B7E'
 
 const SUB_STATUS: Record<string, { label: string; color: string }> = {
   active:    { label: 'Ativa',     color: green },
@@ -35,7 +35,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
   return (
     <div style={{ background: '#fff', borderRadius: 14, padding: '20px 24px', border: '1px solid rgba(0,0,0,0.06)' }}>
       <div style={{ fontSize: 12, color: gray, fontWeight: 500, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.4 }}>{label}</div>
-      <div style={{ fontSize: 28, fontWeight: 700, color: color ?? '#2D1B2E', lineHeight: 1 }}>{value}</div>
+      <div style={{ fontSize: 28, fontWeight: 700, color: color ?? '#2A1E2C', lineHeight: 1 }}>{value}</div>
       {sub && <div style={{ fontSize: 12, color: gray, marginTop: 6 }}>{sub}</div>}
     </div>
   )
@@ -77,14 +77,14 @@ export default async function AssinaturasPage() {
   return (
     <div style={{
       display: 'flex', height: '100vh', overflow: 'hidden',
-      background: '#F5F5F7', fontFamily: '-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif',
+      background: '#FFFAF5', fontFamily: 'Plus Jakarta Sans, -apple-system, system-ui, sans-serif',
     }}>
       <Sidebar />
-      <main style={{ marginLeft: 220, flex: 1, height: '100vh', overflowY: 'auto', padding: '32px 40px' }}>
+      <main style={{ marginLeft: 234, flex: 1, height: '100vh', overflowY: 'auto', padding: '32px 40px' }}>
 
         {/* Header */}
         <div style={{ marginBottom: 28 }}>
-          <div style={{ fontSize: 22, fontWeight: 700, color: '#2D1B2E' }}>Assinaturas</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#2A1E2C' }}>Assinaturas</div>
           <div style={{ fontSize: 13, color: gray, marginTop: 4 }}>Plano anual — R$ 34,90 (cartão) ou R$ 49,90 (PIX)</div>
         </div>
 
@@ -97,24 +97,24 @@ export default async function AssinaturasPage() {
             sub={`${list.length} vendas total`}
             color={accent}
           />
-          <StatCard label="Vencendo em 30d" value={expiringSoon.length} sub="renovação necessária" color={expiringSoon.length > 0 ? orange : '#2D1B2E'} />
-          <StatCard label="Canceladas" value={cancelled.length} sub={`${pending.length} pendentes`} color={cancelled.length > 0 ? red : '#2D1B2E'} />
+          <StatCard label="Vencendo em 30d" value={expiringSoon.length} sub="renovação necessária" color={expiringSoon.length > 0 ? orange : '#2A1E2C'} />
+          <StatCard label="Canceladas" value={cancelled.length} sub={`${pending.length} pendentes`} color={cancelled.length > 0 ? red : '#2A1E2C'} />
         </div>
 
         {/* Breakdown */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
           {/* Tipo de plano */}
           <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '20px 24px' }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E', marginBottom: 16 }}>Distribuição por tipo</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C', marginBottom: 16 }}>Distribuição por tipo</div>
             {[
               { label: 'Anual — Cartão', count: annualCard.length, color: accent },
-              { label: 'Anual — PIX',   count: annualPix.length,  color: '#007AFF' },
+              { label: 'Anual — PIX',   count: annualPix.length,  color: '#2563EB' },
             ].map(({ label, count, color }) => {
               const pct = active.length > 0 ? Math.round((count / active.length) * 100) : 0
               return (
                 <div key={label} style={{ marginBottom: 14 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 500, color: '#2D1B2E' }}>{label}</span>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: '#2A1E2C' }}>{label}</span>
                     <span style={{ fontSize: 13, fontWeight: 700, color }}>{count} ({pct}%)</span>
                   </div>
                   <div style={{ height: 6, background: '#F0F0F5', borderRadius: 3 }}>
@@ -127,7 +127,7 @@ export default async function AssinaturasPage() {
 
           {/* Vencendo em breve */}
           <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '20px 24px' }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E', marginBottom: 16 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C', marginBottom: 16 }}>
               Vencendo em 30 dias
               {expiringSoon.length > 0 && (
                 <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: orange + '20', color: orange }}>
@@ -141,7 +141,7 @@ export default async function AssinaturasPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {expiringSoon.slice(0, 5).map((s: any) => (
                   <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: 13, fontWeight: 500, color: '#2D1B2E' }}>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: '#2A1E2C' }}>
                       {s.full_name ?? s.email.split('@')[0]}
                     </div>
                     <div style={{ fontSize: 12, color: orange, fontWeight: 600 }}>
@@ -162,7 +162,7 @@ export default async function AssinaturasPage() {
         {/* Full list */}
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)' }}>
           <div style={{ padding: '18px 24px', borderBottom: '1px solid #F0F0F5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#2D1B2E' }}>Todas as assinaturas</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#2A1E2C' }}>Todas as assinaturas</div>
             <Link href="/usuarios" style={{ fontSize: 13, color: accent, fontWeight: 600, textDecoration: 'none' }}>
               Ver usuárias →
             </Link>
@@ -175,7 +175,7 @@ export default async function AssinaturasPage() {
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid #F0F0F5', background: '#FAFAFA' }}>
+                <tr style={{ borderBottom: '1px solid #F0F0F5', background: '#FFF7EE' }}>
                   {['Usuária', 'Plano', 'Status', 'PagarMe ID', 'Expira em', 'Cadastro'].map(h => (
                     <th key={h} style={{ padding: '10px 20px', textAlign: 'left', fontSize: 11, color: gray, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4 }}>
                       {h}
@@ -189,12 +189,12 @@ export default async function AssinaturasPage() {
                   return (
                     <tr key={s.id} style={{ borderBottom: '1px solid #F9F9FC' }}>
                       <td style={{ padding: '12px 20px' }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: '#2D1B2E' }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#2A1E2C' }}>
                           {s.full_name ?? s.email.split('@')[0]}
                         </div>
                         <div style={{ fontSize: 11, color: gray }}>{s.email}</div>
                       </td>
-                      <td style={{ padding: '12px 20px', fontSize: 13, color: '#2D1B2E' }}>
+                      <td style={{ padding: '12px 20px', fontSize: 13, color: '#2A1E2C' }}>
                         {SUB_TYPE[s.subscription_type] ?? s.subscription_type}
                       </td>
                       <td style={{ padding: '12px 20px' }}>
@@ -206,7 +206,7 @@ export default async function AssinaturasPage() {
                       <td style={{ padding: '12px 20px', fontSize: 12, color: gray, fontFamily: 'monospace' }}>
                         {s.pagarme_subscription_id ?? '—'}
                       </td>
-                      <td style={{ padding: '12px 20px', fontSize: 12, color: s.subscription_expires_at ? '#2D1B2E' : gray }}>
+                      <td style={{ padding: '12px 20px', fontSize: 12, color: s.subscription_expires_at ? '#2A1E2C' : gray }}>
                         {s.subscription_expires_at
                           ? new Date(s.subscription_expires_at).toLocaleDateString('pt-BR')
                           : '—'}

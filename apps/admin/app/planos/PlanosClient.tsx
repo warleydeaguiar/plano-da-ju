@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Sidebar from '../components/Sidebar';
 
-const ACCENT = '#C4607A';
+const ACCENT = '#BE185D';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -14,12 +14,12 @@ const POROSITY_LABEL: Record<string, string> = {
   baixa: 'Baixa porosidade', media: 'Média porosidade', alta: 'Alta porosidade',
 };
 const AVATAR_GRADIENTS = [
-  'linear-gradient(135deg,#C4607A,#9B4560)',
-  'linear-gradient(135deg,#007AFF,#0056CC)',
-  'linear-gradient(135deg,#AF52DE,#8B3DB8)',
-  'linear-gradient(135deg,#FF9500,#CC7700)',
+  'linear-gradient(135deg,#BE185D,#9D174D)',
+  'linear-gradient(135deg,#2563EB,#0056CC)',
+  'linear-gradient(135deg,#9333EA,#8B3DB8)',
+  'linear-gradient(135deg,#D97706,#CC7700)',
   'linear-gradient(135deg,#5AC8FA,#30A9D6)',
-  'linear-gradient(135deg,#34C759,#28A745)',
+  'linear-gradient(135deg,#22A06B,#28A745)',
 ];
 function gradientForId(id: string): string {
   let h = 0;
@@ -46,11 +46,11 @@ function formatDate(iso: string): string {
 
 // ── Stage config ─────────────────────────────────────────────────────────────
 const STAGE_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  awaiting_photo: { label: 'Aguardando foto',  color: '#FF9500', bg: 'rgba(255,149,0,0.10)' },
-  processing:     { label: 'Processando IA',   color: '#007AFF', bg: 'rgba(0,122,255,0.10)' },
+  awaiting_photo: { label: 'Aguardando foto',  color: '#D97706', bg: 'rgba(255,149,0,0.10)' },
+  processing:     { label: 'Processando IA',   color: '#2563EB', bg: 'rgba(0,122,255,0.10)' },
   needs_review:   { label: 'Para revisar',     color: ACCENT,    bg: 'rgba(196,96,122,0.10)' },
-  approved:       { label: 'Aprovado',         color: '#34C759', bg: 'rgba(52,199,89,0.10)'  },
-  no_subscription:{ label: 'Sem assinatura',   color: '#8A8A8E', bg: 'rgba(138,138,142,0.10)'},
+  approved:       { label: 'Aprovado',         color: '#22A06B', bg: 'rgba(52,199,89,0.10)'  },
+  no_subscription:{ label: 'Sem assinatura',   color: '#7C6B7E', bg: 'rgba(138,138,142,0.10)'},
 };
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -275,10 +275,10 @@ function qVal(field: string, raw: unknown): string {
 // ── ClientProfile section component ──────────────────────────────────────────
 function ProfileRow({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div style={{ display: 'flex', gap: 8, padding: '7px 0', borderBottom: '1px solid #F5F5F7' }}>
-      <span style={{ fontSize: 12, color: '#8A8A8E', minWidth: 130, flexShrink: 0 }}>{label}</span>
+    <div style={{ display: 'flex', gap: 8, padding: '7px 0', borderBottom: '1px solid #FFFAF5' }}>
+      <span style={{ fontSize: 12, color: '#7C6B7E', minWidth: 130, flexShrink: 0 }}>{label}</span>
       <span style={{
-        fontSize: 12.5, color: accent ? ACCENT : '#2D1B2E', fontWeight: accent ? 600 : 400,
+        fontSize: 12.5, color: accent ? ACCENT : '#2A1E2C', fontWeight: accent ? 600 : 400,
         lineHeight: 1.4,
       }}>
         {value || '—'}
@@ -291,7 +291,7 @@ function ProfileGroup({ title, icon, children }: { title: string; icon: string; 
   return (
     <div style={{ marginBottom: 2 }}>
       <div style={{
-        fontSize: 11, fontWeight: 700, color: '#8A8A8E',
+        fontSize: 11, fontWeight: 700, color: '#7C6B7E',
         textTransform: 'uppercase', letterSpacing: 0.6,
         padding: '10px 0 4px',
         display: 'flex', alignItems: 'center', gap: 5,
@@ -386,7 +386,7 @@ function ClientProfile({ card, expanded, onToggle }: {
           display: 'flex', alignItems: 'center', gap: 10,
         }}
       >
-        <span style={{ fontSize: 12, fontWeight: 700, color: '#8A8A8E', textTransform: 'uppercase', letterSpacing: 0.5, flexShrink: 0 }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: '#7C6B7E', textTransform: 'uppercase', letterSpacing: 0.5, flexShrink: 0 }}>
           📋 Perfil da Cliente
         </span>
         <div style={{ flex: 1, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -405,7 +405,7 @@ function ClientProfile({ card, expanded, onToggle }: {
             }}>{p}</span>
           ))}
         </div>
-        <span style={{ fontSize: 14, color: '#8A8A8E', transition: 'transform 0.2s', transform: expanded ? 'rotate(180deg)' : 'none', flexShrink: 0 }}>
+        <span style={{ fontSize: 14, color: '#7C6B7E', transition: 'transform 0.2s', transform: expanded ? 'rotate(180deg)' : 'none', flexShrink: 0 }}>
           ▾
         </span>
       </button>
@@ -413,7 +413,7 @@ function ClientProfile({ card, expanded, onToggle }: {
       {/* Expanded content */}
       {expanded && (
         <div style={{
-          borderTop: '1px solid #F2F2F7',
+          borderTop: '1px solid #F3EBE1',
           padding: '4px 20px 16px',
           display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 32px',
         }}>
@@ -465,13 +465,13 @@ function ClientProfile({ card, expanded, onToggle }: {
             <ProfileGroup title="Produtos em Casa" icon="🧴">
               {(q.produtos_casa || q.products_at_home) ? (
                 <div style={{
-                  fontSize: 12.5, color: '#2D1B2E', lineHeight: 1.6,
-                  padding: '6px 0 8px', borderBottom: '1px solid #F5F5F7',
+                  fontSize: 12.5, color: '#2A1E2C', lineHeight: 1.6,
+                  padding: '6px 0 8px', borderBottom: '1px solid #FFFAF5',
                 }}>
                   {String(q.produtos_casa ?? q.products_at_home)}
                 </div>
               ) : (
-                <div style={{ fontSize: 12, color: '#8A8A8E', padding: '6px 0' }}>Não informado</div>
+                <div style={{ fontSize: 12, color: '#7C6B7E', padding: '6px 0' }}>Não informado</div>
               )}
             </ProfileGroup>
 
@@ -484,7 +484,7 @@ function ClientProfile({ card, expanded, onToggle }: {
             {/* Foto */}
             {card.photo_url && (
               <div style={{ marginTop: 12 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#8A8A8E', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#7C6B7E', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 }}>
                   📸 Foto enviada
                 </div>
                 <a href={card.photo_url} target="_blank" rel="noopener noreferrer">
@@ -493,7 +493,7 @@ function ClientProfile({ card, expanded, onToggle }: {
                     alt="Foto do cabelo"
                     style={{
                       width: 140, height: 140, objectFit: 'cover',
-                      borderRadius: 10, border: '2px solid #F2F2F7', display: 'block',
+                      borderRadius: 10, border: '2px solid #F3EBE1', display: 'block',
                     }}
                     onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
                   />
@@ -509,12 +509,12 @@ function ClientProfile({ card, expanded, onToggle }: {
 
 // ── Shared input style ────────────────────────────────────────────────────────
 const fieldBase: React.CSSProperties = {
-  border: '1.5px solid #E5E5EA',
+  border: '1.5px solid #EDE0D2',
   borderRadius: 7,
   padding: '7px 10px',
   fontSize: 13,
-  color: '#2D1B2E',
-  background: '#FAFAFA',
+  color: '#2A1E2C',
+  background: '#FFF7EE',
   outline: 'none',
   fontFamily: 'inherit',
   width: '100%',
@@ -789,23 +789,23 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
   return (
     <div style={{
       display: 'flex', height: '100vh', overflow: 'hidden',
-      background: '#F5F5F7',
-      fontFamily: '-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif',
-      color: '#2D1B2E',
+      background: '#FFFAF5',
+      fontFamily: 'Plus Jakarta Sans, -apple-system, system-ui, sans-serif',
+      color: '#2A1E2C',
     }}>
       <Sidebar />
 
-      <div style={{ marginLeft: 220, flex: 1, height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ marginLeft: 234, flex: 1, height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         {/* Page header */}
         <div style={{
-          padding: '28px 32px 20px', background: '#F5F5F7',
+          padding: '28px 32px 20px', background: '#FFFAF5',
           display: 'flex', alignItems: 'center', gap: 12,
-          borderBottom: '1px solid #E5E5EA', flexShrink: 0,
+          borderBottom: '1px solid #EDE0D2', flexShrink: 0,
         }}>
           <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.4, margin: 0 }}>Revisão de Planos</h1>
           <span style={{
             background:  counts.pending > 0 ? 'rgba(255,149,0,0.12)' : 'rgba(52,199,89,0.12)',
-            color:       counts.pending > 0 ? '#FF9500' : '#34C759',
+            color:       counts.pending > 0 ? '#D97706' : '#22A06B',
             fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 20,
           }}>
             {counts.pending} {counts.pending === 1 ? 'pendente' : 'pendentes'}
@@ -816,16 +816,16 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
           {/* ── Left list ───────────────────────────────────────────────── */}
           <div style={{
             width: 320, minWidth: 320, background: '#fff',
-            borderRight: '1px solid #E5E5EA',
+            borderRight: '1px solid #EDE0D2',
             display: 'flex', flexDirection: 'column', overflow: 'hidden',
           }}>
             {/* Filter tabs */}
-            <div style={{ display: 'flex', borderBottom: '1px solid #E5E5EA', padding: '0 16px', flexShrink: 0 }}>
+            <div style={{ display: 'flex', borderBottom: '1px solid #EDE0D2', padding: '0 16px', flexShrink: 0 }}>
               {FILTER_TABS.map(t => (
                 <button key={t.key} onClick={() => setFilterTab(t.key)} style={{
                   fontSize: 12.5,
                   fontWeight: filterTab === t.key ? 600 : 500,
-                  color:     filterTab === t.key ? ACCENT : '#8A8A8E',
+                  color:     filterTab === t.key ? ACCENT : '#7C6B7E',
                   padding: '12px 10px', cursor: 'pointer',
                   border: 'none', background: 'none',
                   borderBottom: filterTab === t.key ? `2px solid ${ACCENT}` : '2px solid transparent',
@@ -839,7 +839,7 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
             {/* Cards */}
             <div style={{ overflowY: 'auto', flex: 1 }}>
               {filtered.length === 0 ? (
-                <div style={{ padding: 30, textAlign: 'center', color: '#8A8A8E', fontSize: 13 }}>
+                <div style={{ padding: 30, textAlign: 'center', color: '#7C6B7E', fontSize: 13 }}>
                   {filterTab === 'pending' ? 'Nenhum plano pendente 🎉'
                     : filterTab === 'approved' ? 'Sem planos aprovados ainda'
                     : 'Sem planos no sistema'}
@@ -855,7 +855,7 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                       style={{
                         display: 'flex', alignItems: 'center', gap: 12,
                         padding: '14px 16px', cursor: 'pointer',
-                        borderBottom: '1px solid #F2F2F7',
+                        borderBottom: '1px solid #F3EBE1',
                         background:  isActive ? 'rgba(196,96,122,0.06)' : 'white',
                         borderLeft:  isActive ? `3px solid ${ACCENT}` : '3px solid transparent',
                         paddingLeft: isActive ? 13 : 16,
@@ -870,10 +870,10 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                         {initials(p.full_name)}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13.5, fontWeight: 600, color: '#2D1B2E', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <div style={{ fontSize: 13.5, fontWeight: 600, color: '#2A1E2C', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {p.full_name}
                         </div>
-                        <div style={{ fontSize: 11.5, color: '#8A8A8E', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <div style={{ fontSize: 11.5, color: '#7C6B7E', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {[
                             p.hair_type ? HAIR_TYPE_LABEL[p.hair_type] ?? p.hair_type : null,
                             p.porosity  ? POROSITY_LABEL[p.porosity]   ?? p.porosity  : null,
@@ -906,7 +906,7 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
               a altura do container. O wrapper interno faz o stacking. */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px 80px', minHeight: 0 }}>
             {!selected ? (
-              <div style={{ color: '#8A8A8E', fontSize: 14 }}>
+              <div style={{ color: '#7C6B7E', fontSize: 14 }}>
                 Selecione uma usuária na lista para ver o plano.
               </div>
             ) : (
@@ -959,7 +959,7 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                           display: 'inline-flex', alignItems: 'center', gap: 6,
                           fontSize: 13, fontWeight: 600,
                           padding: '9px 16px', borderRadius: 9,
-                          background: '#F2F2F7', border: '1.5px solid #E5E5EA',
+                          background: '#F3EBE1', border: '1.5px solid #EDE0D2',
                           color: '#AEAEB2', cursor: 'not-allowed',
                         }}
                       >
@@ -976,9 +976,9 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                         display: 'inline-flex', alignItems: 'center', gap: 6,
                         fontSize: 13, fontWeight: 600,
                         padding: '9px 16px', borderRadius: 9, cursor: 'pointer',
-                        background: regenerating ? '#F5F5F7' : ACCENT,
+                        background: regenerating ? '#FFFAF5' : ACCENT,
                         border: `1.5px solid ${ACCENT}`,
-                        color: regenerating ? '#8A8A8E' : '#fff',
+                        color: regenerating ? '#7C6B7E' : '#fff',
                         opacity: editMode ? 0.4 : 1,
                         boxShadow: regenerating ? 'none' : '0 2px 8px rgba(196,96,122,0.25)',
                         transition: 'all 0.15s',
@@ -999,8 +999,8 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                         fontSize: 13, fontWeight: 600,
                         padding: '9px 16px', borderRadius: 9, cursor: 'pointer',
                         background: editMode ? '#fff' : '#fff',
-                        border: `1.5px solid ${editMode ? '#FF3B30' : '#C4607A'}`,
-                        color: editMode ? '#FF3B30' : ACCENT,
+                        border: `1.5px solid ${editMode ? '#DC2626' : '#BE185D'}`,
+                        color: editMode ? '#DC2626' : ACCENT,
                         opacity: (regenerating || (!currentWeek && !editMode)) ? 0.4 : 1,
                         transition: 'all 0.15s',
                       }}
@@ -1025,7 +1025,7 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                     </span>
                     <button
                       onClick={() => setShowRegenConfirm(false)}
-                      style={{ fontSize: 12, padding: '6px 12px', borderRadius: 7, border: '1.5px solid #E5E5EA', background: '#fff', cursor: 'pointer', color: '#2D1B2E' }}
+                      style={{ fontSize: 12, padding: '6px 12px', borderRadius: 7, border: '1.5px solid #EDE0D2', background: '#fff', cursor: 'pointer', color: '#2A1E2C' }}
                     >
                       Cancelar
                     </button>
@@ -1051,7 +1051,7 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                     </span>
                     <button
                       onClick={() => setRegenMessage(null)}
-                      style={{ fontSize: 13, border: 'none', background: 'none', cursor: 'pointer', color: '#8A8A8E', padding: '2px 6px' }}
+                      style={{ fontSize: 13, border: 'none', background: 'none', cursor: 'pointer', color: '#7C6B7E', padding: '2px 6px' }}
                     >
                       ✕
                     </button>
@@ -1075,7 +1075,7 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                     display: 'flex', alignItems: 'center', gap: 8,
                   }}>
                     ✎ Modo de edição — Semana {editDraft?.week_number ?? activeWeek}
-                    <span style={{ marginLeft: 4, fontWeight: 400, color: '#8A8A8E' }}>
+                    <span style={{ marginLeft: 4, fontWeight: 400, color: '#7C6B7E' }}>
                       · As alterações só são salvas ao clicar em "Salvar semana"
                     </span>
                   </div>
@@ -1089,9 +1089,9 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                         fontSize: 12, fontWeight: 600,
                         padding: '6px 12px', borderRadius: 20, cursor: 'pointer',
                         border: '1.5px solid',
-                        borderColor: activeWeek === w.week_number ? ACCENT : '#E5E5EA',
+                        borderColor: activeWeek === w.week_number ? ACCENT : '#EDE0D2',
                         background:  activeWeek === w.week_number ? ACCENT : '#fff',
-                        color:       activeWeek === w.week_number ? '#fff' : '#2D1B2E',
+                        color:       activeWeek === w.week_number ? '#fff' : '#2A1E2C',
                         opacity: editMode && w.week_number !== (editDraft?.week_number ?? activeWeek) ? 0.5 : 1,
                       }}>
                         Sem. {w.week_number}
@@ -1109,9 +1109,9 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                   transition: 'box-shadow 0.2s',
                 }}>
                   <div style={{
-                    fontSize: 12, fontWeight: 600, color: '#8A8A8E',
+                    fontSize: 12, fontWeight: 600, color: '#7C6B7E',
                     textTransform: 'uppercase', letterSpacing: 0.5,
-                    padding: '14px 20px 10px', borderBottom: '1px solid #F2F2F7',
+                    padding: '14px 20px 10px', borderBottom: '1px solid #F3EBE1',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   }}>
                     <span>Plano gerado · Semana {currentWeek?.week_number ?? (editDraft?.week_number ?? '—')}</span>
@@ -1119,11 +1119,11 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                   </div>
 
                   {/* Plan tabs */}
-                  <div style={{ display: 'flex', borderBottom: '1px solid #F2F2F7', padding: '0 20px' }}>
+                  <div style={{ display: 'flex', borderBottom: '1px solid #F3EBE1', padding: '0 20px' }}>
                     {PLAN_TABS.map(t => (
                       <button key={t.key} onClick={() => setPlanTab(t.key)} style={{
                         fontSize: 12.5, fontWeight: planTab === t.key ? 600 : 500,
-                        color: planTab === t.key ? ACCENT : '#8A8A8E',
+                        color: planTab === t.key ? ACCENT : '#7C6B7E',
                         padding: '10px 12px', cursor: 'pointer',
                         border: 'none', background: 'none',
                         borderBottom: planTab === t.key ? `2px solid ${ACCENT}` : '2px solid transparent',
@@ -1136,12 +1136,12 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
 
                   {/* Tab content */}
                   {loadingDetail ? (
-                    <div style={{ padding: 30, textAlign: 'center', color: '#8A8A8E' }}>Carregando…</div>
+                    <div style={{ padding: 30, textAlign: 'center', color: '#7C6B7E' }}>Carregando…</div>
                   ) : regenerating ? (
                     <div style={{ padding: 40, textAlign: 'center' }}>
                       <div style={{ fontSize: 32, marginBottom: 12 }}>🤖</div>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: '#2D1B2E' }}>Gerando plano com IA…</div>
-                      <div style={{ fontSize: 13, color: '#8A8A8E', marginTop: 6 }}>Isso pode levar ~1 minuto. Aguarde.</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: '#2A1E2C' }}>Gerando plano com IA…</div>
+                      <div style={{ fontSize: 13, color: '#7C6B7E', marginTop: 6 }}>Isso pode levar ~1 minuto. Aguarde.</div>
                     </div>
                   ) : (!currentWeek && !editMode && !editDraft) ? (
                     /* Empty state — só exibido quando não há plano e NÃO está editando */
@@ -1149,12 +1149,12 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                       <div style={{ fontSize: 36, marginBottom: 12 }}>
                         {selected.stage === 'awaiting_photo' ? '📸' : selected.stage === 'processing' ? '⚙️' : '📋'}
                       </div>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: '#2D1B2E', marginBottom: 6 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: '#2A1E2C', marginBottom: 6 }}>
                         {selected.stage === 'awaiting_photo' ? 'Aguardando foto do cabelo'
                           : selected.stage === 'processing' ? 'IA processando o plano'
                           : 'Nenhum plano gerado ainda'}
                       </div>
-                      <div style={{ fontSize: 13, color: '#8A8A8E', marginBottom: 20, maxWidth: 300, margin: '0 auto 20px' }}>
+                      <div style={{ fontSize: 13, color: '#7C6B7E', marginBottom: 20, maxWidth: 300, margin: '0 auto 20px' }}>
                         {selected.stage === 'awaiting_photo' ? 'A cliente ainda não enviou a foto. Você pode gerar o plano com base somente no quiz.'
                           : selected.stage === 'processing' ? 'O plano está sendo gerado automaticamente. Aguarde ou force a geração.'
                           : 'Gere o plano com IA ou adicione manualmente as semanas.'}
@@ -1177,8 +1177,8 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                       {planTab === 'cronograma' && (
                         <div>
                           {/* Focus input */}
-                          <div style={{ padding: '14px 20px', borderBottom: '1px solid #F2F2F7' }}>
-                            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#8A8A8E', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                          <div style={{ padding: '14px 20px', borderBottom: '1px solid #F3EBE1' }}>
+                            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#7C6B7E', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 }}>
                               Foco da semana
                             </label>
                             <input
@@ -1190,8 +1190,8 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                           </div>
 
                           {/* Tasks list */}
-                          <div style={{ padding: '14px 20px 6px', borderBottom: '1px solid #F2F2F7' }}>
-                            <div style={{ fontSize: 11, fontWeight: 600, color: '#8A8A8E', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                          <div style={{ padding: '14px 20px 6px', borderBottom: '1px solid #F3EBE1' }}>
+                            <div style={{ fontSize: 11, fontWeight: 600, color: '#7C6B7E', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.4 }}>
                               Tarefas ({editDraft.tasks.length})
                             </div>
                             {editDraft.tasks.map((task, i) => (
@@ -1223,8 +1223,8 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                                   onClick={() => removeTask(i)}
                                   title="Remover tarefa"
                                   style={{
-                                    width: 28, height: 28, borderRadius: '50%', border: '1.5px solid #E5E5EA',
-                                    background: '#fff', cursor: 'pointer', color: '#8A8A8E',
+                                    width: 28, height: 28, borderRadius: '50%', border: '1.5px solid #EDE0D2',
+                                    background: '#fff', cursor: 'pointer', color: '#7C6B7E',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     fontSize: 14, flexShrink: 0, marginTop: 1,
                                   }}
@@ -1238,7 +1238,7 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                               style={{
                                 width: '100%', padding: '9px', borderRadius: 8,
                                 border: '1.5px dashed #D1D1D6', background: 'none',
-                                fontSize: 12.5, fontWeight: 600, color: '#8A8A8E',
+                                fontSize: 12.5, fontWeight: 600, color: '#7C6B7E',
                                 cursor: 'pointer', marginBottom: 8,
                               }}
                             >
@@ -1250,7 +1250,7 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
 
                       {planTab === 'produtos' && (
                         <div style={{ padding: '14px 20px' }}>
-                          <div style={{ fontSize: 11, fontWeight: 600, color: '#8A8A8E', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: '#7C6B7E', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.4 }}>
                             Produtos recomendados ({editDraft.products.length})
                           </div>
                           {/* Datalist for autocomplete */}
@@ -1274,8 +1274,8 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                               <button
                                 onClick={() => removeProduct(i)}
                                 style={{
-                                  width: 32, height: 32, borderRadius: '50%', border: '1.5px solid #E5E5EA',
-                                  background: '#fff', cursor: 'pointer', color: '#8A8A8E',
+                                  width: 32, height: 32, borderRadius: '50%', border: '1.5px solid #EDE0D2',
+                                  background: '#fff', cursor: 'pointer', color: '#7C6B7E',
                                   display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0,
                                 }}
                               >×</button>
@@ -1284,7 +1284,7 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                           <button onClick={addProduct} style={{
                             width: '100%', padding: '9px', borderRadius: 8,
                             border: '1.5px dashed #D1D1D6', background: 'none',
-                            fontSize: 12.5, fontWeight: 600, color: '#8A8A8E', cursor: 'pointer',
+                            fontSize: 12.5, fontWeight: 600, color: '#7C6B7E', cursor: 'pointer',
                           }}>
                             ＋ Adicionar produto
                           </button>
@@ -1298,7 +1298,7 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
 
                       {planTab === 'dicas' && (
                         <div style={{ padding: '14px 20px' }}>
-                          <div style={{ fontSize: 11, fontWeight: 600, color: '#8A8A8E', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: '#7C6B7E', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.4 }}>
                             Dicas ({editDraft.tips.length})
                           </div>
                           {editDraft.tips.map((tip, i) => (
@@ -1313,8 +1313,8 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                               <button
                                 onClick={() => removeTip(i)}
                                 style={{
-                                  width: 32, height: 32, borderRadius: '50%', border: '1.5px solid #E5E5EA',
-                                  background: '#fff', cursor: 'pointer', color: '#8A8A8E',
+                                  width: 32, height: 32, borderRadius: '50%', border: '1.5px solid #EDE0D2',
+                                  background: '#fff', cursor: 'pointer', color: '#7C6B7E',
                                   display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0,
                                 }}
                               >×</button>
@@ -1323,7 +1323,7 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                           <button onClick={addTip} style={{
                             width: '100%', padding: '9px', borderRadius: 8,
                             border: '1.5px dashed #D1D1D6', background: 'none',
-                            fontSize: 12.5, fontWeight: 600, color: '#8A8A8E', cursor: 'pointer',
+                            fontSize: 12.5, fontWeight: 600, color: '#7C6B7E', cursor: 'pointer',
                           }}>
                             ＋ Adicionar dica
                           </button>
@@ -1345,7 +1345,7 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                               <div key={i} style={{
                                 display: 'flex', alignItems: 'flex-start', gap: 14,
                                 padding: '13px 20px',
-                                borderBottom: isLast ? 'none' : '1px solid #F2F2F7',
+                                borderBottom: isLast ? 'none' : '1px solid #F3EBE1',
                               }}>
                                 <div style={{
                                   width: 26, height: 26, borderRadius: '50%',
@@ -1358,7 +1358,7 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                                 <div style={{ flex: 1 }}>
                                   <div style={{ fontSize: 13, fontWeight: 600 }}>{obj.title}</div>
                                   {obj.description && (
-                                    <div style={{ fontSize: 12, color: '#8A8A8E', marginTop: 2 }}>{obj.description}</div>
+                                    <div style={{ fontSize: 12, color: '#7C6B7E', marginTop: 2 }}>{obj.description}</div>
                                   )}
                                 </div>
                               </div>
@@ -1368,12 +1368,12 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                       )}
                       {planTab === 'produtos' && (
                         (currentWeek?.products ?? []).length === 0 ? (
-                          <div style={{ padding: 20, color: '#8A8A8E', fontSize: 13 }}>Sem produtos definidos para essa semana.</div>
+                          <div style={{ padding: 20, color: '#7C6B7E', fontSize: 13 }}>Sem produtos definidos para essa semana.</div>
                         ) : (
                           (currentWeek?.products ?? []).map((p, i, arr) => (
                             <div key={i} style={{
                               padding: '12px 20px',
-                              borderBottom: i < arr.length - 1 ? '1px solid #F2F2F7' : 'none',
+                              borderBottom: i < arr.length - 1 ? '1px solid #F3EBE1' : 'none',
                               display: 'flex', gap: 10, alignItems: 'center',
                             }}>
                               <span style={{ color: ACCENT }}>✓</span>
@@ -1384,12 +1384,12 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                       )}
                       {planTab === 'dicas' && (
                         (currentWeek?.tips ?? []).length === 0 ? (
-                          <div style={{ padding: 20, color: '#8A8A8E', fontSize: 13 }}>Sem dicas para essa semana.</div>
+                          <div style={{ padding: 20, color: '#7C6B7E', fontSize: 13 }}>Sem dicas para essa semana.</div>
                         ) : (
                           (currentWeek?.tips ?? []).map((t, i, arr) => (
                             <div key={i} style={{
                               padding: '12px 20px',
-                              borderBottom: i < arr.length - 1 ? '1px solid #F2F2F7' : 'none',
+                              borderBottom: i < arr.length - 1 ? '1px solid #F3EBE1' : 'none',
                               display: 'flex', gap: 10, alignItems: 'flex-start',
                             }}>
                               <span style={{ width: 5, height: 5, borderRadius: 3, background: ACCENT, marginTop: 8, flexShrink: 0 }} />
@@ -1405,9 +1405,9 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                 {/* Observations */}
                 <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                   <div style={{
-                    fontSize: 12, fontWeight: 600, color: '#8A8A8E',
+                    fontSize: 12, fontWeight: 600, color: '#7C6B7E',
                     textTransform: 'uppercase', letterSpacing: 0.5,
-                    padding: '14px 20px 10px', borderBottom: '1px solid #F2F2F7',
+                    padding: '14px 20px 10px', borderBottom: '1px solid #F3EBE1',
                   }}>
                     Observações da Ju (Semana {activeWeek})
                   </div>
@@ -1417,7 +1417,7 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                     placeholder="Adicione observações personalizadas para esta usuária..."
                     style={{
                       width: '100%', border: 'none', outline: 'none', resize: 'vertical',
-                      fontFamily: 'inherit', fontSize: 13, color: '#2D1B2E',
+                      fontFamily: 'inherit', fontSize: 13, color: '#2A1E2C',
                       padding: '16px 20px',
                       minHeight: 90, maxHeight: 280, overflowY: 'auto',
                       background: 'transparent', lineHeight: 1.5,
@@ -1436,7 +1436,7 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                       style={{
                         fontSize: 13.5, fontWeight: 600, padding: '10px 20px', borderRadius: 9,
                         cursor: 'pointer', background: 'transparent',
-                        border: '1.5px solid #E5E5EA', color: '#8A8A8E',
+                        border: '1.5px solid #EDE0D2', color: '#7C6B7E',
                         opacity: savingEdit ? 0.5 : 1,
                       }}
                     >
@@ -1450,7 +1450,7 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                         display: 'inline-flex', alignItems: 'center', gap: 6,
                         fontSize: 13.5, fontWeight: 600, padding: '10px 24px', borderRadius: 9,
                         cursor: savingEdit ? 'wait' : 'pointer',
-                        background: '#007AFF', border: '1.5px solid #007AFF', color: '#fff',
+                        background: '#2563EB', border: '1.5px solid #2563EB', color: '#fff',
                         boxShadow: '0 2px 8px rgba(0,122,255,0.3)',
                         opacity: savingEdit ? 0.7 : 1,
                       }}
@@ -1468,7 +1468,7 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                         display: 'inline-flex', alignItems: 'center', gap: 6,
                         fontSize: 13.5, fontWeight: 600, padding: '10px 20px', borderRadius: 9,
                         cursor: savingAction !== null ? 'wait' : 'pointer',
-                        background: 'transparent', border: '1.5px solid #FF3B30', color: '#FF3B30',
+                        background: 'transparent', border: '1.5px solid #DC2626', color: '#DC2626',
                         opacity: savingAction !== null ? 0.6 : 1,
                       }}
                     >
@@ -1482,8 +1482,8 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
                         display: 'inline-flex', alignItems: 'center', gap: 6,
                         fontSize: 13.5, fontWeight: 600, padding: '10px 20px', borderRadius: 9,
                         cursor: savingAction !== null || selected.approved ? 'not-allowed' : 'pointer',
-                        background:  selected.approved ? '#8A8A8E' : '#34C759',
-                        border:      `1.5px solid ${selected.approved ? '#8A8A8E' : '#34C759'}`,
+                        background:  selected.approved ? '#7C6B7E' : '#22A06B',
+                        border:      `1.5px solid ${selected.approved ? '#7C6B7E' : '#22A06B'}`,
                         color: '#fff',
                         boxShadow:   selected.approved ? 'none' : '0 2px 8px rgba(52,199,89,0.3)',
                         opacity: savingAction !== null ? 0.6 : 1,

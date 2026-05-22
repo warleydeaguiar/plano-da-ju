@@ -3,11 +3,11 @@
 import { useState, useCallback } from 'react'
 
 // ─── Colours ──────────────────────────────────────────────────────
-const accent = '#C4607A'
-const green  = '#34C759'
-const orange = '#FF9500'
-const red    = '#FF3B30'
-const gray   = '#8A8A8E'
+const accent = '#BE185D'
+const green  = '#22A06B'
+const orange = '#D97706'
+const red    = '#DC2626'
+const gray   = '#7C6B7E'
 
 // ─── Types ────────────────────────────────────────────────────────
 interface ProductRow {
@@ -107,8 +107,8 @@ function Modal({
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '9px 12px', borderRadius: 8, fontSize: 13,
-    border: '1px solid #E0E0E8', outline: 'none', background: '#FAFAFA',
-    color: '#2D1B2E', boxSizing: 'border-box',
+    border: '1px solid #E0E0E8', outline: 'none', background: '#FFF7EE',
+    color: '#2A1E2C', boxSizing: 'border-box',
   }
   const labelStyle: React.CSSProperties = {
     fontSize: 11, fontWeight: 600, color: gray,
@@ -133,9 +133,9 @@ function Modal({
           position: 'sticky', top: 0, background: '#fff', zIndex: 1,
           borderRadius: '18px 18px 0 0',
         }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#2D1B2E' }}>{title}</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#2A1E2C' }}>{title}</div>
           <button onClick={onClose} style={{
-            background: '#F5F5F7', border: 'none', borderRadius: 8,
+            background: '#FFFAF5', border: 'none', borderRadius: 8,
             width: 32, height: 32, cursor: 'pointer', fontSize: 16,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>✕</button>
@@ -220,7 +220,7 @@ function Modal({
                     style={{
                       padding: '6px 14px', borderRadius: 99,
                       border: selected ? `1.5px solid ${accent}` : '1.5px solid #E0E0E8',
-                      background: selected ? accent + '14' : '#FAFAFA',
+                      background: selected ? accent + '14' : '#FFF7EE',
                       color: selected ? accent : gray,
                       fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
                       transition: 'all 0.15s',
@@ -241,7 +241,7 @@ function Modal({
               style={{
                 flex: 1, padding: '12px 16px', borderRadius: 12, cursor: 'pointer',
                 border: `1.5px solid ${form.is_ybera ? accent : '#E0E0E8'}`,
-                background: form.is_ybera ? accent + '08' : '#FAFAFA',
+                background: form.is_ybera ? accent + '08' : '#FFF7EE',
                 display: 'flex', alignItems: 'center', gap: 10,
                 transition: 'all 0.15s',
               }}
@@ -255,7 +255,7 @@ function Modal({
                 {form.is_ybera && <span style={{ color: '#fff', fontSize: 13, lineHeight: 1 }}>✓</span>}
               </div>
               <div>
-                <div style={{ fontSize: 12.5, fontWeight: 600, color: '#2D1B2E' }}>✨ Produto Ybera</div>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: '#2A1E2C' }}>✨ Produto Ybera</div>
                 <div style={{ fontSize: 11, color: gray }}>Aparece na seção Ybera Paris</div>
               </div>
             </div>
@@ -266,7 +266,7 @@ function Modal({
               style={{
                 flex: 1, padding: '12px 16px', borderRadius: 12, cursor: 'pointer',
                 border: `1.5px solid ${form.active ? green : '#E0E0E8'}`,
-                background: form.active ? green + '08' : '#FAFAFA',
+                background: form.active ? green + '08' : '#FFF7EE',
                 display: 'flex', alignItems: 'center', gap: 10,
                 transition: 'all 0.15s',
               }}
@@ -280,7 +280,7 @@ function Modal({
                 {form.active && <span style={{ color: '#fff', fontSize: 13, lineHeight: 1 }}>✓</span>}
               </div>
               <div>
-                <div style={{ fontSize: 12.5, fontWeight: 600, color: '#2D1B2E' }}>Ativo no app</div>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: '#2A1E2C' }}>Ativo no app</div>
                 <div style={{ fontSize: 11, color: gray }}>Visível em Promoções</div>
               </div>
             </div>
@@ -306,8 +306,8 @@ function Modal({
         }}>
           <button onClick={onClose} style={{
             padding: '10px 20px', borderRadius: 10,
-            border: '1px solid #E0E0E8', background: '#F5F5F7',
-            fontSize: 13.5, fontWeight: 600, color: '#2D1B2E', cursor: 'pointer',
+            border: '1px solid #E0E0E8', background: '#FFFAF5',
+            fontSize: 13.5, fontWeight: 600, color: '#2A1E2C', cursor: 'pointer',
           }}>
             Cancelar
           </button>
@@ -348,18 +348,18 @@ function DeleteConfirm({
         boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
       }}>
         <div style={{ fontSize: 32, marginBottom: 14, textAlign: 'center' }}>🗑️</div>
-        <div style={{ fontSize: 16, fontWeight: 700, color: '#2D1B2E', textAlign: 'center', marginBottom: 8 }}>
+        <div style={{ fontSize: 16, fontWeight: 700, color: '#2A1E2C', textAlign: 'center', marginBottom: 8 }}>
           Remover produto?
         </div>
         <div style={{ fontSize: 13, color: gray, textAlign: 'center', marginBottom: 24, lineHeight: 1.5 }}>
-          <strong style={{ color: '#2D1B2E' }}>{product.name}</strong> será removido permanentemente
+          <strong style={{ color: '#2A1E2C' }}>{product.name}</strong> será removido permanentemente
           e não aparecerá mais em Promoções.
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={onClose} style={{
             flex: 1, padding: '11px', borderRadius: 10,
-            border: '1px solid #E0E0E8', background: '#F5F5F7',
-            fontSize: 13.5, fontWeight: 600, color: '#2D1B2E', cursor: 'pointer',
+            border: '1px solid #E0E0E8', background: '#FFFAF5',
+            fontSize: 13.5, fontWeight: 600, color: '#2A1E2C', cursor: 'pointer',
           }}>
             Cancelar
           </button>
@@ -396,7 +396,7 @@ function ProductItem({
           <div style={{
             width: 44, height: 44, borderRadius: 10, flexShrink: 0, overflow: 'hidden',
             background: product.is_ybera
-              ? 'linear-gradient(135deg, #C4607A, #8B3A6E)'
+              ? 'linear-gradient(135deg, #BE185D, #8B3A6E)'
               : '#F0F0F5',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
@@ -406,7 +406,7 @@ function ProductItem({
             }
           </div>
           <div>
-            <div style={{ fontSize: 13.5, fontWeight: 700, color: '#2D1B2E', lineHeight: 1.3 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: '#2A1E2C', lineHeight: 1.3 }}>
               {product.name}
             </div>
             <div style={{ fontSize: 11, color: gray, marginTop: 1 }}>
@@ -417,7 +417,7 @@ function ProductItem({
       </td>
 
       {/* Category */}
-      <td style={{ padding: '12px 16px', fontSize: 12.5, color: '#2D1B2E' }}>
+      <td style={{ padding: '12px 16px', fontSize: 12.5, color: '#2A1E2C' }}>
         {product.category ? (CATEGORY_LABELS[product.category] ?? product.category) : '—'}
       </td>
 
@@ -686,7 +686,7 @@ export default function ProdutosClient({ initialProducts }: { initialProducts: P
       {/* ── Header ── */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: '#2D1B2E' }}>Produtos & Promoções</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#2A1E2C' }}>Produtos & Promoções</div>
           <div style={{ fontSize: 13, color: gray, marginTop: 4 }}>
             Catálogo visível em{' '}
             <a
@@ -712,7 +712,7 @@ export default function ProdutosClient({ initialProducts }: { initialProducts: P
       {/* ── Stats ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
         {[
-          { icon: '🧴', label: 'Total cadastrados', value: products.length, color: '#2D1B2E' },
+          { icon: '🧴', label: 'Total cadastrados', value: products.length, color: '#2A1E2C' },
           { icon: '✅', label: 'Ativos no app', value: activeCount, color: green },
           { icon: '✨', label: 'Produtos Ybera', value: yberaCount, color: accent },
           { icon: '💚', label: 'Alternativos', value: products.length - yberaCount, color: '#22C55E' },
@@ -741,8 +741,8 @@ export default function ProdutosClient({ initialProducts }: { initialProducts: P
           placeholder="🔍  Buscar produto ou marca…"
           style={{
             flex: 1, minWidth: 200, padding: '8px 12px', borderRadius: 8,
-            border: '1px solid #E0E0E8', fontSize: 13, color: '#2D1B2E',
-            outline: 'none', background: '#FAFAFA',
+            border: '1px solid #E0E0E8', fontSize: 13, color: '#2A1E2C',
+            outline: 'none', background: '#FFF7EE',
           }}
         />
 
@@ -752,7 +752,7 @@ export default function ProdutosClient({ initialProducts }: { initialProducts: P
           onChange={e => setFilterCat(e.target.value)}
           style={{
             padding: '8px 12px', borderRadius: 8, border: '1px solid #E0E0E8',
-            fontSize: 13, color: '#2D1B2E', background: '#FAFAFA', cursor: 'pointer', outline: 'none',
+            fontSize: 13, color: '#2A1E2C', background: '#FFF7EE', cursor: 'pointer', outline: 'none',
           }}
         >
           <option value="all">Todas categorias</option>
@@ -772,7 +772,7 @@ export default function ProdutosClient({ initialProducts }: { initialProducts: P
                 border: filterStatus === s ? 'none' : '1px solid #E0E0E8',
                 background: filterStatus === s
                   ? (s === 'inactive' ? gray : s === 'active' ? green : accent)
-                  : '#FAFAFA',
+                  : '#FFF7EE',
                 color: filterStatus === s ? '#fff' : gray,
                 fontSize: 12, fontWeight: 600, cursor: 'pointer',
               }}
@@ -809,7 +809,7 @@ export default function ProdutosClient({ initialProducts }: { initialProducts: P
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
               <thead>
-                <tr style={{ background: '#FAFAFA', borderBottom: '1px solid #F0F0F5' }}>
+                <tr style={{ background: '#FFF7EE', borderBottom: '1px solid #F0F0F5' }}>
                   {['Produto', 'Categoria', 'Tipos de cabelo', 'Link afiliado', 'Status', 'Ações'].map(h => (
                     <th key={h} style={{
                       padding: '11px 16px', textAlign: 'left',

@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 
-const green = '#34C759'
-const red   = '#FF3B30'
+const green = '#22A06B'
+const red   = '#DC2626'
 
 export default function SyncButton() {
   const [syncing, setSyncing] = useState(false)
@@ -38,7 +38,7 @@ export default function SyncButton() {
         onClick={sync}
         disabled={syncing}
         style={{
-          background: '#F5F5F7', color: '#2D1B2E', border: 'none',
+          background: '#FFFAF5', color: '#2A1E2C', border: 'none',
           cursor: syncing ? 'default' : 'pointer',
           padding: '9px 18px', borderRadius: 10, fontSize: 14, fontWeight: 600,
           opacity: syncing ? 0.6 : 1,

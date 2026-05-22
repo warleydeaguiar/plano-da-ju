@@ -3,10 +3,10 @@ import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
-const accent = '#C4607A'
-const green  = '#34C759'
-const gray   = '#8A8A8E'
-const blue   = '#007AFF'
+const accent = '#BE185D'
+const green  = '#22A06B'
+const gray   = '#7C6B7E'
+const blue   = '#2563EB'
 
 async function getQuickStats() {
   const sb = createAdminClient()
@@ -41,7 +41,7 @@ export default async function QuizHubPage() {
 
   return (
     <div style={{ padding: '32px 40px', maxWidth: 960 }}>
-      <div style={{ fontSize: 22, fontWeight: 700, color: '#2D1B2E', marginBottom: 4 }}>🎯 Quiz</div>
+      <div style={{ fontSize: 22, fontWeight: 700, color: '#2A1E2C', marginBottom: 4 }}>🎯 Quiz</div>
       <div style={{ fontSize: 14, color: gray, marginBottom: 32 }}>Gerencie e acompanhe os quizzes ativos</div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
@@ -60,19 +60,19 @@ export default async function QuizHubPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
               <div style={{ background: '#F9F9FC', borderRadius: 12, padding: '14px 16px' }}>
                 <div style={{ fontSize: 11, color: gray, fontWeight: 600, marginBottom: 4 }}>TOTAL LEADS</div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: '#2D1B2E' }}>{fashionGold.totalLeads.toLocaleString('pt-BR')}</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: '#2A1E2C' }}>{fashionGold.totalLeads.toLocaleString('pt-BR')}</div>
               </div>
               <div style={{ background: '#F9F9FC', borderRadius: 12, padding: '14px 16px' }}>
                 <div style={{ fontSize: 11, color: gray, fontWeight: 600, marginBottom: 4 }}>HOJE</div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: fashionGold.todayLeads > 0 ? green : '#2D1B2E' }}>{fashionGold.todayLeads}</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: fashionGold.todayLeads > 0 ? green : '#2A1E2C' }}>{fashionGold.todayLeads}</div>
               </div>
               <div style={{ background: '#F9F9FC', borderRadius: 12, padding: '14px 16px' }}>
                 <div style={{ fontSize: 11, color: gray, fontWeight: 600, marginBottom: 4 }}>CLIQUES</div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: '#2D1B2E' }}>{fashionGold.views.toLocaleString('pt-BR')}</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: '#2A1E2C' }}>{fashionGold.views.toLocaleString('pt-BR')}</div>
               </div>
               <div style={{ background: '#F9F9FC', borderRadius: 12, padding: '14px 16px' }}>
                 <div style={{ fontSize: 11, color: gray, fontWeight: 600, marginBottom: 4 }}>CONVERSÃO</div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: fashionGold.conversion != null ? (fashionGold.conversion >= 10 ? green : accent) : '#2D1B2E' }}>
+                <div style={{ fontSize: 24, fontWeight: 700, color: fashionGold.conversion != null ? (fashionGold.conversion >= 10 ? green : accent) : '#2A1E2C' }}>
                   {fashionGold.conversion != null ? `${fashionGold.conversion}%` : '—'}
                 </div>
               </div>
@@ -82,7 +82,7 @@ export default async function QuizHubPage() {
               <Link href="/quiz/fashion-gold" style={{ flex: 1, textAlign: 'center', background: '#8a6d2f', color: '#fff', padding: '10px 0', borderRadius: 10, fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
                 Ver métricas completas →
               </Link>
-              <Link href="/quiz/configuracoes" style={{ background: '#F5F5F7', color: '#2D1B2E', padding: '10px 14px', borderRadius: 10, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
+              <Link href="/quiz/configuracoes" style={{ background: '#FFFAF5', color: '#2A1E2C', padding: '10px 14px', borderRadius: 10, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
                 📸
               </Link>
             </div>
@@ -91,7 +91,7 @@ export default async function QuizHubPage() {
 
         {/* Plano Capilar */}
         <div style={{ background: '#fff', borderRadius: 16, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-          <div style={{ background: 'linear-gradient(135deg, #8B3A6E 0%, #C4607A 100%)', padding: '24px 28px 20px' }}>
+          <div style={{ background: 'linear-gradient(135deg, #8B3A6E 0%, #BE185D 100%)', padding: '24px 28px 20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.7)', letterSpacing: 1, textTransform: 'uppercase' }}>Quiz Principal</div>
               <span style={{ fontSize: 11, fontWeight: 700, background: 'rgba(255,255,255,0.2)', color: '#fff', padding: '2px 10px', borderRadius: 20 }}>Ativo</span>
@@ -104,11 +104,11 @@ export default async function QuizHubPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
               <div style={{ background: '#F9F9FC', borderRadius: 12, padding: '14px 16px' }}>
                 <div style={{ fontSize: 11, color: gray, fontWeight: 600, marginBottom: 4 }}>CLIQUES TOTAL</div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: '#2D1B2E' }}>{planoCapilar.views.toLocaleString('pt-BR')}</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: '#2A1E2C' }}>{planoCapilar.views.toLocaleString('pt-BR')}</div>
               </div>
               <div style={{ background: '#F9F9FC', borderRadius: 12, padding: '14px 16px' }}>
                 <div style={{ fontSize: 11, color: gray, fontWeight: 600, marginBottom: 4 }}>HOJE</div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: planoCapilar.todayViews > 0 ? green : '#2D1B2E' }}>{planoCapilar.todayViews}</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: planoCapilar.todayViews > 0 ? green : '#2A1E2C' }}>{planoCapilar.todayViews}</div>
               </div>
               <div style={{ background: '#F9F9FC', borderRadius: 12, padding: '14px 16px' }}>
                 <div style={{ fontSize: 11, color: gray, fontWeight: 600, marginBottom: 4 }}>ASSINANTES</div>
@@ -116,7 +116,7 @@ export default async function QuizHubPage() {
               </div>
               <div style={{ background: '#F9F9FC', borderRadius: 12, padding: '14px 16px' }}>
                 <div style={{ fontSize: 11, color: gray, fontWeight: 600, marginBottom: 4 }}>CONVERSÃO</div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: '#2D1B2E' }}>
+                <div style={{ fontSize: 24, fontWeight: 700, color: '#2A1E2C' }}>
                   {planoCapilar.views > 0 ? `${Math.round((planoCapilar.profiles / planoCapilar.views) * 100)}%` : '—'}
                 </div>
               </div>
@@ -126,7 +126,7 @@ export default async function QuizHubPage() {
               <Link href="/quiz/plano-capilar" style={{ flex: 1, textAlign: 'center', background: accent, color: '#fff', padding: '10px 0', borderRadius: 10, fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
                 Ver métricas completas →
               </Link>
-              <a href="https://planodaju.julianecost.com/quiz" target="_blank" rel="noopener noreferrer" style={{ background: '#F5F5F7', color: '#2D1B2E', padding: '10px 14px', borderRadius: 10, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
+              <a href="https://planodaju.julianecost.com/quiz" target="_blank" rel="noopener noreferrer" style={{ background: '#FFFAF5', color: '#2A1E2C', padding: '10px 14px', borderRadius: 10, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
                 ↗
               </a>
             </div>
@@ -138,8 +138,8 @@ export default async function QuizHubPage() {
       <div style={{ marginTop: 28, padding: '18px 24px', background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
         <div style={{ fontSize: 22 }}>💡</div>
         <div style={{ fontSize: 13, color: gray, lineHeight: 1.6 }}>
-          <strong style={{ color: '#2D1B2E' }}>Cliques</strong> = visitas ao quiz (rastreadas automaticamente).{' '}
-          <strong style={{ color: '#2D1B2E' }}>Conversão</strong> = leads gerados / cliques totais.
+          <strong style={{ color: '#2A1E2C' }}>Cliques</strong> = visitas ao quiz (rastreadas automaticamente).{' '}
+          <strong style={{ color: '#2A1E2C' }}>Conversão</strong> = leads gerados / cliques totais.
           Os analytics de perguntas do Plano Capilar começam a aparecer assim que usuárias respondem o quiz.
         </div>
       </div>

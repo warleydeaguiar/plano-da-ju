@@ -7,13 +7,13 @@ export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Ybera — Admin Plano da Ju' }
 
 // ─── Cores ───────────────────────────────────────────────────────────────────
-const accent  = '#C4607A'
-const green   = '#34C759'
-const orange  = '#FF9500'
-const red     = '#FF3B30'
-const blue    = '#007AFF'
-const gray    = '#8A8A8E'
-const purple  = '#AF52DE'
+const accent  = '#BE185D'
+const green   = '#22A06B'
+const orange  = '#D97706'
+const red     = '#DC2626'
+const blue    = '#2563EB'
+const gray    = '#7C6B7E'
+const purple  = '#9333EA'
 
 // ─── Formatadores ─────────────────────────────────────────────────────────────
 const brl = (v: number | null | undefined) =>
@@ -32,7 +32,7 @@ function StatCard({
     <div style={{ background: '#fff', borderRadius: 14, padding: '20px 24px', border: '1px solid rgba(0,0,0,0.06)' }}>
       {icon && <div style={{ fontSize: 20, marginBottom: 8 }}>{icon}</div>}
       <div style={{ fontSize: 11, color: gray, fontWeight: 500, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 }}>{label}</div>
-      <div style={{ fontSize: small ? 20 : 26, fontWeight: 700, color: color ?? '#2D1B2E', lineHeight: 1 }}>{value}</div>
+      <div style={{ fontSize: small ? 20 : 26, fontWeight: 700, color: color ?? '#2A1E2C', lineHeight: 1 }}>{value}</div>
       {sub && <div style={{ fontSize: 11, color: gray, marginTop: 6 }}>{sub}</div>}
     </div>
   )
@@ -144,16 +144,16 @@ export default async function YberaPage() {
   return (
     <div style={{
       display: 'flex', height: '100vh', overflow: 'hidden',
-      background: '#F5F5F7', fontFamily: '-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif',
+      background: '#FFFAF5', fontFamily: 'Plus Jakarta Sans, -apple-system, system-ui, sans-serif',
     }}>
       <Sidebar />
-      <main style={{ marginLeft: 220, flex: 1, height: '100vh', overflowY: 'auto', padding: '32px 40px' }}>
+      <main style={{ marginLeft: 234, flex: 1, height: '100vh', overflowY: 'auto', padding: '32px 40px' }}>
 
         {/* ── Header ── */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <div style={{ fontSize: 22, fontWeight: 700, color: '#2D1B2E' }}>Ybera — Afiliação</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: '#2A1E2C' }}>Ybera — Afiliação</div>
 
               {yberaConnected && (
                 <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: green + '18', color: green }}>
@@ -192,13 +192,13 @@ export default async function YberaPage() {
           }}>
             <div style={{ fontSize: 28, flexShrink: 0 }}>🛍️</div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E', marginBottom: 4 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C', marginBottom: 4 }}>
                 Conectar Ybera Club API
               </div>
               <div style={{ fontSize: 12, color: gray, lineHeight: 1.6 }}>
                 Para puxar os pedidos automaticamente, adicione a variável de ambiente:
                 <br />
-                <code style={{ background: '#F5F5F7', padding: '1px 6px', borderRadius: 4 }}>YBERA_API_TOKEN</code>
+                <code style={{ background: '#FFFAF5', padding: '1px 6px', borderRadius: 4 }}>YBERA_API_TOKEN</code>
                 {' '}no Vercel (Admin → Settings → Environment Variables).
               </div>
               <div style={{ fontSize: 11, color: gray, marginTop: 6 }}>
@@ -216,14 +216,14 @@ export default async function YberaPage() {
           }}>
             <div style={{ fontSize: 28, flexShrink: 0 }}>📱</div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E', marginBottom: 4 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C', marginBottom: 4 }}>
                 Conectar Meta Ads (campanha &quot;Grupo&quot;)
               </div>
               <div style={{ fontSize: 12, color: gray, lineHeight: 1.6 }}>
                 Adicione{' '}
-                <code style={{ background: '#F5F5F7', padding: '1px 6px', borderRadius: 4 }}>META_ADS_ACCESS_TOKEN</code>
+                <code style={{ background: '#FFFAF5', padding: '1px 6px', borderRadius: 4 }}>META_ADS_ACCESS_TOKEN</code>
                 {' '}e{' '}
-                <code style={{ background: '#F5F5F7', padding: '1px 6px', borderRadius: 4 }}>META_ADS_ACCOUNT_ID</code>
+                <code style={{ background: '#FFFAF5', padding: '1px 6px', borderRadius: 4 }}>META_ADS_ACCOUNT_ID</code>
                 {' '}no Vercel.
               </div>
             </div>
@@ -256,7 +256,7 @@ export default async function YberaPage() {
 
             {/* Top produtos */}
             <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '20px 24px' }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E', marginBottom: 4 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C', marginBottom: 4 }}>
                 🏆 Top produtos no mês
               </div>
               <div style={{ fontSize: 11, color: gray, marginBottom: 16 }}>
@@ -276,7 +276,7 @@ export default async function YberaPage() {
                       }}>
                         {i + 1}
                       </div>
-                      <div style={{ fontSize: 12, color: '#2D1B2E', lineHeight: 1.4, overflow: 'hidden' }}>
+                      <div style={{ fontSize: 12, color: '#2A1E2C', lineHeight: 1.4, overflow: 'hidden' }}>
                         <div style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {p.name.length > 45 ? p.name.slice(0, 45) + '…' : p.name}
                         </div>
@@ -293,7 +293,7 @@ export default async function YberaPage() {
 
             {/* Pedidos recentes */}
             <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '20px 24px' }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E', marginBottom: 4 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C', marginBottom: 4 }}>
                 📦 Pedidos recentes
               </div>
               <div style={{ fontSize: 11, color: gray, marginBottom: 16 }}>
@@ -311,7 +311,7 @@ export default async function YberaPage() {
                       background: i % 2 === 0 ? 'rgba(0,0,0,0.02)' : 'transparent',
                     }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: '#2D1B2E', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: '#2A1E2C', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {o.customer.name.trim() || 'Cliente'}
                         </div>
                         <div style={{ fontSize: 11, color: gray }}>
@@ -344,7 +344,7 @@ export default async function YberaPage() {
 
         {/* ── Gráfico 12 meses ── */}
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '20px 24px', marginBottom: 24 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E', marginBottom: 6 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C', marginBottom: 6 }}>
             Vendas vs. Investimento — últimos 12 meses
           </div>
           <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
@@ -390,7 +390,7 @@ export default async function YberaPage() {
         {/* ── Campanhas Meta Ads ativas ── */}
         {adsResult.status === 'ok' && adsResult.campaigns.length > 0 && (
           <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '20px 24px', marginBottom: 24 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E', marginBottom: 16 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C', marginBottom: 16 }}>
               📡 Campanhas &quot;Grupo&quot; — {new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
             </div>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -404,12 +404,12 @@ export default async function YberaPage() {
               <tbody>
                 {adsResult.campaigns.sort((a, b) => b.spend - a.spend).map(c => (
                   <tr key={c.campaign_id} style={{ borderBottom: '1px solid #F9F9FC' }}>
-                    <td style={{ padding: '10px 12px', fontSize: 13, color: '#2D1B2E' }}>{c.campaign_name}</td>
+                    <td style={{ padding: '10px 12px', fontSize: 13, color: '#2A1E2C' }}>{c.campaign_name}</td>
                     <td style={{ padding: '10px 12px', fontSize: 13, fontWeight: 600, color: accent, textAlign: 'right' }}>{brl(c.spend)}</td>
                   </tr>
                 ))}
                 <tr style={{ borderTop: '2px solid #F0F0F5' }}>
-                  <td style={{ padding: '10px 12px', fontSize: 13, fontWeight: 700, color: '#2D1B2E' }}>Total</td>
+                  <td style={{ padding: '10px 12px', fontSize: 13, fontWeight: 700, color: '#2A1E2C' }}>Total</td>
                   <td style={{ padding: '10px 12px', fontSize: 14, fontWeight: 700, color: accent, textAlign: 'right' }}>{brl(adsResult.totalSpend)}</td>
                 </tr>
               </tbody>
@@ -420,7 +420,7 @@ export default async function YberaPage() {
         {/* ── Tabela histórica completa ── */}
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)' }}>
           <div style={{ padding: '18px 24px', borderBottom: '1px solid #F0F0F5' }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#2D1B2E' }}>Histórico mensal completo</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#2A1E2C' }}>Histórico mensal completo</div>
             <div style={{ fontSize: 12, color: gray, marginTop: 2 }}>
               Vendas: {yberaConnected ? 'mês atual via Ybera API, histórico manual' : 'dados históricos manuais'}
               {' · '}Anúncios: {adsResult.status === 'ok' ? 'mês atual via Meta API, histórico manual' : 'dados históricos manuais'}
@@ -430,7 +430,7 @@ export default async function YberaPage() {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 800 }}>
               <thead>
-                <tr style={{ background: '#FAFAFA', borderBottom: '1px solid #F0F0F5' }}>
+                <tr style={{ background: '#FFF7EE', borderBottom: '1px solid #F0F0F5' }}>
                   {['Mês', 'Pedidos', 'Vendas Ybera', 'Comissão (20%)', 'Anúncios', 'Leads', 'CPL', 'ROI', 'Meta'].map(h => (
                     <th key={h} style={{
                       padding: '10px 16px', textAlign: h === 'Mês' ? 'left' : 'right',
@@ -454,17 +454,17 @@ export default async function YberaPage() {
                       background: isCur ? accent + '08' : 'transparent',
                     }}>
                       <td style={{ padding: '11px 16px', whiteSpace: 'nowrap' }}>
-                        <div style={{ fontSize: 13, fontWeight: isCur ? 700 : 600, color: isCur ? accent : '#2D1B2E' }}>
+                        <div style={{ fontSize: 13, fontWeight: isCur ? 700 : 600, color: isCur ? accent : '#2A1E2C' }}>
                           {r.month_name}
                         </div>
                         {isCur && <div style={{ fontSize: 10, color: accent }}>
                           {yberaConnected ? '🔴 ao vivo' : 'mês atual'}
                         </div>}
                       </td>
-                      <td style={{ padding: '11px 16px', textAlign: 'right', fontSize: 13, color: '#2D1B2E' }}>
+                      <td style={{ padding: '11px 16px', textAlign: 'right', fontSize: 13, color: '#2A1E2C' }}>
                         {orders != null ? num(orders) : '—'}
                       </td>
-                      <td style={{ padding: '11px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: isCur && yberaConnected ? accent : '#2D1B2E' }}>
+                      <td style={{ padding: '11px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: isCur && yberaConnected ? accent : '#2A1E2C' }}>
                         {brl(isCur && yberaConnected ? curYberaSales : (r.vendas_afiliadas || null))}
                         {isCur && yberaConnected && <div style={{ fontSize: 9, color: gray }}>Ybera API</div>}
                       </td>
@@ -476,7 +476,7 @@ export default async function YberaPage() {
                       <td style={{ padding: '11px 16px', textAlign: 'right', fontSize: 13, color: accent }}>
                         {brl(r.anuncios)}
                       </td>
-                      <td style={{ padding: '11px 16px', textAlign: 'right', fontSize: 13, color: '#2D1B2E' }}>
+                      <td style={{ padding: '11px 16px', textAlign: 'right', fontSize: 13, color: '#2A1E2C' }}>
                         {r.leads ? num(r.leads) : '—'}
                       </td>
                       <td style={{ padding: '11px 16px', textAlign: 'right', fontSize: 13 }}>
@@ -510,13 +510,13 @@ export default async function YberaPage() {
                 })}
               </tbody>
               <tfoot>
-                <tr style={{ borderTop: '2px solid #F0F0F5', background: '#FAFAFA' }}>
-                  <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 700, color: '#2D1B2E' }}>Total</td>
+                <tr style={{ borderTop: '2px solid #F0F0F5', background: '#FFF7EE' }}>
+                  <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 700, color: '#2A1E2C' }}>Total</td>
                   <td style={{ padding: '12px 16px' }} />
-                  <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#2D1B2E' }}>{brl(totalAfiliadas)}</td>
+                  <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#2A1E2C' }}>{brl(totalAfiliadas)}</td>
                   <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 700, color: green }}>{brl(totalComissao)}</td>
                   <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 700, color: accent }}>{brl(totalAnuncios)}</td>
-                  <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#2D1B2E' }}>{num(totalLeads)}</td>
+                  <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#2A1E2C' }}>{num(totalLeads)}</td>
                   <td colSpan={3} />
                 </tr>
               </tfoot>

@@ -17,15 +17,15 @@ export interface StaffMember {
 }
 
 // ─── Cores ────────────────────────────────────────────────────────────────────
-const accent = '#C4607A'
-const green  = '#34C759'
-const red    = '#FF3B30'
-const gray   = '#8A8A8E'
-const orange = '#FF9500'
+const accent = '#BE185D'
+const green  = '#22A06B'
+const red    = '#DC2626'
+const gray   = '#7C6B7E'
+const orange = '#D97706'
 
 const AVATAR_COLORS = [
-  '#C4607A','#007AFF','#34C759','#FF9500','#AF52DE',
-  '#FF3B30','#5AC8FA','#FFCC00','#FF6B35','#4CD964',
+  '#BE185D','#2563EB','#22A06B','#D97706','#9333EA',
+  '#DC2626','#5AC8FA','#FFCC00','#FF6B35','#4CD964',
 ]
 
 const ROLES = [
@@ -60,7 +60,7 @@ function Modal({ member, onClose, onSaved }: ModalProps) {
     role:         member?.role         ?? 'Funcionário',
     department:   member?.department   ?? '',
     status:       member?.status       ?? 'active' as 'active' | 'inactive',
-    avatar_color: member?.avatar_color ?? '#C4607A',
+    avatar_color: member?.avatar_color ?? '#BE185D',
     notes:        member?.notes        ?? '',
   })
   const [saving, startSave] = useTransition()
@@ -85,7 +85,7 @@ function Modal({ member, onClose, onSaved }: ModalProps) {
   }
 
   const labelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: gray, textTransform: 'uppercase' as const, letterSpacing: 0.3, marginBottom: 6, display: 'block' }
-  const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid #E5E5EA', fontSize: 14, color: '#2D1B2E', background: '#FAFAFA', outline: 'none', boxSizing: 'border-box' as const }
+  const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid #EDE0D2', fontSize: 14, color: '#2A1E2C', background: '#FFF7EE', outline: 'none', boxSizing: 'border-box' as const }
 
   return (
     <div style={{
@@ -99,7 +99,7 @@ function Modal({ member, onClose, onSaved }: ModalProps) {
       }}>
         {/* Header */}
         <div style={{ padding: '22px 28px 18px', borderBottom: '1px solid #F0F0F5', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontSize: 17, fontWeight: 700, color: '#2D1B2E' }}>
+          <div style={{ fontSize: 17, fontWeight: 700, color: '#2A1E2C' }}>
             {isEdit ? 'Editar funcionário' : 'Novo funcionário'}
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: gray, lineHeight: 1, padding: 4 }}>✕</button>
@@ -122,7 +122,7 @@ function Modal({ member, onClose, onSaved }: ModalProps) {
                 {AVATAR_COLORS.map(c => (
                   <div key={c} onClick={() => set('avatar_color', c)} style={{
                     width: 22, height: 22, borderRadius: '50%', background: c, cursor: 'pointer',
-                    border: form.avatar_color === c ? `2px solid #2D1B2E` : '2px solid transparent',
+                    border: form.avatar_color === c ? `2px solid #2A1E2C` : '2px solid transparent',
                     boxSizing: 'border-box',
                   }} />
                 ))}
@@ -198,7 +198,7 @@ function Modal({ member, onClose, onSaved }: ModalProps) {
         <div style={{ padding: '16px 28px 22px', borderTop: '1px solid #F0F0F5', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
           <button onClick={onClose} style={{
             padding: '10px 22px', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer',
-            background: '#F0F0F5', border: 'none', color: '#2D1B2E',
+            background: '#F0F0F5', border: 'none', color: '#2A1E2C',
           }}>Cancelar</button>
           <button onClick={handleSave} disabled={saving} style={{
             padding: '10px 28px', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer',
@@ -221,12 +221,12 @@ function DeleteConfirm({ name, onConfirm, onCancel }: { name: string; onConfirm:
     }}>
       <div style={{ background: '#fff', borderRadius: 16, padding: 28, maxWidth: 380, width: '100%', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
         <div style={{ fontSize: 36, marginBottom: 12 }}>🗑</div>
-        <div style={{ fontSize: 16, fontWeight: 700, color: '#2D1B2E', marginBottom: 8 }}>Remover funcionário?</div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: '#2A1E2C', marginBottom: 8 }}>Remover funcionário?</div>
         <div style={{ fontSize: 14, color: gray, marginBottom: 24 }}>
           <strong>{name}</strong> será removido permanentemente. Essa ação não pode ser desfeita.
         </div>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-          <button onClick={onCancel} style={{ padding: '10px 22px', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', background: '#F0F0F5', border: 'none', color: '#2D1B2E' }}>Cancelar</button>
+          <button onClick={onCancel} style={{ padding: '10px 22px', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', background: '#F0F0F5', border: 'none', color: '#2A1E2C' }}>Cancelar</button>
           <button onClick={onConfirm} style={{ padding: '10px 22px', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', background: red, border: 'none', color: '#fff' }}>Remover</button>
         </div>
       </div>
@@ -280,12 +280,12 @@ export default function FuncionariosClient({ initial }: { initial: StaffMember[]
   const inactiveCount = members.filter(m => m.status === 'inactive').length
 
   return (
-    <div style={{ padding: '32px 40px', maxWidth: 1100, fontFamily: '-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif' }}>
+    <div style={{ padding: '32px 40px', maxWidth: 1100, fontFamily: 'Plus Jakarta Sans, -apple-system, system-ui, sans-serif' }}>
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
         <div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: '#2D1B2E' }}>Equipe</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#2A1E2C' }}>Equipe</div>
           <div style={{ fontSize: 13, color: gray, marginTop: 4 }}>
             {activeCount} {activeCount === 1 ? 'funcionário ativo' : 'funcionários ativos'}
             {inactiveCount > 0 && ` · ${inactiveCount} inativo${inactiveCount > 1 ? 's' : ''}`}
@@ -308,12 +308,12 @@ export default function FuncionariosClient({ initial }: { initial: StaffMember[]
           <input
             value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Buscar por nome, e-mail ou cargo…"
-            style={{ width: '100%', padding: '9px 12px 9px 36px', borderRadius: 10, border: '1px solid #E5E5EA', fontSize: 14, outline: 'none', boxSizing: 'border-box', background: '#FAFAFA' }}
+            style={{ width: '100%', padding: '9px 12px 9px 36px', borderRadius: 10, border: '1px solid #EDE0D2', fontSize: 14, outline: 'none', boxSizing: 'border-box', background: '#FFF7EE' }}
           />
         </div>
 
         {/* Cargo */}
-        <select value={filterRole} onChange={e => setRole(e.target.value)} style={{ padding: '9px 14px', borderRadius: 10, border: '1px solid #E5E5EA', fontSize: 13, background: '#FAFAFA', cursor: 'pointer', outline: 'none', color: '#2D1B2E' }}>
+        <select value={filterRole} onChange={e => setRole(e.target.value)} style={{ padding: '9px 14px', borderRadius: 10, border: '1px solid #EDE0D2', fontSize: 13, background: '#FFF7EE', cursor: 'pointer', outline: 'none', color: '#2A1E2C' }}>
           {allRoles.map(r => <option key={r}>{r}</option>)}
         </select>
 
@@ -322,7 +322,7 @@ export default function FuncionariosClient({ initial }: { initial: StaffMember[]
           {['Todos', 'Ativos', 'Inativos'].map(s => (
             <button key={s} onClick={() => setStatus(s === 'Ativos' ? 'active' : s === 'Inativos' ? 'inactive' : 'Todos')} style={{
               padding: '8px 16px', borderRadius: 20, fontSize: 13, fontWeight: 600, cursor: 'pointer', border: 'none',
-              background: filterStatus === (s === 'Ativos' ? 'active' : s === 'Inativos' ? 'inactive' : 'Todos') ? '#2D1B2E' : '#F0F0F5',
+              background: filterStatus === (s === 'Ativos' ? 'active' : s === 'Inativos' ? 'inactive' : 'Todos') ? '#2A1E2C' : '#F0F0F5',
               color:      filterStatus === (s === 'Ativos' ? 'active' : s === 'Inativos' ? 'inactive' : 'Todos') ? '#fff' : gray,
             }}>{s}</button>
           ))}
@@ -340,7 +340,7 @@ export default function FuncionariosClient({ initial }: { initial: StaffMember[]
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ background: '#FAFAFA', borderBottom: '1px solid #F0F0F5' }}>
+              <tr style={{ background: '#FFF7EE', borderBottom: '1px solid #F0F0F5' }}>
                 {['Funcionário', 'Cargo', 'Departamento', 'Contato', 'Status', 'Ações'].map(h => (
                   <th key={h} style={{ padding: '11px 20px', textAlign: 'left', fontSize: 11, color: gray, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
@@ -358,7 +358,7 @@ export default function FuncionariosClient({ initial }: { initial: StaffMember[]
                         fontSize: 13, fontWeight: 700, color: '#fff', flexShrink: 0,
                       }}>{initials(m.name)}</div>
                       <div>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: '#2D1B2E' }}>{m.name}</div>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: '#2A1E2C' }}>{m.name}</div>
                         {m.notes && <div style={{ fontSize: 11, color: gray, marginTop: 1 }}>{m.notes.slice(0, 40)}{m.notes.length > 40 ? '…' : ''}</div>}
                       </div>
                     </div>
@@ -366,19 +366,19 @@ export default function FuncionariosClient({ initial }: { initial: StaffMember[]
 
                   {/* Cargo */}
                   <td style={{ padding: '14px 20px' }}>
-                    <span style={{ fontSize: 13, fontWeight: 500, color: '#2D1B2E', background: '#F5F5F7', padding: '3px 10px', borderRadius: 20 }}>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: '#2A1E2C', background: '#FFFAF5', padding: '3px 10px', borderRadius: 20 }}>
                       {m.role}
                     </span>
                   </td>
 
                   {/* Departamento */}
-                  <td style={{ padding: '14px 20px', fontSize: 13, color: m.department ? '#2D1B2E' : gray }}>
+                  <td style={{ padding: '14px 20px', fontSize: 13, color: m.department ? '#2A1E2C' : gray }}>
                     {m.department || '—'}
                   </td>
 
                   {/* Contato */}
                   <td style={{ padding: '14px 20px' }}>
-                    {m.email && <div style={{ fontSize: 13, color: '#2D1B2E' }}>{m.email}</div>}
+                    {m.email && <div style={{ fontSize: 13, color: '#2A1E2C' }}>{m.email}</div>}
                     {m.phone && <div style={{ fontSize: 12, color: gray, marginTop: 2 }}>{m.phone}</div>}
                     {!m.email && !m.phone && <span style={{ color: gray, fontSize: 13 }}>—</span>}
                   </td>
@@ -400,7 +400,7 @@ export default function FuncionariosClient({ initial }: { initial: StaffMember[]
                     <div style={{ display: 'flex', gap: 6 }}>
                       <button onClick={() => setModal(m)} style={{
                         padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                        background: '#F0F0F5', border: 'none', color: '#2D1B2E',
+                        background: '#F0F0F5', border: 'none', color: '#2A1E2C',
                       }}>✏️ Editar</button>
                       <button onClick={() => setDeleting(m)} style={{
                         padding: '6px 10px', borderRadius: 8, fontSize: 12, cursor: 'pointer',

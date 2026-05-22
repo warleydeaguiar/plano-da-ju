@@ -4,11 +4,11 @@ import Sidebar from '../components/Sidebar'
 export const revalidate = 30
 export const metadata = { title: 'Checkout — Funil de Conversão' }
 
-const accent = '#C4607A'
-const green  = '#34C759'
+const accent = '#BE185D'
+const green  = '#22A06B'
 const red    = '#FF453A'
-const orange = '#FF9500'
-const gray   = '#8A8A8E'
+const orange = '#D97706'
+const gray   = '#7C6B7E'
 
 // Etapas em ordem do funil
 const FUNNEL_STEPS: { key: string; label: string; icon: string }[] = [
@@ -27,7 +27,7 @@ function StatCard({ label, value, sub, color }: {
   return (
     <div style={{ background: '#fff', borderRadius: 14, padding: '20px 24px', border: '1px solid rgba(0,0,0,0.06)' }}>
       <div style={{ fontSize: 11, color: gray, fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 }}>{label}</div>
-      <div style={{ fontSize: 28, fontWeight: 800, color: color ?? '#2D1B2E', lineHeight: 1 }}>{value}</div>
+      <div style={{ fontSize: 28, fontWeight: 800, color: color ?? '#2A1E2C', lineHeight: 1 }}>{value}</div>
       {sub && <div style={{ fontSize: 12, color: gray, marginTop: 6 }}>{sub}</div>}
     </div>
   )
@@ -130,10 +130,10 @@ export default async function CheckoutFunnelPage({
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#F5F2F4', fontFamily: '-apple-system, "Inter", system-ui, sans-serif' }}>
       <Sidebar />
-      <main style={{ flex: 1, marginLeft: 220, padding: '32px 40px', maxWidth: 1400 }}>
+      <main style={{ flex: 1, marginLeft: 234, padding: '32px 40px', maxWidth: 1400 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
           <div>
-            <h1 style={{ fontSize: 28, fontWeight: 800, color: '#2D1B2E', marginBottom: 4 }}>Funil de Checkout</h1>
+            <h1 style={{ fontSize: 28, fontWeight: 800, color: '#2A1E2C', marginBottom: 4 }}>Funil de Checkout</h1>
             <p style={{ fontSize: 13, color: gray }}>Onde as pessoas estão abandonando · últimos {days} dias</p>
           </div>
           <div style={{ display: 'flex', gap: 6, background: '#fff', padding: 4, borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)' }}>
@@ -161,7 +161,7 @@ export default async function CheckoutFunnelPage({
 
         {/* Funil */}
         <div style={{ background: '#fff', borderRadius: 14, padding: '24px 28px', border: '1px solid rgba(0,0,0,0.06)', marginBottom: 24 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 800, color: '#2D1B2E', marginBottom: 4 }}>Funil completo</h2>
+          <h2 style={{ fontSize: 18, fontWeight: 800, color: '#2A1E2C', marginBottom: 4 }}>Funil completo</h2>
           <p style={{ fontSize: 12, color: gray, marginBottom: 20 }}>% relativa ao passo anterior e à etapa inicial</p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -172,7 +172,7 @@ export default async function CheckoutFunnelPage({
                 <div key={row.step.key} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{ width: 220, display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 18 }}>{row.step.icon}</span>
-                    <span style={{ fontSize: 13, color: '#2D1B2E', fontWeight: 600 }}>{row.step.label}</span>
+                    <span style={{ fontSize: 13, color: '#2A1E2C', fontWeight: 600 }}>{row.step.label}</span>
                   </div>
                   <div style={{ flex: 1, height: 32, background: 'rgba(196,96,122,0.08)', borderRadius: 6, position: 'relative' }}>
                     <div style={{
@@ -203,7 +203,7 @@ export default async function CheckoutFunnelPage({
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
           {/* Quebra por método */}
           <div style={{ background: '#fff', borderRadius: 14, padding: '20px 24px', border: '1px solid rgba(0,0,0,0.06)' }}>
-            <h3 style={{ fontSize: 14, fontWeight: 800, color: '#2D1B2E', marginBottom: 16 }}>Método de pagamento (compras)</h3>
+            <h3 style={{ fontSize: 14, fontWeight: 800, color: '#2A1E2C', marginBottom: 16 }}>Método de pagamento (compras)</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
@@ -234,7 +234,7 @@ export default async function CheckoutFunnelPage({
 
           {/* Maior gargalo */}
           <div style={{ background: '#fff', borderRadius: 14, padding: '20px 24px', border: '1px solid rgba(0,0,0,0.06)' }}>
-            <h3 style={{ fontSize: 14, fontWeight: 800, color: '#2D1B2E', marginBottom: 16 }}>Maior gargalo</h3>
+            <h3 style={{ fontSize: 14, fontWeight: 800, color: '#2A1E2C', marginBottom: 16 }}>Maior gargalo</h3>
             {(() => {
               // Encontra a maior queda
               let biggestDrop = { from: '', to: '', dropPct: 0, lost: 0 }
@@ -258,7 +258,7 @@ export default async function CheckoutFunnelPage({
               return (
                 <>
                   <p style={{ fontSize: 13, color: gray, marginBottom: 8 }}>
-                    Entre <strong style={{ color: '#2D1B2E' }}>{biggestDrop.from}</strong> e <strong style={{ color: '#2D1B2E' }}>{biggestDrop.to}</strong>
+                    Entre <strong style={{ color: '#2A1E2C' }}>{biggestDrop.from}</strong> e <strong style={{ color: '#2A1E2C' }}>{biggestDrop.to}</strong>
                   </p>
                   <div style={{ fontSize: 32, fontWeight: 800, color: red, lineHeight: 1 }}>
                     -{biggestDrop.dropPct.toFixed(0)}%
@@ -274,7 +274,7 @@ export default async function CheckoutFunnelPage({
 
         {/* Eventos recentes */}
         <div style={{ background: '#fff', borderRadius: 14, padding: '20px 24px', border: '1px solid rgba(0,0,0,0.06)' }}>
-          <h3 style={{ fontSize: 14, fontWeight: 800, color: '#2D1B2E', marginBottom: 16 }}>Últimos eventos</h3>
+          <h3 style={{ fontSize: 14, fontWeight: 800, color: '#2A1E2C', marginBottom: 16 }}>Últimos eventos</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 400, overflowY: 'auto' }}>
             {recent.length === 0 && (
               <p style={{ fontSize: 13, color: gray, textAlign: 'center', padding: 20 }}>Nenhum evento no período</p>
@@ -289,7 +289,7 @@ export default async function CheckoutFunnelPage({
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 14 }}>{step?.icon ?? '•'}</span>
-                    <span style={{ color: '#2D1B2E', fontWeight: 600 }}>{step?.label ?? e.event_type}</span>
+                    <span style={{ color: '#2A1E2C', fontWeight: 600 }}>{step?.label ?? e.event_type}</span>
                     {e.email && <span style={{ color: gray }}>· {e.email}</span>}
                     {e.payment_type && <span style={{ color: gray, fontSize: 11, background: 'rgba(0,0,0,0.05)', padding: '2px 6px', borderRadius: 4 }}>{e.payment_type}</span>}
                   </div>

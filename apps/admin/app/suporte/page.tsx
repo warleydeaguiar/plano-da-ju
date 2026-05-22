@@ -14,12 +14,12 @@ const EVOLUTION_BASE = process.env.EVOLUTION_SUPORTE_URL ?? process.env.EVOLUTIO
 const EVOLUTION_MANAGER_URL = EVOLUTION_BASE.replace(/\/+$/, '').replace(':8080', '') + '/manager'
 
 // ─── Cores ───────────────────────────────────────────────────────────────────
-const accent = '#C4607A'
-const green  = '#34C759'
-const orange = '#FF9500'
-const red    = '#FF3B30'
-const gray   = '#8A8A8E'
-const blue   = '#007AFF'
+const accent = '#BE185D'
+const green  = '#22A06B'
+const orange = '#D97706'
+const red    = '#DC2626'
+const gray   = '#7C6B7E'
+const blue   = '#2563EB'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function StatCard({
@@ -31,7 +31,7 @@ function StatCard({
     <div style={{ background: '#fff', borderRadius: 14, padding: '20px 24px', border: '1px solid rgba(0,0,0,0.06)' }}>
       {icon && <div style={{ fontSize: 20, marginBottom: 8 }}>{icon}</div>}
       <div style={{ fontSize: 12, color: gray, fontWeight: 500, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 }}>{label}</div>
-      <div style={{ fontSize: 28, fontWeight: 700, color: color ?? '#2D1B2E', lineHeight: 1 }}>{value}</div>
+      <div style={{ fontSize: 28, fontWeight: 700, color: color ?? '#2A1E2C', lineHeight: 1 }}>{value}</div>
       {sub && <div style={{ fontSize: 12, color: gray, marginTop: 6 }}>{sub}</div>}
     </div>
   )
@@ -134,17 +134,17 @@ export default async function SuportePage() {
   return (
     <div style={{
       display: 'flex', height: '100vh', overflow: 'hidden',
-      background: '#F5F5F7', fontFamily: '-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif',
+      background: '#FFFAF5', fontFamily: 'Plus Jakarta Sans, -apple-system, system-ui, sans-serif',
     }}>
       <Sidebar />
-      <main style={{ marginLeft: 220, flex: 1, height: '100vh', overflowY: 'auto', padding: '32px 40px' }}>
+      <main style={{ marginLeft: 234, flex: 1, height: '100vh', overflowY: 'auto', padding: '32px 40px' }}>
 
         {/* ── Header ── */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
           <div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: '#2D1B2E' }}>Suporte Plano Capilar</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: '#2A1E2C' }}>Suporte Plano Capilar</div>
             <div style={{ fontSize: 13, color: gray, marginTop: 4 }}>
-              WhatsApp de atendimento — instância <code style={{ background: '#F5F5F7', padding: '1px 6px', borderRadius: 4, fontSize: 11 }}>{SUPORTE_INSTANCE}</code>
+              WhatsApp de atendimento — instância <code style={{ background: '#FFFAF5', padding: '1px 6px', borderRadius: 4, fontSize: 11 }}>{SUPORTE_INSTANCE}</code>
             </div>
           </div>
           <a
@@ -153,7 +153,7 @@ export default async function SuportePage() {
             rel="noopener noreferrer"
             style={{
               display: 'flex', alignItems: 'center', gap: 7,
-              background: '#2D1B2E', color: '#fff',
+              background: '#2A1E2C', color: '#fff',
               padding: '9px 18px', borderRadius: 10,
               fontSize: 13, fontWeight: 600, textDecoration: 'none',
               whiteSpace: 'nowrap',
@@ -185,7 +185,7 @@ export default async function SuportePage() {
 
           {/* Info */}
           <div style={{ flex: 1, minWidth: 180 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#2D1B2E', marginBottom: 2 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#2A1E2C', marginBottom: 2 }}>
               {inst?.profileName ?? 'WhatsApp Suporte'}
             </div>
             {inst?.ownerJid && (
@@ -219,7 +219,7 @@ export default async function SuportePage() {
               ].map(({ label, value, icon }) => (
                 <div key={label} style={{ textAlign: 'center' }}>
                   <div style={{ fontSize: 9, color: gray, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 2 }}>{label}</div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: '#2D1B2E' }}>{icon} {value}</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#2A1E2C' }}>{icon} {value}</div>
                 </div>
               ))}
             </div>
@@ -239,7 +239,7 @@ export default async function SuportePage() {
 
           {/* Bar chart leads */}
           <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '20px 24px' }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E', marginBottom: 20 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C', marginBottom: 20 }}>
               Novos leads — últimos 14 dias
             </div>
             {leadsData ? (
@@ -250,11 +250,11 @@ export default async function SuportePage() {
                   return (
                     <div key={day} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                       {count > 0 && (
-                        <div style={{ fontSize: 9, fontWeight: 700, color: isToday ? accent : '#2D1B2E' }}>{count}</div>
+                        <div style={{ fontSize: 9, fontWeight: 700, color: isToday ? accent : '#2A1E2C' }}>{count}</div>
                       )}
                       <div style={{
                         width: '100%', height: h, borderRadius: '3px 3px 0 0',
-                        background: count === 0 ? '#F2F2F7' : isToday ? 'rgba(196,96,122,0.45)' : accent,
+                        background: count === 0 ? '#F3EBE1' : isToday ? 'rgba(196,96,122,0.45)' : accent,
                         opacity: count === 0 ? 0.4 : 0.88,
                       }} />
                       {i % 2 === 0 && (
@@ -273,7 +273,7 @@ export default async function SuportePage() {
 
           {/* Breakdown conversas */}
           <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '20px 24px' }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E', marginBottom: 16 }}>Conversas WhatsApp</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C', marginBottom: 16 }}>Conversas WhatsApp</div>
             {chatsData ? (
               <>
                 {[
@@ -283,7 +283,7 @@ export default async function SuportePage() {
                 ].map(({ label, value, color }) => (
                   <div key={label} style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '9px 0', borderBottom: '1px solid #F5F5F7',
+                    padding: '9px 0', borderBottom: '1px solid #FFFAF5',
                   }}>
                     <div style={{ fontSize: 13, color: gray }}>{label}</div>
                     <div style={{ fontSize: 16, fontWeight: 700, color }}>{value}</div>
@@ -291,11 +291,11 @@ export default async function SuportePage() {
                 ))}
                 <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <div style={{ background: '#F9F9FC', borderRadius: 10, padding: '12px', textAlign: 'center' }}>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: '#2D1B2E' }}>{chatsData.diretas}</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: '#2A1E2C' }}>{chatsData.diretas}</div>
                     <div style={{ fontSize: 11, color: gray, marginTop: 2 }}>Diretas</div>
                   </div>
                   <div style={{ background: '#F9F9FC', borderRadius: 10, padding: '12px', textAlign: 'center' }}>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: '#2D1B2E' }}>{chatsData.grupos}</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: '#2A1E2C' }}>{chatsData.grupos}</div>
                     <div style={{ fontSize: 11, color: gray, marginTop: 2 }}>Grupos</div>
                   </div>
                 </div>
@@ -311,7 +311,7 @@ export default async function SuportePage() {
 
           {/* Conversas recentes */}
           <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)' }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid #F0F0F5', fontSize: 14, fontWeight: 700, color: '#2D1B2E' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #F0F0F5', fontSize: 14, fontWeight: 700, color: '#2A1E2C' }}>
               💬 Conversas recentes
             </div>
             <div style={{ padding: '4px 0' }}>
@@ -329,7 +329,7 @@ export default async function SuportePage() {
                       {(c.nome ?? '?').charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: '#2D1B2E' }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#2A1E2C' }}>
                         {c.nome ?? formatPhone(c.jid)}
                       </div>
                       <div style={{ fontSize: 11, color: gray }}>
@@ -351,7 +351,7 @@ export default async function SuportePage() {
 
           {/* Leads recentes */}
           <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)' }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid #F0F0F5', fontSize: 14, fontWeight: 700, color: '#2D1B2E' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #F0F0F5', fontSize: 14, fontWeight: 700, color: '#2A1E2C' }}>
               🎯 Leads recentes
             </div>
             <div style={{ padding: '4px 0' }}>
@@ -361,7 +361,7 @@ export default async function SuportePage() {
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 }}>
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#2D1B2E' }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#2A1E2C' }}>
                       {u.full_name ?? u.email.split('@')[0]}
                     </div>
                     <div style={{ fontSize: 11, color: gray }}>

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 
 const T = {
-  bg: '#F5F5F7', card: '#fff', ink: '#0F172A', inkSoft: '#64748B', border: '#E5E7EB',
+  bg: '#FFFAF5', card: '#fff', ink: '#0F172A', inkSoft: '#64748B', border: '#E5E7EB',
   green: '#22C55E', greenSoft: '#DCFCE7', orange: '#F97316', orangeSoft: '#FFEDD5',
   red: '#EF4444', redSoft: '#FEE2E2', gray: '#94A3B8', graySoft: '#F1F5F9',
   pink: '#EC4899', pinkDeep: '#BE185D',

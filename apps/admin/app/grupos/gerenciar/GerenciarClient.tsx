@@ -24,11 +24,11 @@ type DiscoveredGroup = {
   already_saved: boolean
 }
 
-const accent  = '#C4607A'
-const green   = '#34C759'
-const orange  = '#FF9500'
-const red     = '#FF3B30'
-const gray    = '#8A8A8E'
+const accent  = '#BE185D'
+const green   = '#22A06B'
+const orange  = '#D97706'
+const red     = '#DC2626'
+const gray    = '#7C6B7E'
 
 function badge(g: Group) {
   if (g.status === 'full')     return { label: 'Cheio', color: red }
@@ -262,7 +262,7 @@ export default function GerenciarClient({ initialGroups }: { initialGroups: Grou
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
         <div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: '#2D1B2E' }}>Gerenciar Grupos</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#2A1E2C' }}>Gerenciar Grupos</div>
           <div style={{ fontSize: 13, color: gray, marginTop: 4 }}>
             Adicione grupos e controle quem está recebendo membros
           </div>
@@ -272,7 +272,7 @@ export default function GerenciarClient({ initialGroups }: { initialGroups: Grou
             onClick={discoverGroups}
             disabled={discovering}
             style={{
-              background: '#F0F0F5', color: '#2D1B2E', border: 'none', cursor: discovering ? 'default' : 'pointer',
+              background: '#F0F0F5', color: '#2A1E2C', border: 'none', cursor: discovering ? 'default' : 'pointer',
               padding: '9px 18px', borderRadius: 10, fontSize: 14, fontWeight: 600, opacity: discovering ? 0.6 : 1,
             }}
           >
@@ -282,7 +282,7 @@ export default function GerenciarClient({ initialGroups }: { initialGroups: Grou
             onClick={syncAll}
             disabled={syncing}
             style={{
-              background: '#F5F5F7', color: '#2D1B2E', border: 'none', cursor: syncing ? 'default' : 'pointer',
+              background: '#FFFAF5', color: '#2A1E2C', border: 'none', cursor: syncing ? 'default' : 'pointer',
               padding: '9px 18px', borderRadius: 10, fontSize: 14, fontWeight: 600, opacity: syncing ? 0.6 : 1,
             }}
           >
@@ -336,7 +336,7 @@ export default function GerenciarClient({ initialGroups }: { initialGroups: Grou
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: '#2D1B2E' }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#2A1E2C' }}>
                 🔍 Grupos encontrados no Evolution ({discoveredGroups.length})
               </div>
               <div style={{ fontSize: 12, color: gray, marginTop: 2 }}>
@@ -345,7 +345,7 @@ export default function GerenciarClient({ initialGroups }: { initialGroups: Grou
             </div>
             <button
               onClick={() => setDiscoveredGroups(null)}
-              style={{ background: '#F5F5F7', border: 'none', cursor: 'pointer', padding: '6px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#2D1B2E' }}
+              style={{ background: '#FFFAF5', border: 'none', cursor: 'pointer', padding: '6px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#2A1E2C' }}
             >
               Fechar
             </button>
@@ -369,8 +369,8 @@ export default function GerenciarClient({ initialGroups }: { initialGroups: Grou
                   <label key={g.id} style={{
                     display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
                     borderRadius: 10, cursor: g.already_saved ? 'default' : 'pointer',
-                    background: g.already_saved ? '#F5F5F7' : selectedJids.has(g.id) ? accent + '10' : '#FAFAFA',
-                    border: `1px solid ${g.already_saved ? '#E5E5EA' : selectedJids.has(g.id) ? accent + '40' : '#E5E5EA'}`,
+                    background: g.already_saved ? '#FFFAF5' : selectedJids.has(g.id) ? accent + '10' : '#FFF7EE',
+                    border: `1px solid ${g.already_saved ? '#EDE0D2' : selectedJids.has(g.id) ? accent + '40' : '#EDE0D2'}`,
                     opacity: g.already_saved ? 0.6 : 1,
                   }}>
                     <input
@@ -381,11 +381,11 @@ export default function GerenciarClient({ initialGroups }: { initialGroups: Grou
                       style={{ width: 16, height: 16, flexShrink: 0 }}
                     />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: '#2D1B2E', marginBottom: 1 }}>{g.subject}</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#2A1E2C', marginBottom: 1 }}>{g.subject}</div>
                       <div style={{ fontSize: 11, color: gray, fontFamily: 'monospace' }}>{g.id}</div>
                     </div>
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: '#2D1B2E' }}>{g.size.toLocaleString('pt-BR')} membros</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: '#2A1E2C' }}>{g.size.toLocaleString('pt-BR')} membros</div>
                       <div style={{ fontSize: 10, color: gray }}>via {g.instanceName}</div>
                     </div>
                     {g.already_saved && (
@@ -405,7 +405,7 @@ export default function GerenciarClient({ initialGroups }: { initialGroups: Grou
                   onClick={importSelected}
                   disabled={importing || selectedJids.size === 0}
                   style={{
-                    background: selectedJids.size === 0 ? '#E5E5EA' : accent, color: selectedJids.size === 0 ? gray : '#fff',
+                    background: selectedJids.size === 0 ? '#EDE0D2' : accent, color: selectedJids.size === 0 ? gray : '#fff',
                     border: 'none', cursor: importing || selectedJids.size === 0 ? 'default' : 'pointer',
                     padding: '9px 20px', borderRadius: 10, fontSize: 14, fontWeight: 700,
                   }}
@@ -426,7 +426,7 @@ export default function GerenciarClient({ initialGroups }: { initialGroups: Grou
       }}>
         <div style={{ fontSize: 20 }}>🔗</div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#2D1B2E', marginBottom: 2 }}>Link público de distribuição</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#2A1E2C', marginBottom: 2 }}>Link público de distribuição</div>
           <code style={{ fontSize: 13, color: accent }}>planodaju.julianecost.com/g/entrar</code>
         </div>
         <button
@@ -443,7 +443,7 @@ export default function GerenciarClient({ initialGroups }: { initialGroups: Grou
           background: '#fff', borderRadius: 14, border: `1px solid ${accent}40`,
           padding: '20px 24px', marginBottom: 24,
         }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#2D1B2E', marginBottom: 16 }}>Novo grupo (manual)</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#2A1E2C', marginBottom: 16 }}>Novo grupo (manual)</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <label style={{ fontSize: 12, fontWeight: 600, color: gray, display: 'block', marginBottom: 6 }}>
@@ -472,7 +472,7 @@ export default function GerenciarClient({ initialGroups }: { initialGroups: Grou
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button
                 onClick={() => { setShowForm(false); setInviteLink(''); setGroupName('') }}
-                style={{ background: '#F5F5F7', color: '#2D1B2E', border: 'none', cursor: 'pointer', padding: '9px 18px', borderRadius: 10, fontSize: 14, fontWeight: 600 }}
+                style={{ background: '#FFFAF5', color: '#2A1E2C', border: 'none', cursor: 'pointer', padding: '9px 18px', borderRadius: 10, fontSize: 14, fontWeight: 600 }}
               >
                 Cancelar
               </button>
@@ -518,7 +518,7 @@ export default function GerenciarClient({ initialGroups }: { initialGroups: Grou
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                      <div style={{ fontSize: 15, fontWeight: 700, color: '#2D1B2E' }}>{g.name}</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: '#2A1E2C' }}>{g.name}</div>
                       <span style={{
                         fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20,
                         background: b.color + '18', color: b.color,
@@ -542,7 +542,7 @@ export default function GerenciarClient({ initialGroups }: { initialGroups: Grou
 
                   {g.status !== 'archived' && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 20 }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13, color: '#2D1B2E', fontWeight: 500 }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13, color: '#2A1E2C', fontWeight: 500 }}>
                         <div
                           onClick={() => toggleReceiving(g)}
                           style={{
@@ -588,7 +588,7 @@ export default function GerenciarClient({ initialGroups }: { initialGroups: Grou
                           </button>
                           <button
                             onClick={() => setEditingLinkId(null)}
-                            style={{ fontSize: 11, color: gray, background: '#F5F5F7', border: 'none', cursor: 'pointer', padding: '5px 8px', borderRadius: 8 }}
+                            style={{ fontSize: 11, color: gray, background: '#FFFAF5', border: 'none', cursor: 'pointer', padding: '5px 8px', borderRadius: 8 }}
                           >
                             ✕
                           </button>

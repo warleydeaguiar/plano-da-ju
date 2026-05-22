@@ -16,10 +16,10 @@ type Testimonial = {
   is_active: boolean
 }
 
-const accent = '#C4607A'
-const green  = '#34C759'
-const gray   = '#8A8A8E'
-const orange = '#FF9500'
+const accent = '#BE185D'
+const green  = '#22A06B'
+const gray   = '#7C6B7E'
+const orange = '#D97706'
 
 const TYPE_LABELS: Record<string, string> = {
   review:  '⭐ Depoimentos (Etapa 4)',
@@ -41,7 +41,7 @@ function Avatar({ url, name, size = 44 }: { url: string | null; name: string; si
   return (
     <div style={{
       width: size, height: size, borderRadius: '50%', flexShrink: 0,
-      background: '#E5E5EA', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: '#EDE0D2', display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontSize: size * 0.4, fontWeight: 700, color: gray,
     }}>{name[0]}</div>
   )
@@ -132,7 +132,7 @@ export default function ConfiguracoesClient({ initialData }: { initialData: Test
         display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
       }} onClick={e => { if (e.target === e.currentTarget) setEditing(null) }}>
         <div style={{ background: '#fff', borderRadius: 20, padding: 32, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto' }}>
-          <div style={{ fontSize: 18, fontWeight: 700, color: '#2D1B2E', marginBottom: 24 }}>
+          <div style={{ fontSize: 18, fontWeight: 700, color: '#2A1E2C', marginBottom: 24 }}>
             Editar · {t.type === 'review' ? 'Depoimento' : t.type === 'toast' ? 'Notificação' : 'Ganhador'}
           </div>
 
@@ -153,15 +153,15 @@ export default function ConfiguracoesClient({ initialData }: { initialData: Test
 
           {isReview && (
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, color: '#2D1B2E' }}>Depoimento</div>
+              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, color: '#2A1E2C' }}>Depoimento</div>
               <textarea
                 value={t.text ?? ''}
                 onChange={e => setEditing(prev => prev && ({ ...prev, text: e.target.value || null }))}
                 rows={4}
                 placeholder="Escreva o depoimento..."
                 style={{
-                  width: '100%', border: '1.5px solid #E5E5EA', borderRadius: 12, padding: '10px 14px',
-                  fontFamily: 'inherit', fontSize: 14, color: '#2D1B2E', resize: 'vertical',
+                  width: '100%', border: '1.5px solid #EDE0D2', borderRadius: 12, padding: '10px 14px',
+                  fontFamily: 'inherit', fontSize: 14, color: '#2A1E2C', resize: 'vertical',
                   outline: 'none', boxSizing: 'border-box', background: '#fff',
                 }}
               />
@@ -178,7 +178,7 @@ export default function ConfiguracoesClient({ initialData }: { initialData: Test
               fontWeight: 600, fontSize: 15, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1,
             }}>{saving ? 'Salvando…' : 'Salvar'}</button>
             <button onClick={() => setEditing(null)} style={{
-              height: 48, borderRadius: 12, border: '1.5px solid #E5E5EA', background: '#fff',
+              height: 48, borderRadius: 12, border: '1.5px solid #EDE0D2', background: '#fff',
               color: gray, fontWeight: 600, fontSize: 14, padding: '0 20px', cursor: 'pointer',
             }}>Cancelar</button>
           </div>
@@ -195,9 +195,9 @@ export default function ConfiguracoesClient({ initialData }: { initialData: Test
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
             <Link href="/quiz" style={{ fontSize: 13, color: gray, textDecoration: 'none' }}>← Quiz</Link>
             <span style={{ color: gray, fontSize: 13 }}>/</span>
-            <span style={{ fontSize: 13, color: '#2D1B2E', fontWeight: 600 }}>Depoimentos & Fotos</span>
+            <span style={{ fontSize: 13, color: '#2A1E2C', fontWeight: 600 }}>Depoimentos & Fotos</span>
           </div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: '#2D1B2E' }}>📸 Depoimentos & Fotos</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#2A1E2C' }}>📸 Depoimentos & Fotos</div>
           <div style={{ fontSize: 14, color: gray, marginTop: 4 }}>Edite fotos, textos e nomes que aparecem no quiz</div>
         </div>
       </div>
@@ -208,13 +208,13 @@ export default function ConfiguracoesClient({ initialData }: { initialData: Test
         return (
           <div key={type} style={{ marginBottom: 32 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: '#2D1B2E' }}>{TYPE_LABELS[type]}</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#2A1E2C' }}>{TYPE_LABELS[type]}</div>
               {type !== 'winner' && (
                 <button
                   onClick={() => { setAdding({ type }); setNewItem({ sort_order: list.length + 1 }) }}
                   style={{
-                    background: '#F5F5F7', border: 'none', borderRadius: 8, padding: '6px 14px',
-                    fontSize: 12, fontWeight: 600, color: '#2D1B2E', cursor: 'pointer',
+                    background: '#FFFAF5', border: 'none', borderRadius: 8, padding: '6px 14px',
+                    fontSize: 12, fontWeight: 600, color: '#2A1E2C', cursor: 'pointer',
                   }}
                 >+ Adicionar</button>
               )}
@@ -223,7 +223,7 @@ export default function ConfiguracoesClient({ initialData }: { initialData: Test
             {/* Add new form inline */}
             {adding?.type === type && (
               <div style={{
-                background: '#F9F9FC', borderRadius: 14, border: '1.5px dashed #C4607A40',
+                background: '#F9F9FC', borderRadius: 14, border: '1.5px dashed #BE185D40',
                 padding: 20, marginBottom: 12,
               }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: accent, marginBottom: 16 }}>Nova entrada</div>
@@ -239,14 +239,14 @@ export default function ConfiguracoesClient({ initialData }: { initialData: Test
                 </div>
                 {type === 'review' && (
                   <div style={{ marginBottom: 12 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, color: '#2D1B2E' }}>Depoimento</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, color: '#2A1E2C' }}>Depoimento</div>
                     <textarea
                       value={newItem.text ?? ''}
                       onChange={e => setNewItem(p => ({ ...p, text: e.target.value }))}
                       rows={3}
                       placeholder="Depoimento..."
                       style={{
-                        width: '100%', border: '1.5px solid #E5E5EA', borderRadius: 12, padding: '10px 14px',
+                        width: '100%', border: '1.5px solid #EDE0D2', borderRadius: 12, padding: '10px 14px',
                         fontFamily: 'inherit', fontSize: 14, resize: 'vertical', outline: 'none', boxSizing: 'border-box',
                       }}
                     />
@@ -259,7 +259,7 @@ export default function ConfiguracoesClient({ initialData }: { initialData: Test
                     opacity: !newItem.name ? 0.5 : 1,
                   }}>{savingNew ? 'Salvando…' : 'Salvar'}</button>
                   <button onClick={() => { setAdding(null); setNewItem({}) }} style={{
-                    background: '#fff', color: gray, border: '1.5px solid #E5E5EA',
+                    background: '#fff', color: gray, border: '1.5px solid #EDE0D2',
                     borderRadius: 10, padding: '8px 16px', fontSize: 13, cursor: 'pointer',
                   }}>Cancelar</button>
                 </div>
@@ -278,10 +278,10 @@ export default function ConfiguracoesClient({ initialData }: { initialData: Test
                   }}>
                     <Avatar url={item.photo_url} name={item.name} size={44} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: '#2D1B2E' }}>{item.name}</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: '#2A1E2C' }}>{item.name}</div>
                       {item.city && <div style={{ fontSize: 12, color: gray }}>{item.city}</div>}
                       {item.text && (
-                        <div style={{ fontSize: 12, color: '#2D1B2E', marginTop: 4, lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontSize: 12, color: '#2A1E2C', marginTop: 4, lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           "{item.text}"
                         </div>
                       )}
@@ -291,7 +291,7 @@ export default function ConfiguracoesClient({ initialData }: { initialData: Test
                         onClick={() => toggleActive(item)}
                         title={item.is_active ? 'Desativar' : 'Ativar'}
                         style={{
-                          background: item.is_active ? green + '18' : '#F5F5F7',
+                          background: item.is_active ? green + '18' : '#FFFAF5',
                           color: item.is_active ? green : gray,
                           border: 'none', borderRadius: 8, padding: '5px 10px',
                           fontSize: 11, fontWeight: 600, cursor: 'pointer',
@@ -300,16 +300,16 @@ export default function ConfiguracoesClient({ initialData }: { initialData: Test
                       <button
                         onClick={() => setEditing({ ...item })}
                         style={{
-                          background: '#F5F5F7', border: 'none', borderRadius: 8,
+                          background: '#FFFAF5', border: 'none', borderRadius: 8,
                           padding: '5px 12px', fontSize: 12, fontWeight: 600,
-                          color: '#2D1B2E', cursor: 'pointer',
+                          color: '#2A1E2C', cursor: 'pointer',
                         }}
                       >✏️ Editar</button>
                       <button
                         onClick={() => setDeleteConfirm(item.id)}
                         style={{
                           background: '#FFF0F0', border: 'none', borderRadius: 8,
-                          padding: '5px 10px', fontSize: 12, color: '#FF3B30', cursor: 'pointer',
+                          padding: '5px 10px', fontSize: 12, color: '#DC2626', cursor: 'pointer',
                         }}
                       >🗑</button>
                     </div>
@@ -331,15 +331,15 @@ export default function ConfiguracoesClient({ initialData }: { initialData: Test
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
         }}>
           <div style={{ background: '#fff', borderRadius: 16, padding: 28, maxWidth: 360, width: '100%', textAlign: 'center' }}>
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 10, color: '#2D1B2E' }}>Excluir este item?</div>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 10, color: '#2A1E2C' }}>Excluir este item?</div>
             <div style={{ fontSize: 13, color: gray, marginBottom: 24 }}>Esta ação não pode ser desfeita.</div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => deleteItem(deleteConfirm)} style={{
-                flex: 1, height: 44, borderRadius: 10, border: 'none', background: '#FF3B30',
+                flex: 1, height: 44, borderRadius: 10, border: 'none', background: '#DC2626',
                 color: '#fff', fontWeight: 600, cursor: 'pointer',
               }}>Excluir</button>
               <button onClick={() => setDeleteConfirm(null)} style={{
-                flex: 1, height: 44, borderRadius: 10, border: '1.5px solid #E5E5EA',
+                flex: 1, height: 44, borderRadius: 10, border: '1.5px solid #EDE0D2',
                 background: '#fff', color: gray, fontWeight: 600, cursor: 'pointer',
               }}>Cancelar</button>
             </div>
@@ -355,13 +355,13 @@ function FieldInput({ label, value, onChange, placeholder, type = 'text' }: {
 }) {
   return (
     <label style={{ display: 'block' }}>
-      <div style={{ fontSize: 11, fontWeight: 600, color: '#2D1B2E', marginBottom: 5, letterSpacing: 0.2 }}>{label}</div>
+      <div style={{ fontSize: 11, fontWeight: 600, color: '#2A1E2C', marginBottom: 5, letterSpacing: 0.2 }}>{label}</div>
       <input
         type={type} value={value} onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
         style={{
-          width: '100%', height: 40, border: '1.5px solid #E5E5EA', borderRadius: 10,
-          padding: '0 12px', fontFamily: 'inherit', fontSize: 13, color: '#2D1B2E',
+          width: '100%', height: 40, border: '1.5px solid #EDE0D2', borderRadius: 10,
+          padding: '0 12px', fontFamily: 'inherit', fontSize: 13, color: '#2A1E2C',
           outline: 'none', boxSizing: 'border-box', background: '#fff',
         }}
       />

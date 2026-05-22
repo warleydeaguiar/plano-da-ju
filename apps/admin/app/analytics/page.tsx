@@ -6,12 +6,12 @@ import Sidebar from '../components/Sidebar'
 export const revalidate = 60
 export const metadata = { title: 'Analytics — Admin Plano da Ju' }
 
-const accent = '#C4607A'
-const green  = '#34C759'
-const orange = '#FF9500'
-const red    = '#FF3B30'
-const blue   = '#007AFF'
-const gray   = '#8A8A8E'
+const accent = '#BE185D'
+const green  = '#22A06B'
+const orange = '#D97706'
+const red    = '#DC2626'
+const blue   = '#2563EB'
+const gray   = '#7C6B7E'
 
 // Preço do plano (R$34,90 cartão). Usado pra estimar receita do dia
 // quando não temos uma coluna `amount_cents` confiável por perfil.
@@ -28,7 +28,7 @@ function StatCard({ label, value, sub, color, icon }: {
     <div style={{ background: '#fff', borderRadius: 14, padding: '20px 24px', border: '1px solid rgba(0,0,0,0.06)' }}>
       {icon && <div style={{ fontSize: 20, marginBottom: 8 }}>{icon}</div>}
       <div style={{ fontSize: 12, color: gray, fontWeight: 500, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 }}>{label}</div>
-      <div style={{ fontSize: 28, fontWeight: 700, color: color ?? '#2D1B2E', lineHeight: 1 }}>{value}</div>
+      <div style={{ fontSize: 28, fontWeight: 700, color: color ?? '#2A1E2C', lineHeight: 1 }}>{value}</div>
       {sub && <div style={{ fontSize: 12, color: gray, marginTop: 6 }}>{sub}</div>}
     </div>
   )
@@ -50,7 +50,7 @@ function SectionHeader({ icon, title, subtitle, accentColor }: { icon: string; t
         fontSize: 22, flexShrink: 0,
       }}>{icon}</div>
       <div>
-        <div style={{ fontSize: 16, fontWeight: 700, color: '#2D1B2E' }}>{title}</div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: '#2A1E2C' }}>{title}</div>
         <div style={{ fontSize: 12, color: gray, marginTop: 2 }}>{subtitle}</div>
       </div>
     </div>
@@ -74,13 +74,13 @@ function AdGroupDailyChart({ data, color, label }: { data: AdGroupResult['daily'
           return (
             <div key={d.date} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
               {d.spend > 0 && (
-                <div style={{ fontSize: 8.5, fontWeight: 700, color: isLast ? color : '#2D1B2E', whiteSpace: 'nowrap' }}>
+                <div style={{ fontSize: 8.5, fontWeight: 700, color: isLast ? color : '#2A1E2C', whiteSpace: 'nowrap' }}>
                   R${d.spend.toFixed(0)}
                 </div>
               )}
               <div style={{
                 width: '100%', height: h, borderRadius: '3px 3px 0 0',
-                background: d.spend === 0 ? '#F2F2F7' : color,
+                background: d.spend === 0 ? '#F3EBE1' : color,
                 opacity: d.spend === 0 ? 0.4 : isLast ? 1 : 0.85,
               }} />
               <div style={{ fontSize: 9, color: isLast ? color : gray, fontWeight: isLast ? 700 : 400, whiteSpace: 'nowrap' }}>
@@ -107,7 +107,7 @@ function CampaignList({ campaigns, color }: { campaigns: AdGroupResult['campaign
           background: i % 2 === 0 ? 'rgba(0,0,0,0.02)' : 'transparent',
         }}>
           <div style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#2D1B2E', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#2A1E2C', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {c.campaign_name}
             </div>
             <div style={{ fontSize: 10.5, color: gray, marginTop: 2 }}>
@@ -361,13 +361,13 @@ export default async function AnalyticsPage() {
   return (
     <div style={{
       display: 'flex', height: '100vh', overflow: 'hidden',
-      background: '#F5F5F7', fontFamily: '-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif',
+      background: '#FFFAF5', fontFamily: 'Plus Jakarta Sans, -apple-system, system-ui, sans-serif',
     }}>
       <Sidebar />
-      <main style={{ marginLeft: 220, flex: 1, height: '100vh', overflowY: 'auto', padding: '32px 40px' }}>
+      <main style={{ marginLeft: 234, flex: 1, height: '100vh', overflowY: 'auto', padding: '32px 40px' }}>
 
         <div style={{ marginBottom: 28 }}>
-          <div style={{ fontSize: 22, fontWeight: 700, color: '#2D1B2E' }}>Analytics</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#2A1E2C' }}>Analytics</div>
           <div style={{ fontSize: 13, color: gray, marginTop: 4 }}>
             {now.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
             {metaAds.status === 'ok' && (
@@ -450,7 +450,7 @@ export default async function AnalyticsPage() {
 
         {/* Funil Plano — completo: Meta Ads → Quiz → Compra */}
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', marginBottom: 36, overflow: 'hidden' }}>
-          <div style={{ padding: '14px 20px', borderBottom: '1px solid #F0F0F5', fontSize: 12, fontWeight: 700, color: '#2D1B2E', letterSpacing: 0.2 }}>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid #F0F0F5', fontSize: 12, fontWeight: 700, color: '#2A1E2C', letterSpacing: 0.2 }}>
             Funil de conversão — Anúncio → Compra
             <span style={{ marginLeft: 8, fontSize: 10.5, fontWeight: 500, color: gray, textTransform: 'none' }}>
               · Conv. = % que avança da etapa anterior
@@ -458,7 +458,7 @@ export default async function AnalyticsPage() {
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ background: '#FAFAFA', borderBottom: '1px solid #F0F0F5' }}>
+              <tr style={{ background: '#FFF7EE', borderBottom: '1px solid #F0F0F5' }}>
                 {['Etapa', 'Hoje', 'Conv.', 'Ontem', 'Conv.', '30d', 'Conv. 30d'].map((h, i) => (
                   <th key={i} style={{
                     padding: '11px 20px', textAlign: i === 0 ? 'left' : 'right',
@@ -515,7 +515,7 @@ export default async function AnalyticsPage() {
                     borderBottom: '1px solid #F9F9FC',
                     background: row.highlight ? 'rgba(196,96,122,0.04)' : 'transparent',
                   }}>
-                    <td style={{ padding: '12px 20px', fontSize: 13, color: '#2D1B2E', fontWeight: 600 }}>
+                    <td style={{ padding: '12px 20px', fontSize: 13, color: '#2A1E2C', fontWeight: 600 }}>
                       <span style={{ marginRight: 6 }}>{row.icon}</span>{row.label}
                       {isMeta && (
                         <span style={{
@@ -532,13 +532,13 @@ export default async function AnalyticsPage() {
                     <td style={{ padding: '12px 20px', textAlign: 'right', fontSize: 12, color: row.convToday === null || row.convToday === '—' ? gray : green, fontWeight: 600 }}>
                       {row.convToday ?? '—'}
                     </td>
-                    <td style={{ padding: '12px 20px', textAlign: 'right', fontSize: 14, fontWeight: 700, color: '#2D1B2E' }}>
+                    <td style={{ padding: '12px 20px', textAlign: 'right', fontSize: 14, fontWeight: 700, color: '#2A1E2C' }}>
                       {row.yest.toLocaleString('pt-BR')}
                     </td>
                     <td style={{ padding: '12px 20px', textAlign: 'right', fontSize: 12, color: row.convYest === null || row.convYest === '—' ? gray : green, fontWeight: 600 }}>
                       {row.convYest ?? '—'}
                     </td>
-                    <td style={{ padding: '12px 20px', textAlign: 'right', fontSize: 13, color: '#2D1B2E', fontWeight: 600 }}>
+                    <td style={{ padding: '12px 20px', textAlign: 'right', fontSize: 13, color: '#2A1E2C', fontWeight: 600 }}>
                       {row.month.toLocaleString('pt-BR')}
                     </td>
                     <td style={{ padding: '12px 20px', textAlign: 'right', fontSize: 12, color: row.convMonth === null || row.convMonth === '—' ? gray : green, fontWeight: 600 }}>
@@ -607,7 +607,7 @@ export default async function AnalyticsPage() {
                 icon="🛍️"
                 label="Vendas Ybera hoje"
                 value={brl(yberaSalesToday)}
-                color="#2D1B2E"
+                color="#2A1E2C"
                 sub={`ontem ${brl(yberaSalesYesterday)}`}
               />
               <StatCard
@@ -635,7 +635,7 @@ export default async function AnalyticsPage() {
 
             {/* Mês — totais consolidados */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20 }}>
-              <StatCard label="Vendas Ybera mês" value={brl(yberaSalesMonth)} color="#2D1B2E" sub={`${yberaOrders.length} pedido${yberaOrders.length !== 1 ? 's' : ''}`} />
+              <StatCard label="Vendas Ybera mês" value={brl(yberaSalesMonth)} color="#2A1E2C" sub={`${yberaOrders.length} pedido${yberaOrders.length !== 1 ? 's' : ''}`} />
               <StatCard label="Comissão mês"     value={brl(commissionMonth)} color={green} />
               <StatCard
                 label="ROAS mês"
@@ -657,7 +657,7 @@ export default async function AnalyticsPage() {
           }}>
             <span style={{ fontSize: 22 }}>⚠️</span>
             <div style={{ fontSize: 13, color: gray }}>
-              <strong style={{ color: '#2D1B2E' }}>Vendas Ybera indisponíveis</strong> — {
+              <strong style={{ color: '#2A1E2C' }}>Vendas Ybera indisponíveis</strong> — {
                 yberaStatus === 'no_token'
                   ? 'configure YBERA_API_TOKEN no Vercel para ver comissão/lucro.'
                   : 'erro ao chamar API da Ybera. Tente recarregar.'
@@ -681,7 +681,7 @@ export default async function AnalyticsPage() {
 
         {/* Cliques no link dos grupos */}
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '20px 24px', marginBottom: 36 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E', marginBottom: 16 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C', marginBottom: 16 }}>
             Cliques no link de entrada dos grupos
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
@@ -708,7 +708,7 @@ export default async function AnalyticsPage() {
           icon="👥"
           title="App & Usuárias"
           subtitle="Visão geral da base de clientes e engajamento no app."
-          accentColor="#2D1B2E"
+          accentColor="#2A1E2C"
         />
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 20 }}>
@@ -721,11 +721,11 @@ export default async function AnalyticsPage() {
             sub={`${((activeUsers.count ?? 0) / Math.max(1, totalUsers.count ?? 1) * 100).toFixed(0)}% do total`}
           />
           <StatCard icon="🆕" label="Novas usuárias 7d" value={newLast7.count ?? 0} color={accent} sub="cadastros recentes" />
-          <StatCard icon="📝" label="Planos pendentes" value={pendingPlans.count ?? 0} color={pendingPlans.count ? orange : '#2D1B2E'} sub={`de ${totalPlans.count ?? 0} total`} />
+          <StatCard icon="📝" label="Planos pendentes" value={pendingPlans.count ?? 0} color={pendingPlans.count ? orange : '#2A1E2C'} sub={`de ${totalPlans.count ?? 0} total`} />
         </div>
 
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '20px 24px', marginBottom: 24 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E', marginBottom: 16 }}>Check-ins no app</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C', marginBottom: 16 }}>Check-ins no app</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
             {[
               { label: 'Hoje',        value: checkInsToday.count ?? 0,  color: accent },

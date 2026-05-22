@@ -3,12 +3,12 @@
 import { useState, useRef } from 'react'
 import Link from 'next/link'
 
-const accent = '#C4607A'
-const green  = '#34C759'
-const orange = '#FF9500'
-const red    = '#FF3B30'
-const gray   = '#8A8A8E'
-const blue   = '#007AFF'
+const accent = '#BE185D'
+const green  = '#22A06B'
+const orange = '#D97706'
+const red    = '#DC2626'
+const gray   = '#7C6B7E'
+const blue   = '#2563EB'
 
 type ImageSlot = {
   id: string
@@ -107,7 +107,7 @@ function ImageCard({ slot, onUpdate }: { slot: ImageSlot; onUpdate: (s: ImageSlo
       padding: 18, display: 'flex', flexDirection: 'column', gap: 12,
     }}>
       <div>
-        <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E', marginBottom: 4 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C', marginBottom: 4 }}>
           {slot.label}
         </div>
         {slot.description && (
@@ -120,7 +120,7 @@ function ImageCard({ slot, onUpdate }: { slot: ImageSlot; onUpdate: (s: ImageSlo
       {/* Preview */}
       <div style={{
         width: '100%', aspectRatio: isVideo ? '16/9' : '4/3',
-        background: '#F5F5F7', borderRadius: 10, overflow: 'hidden',
+        background: '#FFFAF5', borderRadius: 10, overflow: 'hidden',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         border: '1px solid rgba(0,0,0,0.04)',
       }}>
@@ -152,7 +152,7 @@ function ImageCard({ slot, onUpdate }: { slot: ImageSlot; onUpdate: (s: ImageSlo
         <div>
           <div style={{ fontSize: 11, color: gray, marginBottom: 4, fontWeight: 600 }}>URL ATUAL</div>
           <div style={{
-            fontSize: 11, color: '#2D1B2E', background: '#F9F9FC', padding: '8px 10px',
+            fontSize: 11, color: '#2A1E2C', background: '#F9F9FC', padding: '8px 10px',
             borderRadius: 8, wordBreak: 'break-all', fontFamily: 'monospace', maxHeight: 50,
             overflow: 'hidden',
           }}>
@@ -225,7 +225,7 @@ function ImageCard({ slot, onUpdate }: { slot: ImageSlot; onUpdate: (s: ImageSlo
             <button
               onClick={() => { setUrlInput(slot.url); setEditing(false) }}
               style={{
-                background: '#F5F5F7', color: '#2D1B2E', border: 'none',
+                background: '#FFFAF5', color: '#2A1E2C', border: 'none',
                 padding: '9px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
               }}
             >
@@ -237,7 +237,7 @@ function ImageCard({ slot, onUpdate }: { slot: ImageSlot; onUpdate: (s: ImageSlo
             onClick={() => setEditing(true)}
             style={{
               flex: !isVideo ? 'unset' : 1,
-              background: '#F5F5F7', color: '#2D1B2E', border: 'none',
+              background: '#FFFAF5', color: '#2A1E2C', border: 'none',
               padding: '9px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
             }}
           >
@@ -270,9 +270,9 @@ export default function ImagensClient({ initialData }: { initialData: ImageSlot[
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
           <Link href="/quiz" style={{ fontSize: 13, color: gray, textDecoration: 'none' }}>Quiz</Link>
           <span style={{ color: gray }}>›</span>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#2D1B2E' }}>Imagens & Mídia</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#2A1E2C' }}>Imagens & Mídia</div>
         </div>
-        <div style={{ fontSize: 22, fontWeight: 700, color: '#2D1B2E', marginBottom: 4 }}>
+        <div style={{ fontSize: 22, fontWeight: 700, color: '#2A1E2C', marginBottom: 4 }}>
           🖼 Imagens & Mídia do Funil
         </div>
         <div style={{ fontSize: 14, color: gray }}>
@@ -321,9 +321,9 @@ export default function ImagensClient({ initialData }: { initialData: ImageSlot[
       }}>
         <div style={{ fontSize: 22 }}>💡</div>
         <div style={{ fontSize: 13, color: gray, lineHeight: 1.6 }}>
-          <strong style={{ color: '#2D1B2E' }}>Upload</strong> sobe sua imagem para o Supabase Storage (público).{' '}
-          <strong style={{ color: '#2D1B2E' }}>Usar URL</strong> permite colar uma URL pronta de qualquer lugar.{' '}
-          As imagens são <strong style={{ color: '#2D1B2E' }}>cacheadas por 1 minuto</strong>, então pode levar até 1 min para aparecer no quiz e na oferta.
+          <strong style={{ color: '#2A1E2C' }}>Upload</strong> sobe sua imagem para o Supabase Storage (público).{' '}
+          <strong style={{ color: '#2A1E2C' }}>Usar URL</strong> permite colar uma URL pronta de qualquer lugar.{' '}
+          As imagens são <strong style={{ color: '#2A1E2C' }}>cacheadas por 1 minuto</strong>, então pode levar até 1 min para aparecer no quiz e na oferta.
         </div>
       </div>
     </div>

@@ -2,11 +2,11 @@
 
 import Link from 'next/link'
 
-const accent = '#C4607A'
+const accent = '#BE185D'
 const gold   = '#c9a45c'
-const green  = '#34C759'
-const gray   = '#8A8A8E'
-const red    = '#FF3B30'
+const green  = '#22A06B'
+const gray   = '#7C6B7E'
+const red    = '#DC2626'
 
 const UTM_COLORS: Record<string, string> = {
   facebook: '#1877F2', instagram: '#E1306C', google: '#4285F4',
@@ -17,7 +17,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
   return (
     <div style={{ background: '#fff', borderRadius: 14, padding: '20px 24px', border: '1px solid rgba(0,0,0,0.06)' }}>
       <div style={{ fontSize: 12, color: gray, fontWeight: 600, marginBottom: 8, letterSpacing: 0.3 }}>{label}</div>
-      <div style={{ fontSize: 28, fontWeight: 700, color: color ?? '#2D1B2E', lineHeight: 1 }}>{value}</div>
+      <div style={{ fontSize: 28, fontWeight: 700, color: color ?? '#2A1E2C', lineHeight: 1 }}>{value}</div>
       {sub && <div style={{ fontSize: 12, color: gray, marginTop: 6 }}>{sub}</div>}
     </div>
   )
@@ -74,7 +74,7 @@ export default function FashionGoldClient({ data }: { data: any }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
             <Link href="/quiz" style={{ fontSize: 13, color: gray, textDecoration: 'none' }}>Quiz</Link>
             <span style={{ color: gray }}>›</span>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#2D1B2E' }}>Fashion Gold</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#2A1E2C' }}>Fashion Gold</div>
           </div>
           <div style={{ fontSize: 13, color: gray }}>
             <a href="https://planodaju.julianecost.com/quiz/fashion-gold" target="_blank" rel="noopener noreferrer" style={{ color: gold, textDecoration: 'none' }}>
@@ -83,7 +83,7 @@ export default function FashionGoldClient({ data }: { data: any }) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
-          <Link href="/quiz/configuracoes" style={{ background: '#F5F5F7', color: '#2D1B2E', padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
+          <Link href="/quiz/configuracoes" style={{ background: '#FFFAF5', color: '#2A1E2C', padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
             📸 Depoimentos
           </Link>
           <a href="https://planodaju.julianecost.com/quiz/fashion-gold" target="_blank" rel="noopener noreferrer" style={{ background: gold, color: '#fff', padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
@@ -95,14 +95,14 @@ export default function FashionGoldClient({ data }: { data: any }) {
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14, marginBottom: 24 }}>
         <StatCard label="TOTAL DE LEADS" value={kpis.total.toLocaleString('pt-BR')} sub="todos os tempos" />
-        <StatCard label="HOJE" value={kpis.today} sub="desde meia-noite" color={kpis.today > 0 ? green : '#2D1B2E'} />
-        <StatCard label="ESTA SEMANA" value={kpis.week} sub="últimos 7 dias" color={kpis.week > 0 ? green : '#2D1B2E'} />
+        <StatCard label="HOJE" value={kpis.today} sub="desde meia-noite" color={kpis.today > 0 ? green : '#2A1E2C'} />
+        <StatCard label="ESTA SEMANA" value={kpis.week} sub="últimos 7 dias" color={kpis.week > 0 ? green : '#2A1E2C'} />
         <StatCard label="CLIQUES (TOTAL)" value={kpis.views.toLocaleString('pt-BR')} sub="visitas ao quiz" />
         <StatCard
           label="TAXA DE CONVERSÃO"
           value={kpis.conversion != null ? `${kpis.conversion}%` : '—'}
           sub="leads / cliques"
-          color={kpis.conversion != null ? (kpis.conversion >= 15 ? green : kpis.conversion >= 5 ? accent : red) : '#2D1B2E'}
+          color={kpis.conversion != null ? (kpis.conversion >= 15 ? green : kpis.conversion >= 5 ? accent : red) : '#2A1E2C'}
         />
       </div>
 
@@ -110,23 +110,23 @@ export default function FashionGoldClient({ data }: { data: any }) {
         {/* Gráfico de leads por dia */}
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '20px 24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E' }}>📈 Leads por dia</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C' }}>📈 Leads por dia</div>
             <div style={{ fontSize: 12, color: gray }}>Últimos 30 dias</div>
           </div>
           <MiniBarChart series={dailySeries} />
           <div style={{ marginTop: 16, display: 'flex', gap: 16 }}>
             <div style={{ fontSize: 12, color: gray }}>
-              Total no período: <strong style={{ color: '#2D1B2E' }}>{dailySeries.reduce((s: number, d: any) => s + d.leads, 0)}</strong>
+              Total no período: <strong style={{ color: '#2A1E2C' }}>{dailySeries.reduce((s: number, d: any) => s + d.leads, 0)}</strong>
             </div>
             <div style={{ fontSize: 12, color: gray }}>
-              Média/dia: <strong style={{ color: '#2D1B2E' }}>{(dailySeries.reduce((s: number, d: any) => s + d.leads, 0) / 30).toFixed(1)}</strong>
+              Média/dia: <strong style={{ color: '#2A1E2C' }}>{(dailySeries.reduce((s: number, d: any) => s + d.leads, 0) / 30).toFixed(1)}</strong>
             </div>
           </div>
         </div>
 
         {/* UTM Breakdown */}
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '20px 24px' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E', marginBottom: 16 }}>🔍 Origem dos leads</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C', marginBottom: 16 }}>🔍 Origem dos leads</div>
           {utmBreakdown.length === 0 ? (
             <div style={{ fontSize: 13, color: gray, textAlign: 'center', padding: '20px 0' }}>Nenhum dado de UTM ainda</div>
           ) : (
@@ -137,7 +137,7 @@ export default function FashionGoldClient({ data }: { data: any }) {
                 return (
                   <div key={u.source}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: '#2D1B2E', textTransform: 'capitalize' }}>{u.source}</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: '#2A1E2C', textTransform: 'capitalize' }}>{u.source}</span>
                       <span style={{ fontSize: 12, color: gray }}>{u.count} ({pct}%)</span>
                     </div>
                     <div style={{ height: 5, background: '#F0F0F5', borderRadius: 3 }}>
@@ -154,7 +154,7 @@ export default function FashionGoldClient({ data }: { data: any }) {
       {/* Tabela de leads */}
       <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)' }}>
         <div style={{ padding: '18px 24px', borderBottom: '1px solid #F0F0F5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E' }}>Leads recentes</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C' }}>Leads recentes</div>
           <div style={{ fontSize: 12, color: gray }}>Últimos {leads.length} registros</div>
         </div>
 
@@ -176,9 +176,9 @@ export default function FashionGoldClient({ data }: { data: any }) {
                 {leads.map((lead: any) => (
                   <tr key={lead.id} style={{ borderBottom: '1px solid #F9F9FC' }}>
                     <td style={{ padding: '11px 20px', fontSize: 12, color: gray, whiteSpace: 'nowrap' }}>{formatDate(lead.created_at)}</td>
-                    <td style={{ padding: '11px 20px', fontSize: 13, fontWeight: 600, color: '#2D1B2E' }}>{lead.name ?? <span style={{ color: gray }}>—</span>}</td>
-                    <td style={{ padding: '11px 20px', fontSize: 12, color: '#2D1B2E' }}>{lead.email ?? <span style={{ color: gray }}>—</span>}</td>
-                    <td style={{ padding: '11px 20px', fontSize: 12, color: '#2D1B2E', whiteSpace: 'nowrap' }}>{formatPhone(lead.phone)}</td>
+                    <td style={{ padding: '11px 20px', fontSize: 13, fontWeight: 600, color: '#2A1E2C' }}>{lead.name ?? <span style={{ color: gray }}>—</span>}</td>
+                    <td style={{ padding: '11px 20px', fontSize: 12, color: '#2A1E2C' }}>{lead.email ?? <span style={{ color: gray }}>—</span>}</td>
+                    <td style={{ padding: '11px 20px', fontSize: 12, color: '#2A1E2C', whiteSpace: 'nowrap' }}>{formatPhone(lead.phone)}</td>
                     <td style={{ padding: '11px 20px' }}>
                       {lead.utm_source ? (
                         <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: (UTM_COLORS[lead.utm_source.toLowerCase()] ?? gray) + '20', color: UTM_COLORS[lead.utm_source.toLowerCase()] ?? gray }}>
@@ -209,7 +209,7 @@ export default function FashionGoldClient({ data }: { data: any }) {
         <div style={{ fontSize: 20 }}>💡</div>
         <div style={{ fontSize: 12, color: gray, lineHeight: 1.6 }}>
           Use{' '}
-          <code style={{ background: '#F5F5F7', padding: '1px 5px', borderRadius: 4, fontSize: 11 }}>
+          <code style={{ background: '#FFFAF5', padding: '1px 5px', borderRadius: 4, fontSize: 11 }}>
             ?utm_source=facebook&utm_medium=paid&utm_campaign=NOME_DA_CAMPANHA
           </code>{' '}
           nos seus links de anúncio para rastrear a origem de cada lead automaticamente.

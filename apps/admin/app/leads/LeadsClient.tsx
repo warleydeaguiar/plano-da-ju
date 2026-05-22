@@ -2,10 +2,10 @@
 
 import { useState, useMemo } from 'react'
 
-const accent = '#C4607A'
-const green  = '#34C759'
-const orange = '#FF9500'
-const gray   = '#8A8A8E'
+const accent = '#BE185D'
+const green  = '#22A06B'
+const orange = '#D97706'
+const gray   = '#7C6B7E'
 const dark   = '#1C1C1E'
 
 type Lead = {
@@ -119,7 +119,7 @@ export default function LeadsClient({
           return (
             <div key={i} style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '9px 0', borderBottom: isLast ? 'none' : '1px solid #F5F5F7',
+              padding: '9px 0', borderBottom: isLast ? 'none' : '1px solid #FFFAF5',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: dark, fontWeight: 500 }}>
                 <span style={{ fontSize: 14 }}>{r.icon}</span>
@@ -140,7 +140,7 @@ export default function LeadsClient({
         })}
         {/* Overall conv view→sales */}
         <div style={{
-          marginTop: 8, paddingTop: 10, borderTop: '1px dashed #E5E5EA',
+          marginTop: 8, paddingTop: 10, borderTop: '1px dashed #EDE0D2',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           fontSize: 11, color: gray, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4,
         }}>
@@ -201,7 +201,7 @@ export default function LeadsClient({
           placeholder="Buscar por nome, email ou telefone…"
           style={{
             flex: 1, maxWidth: 320, padding: '9px 14px', fontSize: 13,
-            border: '1.5px solid #E5E5EA', borderRadius: 10, outline: 'none',
+            border: '1.5px solid #EDE0D2', borderRadius: 10, outline: 'none',
             background: '#fff', color: dark,
           }}
         />
@@ -210,7 +210,7 @@ export default function LeadsClient({
             value={slugFilter}
             onChange={e => setSlugFilter(e.target.value)}
             style={{
-              padding: '9px 14px', fontSize: 13, border: '1.5px solid #E5E5EA',
+              padding: '9px 14px', fontSize: 13, border: '1.5px solid #EDE0D2',
               borderRadius: 10, background: '#fff', color: dark, cursor: 'pointer',
             }}
           >
@@ -224,7 +224,7 @@ export default function LeadsClient({
       {/* Quiz Leads Table */}
       {tab === 'quiz' && (
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-          <div style={{ padding: '14px 20px', borderBottom: '1px solid #F2F2F7', display: 'grid', gridTemplateColumns: '2fr 1.5fr 1.5fr 1fr 1fr auto', gap: 12 }}>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid #F3EBE1', display: 'grid', gridTemplateColumns: '2fr 1.5fr 1.5fr 1fr 1fr auto', gap: 12 }}>
             {['Nome', 'Telefone', 'Email', 'Quiz', 'Status', 'Ação'].map(h => (
               <div key={h} style={{ fontSize: 11, fontWeight: 700, color: gray, textTransform: 'uppercase', letterSpacing: 0.5 }}>{h}</div>
             ))}
@@ -276,7 +276,7 @@ export default function LeadsClient({
                         ✓ Cliente
                       </span>
                     ) : (
-                      <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: '#F2F2F7', color: gray }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: '#F3EBE1', color: gray }}>
                         Lead
                       </span>
                     )}
@@ -307,7 +307,7 @@ export default function LeadsClient({
             })}
           </div>
           {filteredLeads.length > 0 && (
-            <div style={{ padding: '10px 20px', borderTop: '1px solid #F2F2F7', fontSize: 12, color: gray }}>
+            <div style={{ padding: '10px 20px', borderTop: '1px solid #F3EBE1', fontSize: 12, color: gray }}>
               {filteredLeads.length} lead{filteredLeads.length !== 1 ? 's' : ''}
             </div>
           )}
@@ -317,7 +317,7 @@ export default function LeadsClient({
       {/* Checkout Abandonado */}
       {tab === 'checkout' && (
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-          <div style={{ padding: '14px 20px', borderBottom: '1px solid #F2F2F7', display: 'grid', gridTemplateColumns: '2fr 2fr 1fr 1fr', gap: 12 }}>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid #F3EBE1', display: 'grid', gridTemplateColumns: '2fr 2fr 1fr 1fr', gap: 12 }}>
             {['Nome', 'Email', 'Status', 'Data'].map(h => (
               <div key={h} style={{ fontSize: 11, fontWeight: 700, color: gray, textTransform: 'uppercase', letterSpacing: 0.5 }}>{h}</div>
             ))}
@@ -370,7 +370,7 @@ export default function LeadsClient({
             })}
           </div>
           {filteredAbandoned.length > 0 && (
-            <div style={{ padding: '10px 20px', borderTop: '1px solid #F2F2F7', fontSize: 12, color: gray }}>
+            <div style={{ padding: '10px 20px', borderTop: '1px solid #F3EBE1', fontSize: 12, color: gray }}>
               {filteredAbandoned.length} pessoa{filteredAbandoned.length !== 1 ? 's' : ''} com checkout iniciado
             </div>
           )}

@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useTransition } from 'react'
 
-const accent = '#C4607A'
-const green  = '#34C759'
-const red    = '#FF3B30'
-const gray   = '#8A8A8E'
+const accent = '#BE185D'
+const green  = '#22A06B'
+const red    = '#DC2626'
+const gray   = '#7C6B7E'
 
 interface AdminUser { id: string; email: string; name: string; created_at: string }
 
@@ -56,21 +56,21 @@ export default function AdminUsersSection() {
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '9px 13px', borderRadius: 9,
-    border: '1px solid #E5E5EA', fontSize: 13, outline: 'none',
-    background: '#FAFAFA', color: '#2D1B2E', boxSizing: 'border-box',
+    border: '1px solid #EDE0D2', fontSize: 13, outline: 'none',
+    background: '#FFF7EE', color: '#2A1E2C', boxSizing: 'border-box',
   }
 
   return (
     <div>
       {/* Lista */}
       {users.map(u => (
-        <div key={u.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #F5F5F7' }}>
+        <div key={u.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #FFFAF5' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 32, height: 32, borderRadius: '50%', background: accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
               {(u.name ?? u.email).charAt(0).toUpperCase()}
             </div>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#2D1B2E' }}>{u.name}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#2A1E2C' }}>{u.name}</div>
               <div style={{ fontSize: 11, color: gray }}>{u.email}</div>
             </div>
           </div>
@@ -101,13 +101,13 @@ export default function AdminUsersSection() {
             <button onClick={handleAdd} disabled={saving} style={{ padding: '9px 20px', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer', background: saving ? gray : accent, border: 'none', color: '#fff' }}>
               {saving ? 'Criando…' : 'Criar acesso'}
             </button>
-            <button onClick={() => { setShowForm(false); setError('') }} style={{ padding: '9px 16px', borderRadius: 9, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: '#E5E5EA', border: 'none', color: '#2D1B2E' }}>
+            <button onClick={() => { setShowForm(false); setError('') }} style={{ padding: '9px 16px', borderRadius: 9, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: '#EDE0D2', border: 'none', color: '#2A1E2C' }}>
               Cancelar
             </button>
           </div>
         </div>
       ) : (
-        <button onClick={() => setShowForm(true)} style={{ marginTop: 14, padding: '9px 18px', borderRadius: 9, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: '#F0F0F5', border: 'none', color: '#2D1B2E' }}>
+        <button onClick={() => setShowForm(true)} style={{ marginTop: 14, padding: '9px 18px', borderRadius: 9, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: '#F0F0F5', border: 'none', color: '#2A1E2C' }}>
           + Adicionar administrador
         </button>
       )}

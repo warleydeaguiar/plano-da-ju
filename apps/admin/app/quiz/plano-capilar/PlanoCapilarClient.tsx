@@ -2,20 +2,20 @@
 
 import Link from 'next/link'
 
-const accent = '#C4607A'
-const green  = '#34C759'
-const blue   = '#007AFF'
-const gray   = '#8A8A8E'
-const red    = '#FF3B30'
-const orange = '#FF9500'
+const accent = '#BE185D'
+const green  = '#22A06B'
+const blue   = '#2563EB'
+const gray   = '#7C6B7E'
+const red    = '#DC2626'
+const orange = '#D97706'
 
-const BAR_COLORS = ['#C4607A', '#8B3A6E', '#E1306C', '#6366F1', '#4285F4', '#34C759', '#FF9500', '#c9a45c']
+const BAR_COLORS = ['#BE185D', '#8B3A6E', '#E1306C', '#6366F1', '#4285F4', '#22A06B', '#D97706', '#c9a45c']
 
 function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) {
   return (
     <div style={{ background: '#fff', borderRadius: 14, padding: '20px 24px', border: '1px solid rgba(0,0,0,0.06)' }}>
       <div style={{ fontSize: 12, color: gray, fontWeight: 600, marginBottom: 8, letterSpacing: 0.3 }}>{label}</div>
-      <div style={{ fontSize: 28, fontWeight: 700, color: color ?? '#2D1B2E', lineHeight: 1 }}>{value}</div>
+      <div style={{ fontSize: 28, fontWeight: 700, color: color ?? '#2A1E2C', lineHeight: 1 }}>{value}</div>
       {sub && <div style={{ fontSize: 12, color: gray, marginTop: 6 }}>{sub}</div>}
     </div>
   )
@@ -84,8 +84,8 @@ function QuestionCard({ qa }: { qa: any }) {
   return (
     <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '20px 24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E', flex: 1, paddingRight: 12 }}>{qa.question}</div>
-        <span style={{ fontSize: 12, color: gray, whiteSpace: 'nowrap', background: '#F5F5F7', padding: '3px 10px', borderRadius: 20, flexShrink: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C', flex: 1, paddingRight: 12 }}>{qa.question}</div>
+        <span style={{ fontSize: 12, color: gray, whiteSpace: 'nowrap', background: '#FFFAF5', padding: '3px 10px', borderRadius: 20, flexShrink: 0 }}>
           {qa.total.toLocaleString('pt-BR')} resp.
         </span>
       </div>
@@ -95,7 +95,7 @@ function QuestionCard({ qa }: { qa: any }) {
           return (
             <div key={opt.value}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                <span style={{ fontSize: 13, color: '#2D1B2E', fontWeight: opt.pct >= 30 ? 700 : 500 }}>{opt.label}</span>
+                <span style={{ fontSize: 13, color: '#2A1E2C', fontWeight: opt.pct >= 30 ? 700 : 500 }}>{opt.label}</span>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <span style={{ fontSize: 12, color: gray }}>{opt.count}</span>
                   <span style={{ fontSize: 13, fontWeight: 700, color, minWidth: 36, textAlign: 'right' }}>{opt.pct}%</span>
@@ -120,8 +120,8 @@ function StepFunnelRow({ row, isWorst }: { row: any; isWorst: boolean }) {
   const rate = row.conversion_rate
   const isAutoAdvance = AUTO_ADVANCE_STEPS.has(row.step_id)
   // Loading step: trata como transparente (não é abandono real)
-  const rateColor = isAutoAdvance ? '#5AC8FA' : rate == null ? gray : rate >= 80 ? green : rate >= 60 ? '#34C759CC' : rate >= 40 ? orange : red
-  const barColor  = isAutoAdvance ? '#5AC8FA' : rate == null ? '#E5E5EA' : rate >= 80 ? green : rate >= 60 ? '#5AC8FA' : rate >= 40 ? orange : red
+  const rateColor = isAutoAdvance ? '#5AC8FA' : rate == null ? gray : rate >= 80 ? green : rate >= 60 ? '#22A06BCC' : rate >= 40 ? orange : red
+  const barColor  = isAutoAdvance ? '#5AC8FA' : rate == null ? '#EDE0D2' : rate >= 80 ? green : rate >= 60 ? '#5AC8FA' : rate >= 40 ? orange : red
   const barWidth  = row.pct_of_top ?? 100
 
   return (
@@ -138,7 +138,7 @@ function StepFunnelRow({ row, isWorst }: { row: any; isWorst: boolean }) {
       {/* Step index badge */}
       <div style={{
         width: 24, height: 24, borderRadius: '50%',
-        background: isWorst ? red : '#F5F5F7',
+        background: isWorst ? red : '#FFFAF5',
         color: isWorst ? '#fff' : gray,
         fontSize: 10, fontWeight: 700,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -148,7 +148,7 @@ function StepFunnelRow({ row, isWorst }: { row: any; isWorst: boolean }) {
       </div>
 
       {/* Step name */}
-      <div style={{ fontSize: 12, fontWeight: isWorst ? 700 : 500, color: isWorst ? red : '#2D1B2E', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <div style={{ fontSize: 12, fontWeight: isWorst ? 700 : 500, color: isWorst ? red : '#2A1E2C', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {row.label}
         {isWorst && <span style={{ fontSize: 10, marginLeft: 6, color: red }}>⚠ maior queda</span>}
       </div>
@@ -159,13 +159,13 @@ function StepFunnelRow({ row, isWorst }: { row: any; isWorst: boolean }) {
       </div>
 
       {/* Viewed */}
-      <div style={{ fontSize: 12, color: '#2D1B2E', fontWeight: 600, textAlign: 'right' }}>
+      <div style={{ fontSize: 12, color: '#2A1E2C', fontWeight: 600, textAlign: 'right' }}>
         {row.viewed.toLocaleString('pt-BR')}
         <div style={{ fontSize: 10, color: gray, fontWeight: 400 }}>viram</div>
       </div>
 
       {/* Answered */}
-      <div style={{ fontSize: 12, color: '#2D1B2E', fontWeight: 600, textAlign: 'right' }}>
+      <div style={{ fontSize: 12, color: '#2A1E2C', fontWeight: 600, textAlign: 'right' }}>
         {row.answered.toLocaleString('pt-BR')}
         <div style={{ fontSize: 10, color: gray, fontWeight: 400 }}>avançaram</div>
       </div>
@@ -188,9 +188,9 @@ function CheckoutFunnelBar({ label, count, base, color, isBase }: { label: strin
   return (
     <div style={{ marginBottom: 14 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-        <span style={{ fontSize: 13, color: '#2D1B2E', fontWeight: isBase ? 700 : 500 }}>{label}</span>
+        <span style={{ fontSize: 13, color: '#2A1E2C', fontWeight: isBase ? 700 : 500 }}>{label}</span>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#2D1B2E' }}>{count.toLocaleString('pt-BR')}</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#2A1E2C' }}>{count.toLocaleString('pt-BR')}</span>
           {pct != null && !isBase && (
             <span style={{ fontSize: 12, fontWeight: 600, color, minWidth: 40, textAlign: 'right' }}>{pct}%</span>
           )}
@@ -232,7 +232,7 @@ export default function PlanoCapilarClient({ data }: { data: any }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
             <Link href="/quiz" style={{ fontSize: 13, color: gray, textDecoration: 'none' }}>Quiz</Link>
             <span style={{ color: gray }}>›</span>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#2D1B2E' }}>Plano Capilar</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#2A1E2C' }}>Plano Capilar</div>
           </div>
           <div style={{ fontSize: 13, color: gray }}>Quiz de 32 perguntas para venda do app</div>
         </div>
@@ -245,7 +245,7 @@ export default function PlanoCapilarClient({ data }: { data: any }) {
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14, marginBottom: 8 }}>
         <StatCard label="PESSOAS ÚNICAS" value={(kpis.uniqueSessions ?? 0).toLocaleString('pt-BR')} sub={`${(kpis.totalCliques ?? 0).toLocaleString('pt-BR')} cliques totais`} />
-        <StatCard label="HOJE" value={kpis.uniqueToday ?? 0} sub={`${kpis.todayCliques ?? 0} cliques`} color={(kpis.uniqueToday ?? 0) > 0 ? green : '#2D1B2E'} />
+        <StatCard label="HOJE" value={kpis.uniqueToday ?? 0} sub={`${kpis.todayCliques ?? 0} cliques`} color={(kpis.uniqueToday ?? 0) > 0 ? green : '#2A1E2C'} />
         <StatCard label="LEADS (30d)" value={(kpis.periodLeads ?? 0).toLocaleString('pt-BR')} sub="email capturado" color={blue} />
         <StatCard
           label="ASSINANTES"
@@ -257,7 +257,7 @@ export default function PlanoCapilarClient({ data }: { data: any }) {
           label="CONVERSÃO"
           value={kpis.conversion != null ? `${kpis.conversion}%` : '—'}
           sub={kpis.conversionBase === 'cliques' ? 'assinantes / cliques (estimado)' : kpis.conversionBase === 'sessions' ? 'assinantes / pessoas únicas' : 'dados insuficientes'}
-          color={kpis.conversion != null ? (kpis.conversion >= 5 ? green : kpis.conversion >= 2 ? orange : red) : '#2D1B2E'}
+          color={kpis.conversion != null ? (kpis.conversion >= 5 ? green : kpis.conversion >= 2 ? orange : red) : '#2A1E2C'}
         />
       </div>
       {/* Nota explicativa sobre sessões */}
@@ -268,7 +268,7 @@ export default function PlanoCapilarClient({ data }: { data: any }) {
 
       {/* Funil de checkout (30d) */}
       <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '20px 24px', marginBottom: 24 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E', marginBottom: 16 }}>💳 Funil de checkout — últimos 30 dias</div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C', marginBottom: 16 }}>💳 Funil de checkout — últimos 30 dias</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
           <div>
             <CheckoutFunnelBar label="Viu a oferta" count={kpis.offerViewed ?? 0} base={kpis.offerViewed ?? 0} color={accent} isBase />
@@ -278,7 +278,7 @@ export default function PlanoCapilarClient({ data }: { data: any }) {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 8, paddingLeft: 16, borderLeft: '1px solid #F0F0F5' }}>
             <div style={{ fontSize: 12, color: gray }}>Pessoas únicas (30d)</div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: (kpis.uniqueMonth ?? 0) > 0 ? '#2D1B2E' : gray }}>
+            <div style={{ fontSize: 22, fontWeight: 700, color: (kpis.uniqueMonth ?? 0) > 0 ? '#2A1E2C' : gray }}>
               {(kpis.uniqueMonth ?? 0) > 0 ? (kpis.uniqueMonth ?? 0).toLocaleString('pt-BR') : '—'}
             </div>
             {(kpis.uniqueMonth ?? 0) === 0 && (
@@ -304,22 +304,22 @@ export default function PlanoCapilarClient({ data }: { data: any }) {
       {/* Gráfico de views */}
       <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '20px 24px', marginBottom: 24 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E' }}>📈 Cliques + Leads por dia</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C' }}>📈 Cliques + Leads por dia</div>
           <div style={{ fontSize: 12, color: gray }}>Últimos 30 dias · passe o mouse para detalhes</div>
         </div>
         <ViewsChart series={dailySeries} />
         <div style={{ marginTop: 12, display: 'flex', gap: 24, flexWrap: 'wrap' }}>
           <div style={{ fontSize: 12, color: gray }}>
-            Cliques (30d): <strong style={{ color: '#2D1B2E' }}>{dailySeries.reduce((s: number, d: any) => s + (d.cliques ?? 0), 0).toLocaleString('pt-BR')}</strong>
+            Cliques (30d): <strong style={{ color: '#2A1E2C' }}>{dailySeries.reduce((s: number, d: any) => s + (d.cliques ?? 0), 0).toLocaleString('pt-BR')}</strong>
           </div>
           <div style={{ fontSize: 12, color: gray }}>
             Leads (30d): <strong style={{ color: green }}>{dailySeries.reduce((s: number, d: any) => s + (d.leads ?? 0), 0).toLocaleString('pt-BR')}</strong>
           </div>
           <div style={{ fontSize: 12, color: gray }}>
-            Sessões únicas (30d): <strong style={{ color: (kpis.uniqueMonth ?? 0) > 0 ? '#2D1B2E' : gray }}>{(kpis.uniqueMonth ?? 0) > 0 ? kpis.uniqueMonth : '— (ativo desde 19/05)'}</strong>
+            Sessões únicas (30d): <strong style={{ color: (kpis.uniqueMonth ?? 0) > 0 ? '#2A1E2C' : gray }}>{(kpis.uniqueMonth ?? 0) > 0 ? kpis.uniqueMonth : '— (ativo desde 19/05)'}</strong>
           </div>
           <div style={{ fontSize: 12, color: gray }}>
-            Média cliques/dia: <strong style={{ color: '#2D1B2E' }}>{(dailySeries.reduce((s: number, d: any) => s + (d.cliques ?? 0), 0) / 30).toFixed(1)}</strong>
+            Média cliques/dia: <strong style={{ color: '#2A1E2C' }}>{(dailySeries.reduce((s: number, d: any) => s + (d.cliques ?? 0), 0) / 30).toFixed(1)}</strong>
           </div>
         </div>
       </div>
@@ -333,9 +333,9 @@ export default function PlanoCapilarClient({ data }: { data: any }) {
           <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '20px 24px', marginBottom: 28 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E', marginBottom: 4 }}>📋 Funil por respostas — desde o início</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C', marginBottom: 4 }}>📋 Funil por respostas — desde o início</div>
                 <div style={{ fontSize: 12, color: gray }}>
-                  Sessões únicas que responderam cada pergunta · <strong style={{ color: '#2D1B2E' }}>{top}</strong> sessões totais · dado disponível desde o dia 1
+                  Sessões únicas que responderam cada pergunta · <strong style={{ color: '#2A1E2C' }}>{top}</strong> sessões totais · dado disponível desde o dia 1
                 </div>
               </div>
               {worst && worst.dropoff_from_prev > 5 && (
@@ -369,7 +369,7 @@ export default function PlanoCapilarClient({ data }: { data: any }) {
                   background: isWorst ? 'rgba(255,59,48,0.04)' : 'transparent',
                 }}>
                   {/* Label (coluna fixa) */}
-                  <div style={{ fontSize: 12, fontWeight: isWorst ? 700 : 500, color: isWorst ? red : '#2D1B2E', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: 12, fontWeight: isWorst ? 700 : 500, color: isWorst ? red : '#2A1E2C', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {row.label}
                     {isWorst && <span style={{ fontSize: 10, marginLeft: 6, color: red, fontWeight: 700 }}>⚠ gargalo</span>}
                   </div>
@@ -383,7 +383,7 @@ export default function PlanoCapilarClient({ data }: { data: any }) {
                     }} />
                   </div>
                   {/* Sessões */}
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#2D1B2E', textAlign: 'right' }}>{row.sessions}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#2A1E2C', textAlign: 'right' }}>{row.sessions}</div>
                   {/* % do topo */}
                   <div style={{ fontSize: 12, color: gray, textAlign: 'right' }}>{row.pct_of_top}%</div>
                   {/* Queda */}
@@ -406,7 +406,7 @@ export default function PlanoCapilarClient({ data }: { data: any }) {
       <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '20px 24px', marginBottom: 28 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E', marginBottom: 4 }}>🔬 Funil por etapa — últimos 30 dias</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C', marginBottom: 4 }}>🔬 Funil por etapa — últimos 30 dias</div>
             <div style={{ fontSize: 12, color: gray }}>
               Sessões únicas que visualizaram e avançaram em cada passo · rastreamento ativo desde 19/05/2026
             </div>
@@ -423,7 +423,7 @@ export default function PlanoCapilarClient({ data }: { data: any }) {
         {!hasFunnelData ? (
           <div style={{ padding: '40px 0', textAlign: 'center' }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>📊</div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E', marginBottom: 6 }}>Coletando dados por etapa</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C', marginBottom: 6 }}>Coletando dados por etapa</div>
             <div style={{ fontSize: 13, color: gray, maxWidth: 360, margin: '0 auto', lineHeight: 1.6 }}>
               O rastreamento por etapa foi ativado recentemente. Os dados aparecerão aqui conforme as usuárias acessarem o quiz.
             </div>
@@ -463,7 +463,7 @@ export default function PlanoCapilarClient({ data }: { data: any }) {
                 isWorst={worstDropoffStep?.step_index === row.step_index && (worstDropoffStep?.dropoff_from_prev ?? 0) >= 20}
               />
             ))}
-            <div style={{ marginTop: 16, padding: '12px 16px', background: '#F5F5F7', borderRadius: 10, display: 'flex', gap: 24, fontSize: 12, color: gray }}>
+            <div style={{ marginTop: 16, padding: '12px 16px', background: '#FFFAF5', borderRadius: 10, display: 'flex', gap: 24, fontSize: 12, color: gray }}>
               <div><span style={{ color: green, fontWeight: 700 }}>■</span> ≥ 80% avanço</div>
               <div><span style={{ color: '#5AC8FA', fontWeight: 700 }}>■</span> 60–80%</div>
               <div><span style={{ color: orange, fontWeight: 700 }}>■</span> 40–60%</div>
@@ -475,7 +475,7 @@ export default function PlanoCapilarClient({ data }: { data: any }) {
 
       {/* Analytics das perguntas */}
       <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: '#2D1B2E' }}>📊 Análise das respostas</div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#2A1E2C' }}>📊 Análise das respostas</div>
         {questionAnalytics.length === 0 && (
           <span style={{ fontSize: 12, color: gray }}>Os dados aparecem conforme as usuárias respondem o quiz</span>
         )}
@@ -484,7 +484,7 @@ export default function PlanoCapilarClient({ data }: { data: any }) {
       {questionAnalytics.length === 0 ? (
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '48px 24px', textAlign: 'center' }}>
           <div style={{ fontSize: 40, marginBottom: 16 }}>📋</div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#2D1B2E', marginBottom: 8 }}>Ainda sem dados de respostas</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#2A1E2C', marginBottom: 8 }}>Ainda sem dados de respostas</div>
           <div style={{ fontSize: 13, color: gray, lineHeight: 1.6, maxWidth: 400, margin: '0 auto' }}>
             Quando as usuárias começarem a responder o quiz, os percentuais de cada pergunta aparecerão aqui automaticamente.
           </div>

@@ -3,13 +3,13 @@
 import { useState, useMemo, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 
-const accent = '#C4607A'
-const green  = '#34C759'
-const orange = '#FF9500'
-const red    = '#FF3B30'
-const blue   = '#007AFF'
-const gray   = '#8A8A8E'
-const purple = '#AF52DE'
+const accent = '#BE185D'
+const green  = '#22A06B'
+const orange = '#D97706'
+const red    = '#DC2626'
+const blue   = '#2563EB'
+const gray   = '#7C6B7E'
+const purple = '#9333EA'
 
 type User = {
   id: string
@@ -68,11 +68,11 @@ const PLAN_LABEL: Record<string, { label: string; color: string }> = {
 }
 
 const AVATAR_GRADIENTS = [
-  'linear-gradient(135deg,#C4607A,#9B4560)',
-  'linear-gradient(135deg,#34C759,#28A745)',
-  'linear-gradient(135deg,#007AFF,#0056CC)',
-  'linear-gradient(135deg,#AF52DE,#8B3DB8)',
-  'linear-gradient(135deg,#FF9500,#CC7700)',
+  'linear-gradient(135deg,#BE185D,#9D174D)',
+  'linear-gradient(135deg,#22A06B,#28A745)',
+  'linear-gradient(135deg,#2563EB,#0056CC)',
+  'linear-gradient(135deg,#9333EA,#8B3DB8)',
+  'linear-gradient(135deg,#D97706,#CC7700)',
 ]
 function gradientForId(id: string) {
   let h = 0
@@ -150,7 +150,7 @@ export default function UsuariasClient({ initialUsers }: { initialUsers: User[] 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
           <div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: '#2D1B2E' }}>Usuárias</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: '#2A1E2C' }}>Usuárias</div>
             <div style={{ fontSize: 13, color: gray, marginTop: 3 }}>
               {initialUsers.length} cadastradas{counts.gifts > 0 ? ` · ${counts.gifts} presentes 🎁` : ''}
             </div>
@@ -176,7 +176,7 @@ export default function UsuariasClient({ initialUsers }: { initialUsers: User[] 
               padding: '6px 14px', borderRadius: 20, fontSize: 13, fontWeight: 500,
               border: 'none', cursor: 'pointer',
               background: statusFilter === key ? accent : '#fff',
-              color: statusFilter === key ? '#fff' : '#2D1B2E',
+              color: statusFilter === key ? '#fff' : '#2A1E2C',
               boxShadow: statusFilter === key ? 'none' : '0 1px 3px rgba(0,0,0,0.08)',
             }}>{label}</button>
           ))}
@@ -215,7 +215,7 @@ export default function UsuariasClient({ initialUsers }: { initialUsers: User[] 
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ background: '#FAFAFA', borderBottom: '1px solid #F0F0F5' }}>
+                <tr style={{ background: '#FFF7EE', borderBottom: '1px solid #F0F0F5' }}>
                   {['Usuária', 'Tipo cabelo', 'Plano', 'Assinatura', 'Status', 'Expira', 'Cadastro'].map(h => (
                     <th key={h} style={{
                       padding: '10px 16px', textAlign: 'left', fontSize: 11,
@@ -246,7 +246,7 @@ export default function UsuariasClient({ initialUsers }: { initialUsers: User[] 
                             fontSize: 11, fontWeight: 700, color: '#fff',
                           }}>{initials(u.full_name, u.email)}</div>
                           <div>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: '#2D1B2E', display: 'flex', alignItems: 'center', gap: 5 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: '#2A1E2C', display: 'flex', alignItems: 'center', gap: 5 }}>
                               {u.full_name ?? u.email.split('@')[0]}
                               {u.is_gift && <span title="Presente" style={{ fontSize: 12 }}>🎁</span>}
                             </div>
@@ -254,7 +254,7 @@ export default function UsuariasClient({ initialUsers }: { initialUsers: User[] 
                           </div>
                         </div>
                       </td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: '#2D1B2E' }}>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: '#2A1E2C' }}>
                         {u.hair_type ? HAIR_LABEL[u.hair_type] ?? u.hair_type : '—'}
                       </td>
                       <td style={{ padding: '12px 16px' }}>
@@ -263,7 +263,7 @@ export default function UsuariasClient({ initialUsers }: { initialUsers: User[] 
                           background: plan.color + '18', color: plan.color,
                         }}>{plan.label}</span>
                       </td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: '#2D1B2E' }}>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: '#2A1E2C' }}>
                         {SUB_TYPE_LABEL[u.subscription_type] ?? u.subscription_type}
                       </td>
                       <td style={{ padding: '12px 16px' }}>
@@ -378,7 +378,7 @@ function EditPanel({ user, onClose, onChanged }: { user: User; onClose: () => vo
   }
 
   const label: React.CSSProperties = { fontSize: 11, color: gray, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 5, display: 'block' }
-  const input: React.CSSProperties = { width: '100%', padding: '8px 11px', borderRadius: 8, border: '1px solid #E0E0E8', fontSize: 13, color: '#2D1B2E', fontWeight: 500, outline: 'none', boxSizing: 'border-box', background: '#fff', fontFamily: 'inherit' }
+  const input: React.CSSProperties = { width: '100%', padding: '8px 11px', borderRadius: 8, border: '1px solid #E0E0E8', fontSize: 13, color: '#2A1E2C', fontWeight: 500, outline: 'none', boxSizing: 'border-box', background: '#fff', fontFamily: 'inherit' }
 
   return (
     <div style={{
@@ -386,7 +386,7 @@ function EditPanel({ user, onClose, onChanged }: { user: User; onClose: () => vo
       overflowY: 'auto', padding: '20px 18px',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E' }}>Editar usuária</div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C' }}>Editar usuária</div>
         <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: gray, padding: 0 }}>✕</button>
       </div>
 
@@ -398,7 +398,7 @@ function EditPanel({ user, onClose, onChanged }: { user: User; onClose: () => vo
           fontSize: 16, fontWeight: 700, color: '#fff',
         }}>{initials(user.full_name, user.email)}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1B2E' }}>{user.full_name ?? 'Sem nome'}</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C' }}>{user.full_name ?? 'Sem nome'}</div>
           <div style={{ fontSize: 11, color: gray, fontFamily: 'monospace' }}>{user.id.slice(0, 8)}</div>
           {user.is_gift && <div style={{ fontSize: 11, color: purple, fontWeight: 600, marginTop: 2 }}>🎁 Presente</div>}
           {user.refunded_at && <div style={{ fontSize: 11, color: '#8B5CF6', fontWeight: 600, marginTop: 2 }}>Reembolsada {fmtDate(user.refunded_at)}</div>}
@@ -435,7 +435,7 @@ function EditPanel({ user, onClose, onChanged }: { user: User; onClose: () => vo
             <input style={input} type="date" value={draft.subscription_expires_at} onChange={e => setDraft({ ...draft, subscription_expires_at: e.target.value })} />
           </div>
         </div>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#2D1B2E', cursor: 'pointer' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#2A1E2C', cursor: 'pointer' }}>
           <input type="checkbox" checked={draft.is_gift} onChange={e => setDraft({ ...draft, is_gift: e.target.checked })} />
           🎁 Marcar como presente
         </label>
@@ -531,7 +531,7 @@ function DetailsSection({ user }: { user: User }) {
       <Section title="📝 Respostas do quiz" isOpen={open === 'quiz'} onToggle={() => setOpen(open === 'quiz' ? null : 'quiz')}>
         {user.quiz_answers ? (
           <pre style={{
-            fontSize: 11, lineHeight: 1.5, color: '#2D1B2E',
+            fontSize: 11, lineHeight: 1.5, color: '#2A1E2C',
             background: '#F9F9FC', padding: 10, borderRadius: 8,
             maxHeight: 200, overflow: 'auto', whiteSpace: 'pre-wrap',
             fontFamily: 'ui-monospace, Menlo, monospace',
@@ -553,7 +553,7 @@ function Section({ title, isOpen, onToggle, children }: { title: string; isOpen:
       <button onClick={onToggle} style={{
         width: '100%', textAlign: 'left',
         background: 'none', border: 'none', cursor: 'pointer',
-        padding: '6px 0', fontSize: 12, fontWeight: 700, color: '#2D1B2E',
+        padding: '6px 0', fontSize: 12, fontWeight: 700, color: '#2A1E2C',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         fontFamily: 'inherit',
       }}>
@@ -571,7 +571,7 @@ function KVList({ items }: { items: Array<[string, string]> }) {
       {items.map(([k, v]) => (
         <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, fontSize: 12, padding: '3px 0' }}>
           <span style={{ color: gray, flexShrink: 0 }}>{k}</span>
-          <span style={{ color: '#2D1B2E', textAlign: 'right', wordBreak: 'break-all', fontWeight: 500 }}>{v}</span>
+          <span style={{ color: '#2A1E2C', textAlign: 'right', wordBreak: 'break-all', fontWeight: 500 }}>{v}</span>
         </div>
       ))}
     </div>
@@ -646,7 +646,7 @@ function ActionBtn({ icon, label, onClick, color }: { icon: string; label: strin
     <button onClick={onClick} style={{
       padding: '9px 11px', borderRadius: 8,
       background: '#fff', border: `1px solid ${color ? color + '40' : '#E0E0E8'}`,
-      color: color ?? '#2D1B2E',
+      color: color ?? '#2A1E2C',
       fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
       display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left',
       fontFamily: 'inherit',
@@ -689,7 +689,7 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
   }
 
   const label: React.CSSProperties = { fontSize: 11, color: gray, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 5, display: 'block' }
-  const input: React.CSSProperties = { width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #E0E0E8', fontSize: 13, color: '#2D1B2E', fontWeight: 500, outline: 'none', boxSizing: 'border-box', background: '#fff', fontFamily: 'inherit' }
+  const input: React.CSSProperties = { width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #E0E0E8', fontSize: 13, color: '#2A1E2C', fontWeight: 500, outline: 'none', boxSizing: 'border-box', background: '#fff', fontFamily: 'inherit' }
 
   return (
     <div style={{
@@ -701,7 +701,7 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
         maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-          <div style={{ fontSize: 18, fontWeight: 700, color: '#2D1B2E' }}>Cadastrar usuária</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: '#2A1E2C' }}>Cadastrar usuária</div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: gray, padding: 0 }}>✕</button>
         </div>
         <div style={{ fontSize: 12.5, color: gray, marginBottom: 18 }}>
@@ -742,7 +742,7 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
             </div>
           </div>
 
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#2D1B2E', cursor: 'pointer', padding: '6px 0' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#2A1E2C', cursor: 'pointer', padding: '6px 0' }}>
             <input type="checkbox" checked={form.is_gift} onChange={e => setForm({ ...form, is_gift: e.target.checked })} />
             <span>🎁 É um presente / cortesia</span>
           </label>
@@ -757,7 +757,7 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
             />
           </div>
 
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#2D1B2E', cursor: 'pointer', padding: '6px 0', borderTop: '1px solid #F0F0F5', paddingTop: 12 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#2A1E2C', cursor: 'pointer', padding: '6px 0', borderTop: '1px solid #F0F0F5', paddingTop: 12 }}>
             <input type="checkbox" checked={form.send_welcome} onChange={e => setForm({ ...form, send_welcome: e.target.checked })} />
             <span>Enviar email de boas-vindas agora</span>
           </label>
@@ -773,7 +773,7 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
         <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
           <button onClick={onClose} style={{
             flex: 1, padding: '10px 14px', borderRadius: 10,
-            background: '#fff', color: '#2D1B2E', border: '1px solid #E0E0E8',
+            background: '#fff', color: '#2A1E2C', border: '1px solid #E0E0E8',
             fontSize: 13, fontWeight: 600, cursor: 'pointer',
           }}>Cancelar</button>
           <button onClick={submit} disabled={saving} style={{

@@ -4,12 +4,12 @@ import Sidebar from '../components/Sidebar'
 export const revalidate = 30
 export const metadata = { title: 'Experimentos A/B — Admin Plano da Ju' }
 
-const accent = '#C4607A'
-const green  = '#34C759'
-const red    = '#FF3B30'
-const blue   = '#007AFF'
-const gray   = '#8A8A8E'
-const dark   = '#2D1B2E'
+const accent = '#BE185D'
+const green  = '#22A06B'
+const red    = '#DC2626'
+const blue   = '#2563EB'
+const gray   = '#7C6B7E'
+const dark   = '#2A1E2C'
 
 const PLAN_PRICE = 34.90
 
@@ -195,10 +195,10 @@ export default async function ExperimentosPage() {
   return (
     <div style={{
       display: 'flex', height: '100vh', overflow: 'hidden',
-      background: '#F5F5F7', fontFamily: '-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif',
+      background: '#FFFAF5', fontFamily: 'Plus Jakarta Sans, -apple-system, system-ui, sans-serif',
     }}>
       <Sidebar />
-      <main style={{ marginLeft: 220, flex: 1, height: '100vh', overflowY: 'auto', padding: '32px 40px' }}>
+      <main style={{ marginLeft: 234, flex: 1, height: '100vh', overflowY: 'auto', padding: '32px 40px' }}>
 
         <div style={{ marginBottom: 24 }}>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: dark, margin: 0 }}>
@@ -241,9 +241,9 @@ function ExperimentCard({
   stats: { control: VariantStats; variant: VariantStats } | null
 }) {
   const statusConfig: Record<Experiment['status'], { label: string; color: string; bg: string }> = {
-    draft:      { label: 'Rascunho',  color: gray,   bg: '#F2F2F7' },
+    draft:      { label: 'Rascunho',  color: gray,   bg: '#F3EBE1' },
     running:    { label: 'Rodando',   color: green,  bg: green + '15' },
-    paused:     { label: 'Pausado',   color: '#FF9500', bg: '#FF950015' },
+    paused:     { label: 'Pausado',   color: '#D97706', bg: '#D9770615' },
     concluded:  { label: 'Concluído', color: blue,   bg: blue + '15' },
   }
   const cfg = statusConfig[exp.status]
@@ -259,7 +259,7 @@ function ExperimentCard({
       overflow: 'hidden',
     }}>
       {/* Header */}
-      <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid #F2F2F7' }}>
+      <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid #F3EBE1' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
           <span style={{
             fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 5,
@@ -269,7 +269,7 @@ function ExperimentCard({
           </span>
           <code style={{
             fontSize: 11, color: gray, padding: '2px 6px', borderRadius: 4,
-            background: '#F5F5F7', fontFamily: 'monospace',
+            background: '#FFFAF5', fontFamily: 'monospace',
           }}>
             {exp.flag_key}
           </code>
@@ -292,7 +292,7 @@ function ExperimentCard({
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ background: '#FAFAFA' }}>
+              <tr style={{ background: '#FFF7EE' }}>
                 {['Variante', 'Visualizações', 'Interagiu', 'Taxa interação', 'Vendas', 'Taxa venda', 'Receita'].map((h, i) => (
                   <th key={i} style={{
                     padding: '11px 18px', textAlign: i === 0 ? 'left' : 'right',
@@ -320,8 +320,8 @@ function ExperimentCard({
 
           {/* Conclusion hint */}
           <div style={{
-            padding: '14px 20px', borderTop: '1px solid #F2F2F7',
-            background: '#FAFAFA', fontSize: 12, color: gray, lineHeight: 1.55,
+            padding: '14px 20px', borderTop: '1px solid #F3EBE1',
+            background: '#FFF7EE', fontSize: 12, color: gray, lineHeight: 1.55,
           }}>
             {stats.control.views + stats.variant.views < 30 ? (
               <>⏳ <strong>Pouca amostra</strong> ainda — recomendado esperar pelo menos ~300 sessões por lado pra ter confiança estatística. Resultado pode mudar.</>

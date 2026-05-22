@@ -4,15 +4,15 @@ import AdminUsersSection from './AdminUsersSection'
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Configurações — Admin Plano da Ju' }
 
-const accent = '#C4607A'
-const green  = '#34C759'
-const orange = '#FF9500'
-const gray   = '#8A8A8E'
+const accent = '#BE185D'
+const green  = '#22A06B'
+const orange = '#D97706'
+const gray   = '#7C6B7E'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', marginBottom: 20 }}>
-      <div style={{ padding: '16px 24px', borderBottom: '1px solid #F0F0F5', fontSize: 14, fontWeight: 700, color: '#2D1B2E' }}>
+      <div style={{ padding: '16px 24px', borderBottom: '1px solid #F0F0F5', fontSize: 14, fontWeight: 700, color: '#2A1E2C' }}>
         {title}
       </div>
       <div style={{ padding: '20px 24px' }}>
@@ -26,9 +26,9 @@ function Row({ label, value, status, statusColor, mono }: {
   label: string; value: string; status?: string; statusColor?: string; mono?: boolean
 }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #F5F5F7', gap: 16 }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #FFFAF5', gap: 16 }}>
       <div>
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#2D1B2E' }}>{label}</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#2A1E2C' }}>{label}</div>
         <div style={{ fontSize: 12, color: gray, marginTop: 2, fontFamily: mono ? 'monospace' : 'inherit', wordBreak: 'break-all' }}>{value}</div>
       </div>
       {status && (
@@ -55,13 +55,13 @@ export default function ConfiguracoesPage() {
   return (
     <div style={{
       display: 'flex', height: '100vh', overflow: 'hidden',
-      background: '#F5F5F7', fontFamily: '-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif',
+      background: '#FFFAF5', fontFamily: 'Plus Jakarta Sans, -apple-system, system-ui, sans-serif',
     }}>
       <Sidebar />
-      <main style={{ marginLeft: 220, flex: 1, height: '100vh', overflowY: 'auto', padding: '32px 40px', maxWidth: 860 }}>
+      <main style={{ marginLeft: 234, flex: 1, height: '100vh', overflowY: 'auto', padding: '32px 40px', maxWidth: 860 }}>
 
         <div style={{ marginBottom: 28 }}>
-          <div style={{ fontSize: 22, fontWeight: 700, color: '#2D1B2E' }}>Configurações</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#2A1E2C' }}>Configurações</div>
           <div style={{ fontSize: 13, color: gray, marginTop: 4 }}>Status das integrações e variáveis de ambiente</div>
         </div>
 
@@ -118,7 +118,7 @@ export default function ConfiguracoesPage() {
             statusColor={orange}
           />
           <div style={{ marginTop: 12, padding: '12px 14px', background: '#F9F9FC', borderRadius: 8, fontSize: 12, color: gray }}>
-            <strong style={{ color: '#2D1B2E' }}>Eventos a configurar:</strong>
+            <strong style={{ color: '#2A1E2C' }}>Eventos a configurar:</strong>
             <ul style={{ margin: '8px 0 0', paddingLeft: 16 }}>
               <li><code>charge.paid</code> — ativa assinatura após pagamento</li>
               <li><code>charge.refunded</code> — cancela assinatura</li>
@@ -150,7 +150,7 @@ export default function ConfiguracoesPage() {
                 padding: '8px 12px', background: '#F9F9FC', borderRadius: 8,
               }}>
                 <span style={{ fontSize: 12, color: set ? green : orange, flexShrink: 0 }}>{set ? '✓' : '○'}</span>
-                <code style={{ fontSize: 11, color: '#2D1B2E', wordBreak: 'break-all' }}>{name}</code>
+                <code style={{ fontSize: 11, color: '#2A1E2C', wordBreak: 'break-all' }}>{name}</code>
               </div>
             ))}
           </div>
