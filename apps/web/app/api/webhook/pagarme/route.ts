@@ -215,6 +215,25 @@ export async function POST(req: NextRequest) {
               ?? 'unknown',
           },
         });
+
+        // Se o charge é de uma subscription (renovação falhou), rebaixar status
+        const subId =
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (data as any).subscription?.id ??
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (data as any).subscription_id ??
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (data as any).invoice?.subscription_id ??
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (data as any).invoice?.subscription?.id ??
+          null;
+        if (subId) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (supabase.from('profiles') as any)
+            .update({ subscription_status: 'past_due' })
+            .eq('pagarme_subscription_id', subId)
+            .eq('subscription_status', 'active');
+        }
         break;
       }
 
@@ -225,13 +244,16 @@ export async function POST(req: NextRequest) {
         const { data: renewed, error: renewErr } = await (supabase.from('profiles') as any)
           .update({
             subscription_status: 'active',
-            subscription_expires_at: sub.current_cycle?.end_at ?? null,
+            subscription_expires_at: sub.current_cycle?.end_at
+              ?? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
           })
           .eq('pagarme_subscription_id', sub.id)
+          .neq('subscription_status', 'cancelled')
+          .neq('subscription_status', 'refunded')
           .select('id');
         if (renewErr) console.error('[webhook subscription.renewed]', renewErr);
         if (!renewed || renewed.length === 0) {
-          console.warn(`[webhook subscription.renewed] no profile found for pagarme_subscription_id=${sub.id}`);
+          console.warn(`[webhook subscription.renewed] no profile found (or cancelled/refunded) for pagarme_subscription_id=${sub.id}`);
         }
         break;
       }

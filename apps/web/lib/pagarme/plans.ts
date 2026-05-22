@@ -20,6 +20,8 @@ const PLAN_PAYLOAD = {
     },
   ],
   payment_methods: ['credit_card'],
+  // Sem isso, a API rejeita installments>1 nas subscriptions vinculadas a esse plano.
+  installments: [1, 2, 3, 4],
 };
 
 export async function getOrCreateCardPlan(): Promise<PagarMePlan> {

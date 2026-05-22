@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { sendWelcomeEmail } from '@/lib/welcome-email'
+import { pagarmeCancelSubscription } from '@/lib/pagarme'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,7 +21,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: profile } = await (sb.from('profiles') as any)
-      .select('id, email, full_name, subscription_expires_at, subscription_status, quiz_session_id')
+      .select('id, email, full_name, subscription_expires_at, subscription_status, quiz_session_id, pagarme_subscription_id')
       .eq('id', id)
       .single()
     if (!profile) return NextResponse.json({ error: 'Profile não encontrado' }, { status: 404 })
@@ -37,6 +38,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // ── Reembolso ────────────────────────────────────────────────
     if (action === 'refund') {
+      // Cancela na PagarMe também (se houver subscription)
+      if (profile.pagarme_subscription_id) {
+        const cancelRes = await pagarmeCancelSubscription(profile.pagarme_subscription_id)
+        if (!cancelRes.ok) {
+          console.warn(`[admin/actions refund] falha ao cancelar subscription na PagarMe:`, cancelRes.error)
+          // Continua com cancelamento local — admin pode reprocessar depois
+        }
+      }
+
       const now = new Date()
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (sb.from('profiles') as any)
@@ -76,6 +86,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // ── Cancela acesso (mantém histórico) ────────────────────────
     if (action === 'cancel') {
+      // Cancela na PagarMe também (se houver subscription)
+      if (profile.pagarme_subscription_id) {
+        const cancelRes = await pagarmeCancelSubscription(profile.pagarme_subscription_id)
+        if (!cancelRes.ok) {
+          console.warn(`[admin/actions cancel] falha ao cancelar subscription na PagarMe:`, cancelRes.error)
+          // Continua com cancelamento local — admin pode reprocessar depois
+        }
+      }
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (sb.from('profiles') as any)
         .update({

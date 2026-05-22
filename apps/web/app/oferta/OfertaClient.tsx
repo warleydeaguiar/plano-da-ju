@@ -163,18 +163,11 @@ function useOfferCountdown() {
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }
 
-// ─── Cálculo de parcelas com juros repassados ao cliente ─────
-// 1,99 % ao mês (juros simples). Você sempre recebe ~R$34,90 após taxa PagarMe.
-const MONTHLY_RATE = 1.99;
-
-function installTotalCents(n: number): number {
-  if (n <= 1) return 3490;
-  return Math.round(3490 * (1 + (MONTHLY_RATE / 100) * n));
-}
-
+// ─── Cálculo de parcelas SEM JUROS ───────────────────────────
+// Cliente paga R$34,90/ano divididos em até 4x sem juros.
 function installPerStr(n: number): string {
-  const perCents = Math.round(installTotalCents(n) / n);
-  return `R$${(perCents / 100).toFixed(2).replace('.', ',')}`;
+  const perCents = Math.round(3490 / n);
+  return `${n}x de R$${(perCents / 100).toFixed(2).replace('.', ',')}`;
 }
 
 // ─── Sparkles flutuantes no fundo ────────────────────────────
@@ -396,16 +389,15 @@ function OfferCard({ countdown, name, onBuy }: { countdown: string; name: string
           </div>
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
             <div style={{ fontSize: 11, color: T.inkMuted, textDecoration: 'line-through', marginBottom: 1, fontFamily: fonts.ui }}>R$ 99,90</div>
-            <div style={{ fontSize: 10, color: T.inkSoft, fontFamily: fonts.ui }}>4x de</div>
             <div style={{
-              fontFamily: fonts.display, fontSize: 30, fontWeight: 700,
+              fontFamily: fonts.display, fontSize: 26, fontWeight: 700,
               background: `linear-gradient(135deg, ${T.pinkDeep}, ${T.pink})`,
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
               lineHeight: 1.05, letterSpacing: -0.5,
             }}>{installPerStr(4)}</div>
             <div style={{ fontSize: 9, color: T.inkSoft, marginTop: 3, fontFamily: fonts.ui }}>
-              ou à vista <strong style={{ color: T.ink }}>R$34,90</strong>
+              sem juros · ou à vista <strong style={{ color: T.ink }}>R$34,90</strong>
             </div>
           </div>
         </div>
@@ -453,7 +445,8 @@ export default function OfertaClient() {
   const [payType, setPayType] = useState<'card' | 'pix'>('pix');
   const [images, setImages] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const installments = 1; // forçado: subscription cobra valor único anual
+  const [installments, setInstallments] = useState(1);
+  const [cardPollCount, setCardPollCount] = useState(0);
 
   // Detalhes do cartão (validação inline)
   const [cardBrand, setCardBrand] = useState<string>('');
@@ -540,7 +533,16 @@ export default function OfertaClient() {
   // ── Polling do cartão (order ainda processando) ──
   useEffect(() => {
     if (!cardPolling || !cardOrderId) return;
+    if (cardPollCount >= 60) {
+      // 3 minutos (60 × 3s) — assume que o webhook vai chegar; redireciona
+      try {
+        localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now() }));
+      } catch {}
+      router.push('/obrigado?pending=1');
+      return;
+    }
     const timer = setTimeout(async () => {
+      setCardPollCount(c => c + 1);
       try {
         const res = await fetch(
           `/api/checkout/card/status?order_id=${encodeURIComponent(cardOrderId)}&email=${encodeURIComponent(email)}`
@@ -558,7 +560,7 @@ export default function OfertaClient() {
       } catch {}
     }, 3000);
     return () => clearTimeout(timer);
-  }, [cardPolling, cardOrderId, email, name, router, installments]);
+  }, [cardPolling, cardOrderId, email, name, router, installments, cardPollCount]);
 
   // Validação granular do cartão (usada nos hints e no botão)
   const cardErrors = useMemo(() => {
@@ -583,7 +585,7 @@ export default function OfertaClient() {
     if (cep.replace(/\D/g, '').length > 0 && cep.replace(/\D/g, '').length === 8 && cepStatus === 'error') {
       errs.cep = 'CEP não encontrado';
     }
-    if (addressNumber.length > 0 && addressNumber.trim().length === 0) {
+    if (addressNumber.length === 0) {
       errs.addressNumber = 'Informe o número';
     }
     return errs;
@@ -727,11 +729,16 @@ export default function OfertaClient() {
             exp_year: parseInt('20' + cardExpiry.split('/')[1], 10),
             cvv: cardCvv,
             billing_address: {
-              line_1: [
-                cepAddress?.street,
-                addressNumber.trim(),
-                cepAddress?.neighborhood,
-              ].filter(Boolean).join(', ') || 'Não informado',
+              line_1: (() => {
+                const parts = [
+                  cepAddress?.street,
+                  addressNumber.trim(),
+                  cepAddress?.neighborhood,
+                ].filter(Boolean);
+                return parts.length > 0
+                  ? parts.join(', ')
+                  : `CEP ${cep}, número ${addressNumber.trim() || 's/n'}`;
+              })(),
               zip_code: cleanCep,
               city: billingCity,
               state: billingState,
@@ -758,11 +765,16 @@ export default function OfertaClient() {
             city: billingCity,
             state: billingState,
             cep: cleanCep,
-            line_1: [
-              cepAddress?.street,
-              addressNumber.trim(),
-              cepAddress?.neighborhood,
-            ].filter(Boolean).join(', ') || 'Não informado',
+            line_1: (() => {
+              const parts = [
+                cepAddress?.street,
+                addressNumber.trim(),
+                cepAddress?.neighborhood,
+              ].filter(Boolean);
+              return parts.length > 0
+                ? parts.join(', ')
+                : `CEP ${cep}, número ${addressNumber.trim() || 's/n'}`;
+            })(),
           },
         }),
       });
@@ -777,6 +789,7 @@ export default function OfertaClient() {
       } else {
         // Order criado mas cobrança ainda pendente — inicia polling
         setCardOrderId(data.order_id);
+        setCardPollCount(0);
         setCardPolling(true);
         setLoadingMsg('Confirmando seu pagamento…');
       }
@@ -1008,16 +1021,12 @@ export default function OfertaClient() {
       marginBottom: 16, fontFamily: fonts.ui,
     };
 
-    // Parcelas com juros de 1,99%/mês repassados ao cliente
+    // Parcelas SEM JUROS — R$34,90/ano divididos em até 4x
     const INSTALLMENTS = [1, 2, 3, 4].map(n => ({
       n,
-      label: n === 1
-        ? `1x de R$34,90 (à vista — sem acréscimo)`
-        : `${n}x de ${installPerStr(n)} (total R$${(installTotalCents(n) / 100).toFixed(2).replace('.', ',')})`,
+      label: installPerStr(n) + (n === 1 ? ' (à vista)' : ' sem juros'),
     }));
-    const installAmt = installments > 1
-      ? `${installments}x de ${installPerStr(installments)}`
-      : 'R$34,90';
+    const installAmt = installPerStr(installments);
 
     return (
       <>
@@ -1073,13 +1082,13 @@ export default function OfertaClient() {
                   <div style={{ fontSize: 12, color: T.inkSoft, marginTop: 2 }}>Tricologista Juliane Cost</div>
                   <div style={{ marginTop: 6 }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                      <span style={{ fontSize: 11, color: T.inkSoft, fontFamily: fonts.ui }}>4x de</span>
                       <span style={{
-                        fontSize: 22, fontWeight: 800, fontFamily: fonts.display,
+                        fontSize: 19, fontWeight: 800, fontFamily: fonts.display,
                         background: `linear-gradient(135deg, ${T.pinkDeep}, ${T.pink})`,
                         WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
                         lineHeight: 1,
                       }}>{installPerStr(4)}</span>
+                      <span style={{ fontSize: 10, color: T.inkSoft, fontFamily: fonts.ui }}>sem juros</span>
                     </div>
                     <div style={{ fontSize: 10, color: T.inkSoft, marginTop: 2 }}>ou à vista R$34,90</div>
                   </div>
@@ -1279,14 +1288,20 @@ export default function OfertaClient() {
                     </div>
                   </div>
                   <div>
-                    <label style={labelS}>Cobrança</label>
-                    <div style={{
-                      ...inputS,
-                      display: 'flex', alignItems: 'center',
-                      background: '#FAF7FB', color: T.inkSoft, fontWeight: 600,
-                    }}>
-                      R$ 34,90/ano · renova auto
-                    </div>
+                    <label style={labelS}>Parcelas</label>
+                    <select
+                      className="co-select"
+                      style={{ ...inputS, cursor: 'pointer', appearance: 'none' }}
+                      value={installments}
+                      onChange={e => setInstallments(parseInt(e.target.value, 10))}
+                    >
+                      {INSTALLMENTS.map(i => (
+                        <option key={i.n} value={i.n}>{i.label}</option>
+                      ))}
+                    </select>
+                    <p style={{ fontSize: 11, color: T.inkSoft, marginTop: 4 }}>
+                      Renova automaticamente todo ano nas mesmas condições.
+                    </p>
                   </div>
                 </div>
               )}
@@ -1310,7 +1325,7 @@ export default function OfertaClient() {
                   </div>
                   {payType === 'card' && installments > 1 && (
                     <div style={{ fontSize: 11, color: T.inkSoft }}>
-                      total R${(installTotalCents(installments) / 100).toFixed(2).replace('.', ',')}
+                      sem juros · renova anualmente
                     </div>
                   )}
                   {payType === 'pix' && (

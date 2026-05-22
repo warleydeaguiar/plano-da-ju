@@ -22,8 +22,7 @@ export async function POST(req: NextRequest) {
     const {
       name, email, cpf, phone,
       card_token, quiz_answers, session_id, billing_address,
-      // installments may come from frontend — ignored (subscription is always full price)
-      installments: _installments,
+      installments: rawInstallments,
     } = await req.json();
 
     if (!name || !email || !card_token) {
@@ -32,6 +31,9 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
+
+    // Parcelas: 1..4 sem juros (validado server-side)
+    const n = Math.max(1, Math.min(4, parseInt(String(rawInstallments ?? '1'), 10) || 1));
 
     const cleanCpf   = typeof cpf   === 'string' ? cpf.replace(/\D/g, '')   : '';
     // Phone: prefere o que veio do form, fallback pra quiz_answers (já coletado no quiz)
@@ -43,10 +45,42 @@ export async function POST(req: NextRequest) {
     const phoneNum   = cleanPhone.length >= 10 ? cleanPhone.slice(2)     : '';
     const cleanCep   = billing_address?.cep?.replace(/\D/g, '') ?? '01310100';
 
+    const supabase = await createServiceClient();
+
+    // Idempotência: se já existe subscription recente para esse email, reusa
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: existingProfile } = await (supabase.from('profiles') as any)
+      .select('pagarme_subscription_id, subscription_status, updated_at')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (existingProfile?.pagarme_subscription_id) {
+      const updatedAt = new Date(existingProfile.updated_at ?? 0).getTime();
+      const recent = Date.now() - updatedAt < 5 * 60 * 1000; // 5min
+
+      if (recent || existingProfile.subscription_status === 'active') {
+        try {
+          const sub = await pagarme.get<PagarMeSubscription>(`/subscriptions/${existingProfile.pagarme_subscription_id}`);
+          const charge = sub.charges?.[0];
+          const isPaid = charge?.status === 'paid' || (sub.status === 'active' && !charge);
+          return NextResponse.json({
+            order_id:     charge?.id ?? sub.id,
+            status:       sub.status,
+            paid:         isPaid,
+            redirect_url: isPaid ? '/obrigado' : null,
+            idempotent:   true,
+          });
+        } catch {
+          // Subscription antiga inválida — continua e cria nova
+        }
+      }
+    }
+
     // ── PagarMe v5 Subscription (annual, auto-renews) ────────────────────────
     const plan = await getOrCreateCardPlan();
     const subscription = await pagarme.post<PagarMeSubscription>('/subscriptions', {
       plan_id: plan.id,
+      installments: n,
       payment_method: 'credit_card',
       customer: {
         name,
@@ -78,7 +112,6 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const supabase = await createServiceClient();
     const userId   = await resolveAuthUserId(supabase, email);
 
     // Confia primariamente no status da primeira charge — subscription.status
@@ -125,6 +158,7 @@ export async function POST(req: NextRequest) {
           subscription_status: subscription.status,
           subscription_id:     subscription.id,
           billing_address:     billing_address ?? null,
+          installments:        n,
         },
       });
     }
