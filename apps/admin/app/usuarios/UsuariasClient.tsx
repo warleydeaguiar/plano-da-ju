@@ -54,11 +54,15 @@ const SUB_LABEL: Record<string, { label: string; color: string }> = {
   pending:   { label: 'Pendente',  color: gray    },
 }
 
+// Plano de 90 dias (trimestral). Os ids 'annual_*' são legados — mantidos como
+// identificador interno; o rótulo exibido reflete o plano atual de 90 dias.
 const SUB_TYPE_LABEL: Record<string, string> = {
-  annual_card:   'Anual (cartão)',
-  annual_pix:    'Anual (PIX)',
-  one_time_card: 'Único (cartão)',
-  none:          '—',
+  annual_card:    '90 dias (cartão)',
+  annual_pix:     '90 dias (PIX)',
+  quarterly_card: '90 dias (cartão)',
+  quarterly_pix:  '90 dias (PIX)',
+  one_time_card:  'Único (cartão)',
+  none:           '—',
 }
 
 const PLAN_LABEL: Record<string, { label: string; color: string }> = {

@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
             subscription_activated_at: new Date().toISOString(),
             quiz_session_id: quizSessionId,
             subscription_expires_at: new Date(
-              Date.now() + 365 * 24 * 60 * 60 * 1000,
+              Date.now() + 90 * 24 * 60 * 60 * 1000,
             ).toISOString(),
             pagarme_charge_id: data.charges?.[0]?.id ?? data.id ?? null,
             ...(subscriptionId ? { pagarme_subscription_id: subscriptionId } : {}),
@@ -250,7 +250,7 @@ export async function POST(req: NextRequest) {
           .update({
             subscription_status: 'active',
             subscription_expires_at: sub.current_cycle?.end_at
-              ?? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+              ?? new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
           })
           .eq('pagarme_subscription_id', sub.id)
           .neq('subscription_status', 'cancelled')

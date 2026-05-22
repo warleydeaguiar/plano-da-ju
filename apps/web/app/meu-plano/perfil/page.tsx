@@ -109,7 +109,7 @@ export default function PerfilPage() {
   const initial = (profile.full_name ?? profile.email ?? 'U')[0].toUpperCase();
   const expiresAt = profile.subscription_expires_at ? new Date(profile.subscription_expires_at) : null;
   const subLabel = profile.subscription_type === 'annual_card' || profile.subscription_type === 'annual_pix'
-    ? 'Anual' : (profile.subscription_type ?? '—');
+    ? 'Plano de 90 dias' : (profile.subscription_type ?? '—');
 
   return (
     <div style={{ maxWidth: 480, margin: '0 auto', paddingBottom: 40 }}>

@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── PagarMe v5 Subscription (annual, auto-renews) ────────────────────────
+    // ── PagarMe v5 Subscription (trimestral/90 dias, renova a cada 3 meses) ──
     const plan = await getOrCreateCardPlan();
     const subscription = await pagarme.post<PagarMeSubscription>('/subscriptions', {
       plan_id: plan.id,
@@ -148,7 +148,7 @@ export async function POST(req: NextRequest) {
       subscription_status:  isReallyPaid ? 'active' : 'pending',
       subscription_activated_at: isReallyPaid ? new Date().toISOString() : null,
       subscription_expires_at: isReallyPaid
-        ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+        ? new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString()
         : null,
       pagarme_subscription_id: subscription.id,
       pagarme_charge_id:    chargeId,

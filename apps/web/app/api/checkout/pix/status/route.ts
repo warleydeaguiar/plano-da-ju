@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
             subscription_type: 'annual_pix',
             subscription_status: 'active',
             subscription_expires_at: new Date(
-              Date.now() + 365 * 24 * 60 * 60 * 1000,
+              Date.now() + 90 * 24 * 60 * 60 * 1000,
             ).toISOString(),
             pagarme_charge_id: orderId,
             plan_status: 'pending_photo',

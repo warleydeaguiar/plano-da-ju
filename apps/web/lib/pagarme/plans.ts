@@ -4,17 +4,18 @@ import type { PagarMePlan } from './types';
 // Cache em memória — primeira chamada faz lookup/create, demais retornam cached
 let cached: PagarMePlan | null = null;
 
-const PLAN_NAME = 'Plano da Ju — Anual Cartão';
+// Plano trimestral (90 dias) — renova a cada 3 meses.
+const PLAN_NAME = 'Plano da Ju — Trimestral Cartão';
 const PLAN_PAYLOAD = {
   name: PLAN_NAME,
-  interval: 'year',
-  interval_count: 1,
+  interval: 'month',
+  interval_count: 3,
   billing_type: 'prepaid',
   currency: 'BRL',
   statement_descriptor: 'PLANODAJU', // max 13 chars, aparece na fatura
   items: [
     {
-      name: 'Plano da Ju — Acesso Anual',
+      name: 'Plano da Ju — Acesso 90 dias',
       quantity: 1,
       pricing_scheme: { scheme_type: 'unit', price: 3490 },
     },

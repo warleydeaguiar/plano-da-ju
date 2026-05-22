@@ -10,7 +10,7 @@ export const maxDuration = 300
 // 16 semanas (4 meses) = ~45-90s, MUITO mais seguro e ainda é
 // conteúdo suficiente pra cliente começar. Admin pode pedir "extender"
 // no futuro pra gerar mais semanas.
-const WEEKS_TO_GENERATE = 16
+const WEEKS_TO_GENERATE = 12  // plano de 90 dias = 12 semanas
 const CLAUDE_TIMEOUT_MS = 240_000  // 4min — deixa buffer dentro dos 300s do Vercel
 
 /**
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const prompt = `Você é a Juliane Cost, especialista capilar com 10+ anos de experiência e mais de 3.500 mulheres atendidas.
 
 OBJETIVO
-Gerar plano capilar personalizado de 52 semanas pra cliente abaixo, analisando a foto e as respostas do quiz.
+Gerar plano capilar personalizado de 12 semanas (90 dias) pra cliente abaixo, analisando a foto e as respostas do quiz.
 
 REGRAS DURAS
 - Tom: caloroso, motivador, direto. Sem clichês.

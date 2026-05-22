@@ -1312,7 +1312,7 @@ export default function OfertaClient() {
                       ))}
                     </select>
                     <p style={{ fontSize: 11, color: T.inkSoft, marginTop: 4 }}>
-                      Renova automaticamente todo ano nas mesmas condições.
+                      Plano de 90 dias — renova automaticamente nas mesmas condições.
                     </p>
                   </div>
                 </div>
@@ -1337,13 +1337,17 @@ export default function OfertaClient() {
                   </div>
                   {payType === 'card' && installments > 1 && (
                     <div style={{ fontSize: 11, color: T.inkSoft }}>
-                      sem juros · renova anualmente
+                      sem juros · renova a cada 90 dias
                     </div>
                   )}
                   {payType === 'pix' && (
                     <div style={{ fontSize: 11, color: T.greenDeep, fontWeight: 600 }}>⚡ Aprovação instantânea</div>
                   )}
                 </div>
+              </div>
+              {/* Aviso discreto: plano de 90 dias com renovação */}
+              <div style={{ fontSize: 10.5, color: T.inkSoft, marginTop: 10, paddingTop: 10, borderTop: '1px solid #F0EAF5', lineHeight: 1.4 }}>
+                Acesso por 90 dias. Depois renova automaticamente por mais 90 dias nas mesmas condições — você pode cancelar quando quiser.
               </div>
             </div>
 

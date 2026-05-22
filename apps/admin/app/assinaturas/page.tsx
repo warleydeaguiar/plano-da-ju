@@ -19,16 +19,20 @@ const SUB_STATUS: Record<string, { label: string; color: string }> = {
 }
 
 const SUB_TYPE: Record<string, string> = {
-  annual_card: 'Anual — Cartão',
-  annual_pix:  'Anual — PIX',
-  none:        '—',
+  annual_card:    '90 dias — Cartão',
+  annual_pix:     '90 dias — PIX',
+  quarterly_card: '90 dias — Cartão',
+  quarterly_pix:  '90 dias — PIX',
+  none:           '—',
 }
 
 // Pricing
 const PRICE: Record<string, number> = {
-  annual_card: 34.90,
-  annual_pix:  49.90,
-  none:        0,
+  annual_card:    34.90,
+  annual_pix:     34.90,
+  quarterly_card: 34.90,
+  quarterly_pix:  34.90,
+  none:           0,
 }
 
 function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) {
@@ -85,7 +89,7 @@ export default async function AssinaturasPage() {
         {/* Header */}
         <div style={{ marginBottom: 28 }}>
           <div style={{ fontSize: 22, fontWeight: 700, color: '#2A1E2C' }}>Assinaturas</div>
-          <div style={{ fontSize: 13, color: gray, marginTop: 4 }}>Plano anual — R$ 34,90 (cartão) ou R$ 49,90 (PIX)</div>
+          <div style={{ fontSize: 13, color: gray, marginTop: 4 }}>Plano de 90 dias — R$ 34,90 · renova a cada 3 meses</div>
         </div>
 
         {/* KPIs */}
@@ -107,8 +111,8 @@ export default async function AssinaturasPage() {
           <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '20px 24px' }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C', marginBottom: 16 }}>Distribuição por tipo</div>
             {[
-              { label: 'Anual — Cartão', count: annualCard.length, color: accent },
-              { label: 'Anual — PIX',   count: annualPix.length,  color: '#2563EB' },
+              { label: 'Cartão', count: annualCard.length, color: accent },
+              { label: 'PIX',    count: annualPix.length,  color: '#2563EB' },
             ].map(({ label, count, color }) => {
               const pct = active.length > 0 ? Math.round((count / active.length) * 100) : 0
               return (
