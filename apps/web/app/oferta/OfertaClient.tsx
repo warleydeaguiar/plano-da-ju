@@ -441,6 +441,7 @@ export default function OfertaClient() {
   const [cardCvv, setCardCvv] = useState('');
   const [cpf, setCpf] = useState('');
   const [cep, setCep] = useState('');
+  const [addressNumber, setAddressNumber] = useState('');
   const [pixQrCode, setPixQrCode] = useState('');
   const [pixQrCodeUrl, setPixQrCodeUrl] = useState('');
   const [pixOrderId, setPixOrderId] = useState('');
@@ -582,8 +583,11 @@ export default function OfertaClient() {
     if (cep.replace(/\D/g, '').length > 0 && cep.replace(/\D/g, '').length === 8 && cepStatus === 'error') {
       errs.cep = 'CEP não encontrado';
     }
+    if (addressNumber.length > 0 && addressNumber.trim().length === 0) {
+      errs.addressNumber = 'Informe o número';
+    }
     return errs;
-  }, [cardNumber, cardName, cardExpiry, cardCvv, cpf, cep, cepStatus]);
+  }, [cardNumber, cardName, cardExpiry, cardCvv, cpf, cep, cepStatus, addressNumber]);
 
   const isCardComplete = useMemo(() => (
     luhnCheck(cardNumber.replace(/\s/g, '')) &&
@@ -592,8 +596,9 @@ export default function OfertaClient() {
     cardCvv.length >= 3 &&
     isValidCpf(cpf) &&
     cep.replace(/\D/g, '').length === 8 &&
-    cepStatus === 'ok'
-  ), [cardNumber, cardName, cardExpiry, cardCvv, cpf, cep, cepStatus]);
+    cepStatus === 'ok' &&
+    addressNumber.trim().length > 0
+  ), [cardNumber, cardName, cardExpiry, cardCvv, cpf, cep, cepStatus, addressNumber]);
 
   // Detecta brand do cartão enquanto digita
   useEffect(() => {
@@ -697,7 +702,7 @@ export default function OfertaClient() {
     if (!isCardComplete) {
       setError('Preencha todos os campos corretamente.');
       // Marca todos como tocados pra mostrar erros
-      setTouched({ number: true, name: true, expiry: true, cvv: true, cpf: true, cep: true });
+      setTouched({ number: true, name: true, expiry: true, cvv: true, cpf: true, cep: true, addressNumber: true });
       return;
     }
     setIsSubmitting(true);
@@ -722,9 +727,11 @@ export default function OfertaClient() {
             exp_year: parseInt('20' + cardExpiry.split('/')[1], 10),
             cvv: cardCvv,
             billing_address: {
-              line_1: cepAddress?.street && cepAddress?.neighborhood
-                ? `${cepAddress.street}, ${cepAddress.neighborhood}`
-                : cepAddress?.street || 'Não informado',
+              line_1: [
+                cepAddress?.street,
+                addressNumber.trim(),
+                cepAddress?.neighborhood,
+              ].filter(Boolean).join(', ') || 'Não informado',
               zip_code: cleanCep,
               city: billingCity,
               state: billingState,
@@ -751,9 +758,11 @@ export default function OfertaClient() {
             city: billingCity,
             state: billingState,
             cep: cleanCep,
-            line_1: cepAddress?.street && cepAddress?.neighborhood
-              ? `${cepAddress.street}, ${cepAddress.neighborhood}`
-              : cepAddress?.street || 'Não informado',
+            line_1: [
+              cepAddress?.street,
+              addressNumber.trim(),
+              cepAddress?.neighborhood,
+            ].filter(Boolean).join(', ') || 'Não informado',
           },
         }),
       });
@@ -1242,19 +1251,32 @@ export default function OfertaClient() {
                       {touched.cvv && cardErrors.cvv && <p style={{ color: T.red, fontSize: 12, marginTop: 3 }}>{cardErrors.cvv}</p>}
                     </div>
                   </div>
-                  <div>
-                    <label style={labelS}>CEP (endereço de cobrança)</label>
-                    <input
-                      className="co-input" style={inputS} placeholder="00000-000"
-                      value={cep} onChange={e => setCep(formatCep(e.target.value))}
-                      onBlur={() => setTouched(t => ({ ...t, cep: true }))}
-                      maxLength={9} inputMode="numeric"
-                    />
-                    {cepStatus === 'ok' && cepAddress && (
-                      <p style={{ color: T.greenDeep, fontSize: 11, marginTop: 3, fontWeight: 600 }}>✓ {cepAddress.city} / {cepAddress.state}</p>
-                    )}
-                    {cepStatus === 'loading' && <p style={{ color: T.inkSoft, fontSize: 11, marginTop: 3 }}>Buscando…</p>}
-                    {touched.cep && cardErrors.cep && <p style={{ color: T.red, fontSize: 12, marginTop: 3 }}>{cardErrors.cep}</p>}
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
+                    <div>
+                      <label style={labelS}>CEP (endereço de cobrança)</label>
+                      <input
+                        className="co-input" style={inputS} placeholder="00000-000"
+                        value={cep} onChange={e => setCep(formatCep(e.target.value))}
+                        onBlur={() => setTouched(t => ({ ...t, cep: true }))}
+                        maxLength={9} inputMode="numeric"
+                      />
+                      {cepStatus === 'ok' && cepAddress && (
+                        <p style={{ color: T.greenDeep, fontSize: 11, marginTop: 3, fontWeight: 600 }}>✓ {cepAddress.city} / {cepAddress.state}</p>
+                      )}
+                      {cepStatus === 'loading' && <p style={{ color: T.inkSoft, fontSize: 11, marginTop: 3 }}>Buscando…</p>}
+                      {touched.cep && cardErrors.cep && <p style={{ color: T.red, fontSize: 12, marginTop: 3 }}>{cardErrors.cep}</p>}
+                    </div>
+                    <div>
+                      <label style={labelS}>Número</label>
+                      <input
+                        className="co-input" style={inputS} placeholder="123"
+                        value={addressNumber}
+                        onChange={e => setAddressNumber(e.target.value.replace(/[^0-9A-Za-z]/g, '').slice(0, 10))}
+                        onBlur={() => setTouched(t => ({ ...t, addressNumber: true }))}
+                        inputMode="numeric"
+                      />
+                      {touched.addressNumber && cardErrors.addressNumber && <p style={{ color: T.red, fontSize: 12, marginTop: 3 }}>{cardErrors.addressNumber}</p>}
+                    </div>
                   </div>
                   <div>
                     <label style={labelS}>Cobrança</label>
