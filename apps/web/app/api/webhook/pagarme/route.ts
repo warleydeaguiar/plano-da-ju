@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
         // Busca perfil atual
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: profile } = await (supabase.from('profiles') as any)
-          .select('id, subscription_status, checkout_session_id, full_name, quiz_answers, hair_type, porosity, main_problems')
+          .select('id, subscription_status, checkout_session_id, full_name, quiz_answers, hair_type, porosity, main_problems, pagarme_subscription_id')
           .eq('email', email)
           .maybeSingle();
 
