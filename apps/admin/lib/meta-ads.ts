@@ -12,8 +12,11 @@
  * Documentação: https://developers.facebook.com/docs/marketing-apis
  */
 
-const TOKEN      = process.env.META_ADS_ACCESS_TOKEN
-const ACCOUNT_ID = process.env.META_ADS_ACCOUNT_ID   // formato: act_XXXXXXXXXX
+// Usa o mesmo token/conta que o resto do sistema (META_ADS_QUIZ_*), com
+// fallback pros nomes antigos. Antes só lia META_ADS_ACCESS_TOKEN (nunca setado)
+// → a página Ybera mostrava "não configurado" mesmo com o Meta funcionando.
+const TOKEN      = process.env.META_ADS_QUIZ_TOKEN ?? process.env.META_ADS_ACCESS_TOKEN
+const ACCOUNT_ID = process.env.META_ADS_QUIZ_ACCOUNT ?? process.env.META_ADS_ACCOUNT_ID ?? 'act_306090736984417'
 const API_VER    = 'v20.0'
 const BASE       = `https://graph.facebook.com/${API_VER}`
 
