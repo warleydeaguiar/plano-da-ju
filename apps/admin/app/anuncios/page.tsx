@@ -2,14 +2,15 @@ import Sidebar from '../components/Sidebar';
 import { getCreativeAnalysis, type CreativePeriod, type CreativeRow } from '../../lib/meta-ads-creatives';
 import { T, fonts, shadow, gradient } from '../theme';
 import {
-  IconMegaphone, IconMoney, IconBag, IconTarget, IconChart, IconWarning,
-  IconCursor, IconArrowRight,
+  IconMegaphone, IconMoney, IconBag, IconTarget, IconWarning,
+  IconCursor, IconArrowRight, IconUsers,
 } from '../icons';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Anúncios — Admin Plano da Ju' };
 
 type SortKey = 'spend' | 'roas' | 'cpp' | 'hook' | 'purchases';
+type IconType = React.ComponentType<{ size?: number; color?: string }>;
 
 function brl(v: number) {
   return `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -44,6 +45,11 @@ function sortCreatives(list: CreativeRow[], key: SortKey): CreativeRow[] {
   }
 }
 
+const cardStyle: React.CSSProperties = {
+  background: T.surface, borderRadius: 18, border: `1px solid ${T.borderSoft}`,
+  boxShadow: shadow.card, overflow: 'hidden',
+};
+
 export default async function AnunciosPage({
   searchParams,
 }: {
@@ -54,12 +60,9 @@ export default async function AnunciosPage({
   const sort: SortKey = (['spend', 'roas', 'cpp', 'hook', 'purchases'].includes(sp.sort ?? '') ? sp.sort : 'spend') as SortKey;
 
   const data = await getCreativeAnalysis(period);
-  const creatives = sortCreatives(data.creatives, sort);
+  const compras = sortCreatives(data.creatives.filter(c => c.campaign_type === 'compras'), sort);
+  const leads   = sortCreatives(data.creatives.filter(c => c.campaign_type === 'leads'), sort);
 
-  const card: React.CSSProperties = {
-    background: T.surface, borderRadius: 18, border: `1px solid ${T.borderSoft}`,
-    boxShadow: shadow.card, overflow: 'hidden',
-  };
   const pill = (active: boolean): React.CSSProperties => ({
     padding: '7px 16px', borderRadius: 99, fontSize: 13, fontWeight: 600,
     textDecoration: 'none', transition: 'all 0.15s',
@@ -69,17 +72,10 @@ export default async function AnunciosPage({
     boxShadow: active ? '0 3px 10px rgba(190,24,93,0.22)' : 'none',
   });
 
-  const statCards = [
-    { icon: IconMegaphone, label: 'Criativos ativos', value: intStr(data.activeCount), sub: 'com investimento', accent: T.pink, accentSoft: T.pinkSoft },
-    { icon: IconTarget, label: 'Melhor custo/compra', value: data.bestCpp !== null ? brl(data.bestCpp) : '—', sub: 'menor CPP', accent: T.green, accentSoft: T.greenSoft, valueColor: T.green },
-    { icon: IconBag, label: 'Total de compras', value: intStr(data.totalPurchases), sub: 'no período', accent: T.gold, accentSoft: T.goldSoft },
-    { icon: IconMoney, label: 'Total investido', value: brl(data.totalSpend), sub: 'no período', accent: T.blue, accentSoft: T.blueSoft },
-  ];
-
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: T.bg, fontFamily: fonts.ui, color: T.ink }}>
       <Sidebar />
-      <main style={{ marginLeft: 234, flex: 1, height: '100vh', overflowY: 'auto', padding: 32, display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <main style={{ marginLeft: 234, flex: 1, height: '100vh', overflowY: 'auto', padding: 32, display: 'flex', flexDirection: 'column', gap: 22 }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
           <div>
@@ -93,7 +89,6 @@ export default async function AnunciosPage({
               )}
             </div>
           </div>
-          {/* Período */}
           <div style={{ display: 'flex', gap: 8 }}>
             {PERIODS.map(p => (
               <a key={p.key} href={`/anuncios?period=${p.key}&sort=${sort}`} style={pill(p.key === period)}>{p.label}</a>
@@ -102,70 +97,130 @@ export default async function AnunciosPage({
         </div>
 
         {data.status === 'not_configured' && (
-          <div style={{ ...card, padding: '16px 20px', display: 'flex', gap: 12, alignItems: 'center', borderLeft: `4px solid ${T.alert}` }}>
+          <div style={{ ...cardStyle, padding: '16px 20px', display: 'flex', gap: 12, alignItems: 'center', borderLeft: `4px solid ${T.alert}` }}>
             <IconWarning size={22} color={T.alert} />
             <div style={{ fontSize: 13, color: T.inkSoft }}>Meta Ads não configurado — defina <code>META_ADS_QUIZ_TOKEN</code> no Vercel.</div>
           </div>
         )}
         {data.status === 'error' && (
-          <div style={{ ...card, padding: '16px 20px', display: 'flex', gap: 12, alignItems: 'center', borderLeft: `4px solid ${T.danger}` }}>
+          <div style={{ ...cardStyle, padding: '16px 20px', display: 'flex', gap: 12, alignItems: 'center', borderLeft: `4px solid ${T.danger}` }}>
             <IconWarning size={22} color={T.danger} />
             <div style={{ fontSize: 13, color: T.inkSoft }}>Erro ao buscar dados do Meta: {data.error}</div>
           </div>
         )}
 
-        {/* Stat cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
-          {statCards.map((s, i) => {
-            const Icon = s.icon;
-            return (
-              <div key={i} style={{ ...card, padding: 20 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                  <div style={{ width: 38, height: 38, borderRadius: 11, background: s.accentSoft, color: s.accent, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Icon size={20} />
-                  </div>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', letterSpacing: 0.6 }}>{s.label}</div>
-                </div>
-                <div style={{ fontSize: 28, fontWeight: 700, fontFamily: fonts.display, color: s.valueColor ?? T.ink, letterSpacing: -1, lineHeight: 1 }}>{s.value}</div>
-                <div style={{ fontSize: 12, color: T.inkMuted, marginTop: 6 }}>{s.sub}</div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Ordenar */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 12, color: T.inkMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Ordenar por</span>
-          {SORTS.map(s => (
-            <a key={s.key} href={`/anuncios?period=${period}&sort=${s.key}`} style={{
-              ...pill(s.key === sort), padding: '5px 13px', fontSize: 12.5,
-            }}>{s.label}</a>
-          ))}
-        </div>
-
-        {/* Cards de criativos */}
-        {data.status === 'ok' && creatives.length === 0 ? (
-          <div style={{ ...card, padding: 44, textAlign: 'center', color: T.inkMuted, fontSize: 14 }}>
-            Nenhum criativo com investimento nesse período.
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>
-            {creatives.map((c, i) => (
-              <CreativeCard key={c.ad_id} c={c} rank={i + 1} card={card} />
+        {/* Ordenar (global) */}
+        {data.status === 'ok' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, color: T.inkMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Ordenar por</span>
+            {SORTS.map(s => (
+              <a key={s.key} href={`/anuncios?period=${period}&sort=${s.key}`} style={{ ...pill(s.key === sort), padding: '5px 13px', fontSize: 12.5 }}>{s.label}</a>
             ))}
           </div>
         )}
-        <div style={{ height: 20 }} />
+
+        {/* ── SEÇÃO 1: COMPRAS (campanhas 'plano') ── */}
+        <Section
+          icon={IconBag} accent={T.pink} accentSoft={T.pinkSoft}
+          title="Anúncios de Compras" subtitle="Campanhas de venda do plano (com 'plano' no nome)"
+          mode="compras" creatives={compras} show={data.status === 'ok'}
+        />
+
+        {/* ── SEÇÃO 2: LEADS (campanhas 'grupos') ── */}
+        <Section
+          icon={IconUsers} accent={T.blue} accentSoft={T.blueSoft}
+          title="Anúncios de Leads" subtitle="Campanhas de cadastro nos grupos (com 'grupos' no nome)"
+          mode="leads" creatives={leads} show={data.status === 'ok'}
+        />
+        <div style={{ height: 12 }} />
       </main>
     </div>
   );
 }
 
-function CreativeCard({ c, rank, card }: { c: CreativeRow; rank: number; card: React.CSSProperties }) {
+// ─── Seção (compras ou leads) ───────────────────────────────────────
+function Section({ icon: Icon, accent, accentSoft, title, subtitle, mode, creatives, show }: {
+  icon: IconType; accent: string; accentSoft: string; title: string; subtitle: string;
+  mode: 'compras' | 'leads'; creatives: CreativeRow[]; show: boolean;
+}) {
+  if (!show) return null;
+
+  const totalSpend = creatives.reduce((s, c) => s + c.spend, 0);
+
+  // Stat cards específicos por modo
+  let stats: { icon: IconType; label: string; value: string; sub: string; color?: string }[];
+  if (mode === 'compras') {
+    const totalPurchases = creatives.reduce((s, c) => s + c.purchases, 0);
+    const cpps = creatives.map(c => c.cost_per_purchase).filter((v): v is number => v !== null);
+    const bestCpp = cpps.length ? Math.min(...cpps) : null;
+    stats = [
+      { icon: IconMegaphone, label: 'Criativos', value: intStr(creatives.length), sub: 'com investimento' },
+      { icon: IconBag, label: 'Compras', value: intStr(totalPurchases), sub: 'no período', color: T.green },
+      { icon: IconTarget, label: 'Melhor custo/compra', value: bestCpp !== null ? brl(bestCpp) : '—', sub: 'menor CPP', color: T.green },
+      { icon: IconMoney, label: 'Investido', value: brl(totalSpend), sub: 'no período' },
+    ];
+  } else {
+    const totalClicks = creatives.reduce((s, c) => s + c.link_clicks, 0);
+    const cpcs = creatives.map(c => c.cost_per_link_click).filter((v): v is number => v !== null);
+    const bestCpc = cpcs.length ? Math.min(...cpcs) : null;
+    stats = [
+      { icon: IconMegaphone, label: 'Criativos', value: intStr(creatives.length), sub: 'com investimento' },
+      { icon: IconCursor, label: 'Cliques no link', value: intStr(totalClicks), sub: 'no período', color: T.blue },
+      { icon: IconTarget, label: 'Melhor custo/clique', value: bestCpc !== null ? brl(bestCpc) : '—', sub: 'menor CPC' },
+      { icon: IconMoney, label: 'Investido', value: brl(totalSpend), sub: 'no período' },
+    ];
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* Section header */}
+      <div style={{ ...cardStyle, padding: '14px 18px', borderLeft: `4px solid ${accent}`, display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div style={{ width: 42, height: 42, borderRadius: 12, background: accent + '15', color: accent, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <Icon size={22} />
+        </div>
+        <div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: T.ink }}>{title}</div>
+          <div style={{ fontSize: 12, color: T.inkSoft, marginTop: 2 }}>{subtitle}</div>
+        </div>
+      </div>
+
+      {/* Stat cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
+        {stats.map((s, i) => {
+          const SIcon = s.icon;
+          return (
+            <div key={i} style={{ ...cardStyle, padding: 18 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                <div style={{ width: 34, height: 34, borderRadius: 10, background: accentSoft, color: accent, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <SIcon size={18} />
+                </div>
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>{s.label}</div>
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 700, fontFamily: fonts.display, color: s.color ?? T.ink, letterSpacing: -0.8, lineHeight: 1 }}>{s.value}</div>
+              <div style={{ fontSize: 11.5, color: T.inkMuted, marginTop: 5 }}>{s.sub}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Cards de criativos */}
+      {creatives.length === 0 ? (
+        <div style={{ ...cardStyle, padding: 36, textAlign: 'center', color: T.inkMuted, fontSize: 14 }}>
+          Nenhum criativo com investimento nesse período.
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>
+          {creatives.map((c, i) => <CreativeCard key={c.ad_id} c={c} rank={i + 1} mode={mode} accent={accent} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CreativeCard({ c, rank, mode, accent }: { c: CreativeRow; rank: number; mode: 'compras' | 'leads'; accent: string }) {
   const hasConv = c.purchases > 0;
   return (
-    <div style={{ ...card, display: 'flex', flexDirection: 'column' }}>
-      {/* Thumbnail */}
+    <div style={{ ...cardStyle, display: 'flex', flexDirection: 'column' }}>
       <div style={{ position: 'relative', width: '100%', aspectRatio: '1.4', background: T.cream, overflow: 'hidden' }}>
         {c.thumbnail_url ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -183,33 +238,38 @@ function CreativeCard({ c, rank, card }: { c: CreativeRow; rank: number; card: R
         }}>#{rank}</div>
       </div>
 
-      {/* Body */}
       <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
-        <div style={{ fontSize: 13.5, fontWeight: 700, color: T.ink, lineHeight: 1.3, minHeight: 36, overflow: 'hidden' }}>
-          {c.ad_name}
-        </div>
+        <div style={{ fontSize: 13.5, fontWeight: 700, color: T.ink, lineHeight: 1.3, minHeight: 36, overflow: 'hidden' }}>{c.ad_name}</div>
         {c.campaign_name && (
-          <div style={{ fontSize: 10.5, fontWeight: 600, color: T.pinkDeep, background: T.pinkSoft, padding: '3px 8px', borderRadius: 6, alignSelf: 'flex-start', maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div style={{ fontSize: 10.5, fontWeight: 600, color: accent, background: accent + '15', padding: '3px 8px', borderRadius: 6, alignSelf: 'flex-start', maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {c.campaign_name}
           </div>
         )}
 
-        {/* Métricas principais: investimento + compras/CPP/ROAS */}
+        {/* Métricas principais — diferem por modo */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <Metric label="Investimento" value={brl(c.spend)} />
-          {hasConv ? (
-            <Metric label="Custo/compra" value={c.cost_per_purchase !== null ? brl(c.cost_per_purchase) : '—'} color={T.green} />
+          {mode === 'compras' ? (
+            <>
+              {hasConv
+                ? <Metric label="Custo/compra" value={c.cost_per_purchase !== null ? brl(c.cost_per_purchase) : '—'} color={T.green} />
+                : <Metric label="Conversões" value="—" sub="sem compras" />}
+              <Metric label="Compras" value={intStr(c.purchases)} />
+              <Metric label="ROAS" value={c.roas !== null ? `${c.roas.toFixed(2)}x` : '—'} color={c.roas !== null && c.roas >= 1 ? T.green : c.roas !== null ? T.danger : undefined} />
+            </>
           ) : (
-            <Metric label="Conversões" value="—" sub="sem compras" />
+            <>
+              <Metric label="Custo/clique" value={c.cost_per_link_click !== null ? brl(c.cost_per_link_click) : '—'} color={T.blue} />
+              <Metric label="Cliques no link" value={intStr(c.link_clicks)} />
+              <Metric label="Visitas à página" value={intStr(c.landing_page_views)} />
+            </>
           )}
-          <Metric label="Compras" value={intStr(c.purchases)} />
-          <Metric label="ROAS" value={c.roas !== null ? `${c.roas.toFixed(2)}x` : '—'} color={c.roas !== null && c.roas >= 1 ? T.green : c.roas !== null ? T.danger : undefined} />
         </div>
 
-        {/* Barras: CPM / CTR / Hook */}
+        {/* Barras */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 2 }}>
-          <Bar label="Impressões" valueText={kStr(c.impressions)} icon={IconChart} />
-          <Bar label="CTR" valueText={c.ctr !== null ? `${c.ctr.toFixed(2)}%` : '—'} icon={IconCursor} pct={c.ctr ? Math.min(100, c.ctr * 25) : 0} good />
+          <Bar label="Impressões" valueText={kStr(c.impressions)} />
+          <Bar label="CTR" valueText={c.ctr !== null ? `${c.ctr.toFixed(2)}%` : '—'} pct={c.ctr ? Math.min(100, c.ctr * 25) : 0} good />
           {c.hook_rate !== null && (
             <Bar label="Hook rate" valueText={`${c.hook_rate.toFixed(1)}%`} pct={Math.min(100, c.hook_rate)} good />
           )}
@@ -217,10 +277,7 @@ function CreativeCard({ c, rank, card }: { c: CreativeRow; rank: number; card: R
         </div>
 
         {c.instagram_url && (
-          <a href={c.instagram_url} target="_blank" rel="noopener noreferrer" style={{
-            marginTop: 'auto', fontSize: 12, fontWeight: 600, color: T.pinkDeep,
-            textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 5,
-          }}>
+          <a href={c.instagram_url} target="_blank" rel="noopener noreferrer" style={{ marginTop: 'auto', fontSize: 12, fontWeight: 600, color: T.pinkDeep, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
             Ver no Instagram <IconArrowRight size={13} />
           </a>
         )}
@@ -239,14 +296,11 @@ function Metric({ label, value, sub, color }: { label: string; value: string; su
   );
 }
 
-function Bar({ label, valueText, pct, good, warn }: {
-  label: string; valueText: string; pct?: number; good?: boolean; warn?: boolean;
-  icon?: React.ComponentType<{ size?: number; color?: string }>;
-}) {
+function Bar({ label, valueText, pct, good, warn }: { label: string; valueText: string; pct?: number; good?: boolean; warn?: boolean }) {
   const barColor = good ? T.green : warn ? T.gold : T.pink;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5 }}>
-      <span style={{ color: T.inkMuted, width: 78, flexShrink: 0 }}>{label}</span>
+      <span style={{ color: T.inkMuted, width: 84, flexShrink: 0 }}>{label}</span>
       {pct !== undefined ? (
         <div style={{ flex: 1, height: 5, borderRadius: 99, background: T.borderSoft, overflow: 'hidden' }}>
           <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: 99 }} />

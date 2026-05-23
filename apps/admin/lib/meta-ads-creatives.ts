@@ -15,24 +15,41 @@ const BASE       = `https://graph.facebook.com/${API_VER}`
 
 export type CreativesStatus = 'ok' | 'not_configured' | 'error'
 export type CreativePeriod  = '7d' | '30d' | '90d'
+export type CampaignType    = 'compras' | 'leads' | 'outros'
 
 export interface CreativeRow {
   ad_id:         string
   ad_name:       string
   campaign_name: string
   adset_name:    string
+  campaign_type: CampaignType
   thumbnail_url: string | null
   instagram_url: string | null
   spend:         number
   impressions:   number
   link_clicks:   number
+  landing_page_views: number
   cpm:           number | null
   ctr:           number | null
   hook_rate:     number | null   // % (3s video views / impressions)
+  cost_per_link_click: number | null  // relevante p/ campanhas de lead
   purchases:     number
   revenue:       number
   cost_per_purchase: number | null
   roas:          number | null
+}
+
+/**
+ * Classifica o criativo pelo nome da campanha:
+ *  - "plano"  → Compras (venda do plano capilar)
+ *  - "grupos" → Leads (cadastro nos grupos Ybera)
+ *  - senão    → Outros
+ */
+function classifyCampaign(name: string): CampaignType {
+  const n = (name ?? '').toLowerCase()
+  if (n.includes('plano'))  return 'compras'
+  if (n.includes('grupos')) return 'leads'
+  return 'outros'
 }
 
 export interface CreativesResult {
@@ -152,6 +169,8 @@ export async function getCreativeAnalysis(period: CreativePeriod = '30d'): Promi
       const ctr         = r.ctr ? parseFloat(r.ctr) : null
       const video3s     = actionValue(r.video_3_sec_watched_actions, ['video_view'])
       const hook_rate   = impressions > 0 && video3s > 0 ? (video3s / impressions) * 100 : null
+      const landing_page_views = actionValue(r.actions, ['landing_page_view'])
+      const cost_per_link_click = link_clicks > 0 ? spend / link_clicks : null
       const purchases   = actionValue(r.actions, PURCHASE_TYPES)
       const revenue     = actionValue(r.action_values, PURCHASE_TYPES)
       const cost_per_purchase = purchases > 0 ? spend / purchases : null
@@ -159,8 +178,9 @@ export async function getCreativeAnalysis(period: CreativePeriod = '30d'): Promi
       return {
         ad_id: r.ad_id, ad_name: r.ad_name ?? '(sem nome)',
         campaign_name: r.campaign_name ?? '', adset_name: r.adset_name ?? '',
-        spend, impressions, link_clicks, cpm, ctr, hook_rate,
-        purchases, revenue, cost_per_purchase, roas,
+        campaign_type: classifyCampaign(r.campaign_name),
+        spend, impressions, link_clicks, landing_page_views, cpm, ctr, hook_rate,
+        cost_per_link_click, purchases, revenue, cost_per_purchase, roas,
       }
     }).filter(r => r.spend > 0) // só criativos com investimento no período
 
