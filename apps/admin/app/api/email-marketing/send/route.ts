@@ -336,5 +336,71 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, sent, errors, total: (leads ?? []).length })
   }
 
+  // ── 5) Broadcast → email pra TODA a base (profiles + leads) ──
+  if (mode === 'broadcast_email') {
+    const { subject, message, image_url } = body
+    if (!subject?.trim() || !message?.trim()) {
+      return NextResponse.json({ error: 'subject e message são obrigatórios' }, { status: 400 })
+    }
+
+    // Junta a base: profiles + wg_quiz_leads, dedup por email (preferindo profile)
+    const [{ data: profiles }, { data: leads }] = await Promise.all([
+      (sb as any).from('profiles').select('email, full_name').not('email', 'is', null).limit(5000),
+      (sb as any).from('wg_quiz_leads').select('email, name').not('email', 'is', null).limit(5000),
+    ])
+    const map = new Map<string, { email: string; name: string | null }>()
+    for (const l of (leads ?? [])) {
+      const e = (l.email ?? '').toLowerCase().trim()
+      if (e && !map.has(e)) map.set(e, { email: l.email, name: l.name ?? null })
+    }
+    for (const p of (profiles ?? [])) {
+      const e = (p.email ?? '').toLowerCase().trim()
+      if (e) map.set(e, { email: p.email, name: p.full_name ?? null }) // profile sobrescreve (nome melhor)
+    }
+    const recipients = [...map.values()]
+
+    const html = buildBroadcastEmailHtml(message.trim(), image_url || null)
+
+    let sent = 0, errors = 0
+    const BATCH = 12
+    for (let i = 0; i < recipients.length; i += BATCH) {
+      const batch = recipients.slice(i, i + BATCH)
+      await Promise.all(batch.map(async (r) => {
+        const result = await sendWithTracking(sb, {
+          to: r.email,
+          toName: r.name,
+          subject: subject.trim(),
+          html,
+        })
+        if (result.ok) sent++; else errors++
+      }))
+    }
+    return NextResponse.json({ ok: true, sent, errors, total: recipients.length })
+  }
+
   return NextResponse.json({ error: 'mode inválido' }, { status: 400 })
+}
+
+/** Monta um email branded simples a partir do texto do broadcast. */
+function buildBroadcastEmailHtml(message: string, imageUrl: string | null): string {
+  const safe = message
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>')
+  const img = imageUrl
+    ? `<img src="${imageUrl}" alt="" style="width:100%;max-width:560px;border-radius:14px;display:block;margin:0 auto 20px" />`
+    : ''
+  return `<!doctype html><html><body style="margin:0;padding:0;background:#FFFAF5;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
+  <div style="max-width:600px;margin:0 auto;padding:24px 16px;">
+    <div style="text-align:center;padding:8px 0 20px;">
+      <span style="font-size:22px;font-weight:700;color:#2A1E2C;">Plano da <span style="color:#BE185D;font-style:italic;">Ju</span></span>
+    </div>
+    <div style="background:#FFFFFF;border-radius:18px;padding:28px 24px;box-shadow:0 1px 3px rgba(42,30,44,0.06);">
+      ${img}
+      <div style="font-size:15px;line-height:1.6;color:#2A1E2C;">${safe}</div>
+    </div>
+    <div style="text-align:center;font-size:11px;color:#B5A6B7;padding:18px 0;">
+      Você recebe este email porque faz parte da base do Plano da Ju.
+    </div>
+  </div>
+</body></html>`
 }

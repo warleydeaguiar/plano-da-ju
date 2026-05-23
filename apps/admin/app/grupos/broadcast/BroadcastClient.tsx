@@ -215,6 +215,8 @@ export default function BroadcastClient({
   const [scheduleMode, setScheduleMode] = useState(false)
   const [scheduledAt, setScheduledAt]   = useState('')
   const [mentionAll, setMentionAll]     = useState(false)
+  const [alsoEmail, setAlsoEmail]       = useState(false)
+  const [emailSubject, setEmailSubject] = useState('')
 
   const [sending, setSending]       = useState(false)
   const [result, setResult]         = useState<{ ok: boolean; text: string } | null>(null)
@@ -340,10 +342,31 @@ export default function BroadcastClient({
       const res = await fetch('/api/grupos/broadcast', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
+
+      // Também por email pra toda a base (se ligado e não agendado)
+      let emailNote = ''
+      if (alsoEmail && !scheduleMode && emailSubject.trim()) {
+        try {
+          const er = await fetch('/api/email-marketing/send', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              mode: 'broadcast_email',
+              subject: emailSubject.trim(),
+              message: message.trim(),
+              image_url: mediaTab === 'url' && mediaUrl.trim() ? mediaUrl.trim() : null,
+            }),
+          })
+          const ed = await er.json()
+          emailNote = er.ok ? ` · 📧 ${ed.sent} emails` : ` · email falhou: ${ed.error ?? ''}`
+        } catch (e: any) {
+          emailNote = ` · email falhou: ${e.message}`
+        }
+      }
+
       if (data.scheduled) {
         setResult({ ok: true, text: `✓ Agendado para ${formatDate(data.scheduled_at)}` })
       } else {
-        setResult({ ok: true, text: `✓ Enviado para ${data.success} grupos${data.fail > 0 ? ` (${data.fail} falharam)` : ''}` })
+        setResult({ ok: true, text: `✓ Enviado para ${data.success} grupos${data.fail > 0 ? ` (${data.fail} falharam)` : ''}${emailNote}` })
       }
       setTitle('')
       setMessage('')
@@ -351,6 +374,8 @@ export default function BroadcastClient({
       setScheduleMode(false)
       setScheduledAt('')
       setMentionAll(false)
+      setAlsoEmail(false)
+      setEmailSubject('')
       const h2 = await fetch('/api/grupos/broadcast')
       const updated = await h2.json()
       if (Array.isArray(updated)) setBroadcasts(updated)
@@ -515,6 +540,37 @@ export default function BroadcastClient({
                   </div>
                 </div>
               </label>
+            </div>
+
+            {/* Também por email */}
+            <div style={{ background: alsoEmail ? accent + '08' : '#F9F9FC', border: `1px solid ${alsoEmail ? accent + '30' : '#EDE0D2'}`, borderRadius: 12, padding: '14px 16px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                <div onClick={() => setAlsoEmail(v => !v)}
+                  style={{ width: 44, height: 24, borderRadius: 12, cursor: 'pointer', transition: 'background .2s', background: alsoEmail ? accent : '#D0D0D8', position: 'relative', flexShrink: 0 }}>
+                  <div style={{ position: 'absolute', top: 3, left: alsoEmail ? 22 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left .2s', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#2A1E2C' }}>📧 Enviar também por email</div>
+                  <div style={{ fontSize: 11, color: gray, marginTop: 2, lineHeight: 1.4 }}>
+                    A mesma mensagem vira um email enviado pra toda a base (clientes + leads).
+                  </div>
+                </div>
+              </label>
+              {alsoEmail && (
+                <div style={{ marginTop: 12 }}>
+                  <input
+                    value={emailSubject}
+                    onChange={e => setEmailSubject(e.target.value)}
+                    placeholder="Assunto do email (obrigatório)"
+                    style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10, border: `1px solid ${emailSubject.trim() ? accent + '40' : '#EDE0D2'}`, fontSize: 13, outline: 'none', fontFamily: 'inherit', background: '#fff' }}
+                  />
+                  {scheduleMode && (
+                    <div style={{ fontSize: 11, color: '#D97706', marginTop: 6 }}>
+                      ⚠ O email é enviado apenas no envio imediato (não no agendado).
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Agendamento */}

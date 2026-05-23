@@ -145,10 +145,12 @@ export async function getCreativeAnalysis(period: CreativePeriod = '30d'): Promi
   if (!TOKEN) return empty
 
   try {
+    // video_3_sec_watched_actions foi descontinuado na v20. As views de 3s
+    // vêm no array `actions` (action_type='video_view').
     const fields = [
       'ad_id', 'ad_name', 'campaign_name', 'adset_name',
       'spend', 'impressions', 'inline_link_clicks', 'cpm', 'ctr',
-      'actions', 'action_values', 'video_3_sec_watched_actions',
+      'actions', 'action_values',
     ].join(',')
 
     const json = await metaGet(`${ACCOUNT_ID}/insights`, {
@@ -167,7 +169,7 @@ export async function getCreativeAnalysis(period: CreativePeriod = '30d'): Promi
       const link_clicks = parseInt(r.inline_link_clicks ?? '0', 10)
       const cpm         = r.cpm ? parseFloat(r.cpm) : null
       const ctr         = r.ctr ? parseFloat(r.ctr) : null
-      const video3s     = actionValue(r.video_3_sec_watched_actions, ['video_view'])
+      const video3s     = actionValue(r.actions, ['video_view'])
       const hook_rate   = impressions > 0 && video3s > 0 ? (video3s / impressions) * 100 : null
       const landing_page_views = actionValue(r.actions, ['landing_page_view'])
       const cost_per_link_click = link_clicks > 0 ? spend / link_clicks : null
