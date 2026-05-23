@@ -31,6 +31,7 @@ const NAV: NavItem[] = [
     ],
   },
   { icon: '📞', label: 'Followup', href: '/followup' },
+  { icon: '📣', label: 'Anúncios', href: '/anuncios' },
   { icon: '📧', label: 'Email Marketing', href: '/email-marketing' },
   {
     icon: '🎯', label: 'Quiz', href: '/quiz',
