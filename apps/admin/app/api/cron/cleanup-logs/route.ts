@@ -15,11 +15,15 @@ export const maxDuration = 60
  * NÃO apaga eventos de funil (offer_viewed, checkout_initiated, payment_confirmed,
  * etc.) porque o dashboard usa janela de 30 dias deles.
  *
+ * Também aplica a retenção LGPD da identidade de tracking (tracking_identity):
+ * apaga sessões inativas há mais de 90 dias (por last_seen_at).
+ *
  * Proteção: se CRON_SECRET estiver setado, exige Authorization: Bearer <secret>
  * (a Vercel Cron envia esse header automaticamente). Sem o secret, aceita
  * (permite trigger manual em dev).
  */
 const RETENTION_DAYS = 7
+const TRACKING_RETENTION_DAYS = 90
 
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET
@@ -55,6 +59,19 @@ export async function GET(req: NextRequest) {
     result.checkout_errors_deleted = error ? `erro: ${error.message}` : (count ?? 0)
   } catch (err) {
     result.checkout_errors_deleted = `erro: ${err instanceof Error ? err.message : 'unknown'}`
+  }
+
+  // 3) tracking_identity — retenção LGPD de 90 dias (por last_seen_at)
+  try {
+    const trackingCutoff = new Date(Date.now() - TRACKING_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error, count } = await (sb.from('tracking_identity') as any)
+      .delete({ count: 'exact' })
+      .lt('last_seen_at', trackingCutoff)
+    result.tracking_identity_deleted = error ? `erro: ${error.message}` : (count ?? 0)
+    result.tracking_retention_days = TRACKING_RETENTION_DAYS
+  } catch (err) {
+    result.tracking_identity_deleted = `erro: ${err instanceof Error ? err.message : 'unknown'}`
   }
 
   return NextResponse.json({ ok: true, ...result, ran_at: new Date().toISOString() })

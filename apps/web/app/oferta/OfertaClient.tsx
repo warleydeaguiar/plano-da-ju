@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { enrichIdentity } from '@/lib/tracking-client';
 
 // ╔══════════════════════════════════════════════════════════╗
 // ║  V2 — Página de oferta moderna feminina                  ║
@@ -641,6 +642,8 @@ export default function OfertaClient() {
     setError('');
     setLoadingMsg(LOADING_MESSAGES[0]);
     setStep('loading');
+    // Reforça a identidade de tracking com a PII do checkout (Advanced Matching)
+    enrichIdentity({ email, cpf: cpf.replace(/\D/g, ''), phone: (quizAnswers?.phone ?? '').toString().replace(/\D/g, '') });
     let msgIdx = 0;
     const interval = setInterval(() => {
       msgIdx = Math.min(msgIdx + 1, LOADING_MESSAGES.length - 1);
@@ -709,6 +712,8 @@ export default function OfertaClient() {
     }
     setIsSubmitting(true);
     setStep('loading');
+    // Reforça a identidade de tracking com a PII do checkout (Advanced Matching)
+    enrichIdentity({ email, cpf: cpf.replace(/\D/g, ''), phone: (quizAnswers?.phone ?? '').toString().replace(/\D/g, '') });
     // Rastreia em qual etapa o erro aconteceu (pro log de erros)
     let stage: 'tokenization' | 'checkout' = 'tokenization';
     try {

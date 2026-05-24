@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { QUIZ_STEPS, QuizAnswers, QuizStep } from '../../lib/quiz-questions'
+import { enrichIdentity } from '../../lib/tracking-client'
 import type { ActiveExperiment } from './page'
 
 // ╔══════════════════════════════════════════════════════════╗
@@ -1898,6 +1899,10 @@ export default function QuizClient({ experiments = [] }: { experiments?: ActiveE
         }),
       })
     } catch { /* silencia erros — não impede o avanço do quiz */ }
+
+    // Enriquece a identidade de tracking (server-side Advanced Matching) com a
+    // PII conhecida — alimenta o match do Lead/InitiateCheckout/Purchase no CAPI.
+    enrichIdentity({ email: emailInput.trim(), phone: phoneInput.replace(/\D/g, '') })
 
     // Pixel Meta — evento Lead com Advanced Matching (email + phone + nome)
     // Re-init do pixel com userData melhora o match score MUITO (sobe de "sem score" para 7-9)

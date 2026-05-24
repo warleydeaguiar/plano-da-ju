@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Script from 'next/script';
 import './globals.css';
+import TrackingBootstrap from './TrackingBootstrap';
 
 // Pixel Meta (Decisoes Inteligentes) — cobre TODO o funil:
 // Quiz Plano Capilar, Fashion Gold, /oferta, /obrigado.
@@ -69,7 +70,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           />
         </noscript>
       </head>
-      <body className="min-h-full bg-[#FFFAF5] text-[#2A1E2C] antialiased">{children}</body>
+      <body className="min-h-full bg-[#FFFAF5] text-[#2A1E2C] antialiased">
+        <TrackingBootstrap />
+        {children}
+      </body>
     </html>
   );
 }
