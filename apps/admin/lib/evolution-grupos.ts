@@ -147,12 +147,17 @@ export async function getGroupMetadata(groupJid: string, instanceName = DEFAULT_
  * Envia mensagem de texto direto para um número (DM, não grupo).
  * Aceita phone com ou sem DDI — adiciona 55 (Brasil) se necessário.
  */
+/** Delay aleatório de "digitando" (presence) — evita intervalo fixo de robô. */
+function randDelay(min = 900, max = 2600): number {
+  return Math.floor(min + Math.random() * (max - min))
+}
+
 export async function sendTextToNumber(phone: string, text: string, instanceName = DEFAULT_INSTANCE) {
   let d = phone.replace(/\D/g, '')
   if (d.length === 10 || d.length === 11) d = '55' + d
   return evoFetch(`/message/sendText/${encodeURIComponent(instanceName)}`, {
     method: 'POST',
-    body: JSON.stringify({ number: d, text, delay: 1200 }),
+    body: JSON.stringify({ number: d, text, delay: randDelay() }),
   })
 }
 
@@ -301,7 +306,7 @@ export async function sendTextToGroup(
     body: JSON.stringify({
       number: groupJid,
       text,
-      delay: 1200,
+      delay: randDelay(),
       ...(mentionAll ? { mentionsEveryOne: true } : {}),
     }),
   })

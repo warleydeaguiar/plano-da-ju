@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
-import { sendTextToGroup, sendMediaToGroup, getActiveInstance } from '@/lib/evolution-grupos'
+import { getActiveInstance } from '@/lib/evolution-grupos'
 
 export const dynamic = 'force-dynamic'
 
@@ -89,105 +89,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, scheduled: true, id: (broadcast as any).id, scheduled_at })
   }
 
-  // Senão, envia agora
-  return sendNow(supabase, broadcast as any, groups ?? [], resolvedInstance, mediaField, media_type, mimetype, message.trim(), !!mention_all)
-}
-
-const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
-
-async function sendNow(
-  supabase: ReturnType<typeof import('@/lib/supabase').createAdminClient>,
-  broadcast: any,
-  groups: any[],
-  instanceName: string,
-  media: string | null,
-  mediaType: string | null,
-  mimetype: string | null,
-  message: string,
-  mentionAll: boolean,
-) {
-  if (!groups.length) {
-    await supabase.from('wg_broadcasts' as any).update({ status: 'done', sent_at: new Date().toISOString() }).eq('id', broadcast.id)
-    return NextResponse.json({ ok: false, error: 'Nenhum grupo ativo com JID cadastrado' })
-  }
-
-  let success = 0
-  let fail = 0
-  let timeoutFails = 0
-  let consecutiveTimeouts = 0
-
-  for (const group of groups) {
-    // Circuit breaker: aborta após 3 timeouts seguidos
-    if (consecutiveTimeouts >= 3) {
-      await supabase.from('wg_broadcast_results' as any).insert({
-        broadcast_id: broadcast.id,
-        group_id: group.id,
-        status: 'failed',
-        error: 'Pulado: muitos timeouts — possível bloqueio WhatsApp',
-      })
-      fail++
-      continue
-    }
-    try {
-      // Ordem fixa: IMAGEM PRIMEIRO, depois TEXTO (mensagens separadas)
-      if (mediaType && media) {
-        // 1) Envia mídia sem caption (a imagem vai sozinha)
-        await sendMediaToGroup(
-          group.jid,
-          media,
-          mediaType as 'image' | 'video' | 'document',
-          mimetype ?? (mediaType === 'image' ? 'image/jpeg' : mediaType === 'video' ? 'video/mp4' : 'application/octet-stream'),
-          '', // sem caption — texto vai como mensagem separada
-          instanceName,
-          mentionAll,
-        )
-        // 2) Se houver texto, envia em mensagem separada com pequeno delay
-        if (message && message.trim()) {
-          await sleep(900)
-          await sendTextToGroup(group.jid, message, instanceName, mentionAll)
-        }
-      } else {
-        await sendTextToGroup(group.jid, message, instanceName, mentionAll)
-      }
-
-      await supabase.from('wg_broadcast_results' as any).insert({
-        broadcast_id: broadcast.id,
-        group_id: group.id,
-        status: 'ok',
-        sent_at: new Date().toISOString(),
-      })
-      success++
-      consecutiveTimeouts = 0
-    } catch (err) {
-      const errStr = String(err)
-      const isTimeout = errStr.includes('timeout') || errStr.includes('Timeout')
-      await supabase.from('wg_broadcast_results' as any).insert({
-        broadcast_id: broadcast.id,
-        group_id: group.id,
-        status: 'failed',
-        error: errStr,
-      })
-      fail++
-      if (isTimeout) { consecutiveTimeouts++; timeoutFails++ }
-      else consecutiveTimeouts = 0
-    }
-  }
-
-  await supabase
-    .from('wg_broadcasts' as any)
-    .update({ status: 'done', sent_at: new Date().toISOString(), success_count: success, fail_count: fail })
-    .eq('id', broadcast.id)
-
-  let warning: string | undefined
-  if (success === 0 && timeoutFails > 0) {
-    warning = `Todos os envios deram timeout. A conta "${instanceName}" pode ter sido bloqueada temporariamente pelo WhatsApp por envio em massa. Aguarde 24-72h ou tente outra instância.`
-  }
-
+  // ANTI-BAN: "enviar agora" NÃO dispara tudo inline. O broadcast já foi criado
+  // com status 'sending' e o cron (run-scheduled, 1×/min) faz o envio em DRIP —
+  // lotes pequenos com delays aleatórios entre grupos, espalhando por minutos.
+  // Isso evita o padrão de disparo em massa que faz o WhatsApp banir o número.
   return NextResponse.json({
-    ok: success > 0,
-    success,
-    fail,
-    total: groups.length,
-    warning,
+    ok: true,
+    queued: true,
+    id: (broadcast as any).id,
+    total_groups: groups?.length ?? 0,
   })
 }

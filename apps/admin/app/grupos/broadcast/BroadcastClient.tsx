@@ -365,6 +365,8 @@ export default function BroadcastClient({
 
       if (data.scheduled) {
         setResult({ ok: true, text: `✓ Agendado para ${formatDate(data.scheduled_at)}` })
+      } else if (data.queued) {
+        setResult({ ok: true, text: `✓ Enfileirado — enviando aos poucos para ${data.total_groups ?? activeGroups.length} grupos (modo seguro anti-bloqueio, ~1 grupo a cada 30–50s). Acompanhe o progresso no histórico abaixo.${emailNote}` })
       } else {
         setResult({ ok: true, text: `✓ Enviado para ${data.success} grupos${data.fail > 0 ? ` (${data.fail} falharam)` : ''}${emailNote}` })
       }

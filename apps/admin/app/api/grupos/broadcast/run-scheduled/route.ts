@@ -25,36 +25,47 @@ export async function GET(req: NextRequest) {
   const sb = createAdminClient()
   const now = new Date().toISOString()
 
-  // 1. Busca broadcasts scheduled cujo horário já passou
-  const { data: due, error } = await sb
-    .from('wg_broadcasts' as any)
-    .select('id, title, scheduled_at')
-    .eq('status', 'scheduled')
-    .lte('scheduled_at', now)
-    .order('scheduled_at', { ascending: true })
-    .limit(10) // processa no máximo 10 por execução pra não estourar timeout
+  // DRIP: processa UM broadcast por tick (um lote pequeno de grupos). Prioriza
+  // os que já estão 'sending' (em andamento) para terminá-los antes de iniciar
+  // um novo agendado. Cada lote tem delays longos entre grupos — por isso só
+  // cabe um broadcast por execução dentro do maxDuration.
 
-  if (error) {
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 })
+  // 1. Já tem um broadcast em andamento? continua ele.
+  const { data: sendingRows } = await sb
+    .from('wg_broadcasts' as any)
+    .select('id, title')
+    .eq('status', 'sending')
+    .order('created_at', { ascending: true })
+    .limit(1)
+
+  let pick = (sendingRows ?? [])[0] as any
+
+  // 2. Senão, pega o próximo agendado que já venceu.
+  if (!pick) {
+    const { data: dueRows, error } = await sb
+      .from('wg_broadcasts' as any)
+      .select('id, title')
+      .eq('status', 'scheduled')
+      .lte('scheduled_at', now)
+      .order('scheduled_at', { ascending: true })
+      .limit(1)
+    if (error) {
+      return NextResponse.json({ ok: false, error: error.message }, { status: 500 })
+    }
+    pick = (dueRows ?? [])[0]
   }
 
-  const list = (due ?? []) as any[]
-  if (list.length === 0) {
+  if (!pick) {
     return NextResponse.json({ ok: true, processed: 0, results: [] })
   }
 
-  // 2. Executa cada um sequencialmente (envia para grupos)
-  const results: any[] = []
-  for (const b of list) {
-    try {
-      const r = await executeBroadcast(b.id)
-      results.push({ id: b.id, title: b.title, ...r })
-    } catch (err: any) {
-      results.push({ id: b.id, title: b.title, ok: false, error: err?.message ?? String(err) })
-    }
+  // 3. Executa um lote desse broadcast (retoma nos próximos ticks se sobrar)
+  try {
+    const r = await executeBroadcast(pick.id)
+    return NextResponse.json({ ok: true, processed: 1, results: [{ id: pick.id, title: pick.title, ...r }] })
+  } catch (err: any) {
+    return NextResponse.json({ ok: false, processed: 1, results: [{ id: pick.id, title: pick.title, ok: false, error: err?.message ?? String(err) }] })
   }
-
-  return NextResponse.json({ ok: true, processed: results.length, results })
 }
 
 /** POST — mesmo comportamento que GET, para compatibilidade com triggers externos */
