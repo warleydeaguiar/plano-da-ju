@@ -162,6 +162,48 @@ function AdGroupDailyChart({ data, color, label }: { data: AdGroupResult['daily'
   );
 }
 
+function RevenueDailyChart({ data, price }: {
+  data: Array<{ day: string; count: number; isToday: boolean }>;
+  price: number;
+}) {
+  const series = data.map(d => ({ ...d, revenue: d.count * price }));
+  const maxRev = Math.max(1, ...series.map(d => d.revenue));
+  const total = series.reduce((s, d) => s + d.revenue, 0);
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 18 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: T.ink, fontFamily: fonts.ui }}>
+          Faturamento por dia{' '}
+          <span style={{ fontSize: 11, fontWeight: 500, color: T.inkMuted }}>(últimos 7 dias)</span>
+        </div>
+        <div style={{ fontSize: 12, color: T.inkMuted }}>
+          Total 7d: <strong style={{ color: T.green }}>{brl(total)}</strong>
+        </div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, height: 110 }}>
+        {series.map((d, i) => {
+          const h = d.revenue > 0 ? Math.max(8, (d.revenue / maxRev) * 84) : 4;
+          return (
+            <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+              <div style={{ fontSize: 10.5, fontWeight: 700, color: d.isToday ? T.green : T.ink, whiteSpace: 'nowrap' }}>
+                {d.revenue > 0 ? `R$${d.revenue.toFixed(0)}` : '—'}
+              </div>
+              <div style={{
+                width: '100%', height: h, borderRadius: '6px 6px 0 0',
+                background: d.revenue === 0 ? T.borderSoft : d.isToday ? T.green : T.greenSoft,
+                transition: 'all 0.2s',
+              }} />
+              <div style={{ fontSize: 11, color: d.isToday ? T.green : T.inkMuted, fontWeight: d.isToday ? 700 : 500 }}>
+                {d.day}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function CampaignList({ campaigns, color }: { campaigns: AdGroupResult['campaigns']; color: string }) {
   if (campaigns.length === 0) {
     return <div style={{ fontSize: 13, color: T.inkMuted, padding: '12px 0' }}>Nenhuma campanha com gasto este mês</div>;
@@ -633,6 +675,15 @@ export default async function DashboardPage() {
               Campanhas Plano — mês atual
             </div>
             <CampaignList campaigns={metaAds.plano.campaigns} color={T.pinkDeep} />
+          </div>
+        </div>
+
+        {/* Faturamento por dia (Plano) */}
+        <div style={{ ...card, padding: 22 }}>
+          <RevenueDailyChart data={byDay} price={PLAN_PRICE} />
+          <div style={{ fontSize: 11, color: T.inkSoft, marginTop: 14, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+            <span style={{ color: T.green, flexShrink: 0, marginTop: 1 }}><IconReceipt size={14} /></span>
+            <span>Faturamento = vendas confirmadas no dia × R${PLAN_PRICE.toFixed(2)}. Baseado em <strong>subscription_activated_at</strong> (pagamento aprovado).</span>
           </div>
         </div>
 
