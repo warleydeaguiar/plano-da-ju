@@ -3,6 +3,7 @@ import { pagarme } from '@/lib/pagarme/client';
 import { createServiceClient } from '@/lib/supabase/server';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { sendCapiEvent } from '@/lib/meta/capi';
+import { getTrackingIdentity } from '@/lib/tracking-server';
 import { logCheckoutError } from '@/lib/checkout-log';
 
 // GET /api/checkout/pix/status?order_id=xxx&email=yyy
@@ -89,9 +90,17 @@ export async function GET(req: NextRequest) {
           ? '55' + phoneDigits : phoneDigits || undefined;
         const fullName = String(ans.name ?? profile?.full_name ?? '').trim().split(/\s+/);
 
+        // Etapa 3 — enriquece com fbp/fbc/zip/cpf da identidade persistida.
+        // ip/userAgent vêm da própria request de polling (cliente real, confiável).
+        const trk = await getTrackingIdentity(supabase, {
+          sessionId: profile?.checkout_session_id,
+          email,
+        });
+
         await sendCapiEvent({
           eventName: 'Purchase',
           eventId: orderId, // dedup com pixel client
+          eventSourceUrl: 'https://planodaju.julianecost.com/oferta',
           user: {
             email,
             phone: phoneE164,
@@ -99,6 +108,10 @@ export async function GET(req: NextRequest) {
             lastName: fullName.slice(1).join(' ') || undefined,
             ip,
             userAgent: req.headers.get('user-agent') ?? undefined,
+            fbp: trk.fbp,
+            fbc: trk.fbc,
+            zip: trk.zip,
+            cpf: trk.cpf,
           },
           customData: {
             value: (order.amount ?? 3490) / 100,

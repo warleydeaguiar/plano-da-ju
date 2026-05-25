@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { sendCapiEvent } from '@/lib/meta/capi';
+import { getTrackingIdentity } from '@/lib/tracking-server';
 import { notifyNewSale } from '@/lib/discord';
 import { logCheckoutError } from '@/lib/checkout-log';
 
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
         // Busca perfil atual
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: profile } = await (supabase.from('profiles') as any)
-          .select('id, subscription_status, checkout_session_id, full_name, quiz_answers, hair_type, porosity, main_problems, pagarme_subscription_id')
+          .select('id, subscription_status, checkout_session_id, full_name, phone, quiz_answers, hair_type, porosity, main_problems, pagarme_subscription_id')
           .eq('email', email)
           .maybeSingle();
 
@@ -157,14 +158,29 @@ export async function POST(req: NextRequest) {
         }
         const fullName = String(ans.name ?? profile?.full_name ?? '').trim().split(/\s+/);
 
+        // Etapa 3 — Advanced Matching completo: o webhook roda sem navegador,
+        // então buscamos fbp/fbc/ip/user_agent/zip/cpf da identidade persistida
+        // (por checkout_session_id, com fallback de re-hidratação por email).
+        const trk = await getTrackingIdentity(supabase, {
+          sessionId: profile?.checkout_session_id,
+          email,
+        });
+
         await sendCapiEvent({
           eventName: 'Purchase',
           eventId: data.id, // dedup
+          eventSourceUrl: 'https://planodaju.julianecost.com/oferta',
           user: {
             email,
             phone: phoneE164,
             firstName: fullName[0],
             lastName: fullName.slice(1).join(' ') || undefined,
+            fbp: trk.fbp,
+            fbc: trk.fbc,
+            ip: trk.ip,
+            userAgent: trk.userAgent,
+            zip: trk.zip,
+            cpf: trk.cpf,
           },
           customData: {
             value: (data.amount ?? 3490) / 100,

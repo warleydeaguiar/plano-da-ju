@@ -40,7 +40,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Dados do servidor (mais confiáveis que o cliente)
-    const ip = getClientIp(req);
+    const ipRaw = getClientIp(req);
+    const ip = ipRaw && ipRaw !== 'unknown' ? ipRaw : null;
     const user_agent = req.headers.get('user-agent')?.slice(0, 500) ?? null;
     const geo_country = req.headers.get('x-vercel-ip-country') ?? null;
     const geo_region  = req.headers.get('x-vercel-ip-country-region') ?? null;
