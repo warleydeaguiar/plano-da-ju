@@ -38,49 +38,58 @@ export async function POST(req: NextRequest) {
 
     const sb = createAdminClient()
 
-    // 1) Verifica se já existe profile com esse email
+    // 1) Verifica se já existe profile com esse email.
+    // Só bloqueia se já estiver ATIVA (não sobrescrever cliente pagante). Um
+    // profile 'pending' (cadastro que não pagou, ou órfão de tentativa anterior)
+    // PODE ser convertido em presente/cortesia — então deixamos seguir.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: existing } = await (sb.from('profiles') as any)
       .select('id, email, subscription_status')
       .ilike('email', email)
       .maybeSingle()
-    if (existing) {
+    if (existing && existing.subscription_status === 'active') {
       return NextResponse.json({
-        error: `Já existe usuária com esse email (status: ${existing.subscription_status}). Edite a existente em vez de criar duplicada.`,
+        error: `Já existe usuária ATIVA com esse email. Edite a existente em vez de criar duplicada.`,
         existing_id: existing.id,
       }, { status: 409 })
     }
 
-    // 2) Cria (ou recupera) auth user. Senha temporária aleatória — usuária define a dela depois via /login
+    // 2) Resolve o auth user. Se já há profile, reusa o id (o auth user existe via FK).
+    // Senão, procura o auth user; se não existir, cria (o trigger on_auth_user_created
+    // cria a linha base em profiles automaticamente).
     const tempPassword = `temp_${Math.random().toString(36).slice(2)}_${Date.now().toString(36)}`
-    let userId: string | null = null
+    let userId: string | null = existing?.id ?? null
 
-    // Tenta achar auth user existente
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const listResp = await (sb.auth.admin as any).listUsers({ page: 1, perPage: 200 })
-    const found = listResp.data?.users?.find((u: { email?: string }) => u.email?.toLowerCase() === email)
-    if (found) {
-      userId = found.id
-    } else {
-      const { data: created, error: createErr } = await sb.auth.admin.createUser({
-        email,
-        password: tempPassword,
-        email_confirm: true,
-        user_metadata: { full_name: full_name ?? undefined },
-      })
-      if (createErr || !created.user) {
-        return NextResponse.json({ error: `Falha ao criar auth user: ${createErr?.message}` }, { status: 500 })
+    if (!userId) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const listResp = await (sb.auth.admin as any).listUsers({ page: 1, perPage: 200 })
+      const found = listResp.data?.users?.find((u: { email?: string }) => u.email?.toLowerCase() === email)
+      if (found) {
+        userId = found.id
+      } else {
+        const { data: created, error: createErr } = await sb.auth.admin.createUser({
+          email,
+          password: tempPassword,
+          email_confirm: true,
+          user_metadata: { full_name: full_name ?? undefined },
+        })
+        if (createErr || !created.user) {
+          return NextResponse.json({ error: `Falha ao criar auth user: ${createErr?.message}` }, { status: 500 })
+        }
+        userId = created.user.id
       }
-      userId = created.user.id
     }
 
-    // 3) Cria o profile
+    // 3) Grava o profile com UPSERT (onConflict id).
+    // O trigger handle_new_user() já criou a linha base (id, email, full_name) ao
+    // criar o auth user — então um INSERT colidiria com profiles_pkey. O upsert
+    // atualiza essa linha com os dados da assinatura.
     const now = new Date()
     const expiresAt = new Date(now.getTime() + duration_months * 30 * 86400000)
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: newProfile, error: profErr } = await (sb.from('profiles') as any)
-      .insert({
+      .upsert({
         id: userId,
         email,
         full_name,
@@ -93,12 +102,12 @@ export async function POST(req: NextRequest) {
         admin_notes,
         plan_status: 'pending_photo',
         plan_requested_at: now.toISOString(),
-      })
+      }, { onConflict: 'id' })
       .select()
       .single()
 
     if (profErr) {
-      return NextResponse.json({ error: `Falha ao criar profile: ${profErr.message}` }, { status: 500 })
+      return NextResponse.json({ error: `Falha ao gravar profile: ${profErr.message}` }, { status: 500 })
     }
 
     // 4) Envia email de boas-vindas (não bloqueia se falhar)
