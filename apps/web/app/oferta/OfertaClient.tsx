@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { enrichIdentity } from '@/lib/tracking-client';
+import { enrichIdentity, newEventId, sendServerEvent } from '@/lib/tracking-client';
 
 // ╔══════════════════════════════════════════════════════════╗
 // ║  V2 — Página de oferta moderna feminina                  ║
@@ -823,19 +823,21 @@ export default function OfertaClient() {
     logEvent({ event_type: 'checkout_initiated', email, payment_type: payType, amount_cents: 3490 });
 
     // Pixel Meta — InitiateCheckout com Advanced Matching
+    // eventID compartilhado entre Pixel e CAPI → deduplicação no Meta.
+    const ans: any = quizAnswers;
+    const icEmail = (ans.email ?? email ?? '').toString().toLowerCase().trim();
+    const icPhoneDigits = (ans.phone ?? '').toString().replace(/\D/g, '');
+    const icPhoneE164 = icPhoneDigits.length === 10 || icPhoneDigits.length === 11 ? '55' + icPhoneDigits : icPhoneDigits;
+    const icEventId = newEventId();
     try {
       if (typeof window !== 'undefined' && (window as any).fbq) {
-        const ans: any = quizAnswers;
-        const em = (ans.email ?? email ?? '').toString().toLowerCase().trim();
-        const phoneDigits = (ans.phone ?? '').toString().replace(/\D/g, '');
-        const phoneE164 = phoneDigits.length === 10 || phoneDigits.length === 11 ? '55' + phoneDigits : phoneDigits;
         const fullName = (ans.name ?? name ?? '').toString().toLowerCase().trim().split(/\s+/);
         const firstName = fullName[0] ?? '';
         const lastName  = fullName.slice(1).join(' ');
-        if (em || phoneE164) {
+        if (icEmail || icPhoneE164) {
           ;(window as any).fbq('init', '921783859786853', {
-            em: em || undefined,
-            ph: phoneE164 || undefined,
+            em: icEmail || undefined,
+            ph: icPhoneE164 || undefined,
             fn: firstName || undefined,
             ln: lastName || undefined,
             country: 'br',
@@ -845,9 +847,19 @@ export default function OfertaClient() {
           content_name: 'Plano Capilar Personalizado',
           value: 34.90,
           currency: 'BRL',
-        });
+        }, { eventID: icEventId });
       }
     } catch {}
+
+    // Espelha o InitiateCheckout no CAPI server-side (mesmo eventID → dedup)
+    sendServerEvent('InitiateCheckout', {
+      eventId: icEventId,
+      value: 34.90,
+      currency: 'BRL',
+      email: icEmail || undefined,
+      phone: icPhoneE164 || undefined,
+      contentName: 'Plano Capilar Personalizado',
+    });
     setStep('card_form');
   };
 

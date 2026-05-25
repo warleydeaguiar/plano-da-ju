@@ -21,15 +21,22 @@ export interface TrackingMatch {
   userAgent?: string;
   zip?: string;
   cpf?: string;
+  email?: string;
+  phone?: string;
 }
 
-const COLS = 'fbp, fbc, ip, user_agent, zip, cpf';
+const COLS = 'fbp, fbc, ip, user_agent, zip, cpf, email, phone';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function normalize(row: any | null): TrackingMatch {
   if (!row) return {};
   // ip pode ter sido gravado como 'unknown' (sem x-forwarded-for) — descarta.
   const ip = row.ip && row.ip !== 'unknown' ? row.ip : undefined;
+  // phone: garante DDI 55 (Brasil) p/ o match do Meta funcionar.
+  const phoneDigits = String(row.phone ?? '').replace(/\D/g, '');
+  const phone = phoneDigits
+    ? (phoneDigits.length === 10 || phoneDigits.length === 11 ? '55' + phoneDigits : phoneDigits)
+    : undefined;
   return {
     fbp: row.fbp ?? undefined,
     fbc: row.fbc ?? undefined,
@@ -37,6 +44,8 @@ function normalize(row: any | null): TrackingMatch {
     userAgent: row.user_agent ?? undefined,
     zip: row.zip ?? undefined,
     cpf: row.cpf ?? undefined,
+    email: row.email ?? undefined,
+    phone,
   };
 }
 

@@ -109,6 +109,58 @@ export function captureIdentity(): void {
   }, 1200);
 }
 
+/** Gera um event_id único para deduplicação Pixel↔CAPI. */
+export function newEventId(): string {
+  try {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+  } catch { /* ignore */ }
+  return `evt_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+}
+
+/**
+ * Espelha um evento de funil no CAPI server-side (/api/track/event) com o MESMO
+ * event_id usado no fbq → o Meta deduplica e fica com a melhor qualidade.
+ * Dispare logo após o fbq('track', ...) correspondente, passando o mesmo eventId.
+ */
+export function sendServerEvent(
+  eventName: 'Lead' | 'InitiateCheckout' | 'AddPaymentInfo',
+  opts: {
+    eventId: string;
+    value?: number;
+    currency?: string;
+    email?: string;
+    phone?: string;
+    contentName?: string;
+    contentCategory?: string;
+  },
+): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const payload = JSON.stringify({
+      session_id: getTrackingSessionId(),
+      event_name: eventName,
+      event_id: opts.eventId,
+      event_source_url: window.location.href.slice(0, 500),
+      value: opts.value,
+      currency: opts.currency,
+      email: opts.email,
+      phone: opts.phone,
+      content_name: opts.contentName,
+      content_category: opts.contentCategory,
+    });
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon('/api/track/event', new Blob([payload], { type: 'application/json' }));
+    } else {
+      fetch('/api/track/event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: payload,
+        keepalive: true,
+      }).catch(() => {});
+    }
+  } catch { /* best-effort */ }
+}
+
 /**
  * Enriquece a identidade com PII conhecida (email/telefone/cpf). Chamar quando o
  * usuário informa esses dados no quiz ou no checkout. O servidor normaliza/hasheia.

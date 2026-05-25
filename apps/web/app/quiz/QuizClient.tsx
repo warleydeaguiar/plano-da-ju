@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { QUIZ_STEPS, QuizAnswers, QuizStep } from '../../lib/quiz-questions'
-import { enrichIdentity } from '../../lib/tracking-client'
+import { enrichIdentity, newEventId, sendServerEvent } from '../../lib/tracking-client'
 import type { ActiveExperiment } from './page'
 
 // ╔══════════════════════════════════════════════════════════╗
@@ -1906,18 +1906,19 @@ export default function QuizClient({ experiments = [] }: { experiments?: ActiveE
 
     // Pixel Meta — evento Lead com Advanced Matching (email + phone + nome)
     // Re-init do pixel com userData melhora o match score MUITO (sobe de "sem score" para 7-9)
+    // eventID compartilhado entre Pixel e CAPI → deduplicação no Meta.
+    const leadEmail = emailInput.trim().toLowerCase()
+    const leadPhoneDigits = phoneInput.replace(/\D/g, '')
+    const leadPhoneE164 = leadPhoneDigits.length === 10 || leadPhoneDigits.length === 11 ? '55' + leadPhoneDigits : leadPhoneDigits
+    const leadEventId = newEventId()
     try {
       if (typeof window !== 'undefined' && (window as any).fbq) {
-        const email = emailInput.trim().toLowerCase()
-        const phoneDigits = phoneInput.replace(/\D/g, '')
-        // Phone precisa do DDI 55 (Brasil) pro match funcionar
-        const phoneE164 = phoneDigits.length === 10 || phoneDigits.length === 11 ? '55' + phoneDigits : phoneDigits
         const fullName = nameInput.trim().toLowerCase().split(/\s+/)
         const firstName = fullName[0] ?? ''
         const lastName  = fullName.slice(1).join(' ')
         ;(window as any).fbq('init', '921783859786853', {
-          em: email,
-          ph: phoneE164,
+          em: leadEmail,
+          ph: leadPhoneE164,
           fn: firstName,
           ln: lastName,
           country: 'br',
@@ -1927,9 +1928,20 @@ export default function QuizClient({ experiments = [] }: { experiments?: ActiveE
           content_category: 'plano-capilar',
           value: 34.90,
           currency: 'BRL',
-        })
+        }, { eventID: leadEventId })
       }
     } catch {}
+
+    // Espelha o Lead no CAPI server-side (mesmo eventID → dedup)
+    sendServerEvent('Lead', {
+      eventId: leadEventId,
+      value: 34.90,
+      currency: 'BRL',
+      email: leadEmail,
+      phone: leadPhoneE164,
+      contentName: 'Quiz Plano Capilar',
+      contentCategory: 'plano-capilar',
+    })
 
     setSubmitting(false)
     trackStepEvent(sessionIdRef.current, stepIndexRef.current, stepIdRef.current, 'answered', getStepVariantLabel(variantMapRef.current, stepIdRef.current))
