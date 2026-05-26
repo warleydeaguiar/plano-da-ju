@@ -23,32 +23,38 @@ export async function GET(req: NextRequest) {
     campaign: url.searchParams.get('utm_campaign') ?? null,
   }
 
-  // Pega o grupo com MENOS membros que tenha invite_link e esteja recebendo
-  const { data: target } = await db
-    .from('wg_groups' as any)
-    .select('id, invite_link, member_count, name')
-    .eq('status', 'active')
-    .eq('is_receiving', true)
-    .not('invite_link', 'is', null)
-    .lt('member_count', CAPACITY)
-    .order('member_count', { ascending: true })
-    .limit(1)
-    .maybeSingle()
+  const WA = 'https://chat.whatsapp.com/'
 
-  // Fallback: qualquer grupo ativo com link (ignora is_receiving)
-  let finalTarget = target as any
-  if (!finalTarget) {
-    const { data: fallback } = await db
+  // Seleção resiliente em camadas. Cada camada busca VÁRIOS candidatos (não 1)
+  // e já filtra por link de convite VÁLIDO no banco — assim, se algum grupo
+  // tiver link quebrado/revogado (ex: número admin banido), pulamos pro próximo
+  // em vez de cair num beco sem saída.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pickFrom = async (build: (q: any) => any): Promise<any | null> => {
+    const base = db
       .from('wg_groups' as any)
       .select('id, invite_link, member_count, name')
       .eq('status', 'active')
-      .not('invite_link', 'is', null)
-      .lt('member_count', CAPACITY)
+      .like('invite_link', `${WA}%`)
       .order('member_count', { ascending: true })
-      .limit(1)
-      .maybeSingle()
-    finalTarget = fallback
+      .limit(15)
+    const { data } = await build(base)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const list = (data ?? []) as any[]
+    return list.find(g => typeof g.invite_link === 'string' && g.invite_link.startsWith(WA)) ?? null
   }
+
+  let finalTarget =
+    // 1) ideal: recebendo + abaixo da capacidade
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await pickFrom((q: any) => q.eq('is_receiving', true).lt('member_count', CAPACITY))
+    // 2) qualquer ativo abaixo da capacidade (ignora pausa manual)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ?? await pickFrom((q: any) => q.lt('member_count', CAPACITY))
+    // 3) último recurso: qualquer ativo com link válido (ignora capacidade) —
+    //    melhor mandar pra um grupo cheio do que deixar a pessoa sem destino
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ?? await pickFrom((q: any) => q)
 
   if (finalTarget) {
     // Log do clique — await para garantir que o insert complete antes do redirect

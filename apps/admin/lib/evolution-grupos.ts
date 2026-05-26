@@ -141,6 +141,48 @@ export async function getGroupMetadata(groupJid: string, instanceName = DEFAULT_
   return evoFetch(`/group/findGroupInfos/${encodeURIComponent(instanceName)}?groupJid=${encodeURIComponent(groupJid)}`)
 }
 
+/**
+ * Busca o LINK DE CONVITE atual de um grupo via uma instância específica.
+ * A instância precisa ser ADMIN do grupo. Retorna a URL chat.whatsapp.com ou null.
+ */
+export async function fetchGroupInviteLink(groupJid: string, instanceName: string): Promise<string | null> {
+  try {
+    const data = await evoFetch(
+      `/group/inviteCode/${encodeURIComponent(instanceName)}?groupJid=${encodeURIComponent(groupJid)}`,
+      { timeoutMs: 15_000 }
+    )
+    const code: string | null = data?.inviteCode ?? null
+    const url: string | null = data?.inviteUrl ?? (code ? `https://chat.whatsapp.com/${code}` : null)
+    return (typeof url === 'string' && url.startsWith('https://chat.whatsapp.com/')) ? url : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * RESILIÊNCIA contra ban: tenta atualizar o invite_link de cada grupo usando
+ * QUALQUER instância conectada que seja admin do grupo. Assim, se o número que
+ * gerou os links for banido, outro número saudável fornece o convite válido —
+ * os grupos continuam acessíveis mesmo com um número fora do ar.
+ * Retorna { jid: link } apenas dos grupos onde conseguiu um link válido.
+ */
+export async function refreshInviteLinks(groupJids: string[]): Promise<Record<string, string>> {
+  const out: Record<string, string> = {}
+  if (groupJids.length === 0) return out
+
+  const instances = await fetchAllInstances()
+  const open = instances.filter(i => i.connectionStatus === 'open').map(i => i.name)
+  if (open.length === 0) return out
+
+  for (const jid of groupJids) {
+    for (const inst of open) {
+      const link = await fetchGroupInviteLink(jid, inst)
+      if (link) { out[jid] = link; break }
+    }
+  }
+  return out
+}
+
 // ─── Envio de mensagens ───────────────────────────────────────────────────────
 
 /**
