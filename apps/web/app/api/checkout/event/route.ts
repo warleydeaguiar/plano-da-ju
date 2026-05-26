@@ -36,21 +36,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'event_type inválido' }, { status: 400 });
     }
 
-    // Validação básica de session_id (formato cs_NUMERO_HASH)
-    if (!/^cs_\d+_[a-z0-9]{4,12}$/.test(session_id)) {
+    // Validação de session_id (formato cs_NUMERO_HASH). EXCEÇÃO: para
+    // 'checkout_error' NUNCA rejeitamos — é exatamente o que mais precisamos
+    // capturar; se a sessão vier fora do padrão, sanitizamos em vez de descartar
+    // (senão o erro do frontend some silenciosamente).
+    const sessionOk = /^cs_\d+_[a-z0-9]{4,12}$/.test(session_id);
+    if (!sessionOk && event_type !== 'checkout_error') {
       return NextResponse.json({ ok: false, error: 'session_id inválido' }, { status: 400 });
     }
+    const safeSession = sessionOk ? session_id : `cs_${Date.now()}_frontend`;
 
     const supabase = await createServiceClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase.from('checkout_events') as any).insert({
-      session_id,
+      session_id: safeSession,
       event_type,
       email: email ?? null,
       payment_type: payment_type ?? null,
       amount_cents: amount_cents ?? null,
       order_id: order_id ?? null,
-      metadata: metadata ?? {},
+      metadata: event_type === 'checkout_error'
+        ? { kind: 'frontend', ...(metadata ?? {}) }
+        : (metadata ?? {}),
     });
 
     return NextResponse.json({ ok: true });

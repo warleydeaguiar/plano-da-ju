@@ -174,6 +174,43 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // ── Captura RECUSA de pagamento ───────────────────────────────────────
+    // A PagarMe retorna HTTP 200 mesmo quando o cartão é NEGADO (charge fica
+    // 'failed'/'refused'). Sem isto, a recusa some — vira só um 'card_submitted'
+    // silencioso e o log de erros nunca enche. Aqui registramos a recusa com o
+    // motivo da adquirente (acquirer_message / código de retorno).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const lt: any = (charge as any)?.last_transaction ?? {};
+    const chargeStatus = charge?.status ?? '';
+    const txStatus = lt?.status ?? '';
+    const REFUSED = ['failed', 'refused', 'canceled', 'not_authorized', 'with_error'];
+    const isRefused = !isReallyPaid && (REFUSED.includes(chargeStatus) || REFUSED.includes(txStatus));
+
+    if (isRefused) {
+      const declineMsg =
+        lt?.acquirer_message ||
+        lt?.gateway_response?.errors?.[0]?.message ||
+        `Cobrança ${chargeStatus || 'recusada'}`;
+      await logCheckoutError({
+        route: 'checkout/card',
+        email: logEmail,
+        payment_type: 'card',
+        session_id: logSession,
+        kind: 'refused',
+        err: new Error(`Pagamento recusado: ${declineMsg}`),
+        context: {
+          installments:         n,
+          charge_status:        chargeStatus,
+          transaction_status:   txStatus,
+          acquirer_message:     lt?.acquirer_message ?? null,
+          acquirer_return_code: lt?.acquirer_return_code ?? null,
+          acquirer_name:        lt?.acquirer_name ?? null,
+          gateway_response:     lt?.gateway_response ?? null,
+          subscription_id:      subscription.id,
+        },
+      });
+    }
+
     return NextResponse.json({
       order_id:     chargeId ?? subscription.id,
       status:       subscription.status,

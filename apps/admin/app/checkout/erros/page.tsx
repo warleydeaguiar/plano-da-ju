@@ -39,8 +39,17 @@ export default async function ErrosPage() {
   // Contagem nas últimas 24h
   const since = Date.now() - 86400_000;
   const last24 = errors.filter(e => new Date(e.created_at).getTime() > since).length;
+  const refusedErrs = errors.filter(e => e.metadata?.kind === 'refused').length;
   const cardErrs = errors.filter(e => e.payment_type === 'card').length;
   const pixErrs = errors.filter(e => e.payment_type === 'pix').length;
+
+  // Rótulo/cor por tipo de problema
+  const kindLabel: Record<string, { txt: string; bg: string; fg: string }> = {
+    refused:  { txt: 'Recusa', bg: T.alertSoft, fg: T.alert },
+    exception:{ txt: 'Exceção', bg: T.dangerSoft, fg: T.danger },
+    frontend: { txt: 'Frontend', bg: T.blueSoft, fg: T.blue },
+    pix_failed:{ txt: 'PIX', bg: T.blueSoft, fg: T.blue },
+  };
 
   const card: React.CSSProperties = {
     background: T.surface, borderRadius: 18, border: `1px solid ${T.borderSoft}`,
@@ -65,9 +74,10 @@ export default async function ErrosPage() {
         </div>
 
         {/* Resumo */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
           {[
             { icon: IconClock, label: 'Últimas 24h', value: last24, accent: T.alert, accentSoft: T.alertSoft },
+            { icon: IconWarning, label: 'Recusas (100 últimos)', value: refusedErrs, accent: T.danger, accentSoft: T.dangerSoft },
             { icon: IconCreditCard, label: 'Cartão (100 últimos)', value: cardErrs, accent: T.pink, accentSoft: T.pinkSoft },
             { icon: IconBolt, label: 'PIX (100 últimos)', value: pixErrs, accent: T.blue, accentSoft: T.blueSoft },
           ].map((s, i) => {
@@ -117,6 +127,14 @@ export default async function ErrosPage() {
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        {(() => {
+                          const k = kindLabel[m.kind as string] ?? kindLabel.exception;
+                          return (
+                            <span style={{ fontSize: 10.5, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: k.bg, color: k.fg }}>
+                              {k.txt}
+                            </span>
+                          );
+                        })()}
                         <span style={{ fontSize: 13, fontWeight: 700, color: T.ink }}>{m.route ?? 'checkout'}</span>
                         {m.status && (
                           <span style={{ fontSize: 10.5, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: T.dangerSoft, color: T.danger }}>
@@ -134,6 +152,14 @@ export default async function ErrosPage() {
                       {peStr && (
                         <div style={{ fontSize: 11.5, color: T.danger, marginTop: 4, fontFamily: 'ui-monospace, Menlo, monospace', background: T.dangerSoft, padding: '6px 10px', borderRadius: 8 }}>
                           {peStr}
+                        </div>
+                      )}
+                      {/* Detalhe da recusa (adquirente) */}
+                      {(m.context?.acquirer_message || m.context?.acquirer_return_code || m.context?.charge_status) && (
+                        <div style={{ fontSize: 11.5, color: T.inkSoft, marginTop: 4, fontFamily: 'ui-monospace, Menlo, monospace', background: T.cream, padding: '6px 10px', borderRadius: 8 }}>
+                          {m.context.charge_status && <span>status: {m.context.charge_status} </span>}
+                          {m.context.acquirer_return_code && <span>· cód: {m.context.acquirer_return_code} </span>}
+                          {m.context.acquirer_message && <span>· {m.context.acquirer_message}</span>}
                         </div>
                       )}
                     </div>

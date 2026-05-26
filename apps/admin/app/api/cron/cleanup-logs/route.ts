@@ -49,14 +49,17 @@ export async function GET(req: NextRequest) {
     result.email_events_deleted = `erro: ${err instanceof Error ? err.message : 'unknown'}`
   }
 
-  // 2) checkout_events apenas do tipo 'checkout_error' (log de erro)
+  // 2) checkout_events do tipo 'checkout_error' (log de erro) — retenção MAIOR
+  // (30 dias) que os demais logs, para dar histórico de monitoramento da operação.
   try {
+    const errorCutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error, count } = await (sb.from('checkout_events') as any)
       .delete({ count: 'exact' })
       .eq('event_type', 'checkout_error')
-      .lt('created_at', cutoff)
+      .lt('created_at', errorCutoff)
     result.checkout_errors_deleted = error ? `erro: ${error.message}` : (count ?? 0)
+    result.checkout_error_retention_days = 30
   } catch (err) {
     result.checkout_errors_deleted = `erro: ${err instanceof Error ? err.message : 'unknown'}`
   }
