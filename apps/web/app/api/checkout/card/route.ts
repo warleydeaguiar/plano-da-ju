@@ -183,14 +183,22 @@ export async function POST(req: NextRequest) {
     const lt: any = (charge as any)?.last_transaction ?? {};
     const chargeStatus = charge?.status ?? '';
     const txStatus = lt?.status ?? '';
+    const subStatus = subscription.status ?? '';
     const REFUSED = ['failed', 'refused', 'canceled', 'not_authorized', 'with_error'];
-    const isRefused = !isReallyPaid && (REFUSED.includes(chargeStatus) || REFUSED.includes(txStatus));
+    // Detecta recusa olhando os 3 níveis: charge, transação E a própria
+    // subscription — porque numa recusa a PagarMe às vezes devolve a subscription
+    // 'failed'/'canceled' SEM uma charge utilizável (aí charge.status vem vazio).
+    const isRefused = !isReallyPaid && (
+      REFUSED.includes(chargeStatus) ||
+      REFUSED.includes(txStatus) ||
+      ['failed', 'canceled'].includes(subStatus)
+    );
 
     if (isRefused) {
       const declineMsg =
         lt?.acquirer_message ||
         lt?.gateway_response?.errors?.[0]?.message ||
-        `Cobrança ${chargeStatus || 'recusada'}`;
+        `Pagamento ${chargeStatus || subStatus || 'recusado'}`;
       await logCheckoutError({
         route: 'checkout/card',
         email: logEmail,
@@ -202,6 +210,7 @@ export async function POST(req: NextRequest) {
           installments:         n,
           charge_status:        chargeStatus,
           transaction_status:   txStatus,
+          subscription_status:  subStatus,
           acquirer_message:     lt?.acquirer_message ?? null,
           acquirer_return_code: lt?.acquirer_return_code ?? null,
           acquirer_name:        lt?.acquirer_name ?? null,
