@@ -312,6 +312,9 @@ function SequenceEditor({ seq, onSave, onDelete }: {
   const [saving, setSaving] = useState(false)
   const [running, setRunning] = useState(false)
   const [runResult, setRunResult] = useState<string | null>(null)
+  const [showTest, setShowTest] = useState(false)
+  const [testEmail, setTestEmail] = useState('warleydeaguiar@gmail.com')
+  const [testing, setTesting] = useState(false)
   const [draft, setDraft] = useState({
     name: seq.name,
     subject: seq.subject,
@@ -342,19 +345,30 @@ function SequenceEditor({ seq, onSave, onDelete }: {
     setSaving(false)
   }
 
-  const handleDryRun = async () => {
-    setRunning(true)
+  const handleTest = async () => {
+    const to = testEmail.trim()
+    if (!to || !to.includes('@')) { setRunResult('Informe um email válido para o teste'); return }
+    setTesting(true)
     setRunResult(null)
-    const res = await fetch('/api/email-marketing/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: 'sequence_run', sequence_id: seq.id, dry_run: true }),
-    })
-    const data = await res.json()
-    setRunResult(data.dry_run
-      ? `Simulação: enviaria para ${data.wouldSend} leads (${data.skipped} já receberam)`
-      : data.error ?? 'Erro')
-    setRunning(false)
+    try {
+      const res = await fetch('/api/email-marketing/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'single',
+          to_email: to,
+          subject: seq.subject,
+          html_body: seq.html_body,
+          text_body: seq.text_body,
+        }),
+      })
+      const data = await res.json()
+      setRunResult(data.ok ? `✓ Email de teste enviado para ${to}` : `✗ ${data.error ?? 'Erro ao enviar teste'}`)
+      if (data.ok) setShowTest(false)
+    } catch (e) {
+      setRunResult(`✗ ${String(e)}`)
+    }
+    setTesting(false)
   }
 
   const handleRun = async () => {
@@ -508,8 +522,8 @@ function SequenceEditor({ seq, onSave, onDelete }: {
       {!editing && (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button
-            onClick={handleDryRun}
-            disabled={running}
+            onClick={() => setShowTest(v => !v)}
+            disabled={testing}
             style={{
               padding: '8px 14px', borderRadius: 8,
               background: T.blueBg, color: T.blue,
@@ -517,7 +531,7 @@ function SequenceEditor({ seq, onSave, onDelete }: {
               cursor: 'pointer', fontFamily: 'inherit',
             }}
           >
-            🔍 Simular envio
+            ✉️ Enviar teste
           </button>
           <button
             onClick={handleRun}
@@ -546,6 +560,32 @@ function SequenceEditor({ seq, onSave, onDelete }: {
             }}
           >
             🗑 Excluir
+          </button>
+        </div>
+      )}
+
+      {/* Campo de email de teste */}
+      {!editing && showTest && (
+        <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <input
+            type="email"
+            value={testEmail}
+            onChange={e => setTestEmail(e.target.value)}
+            placeholder="email para o teste"
+            style={{
+              flex: 1, minWidth: 220, padding: '8px 12px', fontSize: 13,
+              border: `1px solid ${T.border}`, borderRadius: 8, fontFamily: 'inherit', outline: 'none',
+            }}
+          />
+          <button
+            onClick={handleTest}
+            disabled={testing}
+            style={{
+              padding: '8px 16px', borderRadius: 8, background: T.pink, color: '#fff',
+              border: 'none', fontSize: 12, fontWeight: 700, cursor: testing ? 'default' : 'pointer', fontFamily: 'inherit',
+            }}
+          >
+            {testing ? '⏳ Enviando…' : '📨 Enviar para este email'}
           </button>
         </div>
       )}

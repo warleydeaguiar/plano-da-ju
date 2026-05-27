@@ -207,33 +207,36 @@ export async function getNewPlansByDay(): Promise<Array<{ day: string; count: nu
   // não está gerando consistentemente — vendas é a métrica mais real pra Juliane).
   const sb = createAdminClient();
 
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-  sevenDaysAgo.setHours(0, 0, 0, 0);
+  // IMPORTANTE: agrupar por dia em HORÁRIO DE BRASÍLIA (UTC-3), igual aos cards
+  // "Receita hoje" do dashboard. Antes agrupava por data UTC e divergia (uma venda
+  // entre 00h–03h UTC caía em dias diferentes nos dois lugares).
+  const BR_OFFSET = 3 * 60 * 60 * 1000;
+  const nowBR = new Date(Date.now() - BR_OFFSET);
 
-  // Usa subscription_activated_at — momento em que o pagamento foi confirmado
+  // Busca uma janela folgada (8 dias) e bucketiza por data BR no JS.
+  const sinceUtc = new Date(Date.now() - 8 * 86400000).toISOString();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data } = await (sb.from('profiles') as any)
     .select('subscription_activated_at')
     .eq('subscription_status', 'active')
-    .gte('subscription_activated_at', sevenDaysAgo.toISOString());
+    .gte('subscription_activated_at', sinceUtc);
+
+  // data BR (YYYY-MM-DD) de um timestamp
+  const brDateKey = (ts: string) => new Date(new Date(ts).getTime() - BR_OFFSET).toISOString().slice(0, 10);
 
   const days: Array<{ day: string; count: number; isToday: boolean }> = [];
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
   const dayLetters = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
   for (let i = 6; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
+    const dayBR = new Date(nowBR.getTime() - i * 86400000);
+    const key = dayBR.toISOString().slice(0, 10);
     const isToday = i === 0;
-    const dayKey = d.toISOString().slice(0, 10);
     const count =
       ((data as Array<{ subscription_activated_at: string | null }>) ?? []).filter(
-        r => r.subscription_activated_at?.slice(0, 10) === dayKey,
+        r => r.subscription_activated_at != null && brDateKey(r.subscription_activated_at) === key,
       ).length;
     days.push({
-      day: isToday ? 'Hoje' : dayLetters[d.getDay()],
+      day: isToday ? 'Hoje' : dayLetters[new Date(key + 'T12:00:00Z').getUTCDay()],
       count,
       isToday,
     });
