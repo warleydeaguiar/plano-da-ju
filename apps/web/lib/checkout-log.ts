@@ -5,7 +5,8 @@ import { PagarMeError } from '@/lib/pagarme/client';
 export type CheckoutErrorKind =
   | 'exception'   // erro lançado (rede, 422 estrutural, bug)
   | 'refused'     // pagamento recusado pela adquirente (cartão negado, etc.)
-  | 'frontend'    // erro reportado pelo navegador (tokenização, validação)
+  | 'frontend'    // erro reportado pelo navegador (tokenização)
+  | 'block'       // bloqueio de venda no checkout (faltou campo, CPF inválido…)
   | 'pix_failed'; // PIX cancelado/expirado/falhou
 
 type CheckoutErrorInput = {

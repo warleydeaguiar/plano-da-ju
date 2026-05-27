@@ -1,7 +1,7 @@
 import { createAdminClient } from '../../../lib/supabase';
 import Sidebar from '../../components/Sidebar';
 import { T, fonts, shadow } from '../../theme';
-import { IconWarning, IconCreditCard, IconBolt, IconClock } from '../../icons';
+import { IconWarning, IconCreditCard, IconBolt, IconClock, IconClipboard } from '../../icons';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Erros de Checkout — Admin Plano da Ju' };
@@ -40,12 +40,14 @@ export default async function ErrosPage() {
   const since = Date.now() - 86400_000;
   const last24 = errors.filter(e => new Date(e.created_at).getTime() > since).length;
   const refusedErrs = errors.filter(e => e.metadata?.kind === 'refused').length;
+  const blockErrs = errors.filter(e => e.metadata?.kind === 'block').length;
   const cardErrs = errors.filter(e => e.payment_type === 'card').length;
   const pixErrs = errors.filter(e => e.payment_type === 'pix').length;
 
   // Rótulo/cor por tipo de problema
   const kindLabel: Record<string, { txt: string; bg: string; fg: string }> = {
     refused:  { txt: 'Recusa', bg: T.alertSoft, fg: T.alert },
+    block:    { txt: 'Bloqueio', bg: T.goldSoft, fg: T.gold },
     exception:{ txt: 'Exceção', bg: T.dangerSoft, fg: T.danger },
     frontend: { txt: 'Frontend', bg: T.blueSoft, fg: T.blue },
     pix_failed:{ txt: 'PIX', bg: T.blueSoft, fg: T.blue },
@@ -74,10 +76,11 @@ export default async function ErrosPage() {
         </div>
 
         {/* Resumo */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 16 }}>
           {[
             { icon: IconClock, label: 'Últimas 24h', value: last24, accent: T.alert, accentSoft: T.alertSoft },
             { icon: IconWarning, label: 'Recusas (100 últimos)', value: refusedErrs, accent: T.danger, accentSoft: T.dangerSoft },
+            { icon: IconClipboard, label: 'Bloqueios (100 últimos)', value: blockErrs, accent: T.gold, accentSoft: T.goldSoft },
             { icon: IconCreditCard, label: 'Cartão (100 últimos)', value: cardErrs, accent: T.pink, accentSoft: T.pinkSoft },
             { icon: IconBolt, label: 'PIX (100 últimos)', value: pixErrs, accent: T.blue, accentSoft: T.blueSoft },
           ].map((s, i) => {
@@ -152,6 +155,16 @@ export default async function ErrosPage() {
                       {peStr && (
                         <div style={{ fontSize: 11.5, color: T.danger, marginTop: 4, fontFamily: 'ui-monospace, Menlo, monospace', background: T.dangerSoft, padding: '6px 10px', borderRadius: 8 }}>
                           {peStr}
+                        </div>
+                      )}
+                      {/* Campos que faltaram (bloqueio de venda) */}
+                      {Array.isArray(m.missing_fields) && m.missing_fields.length > 0 && (
+                        <div style={{ marginTop: 5, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          {m.missing_fields.map((f: string, idx: number) => (
+                            <span key={idx} style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 99, background: T.goldSoft, color: T.gold }}>
+                              faltou: {f}
+                            </span>
+                          ))}
                         </div>
                       )}
                       {/* Detalhe da recusa (adquirente) */}

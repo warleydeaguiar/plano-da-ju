@@ -638,6 +638,23 @@ export default function OfertaClient() {
 
   async function handlePix() {
     if (isSubmitting) return;
+    // Validação de bloqueio — registra a venda perdida por dados faltando
+    const missing: string[] = [];
+    if (!name.trim()) missing.push('nome completo');
+    if (!email.includes('@')) missing.push('email');
+    if (!isValidCpf(cpf)) missing.push('CPF');
+    if (missing.length) {
+      logEvent({
+        event_type: 'checkout_error', email, payment_type: 'pix',
+        metadata: {
+          route: 'frontend/checkout', kind: 'block',
+          message: `Bloqueio no PIX — faltou: ${missing.join(', ')}`,
+          missing_fields: missing,
+        },
+      });
+      setError(`Falta preencher: ${missing.join(', ')}`);
+      return;
+    }
     setIsSubmitting(true);
     setError('');
     setLoadingMsg(LOADING_MESSAGES[0]);
@@ -702,9 +719,30 @@ export default function OfertaClient() {
     const publishableKey = process.env.NEXT_PUBLIC_PAGARME_PUBLISHABLE_KEY;
     if (!publishableKey) {
       setError('Chave de pagamento não configurada. Contate o suporte.');
+      logEvent({
+        event_type: 'checkout_error', email, payment_type: 'card',
+        metadata: { route: 'frontend/checkout', kind: 'block', message: 'Chave de pagamento não configurada (PagarMe publishable key ausente)' },
+      });
       return;
     }
     if (!isCardComplete) {
+      // Lista exatamente o que faltou — é a venda perdida que queremos monitorar
+      const missing: string[] = [];
+      if (!luhnCheck(cardNumber.replace(/\s/g, ''))) missing.push('número do cartão');
+      if (cardName.trim().length < 3) missing.push('nome no cartão');
+      if (!isValidExpiry(cardExpiry)) missing.push('validade');
+      if (cardCvv.length < 3) missing.push('CVV');
+      if (!isValidCpf(cpf)) missing.push('CPF');
+      if (cep.replace(/\D/g, '').length !== 8 || cepStatus !== 'ok') missing.push('CEP');
+      if (addressNumber.trim().length === 0) missing.push('número do endereço');
+      logEvent({
+        event_type: 'checkout_error', email, payment_type: 'card',
+        metadata: {
+          route: 'frontend/checkout', kind: 'block',
+          message: `Bloqueio no cartão — faltou: ${missing.join(', ') || 'campos inválidos'}`,
+          missing_fields: missing,
+        },
+      });
       setError('Preencha todos os campos corretamente.');
       // Marca todos como tocados pra mostrar erros
       setTouched({ number: true, name: true, expiry: true, cvv: true, cpf: true, cep: true, addressNumber: true });
@@ -1378,12 +1416,10 @@ export default function OfertaClient() {
             {/* CTA */}
             <GreenButton
               onClick={payType === 'card' ? handleCard : handlePix}
-              disabled={
-                isSubmitting ||
-                (payType === 'card'
-                  ? !isCardComplete
-                  : !isValidCpf(cpf) || !name.trim() || !email.includes('@'))
-              }
+              // Só bloqueia durante o processamento. Quando falta algum campo, o
+              // clique AINDA dispara o handler — que valida, registra o bloqueio
+              // (pra monitorarmos vendas perdidas) e mostra o que faltou.
+              disabled={isSubmitting}
             >
               {isSubmitting
                 ? '⏳ Processando…'
