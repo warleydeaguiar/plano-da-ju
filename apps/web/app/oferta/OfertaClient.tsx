@@ -454,6 +454,12 @@ export default function OfertaClient() {
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [cepStatus, setCepStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
   const [cepAddress, setCepAddress] = useState<{ city: string; state: string; street: string; neighborhood: string } | null>(null);
+  // Fallback manual de endereço — usado quando o ViaCEP não acha o CEP, pra não
+  // travar a venda no cartão (o endereço importa pro antifraude, então pedimos
+  // pra digitar em vez de bloquear).
+  const [manualStreet, setManualStreet] = useState('');
+  const [manualCity, setManualCity] = useState('');
+  const [manualState, setManualState] = useState('');
   const [cardOrderId, setCardOrderId] = useState('');
   const [cardPolling, setCardPolling] = useState(false);
 
@@ -583,14 +589,28 @@ export default function OfertaClient() {
     if (cpfClean.length > 0 && cpfClean.length === 11 && !isValidCpf(cpf)) {
       errs.cpf = 'CPF inválido';
     }
-    if (cep.replace(/\D/g, '').length > 0 && cep.replace(/\D/g, '').length === 8 && cepStatus === 'error') {
-      errs.cep = 'CEP não encontrado';
+    // CEP só é erro se não achou E a pessoa não preencheu o endereço manual
+    if (cep.replace(/\D/g, '').length === 8 && cepStatus === 'error' && !(manualCity.trim() && manualState.trim())) {
+      errs.cep = 'CEP não encontrado — preencha cidade e UF abaixo';
     }
     if (addressNumber.length === 0) {
       errs.addressNumber = 'Informe o número';
     }
     return errs;
-  }, [cardNumber, cardName, cardExpiry, cardCvv, cpf, cep, cepStatus, addressNumber]);
+  }, [cardNumber, cardName, cardExpiry, cardCvv, cpf, cep, cepStatus, addressNumber, manualCity, manualState]);
+
+  // Endereço efetivo: ViaCEP quando resolve, senão o que a pessoa digitou manualmente.
+  const effAddress = useMemo(() => {
+    if (cepStatus === 'ok' && cepAddress) return cepAddress;
+    return { city: manualCity.trim(), state: manualState.trim(), street: manualStreet.trim(), neighborhood: '' };
+  }, [cepStatus, cepAddress, manualCity, manualState, manualStreet]);
+
+  const addressOk = useMemo(() => (
+    cep.replace(/\D/g, '').length === 8 &&
+    effAddress.city.length > 0 &&
+    effAddress.state.length >= 2 &&
+    addressNumber.trim().length > 0
+  ), [cep, effAddress, addressNumber]);
 
   const isCardComplete = useMemo(() => (
     luhnCheck(cardNumber.replace(/\s/g, '')) &&
@@ -598,10 +618,8 @@ export default function OfertaClient() {
     isValidExpiry(cardExpiry) &&
     cardCvv.length >= 3 &&
     isValidCpf(cpf) &&
-    cep.replace(/\D/g, '').length === 8 &&
-    cepStatus === 'ok' &&
-    addressNumber.trim().length > 0
-  ), [cardNumber, cardName, cardExpiry, cardCvv, cpf, cep, cepStatus, addressNumber]);
+    addressOk
+  ), [cardNumber, cardName, cardExpiry, cardCvv, cpf, addressOk]);
 
   // Detecta brand do cartão enquanto digita
   useEffect(() => {
@@ -733,7 +751,8 @@ export default function OfertaClient() {
       if (!isValidExpiry(cardExpiry)) missing.push('validade');
       if (cardCvv.length < 3) missing.push('CVV');
       if (!isValidCpf(cpf)) missing.push('CPF');
-      if (cep.replace(/\D/g, '').length !== 8 || cepStatus !== 'ok') missing.push('CEP');
+      if (cep.replace(/\D/g, '').length !== 8) missing.push('CEP');
+      else if (!effAddress.city || effAddress.state.length < 2) missing.push('cidade/UF do endereço');
       if (addressNumber.trim().length === 0) missing.push('número do endereço');
       logEvent({
         event_type: 'checkout_error', email, payment_type: 'card',
@@ -757,9 +776,12 @@ export default function OfertaClient() {
     try {
       const cleanCpf = cpf.replace(/\D/g, '');
       const cleanCep = cep.replace(/\D/g, '');
-      // Endereço REAL vindo do ViaCEP (não mais hardcoded SP)
-      const billingCity  = cepAddress?.city  ?? 'São Paulo';
-      const billingState = cepAddress?.state ?? 'SP';
+      // Endereço REAL — ViaCEP quando resolve, senão o que a cliente digitou.
+      // SEM defaults falsos de SP (mascarar endereço prejudica o antifraude).
+      const billingCity  = effAddress.city;
+      const billingState = effAddress.state;
+      const billingStreet = effAddress.street;
+      const billingNeighborhood = effAddress.neighborhood;
 
       const tokenRes = await fetch(`https://api.pagar.me/core/v5/tokens?appId=${publishableKey}`, {
         method: 'POST',
@@ -776,9 +798,9 @@ export default function OfertaClient() {
             billing_address: {
               line_1: (() => {
                 const parts = [
-                  cepAddress?.street,
+                  billingStreet,
                   addressNumber.trim(),
-                  cepAddress?.neighborhood,
+                  billingNeighborhood,
                 ].filter(Boolean);
                 return parts.length > 0
                   ? parts.join(', ')
@@ -813,9 +835,9 @@ export default function OfertaClient() {
             cep: cleanCep,
             line_1: (() => {
               const parts = [
-                cepAddress?.street,
+                billingStreet,
                 addressNumber.trim(),
-                cepAddress?.neighborhood,
+                billingNeighborhood,
               ].filter(Boolean);
               return parts.length > 0
                 ? parts.join(', ')
@@ -1354,6 +1376,33 @@ export default function OfertaClient() {
                       {touched.addressNumber && cardErrors.addressNumber && <p style={{ color: T.red, fontSize: 12, marginTop: 3 }}>{cardErrors.addressNumber}</p>}
                     </div>
                   </div>
+
+                  {/* Fallback manual — aparece se o ViaCEP não achou o CEP, pra não travar a venda */}
+                  {cepStatus === 'error' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <p style={{ fontSize: 11.5, color: T.inkSoft, margin: '0 0 6px' }}>
+                          Não localizamos esse CEP automaticamente. Preencha o endereço de cobrança:
+                        </p>
+                      </div>
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <label style={labelS}>Rua / logradouro</label>
+                        <input className="co-input" style={inputS} placeholder="Rua, avenida…"
+                          value={manualStreet} onChange={e => setManualStreet(e.target.value.slice(0, 120))} />
+                      </div>
+                      <div>
+                        <label style={labelS}>Cidade</label>
+                        <input className="co-input" style={inputS} placeholder="Cidade"
+                          value={manualCity} onChange={e => setManualCity(e.target.value.slice(0, 60))} />
+                      </div>
+                      <div>
+                        <label style={labelS}>UF</label>
+                        <input className="co-input" style={inputS} placeholder="SP" maxLength={2}
+                          value={manualState} onChange={e => setManualState(e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2))} />
+                      </div>
+                    </div>
+                  )}
+
                   <div>
                     <label style={labelS}>Parcelas</label>
                     <select

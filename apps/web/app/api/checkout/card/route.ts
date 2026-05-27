@@ -52,7 +52,9 @@ export async function POST(req: NextRequest) {
     const cleanPhone = String(rawPhone).replace(/\D/g, '');
     const areaCode   = cleanPhone.length >= 10 ? cleanPhone.slice(0, 2)  : '';
     const phoneNum   = cleanPhone.length >= 10 ? cleanPhone.slice(2)     : '';
-    const cleanCep   = billing_address?.cep?.replace(/\D/g, '') ?? '01310100';
+    // Endereço REAL do form (sem fabricar SP/CEP genérico — endereço falso
+    // prejudica o antifraude). O frontend garante CEP + cidade/UF reais.
+    const cleanCep   = billing_address?.cep?.replace(/\D/g, '') ?? '';
 
     const supabase = await createServiceClient();
 
@@ -109,10 +111,10 @@ export async function POST(req: NextRequest) {
       card_token,
       card: {
         billing_address: {
-          line_1: billing_address?.line_1 ?? billing_address?.street ?? 'Não informado',
+          line_1: billing_address?.line_1 ?? billing_address?.street ?? '',
           zip_code: cleanCep,
-          city:  billing_address?.city  ?? 'São Paulo',
-          state: billing_address?.state ?? 'SP',
+          city:  billing_address?.city  ?? '',
+          state: billing_address?.state ?? '',
           country: 'BR',
         },
       },
