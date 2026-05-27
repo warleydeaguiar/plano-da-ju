@@ -97,3 +97,34 @@ function rewriteLinks(html: string, sendId: string): string {
 export function injectTracking(html: string, sendId: string): string {
   return injectPixel(rewriteLinks(html, sendId), sendId)
 }
+
+/** base64url-encode (igual ao usado no click tracking). */
+function b64UrlEncodeEmail(s: string): string {
+  return Buffer.from(s, 'utf8').toString('base64')
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+/** URL pública de descadastro (opt-out), assinada com HMAC. */
+export function unsubscribeUrl(email: string): string {
+  const e = email.toLowerCase().trim()
+  const sig = signTracking(`unsub:${e}`)
+  const sigParam = sig ? `&sig=${sig}` : ''
+  return `${TRACKING_DOMAIN}/api/email/unsubscribe?e=${b64UrlEncodeEmail(e)}${sigParam}`
+}
+
+/**
+ * Garante um link de descadastro no rodapé do email. Se o HTML já tiver um
+ * link de /unsubscribe (o injectTracking pula esses), não duplica.
+ */
+export function injectUnsubscribe(html: string, email: string): string {
+  if (/\/unsubscribe/i.test(html)) return html
+  const url = unsubscribeUrl(email)
+  const footer = `<div style="text-align:center;font-size:11px;color:#B5A6B7;padding:18px 16px;line-height:1.6;">`
+    + `Você recebe este email porque faz parte da base do Plano da Ju.<br>`
+    + `<a href="${url}" style="color:#B5A6B7;text-decoration:underline;">Não quero mais receber estes emails</a>`
+    + `</div>`
+  if (/<\/body>/i.test(html)) {
+    return html.replace(/<\/body>/i, `${footer}</body>`)
+  }
+  return html + footer
+}

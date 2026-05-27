@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { sendEmail, fillTemplate } from '@/lib/ses-mailer'
 import { buildPersonalizationVars, fillRichTemplate } from '@/lib/email-personalization'
-import { injectTracking } from '@/lib/email-tracking'
+import { injectTracking, injectUnsubscribe, unsubscribeUrl } from '@/lib/email-tracking'
 
 /**
  * Helper que faz o ciclo completo de envio com tracking:
@@ -14,6 +14,16 @@ import { injectTracking } from '@/lib/email-tracking'
  * Se o INSERT falhar, envia sem tracking pra não bloquear entrega.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function isSuppressed(sb: any, email: string): Promise<boolean> {
+  const { data } = await sb
+    .from('wg_email_unsubscribes')
+    .select('email')
+    .eq('email', email.toLowerCase().trim())
+    .maybeSingle()
+  return !!data
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function sendWithTracking(sb: any, params: {
   to: string
   toName?: string | null
@@ -23,7 +33,14 @@ async function sendWithTracking(sb: any, params: {
   sequence_id?: string | null
   campaign_id?: string | null
   lead_id?: string | null
-}): Promise<{ ok: boolean; error?: string; messageId?: string }> {
+}): Promise<{ ok: boolean; error?: string; messageId?: string; skipped?: boolean }> {
+  // 0) Nunca envia para quem descadastrou (opt-out) — proteção central
+  if (await isSuppressed(sb, params.to)) {
+    return { ok: false, skipped: true, error: 'unsubscribed' }
+  }
+
+  const unsubUrl = unsubscribeUrl(params.to)
+
   // 1) Insert pending
   const { data: inserted, error: insertErr } = await sb
     .from('wg_email_sends')
@@ -40,25 +57,28 @@ async function sendWithTracking(sb: any, params: {
     .single()
 
   if (insertErr || !inserted) {
-    // Sem tracking — envia direto
+    // Sem tracking — envia direto (mas com footer de descadastro + header)
     return await sendEmail({
       to: params.to,
       toName: params.toName ?? undefined,
       subject: params.subject,
-      html: params.html,
+      html: injectUnsubscribe(params.html, params.to),
       text: params.text,
+      listUnsubscribeUrl: unsubUrl,
     })
   }
 
   const sendId = inserted.id as string
-  const htmlTracked = injectTracking(params.html, sendId)
+  // tracking de pixel/clique + footer de descadastro (não duplica se já houver)
+  const htmlFinal = injectUnsubscribe(injectTracking(params.html, sendId), params.to)
 
   const result = await sendEmail({
     to: params.to,
     toName: params.toName ?? undefined,
     subject: params.subject,
-    html: htmlTracked,
+    html: htmlFinal,
     text: params.text,
+    listUnsubscribeUrl: unsubUrl,
   })
 
   await sb.from('wg_email_sends')
@@ -336,32 +356,31 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, sent, errors, total: (leads ?? []).length })
   }
 
-  // ── 5) Broadcast → email pra TODA a base (profiles + leads) ──
+  // ── 5) Broadcast → email pra base filtrada (com preview via dry_run) ──
   if (mode === 'broadcast_email') {
-    const { subject, message, image_url } = body
+    const { subject, message, image_url, filters, dry_run } = body
     if (!subject?.trim() || !message?.trim()) {
       return NextResponse.json({ error: 'subject e message são obrigatórios' }, { status: 400 })
     }
 
-    // Junta a base: profiles + wg_quiz_leads, dedup por email (preferindo profile)
-    const [{ data: profiles }, { data: leads }] = await Promise.all([
-      (sb as any).from('profiles').select('email, full_name').not('email', 'is', null).limit(5000),
-      (sb as any).from('wg_quiz_leads').select('email, name').not('email', 'is', null).limit(5000),
-    ])
-    const map = new Map<string, { email: string; name: string | null }>()
-    for (const l of (leads ?? [])) {
-      const e = (l.email ?? '').toLowerCase().trim()
-      if (e && !map.has(e)) map.set(e, { email: l.email, name: l.name ?? null })
+    const recipients = await buildAudience(sb, filters ?? {})
+
+    // Preview: só calcula o alcance, não envia
+    if (dry_run) {
+      return NextResponse.json({
+        ok: true,
+        dry_run: true,
+        count: recipients.length,
+        customers: recipients.filter(r => r.kind === 'customer').length,
+        leads: recipients.filter(r => r.kind === 'lead').length,
+        sample: recipients.slice(0, 8).map(r => ({ name: r.name, email: r.email, kind: r.kind })),
+      })
     }
-    for (const p of (profiles ?? [])) {
-      const e = (p.email ?? '').toLowerCase().trim()
-      if (e) map.set(e, { email: p.email, name: p.full_name ?? null }) // profile sobrescreve (nome melhor)
-    }
-    const recipients = [...map.values()]
 
     const html = buildBroadcastEmailHtml(message.trim(), image_url || null)
+    const campaignId = `broadcast-${Date.now()}`
 
-    let sent = 0, errors = 0
+    let sent = 0, errors = 0, skipped = 0
     const BATCH = 12
     for (let i = 0; i < recipients.length; i += BATCH) {
       const batch = recipients.slice(i, i + BATCH)
@@ -371,14 +390,123 @@ export async function POST(req: NextRequest) {
           toName: r.name,
           subject: subject.trim(),
           html,
+          campaign_id: campaignId,
         })
-        if (result.ok) sent++; else errors++
+        if (result.ok) sent++
+        else if (result.skipped) skipped++
+        else errors++
       }))
     }
-    return NextResponse.json({ ok: true, sent, errors, total: recipients.length })
+    return NextResponse.json({ ok: true, sent, errors, skipped, total: recipients.length, campaign_id: campaignId })
   }
 
   return NextResponse.json({ error: 'mode inválido' }, { status: 400 })
+}
+
+// ── Audiência / engajamento (broadcast + higienização) ─────────────────────────
+
+type Recip = { email: string; name: string | null; kind: 'customer' | 'lead' }
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function loadSuppressedSet(sb: any, emails: string[]): Promise<Set<string>> {
+  if (emails.length === 0) return new Set()
+  const lowered = emails.map(e => e.toLowerCase().trim())
+  const { data } = await sb.from('wg_email_unsubscribes').select('email').in('email', lowered)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return new Set((data ?? []).map((r: any) => (r.email ?? '').toLowerCase()))
+}
+
+export type EngStat = { sent: number; opened: number; clicked: number; lastEngaged: number | null; firstSent: number | null }
+
+/** Agrega engajamento por email a partir de wg_email_sends (volume pequeno). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function loadEngagement(sb: any): Promise<Map<string, EngStat>> {
+  const map = new Map<string, EngStat>()
+  const { data } = await sb.from('wg_email_sends')
+    .select('to_email, opened_at, clicked_at, last_opened_at, last_clicked_at, sent_at')
+    .eq('status', 'sent')
+    .limit(100000)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const r of (data ?? []) as any[]) {
+    const e = (r.to_email ?? '').toLowerCase().trim()
+    if (!e) continue
+    const cur = map.get(e) ?? { sent: 0, opened: 0, clicked: 0, lastEngaged: null, firstSent: null }
+    cur.sent++
+    if (r.opened_at) cur.opened++
+    if (r.clicked_at) cur.clicked++
+    const sentT = r.sent_at ? new Date(r.sent_at).getTime() : null
+    if (sentT && (cur.firstSent === null || sentT < cur.firstSent)) cur.firstSent = sentT
+    const eng = Math.max(
+      r.last_opened_at ? new Date(r.last_opened_at).getTime() : 0,
+      r.last_clicked_at ? new Date(r.last_clicked_at).getTime() : 0,
+      r.opened_at ? new Date(r.opened_at).getTime() : 0,
+      r.clicked_at ? new Date(r.clicked_at).getTime() : 0,
+    )
+    if (eng > 0 && (cur.lastEngaged === null || eng > cur.lastEngaged)) cur.lastEngaged = eng
+    map.set(e, cur)
+  }
+  return map
+}
+
+/** Constrói a audiência do broadcast a partir dos filtros. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function buildAudience(sb: any, filters: any): Promise<Recip[]> {
+  const audience: string = filters?.audience ?? 'all'
+  const statuses: string[] = Array.isArray(filters?.subscription_status) ? filters.subscription_status : []
+  const quizSlug: string | null = filters?.quiz_slug || null
+  const after: string | null = filters?.created_after || null
+  const before: string | null = filters?.created_before || null
+
+  // emails de clientes ativos (p/ audiência leads_no_purchase)
+  const activeEmails = new Set<string>()
+  {
+    const { data } = await sb.from('profiles').select('email').eq('subscription_status', 'active').not('email', 'is', null).limit(50000)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const p of (data ?? []) as any[]) { const e = (p.email || '').toLowerCase().trim(); if (e) activeEmails.add(e) }
+  }
+
+  const includeCustomers = audience === 'all' || audience === 'customers'
+  const includeLeads = audience === 'all' || audience === 'leads_no_purchase'
+  const map = new Map<string, Recip>()
+
+  if (includeCustomers) {
+    let q = sb.from('profiles').select('email, full_name, subscription_status, created_at').not('email', 'is', null).limit(50000)
+    if (statuses.length) q = q.in('subscription_status', statuses)
+    if (after) q = q.gte('created_at', after)
+    if (before) q = q.lte('created_at', before)
+    const { data } = await q
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const p of (data ?? []) as any[]) { const e = (p.email || '').toLowerCase().trim(); if (!e) continue; map.set(e, { email: p.email, name: p.full_name ?? null, kind: 'customer' }) }
+  }
+  if (includeLeads) {
+    let q = sb.from('wg_quiz_leads').select('email, name, created_at, quiz_slug').not('email', 'is', null).limit(50000)
+    if (quizSlug) q = q.eq('quiz_slug', quizSlug)
+    if (after) q = q.gte('created_at', after)
+    if (before) q = q.lte('created_at', before)
+    const { data } = await q
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const l of (data ?? []) as any[]) { const e = (l.email || '').toLowerCase().trim(); if (!e) continue; if (audience === 'leads_no_purchase' && activeEmails.has(e)) continue; if (!map.has(e)) map.set(e, { email: l.email, name: l.name ?? null, kind: 'lead' }) }
+  }
+
+  let recips = [...map.values()]
+
+  // remove quem descadastrou
+  const supp = await loadSuppressedSet(sb, recips.map(r => r.email))
+  recips = recips.filter(r => !supp.has(r.email.toLowerCase().trim()))
+
+  // opção: excluir contatos frios (recebeu muito e nunca abriu)
+  if (filters?.exclude_cold) {
+    const eng = await loadEngagement(sb)
+    const now = Date.now()
+    recips = recips.filter(r => {
+      const s = eng.get(r.email.toLowerCase().trim())
+      if (!s) return true
+      const cold = s.opened === 0 && s.clicked === 0 && s.sent >= 4 && s.firstSent !== null && (now - s.firstSent) >= 30 * 86400000
+      return !cold
+    })
+  }
+
+  return recips
 }
 
 /** Monta um email branded simples a partir do texto do broadcast. */
@@ -397,9 +525,6 @@ function buildBroadcastEmailHtml(message: string, imageUrl: string | null): stri
     <div style="background:#FFFFFF;border-radius:18px;padding:28px 24px;box-shadow:0 1px 3px rgba(42,30,44,0.06);">
       ${img}
       <div style="font-size:15px;line-height:1.6;color:#2A1E2C;">${safe}</div>
-    </div>
-    <div style="text-align:center;font-size:11px;color:#B5A6B7;padding:18px 0;">
-      Você recebe este email porque faz parte da base do Plano da Ju.
     </div>
   </div>
 </body></html>`

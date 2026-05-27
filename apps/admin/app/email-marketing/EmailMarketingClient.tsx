@@ -39,7 +39,7 @@ const T = {
   graySoft:   '#F1F5F9',
 }
 
-type View = 'dashboard' | 'sequencias' | 'teste'
+type View = 'dashboard' | 'broadcast' | 'higiene' | 'sequencias' | 'teste'
 
 interface Sequence {
   id: string
@@ -661,6 +661,248 @@ function TestEmailView() {
 }
 
 // ╔════════════════════════════════════════════╗
+// ║              Broadcast View                ║
+// ╚════════════════════════════════════════════╝
+type Audience = 'all' | 'customers' | 'leads_no_purchase'
+
+function BroadcastView() {
+  const [subject, setSubject] = useState('')
+  const [message, setMessage] = useState('')
+  const [imageUrl, setImageUrl] = useState('')
+  const [audience, setAudience] = useState<Audience>('all')
+  const [excludeCold, setExcludeCold] = useState(true)
+  const [reach, setReach] = useState<{ count: number; customers: number; leads: number; sample: { name: string | null; email: string; kind: string }[] } | null>(null)
+  const [calc, setCalc] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [result, setResult] = useState<{ ok: boolean; sent?: number; errors?: number; skipped?: number; total?: number; error?: string } | null>(null)
+
+  const filters = { audience, exclude_cold: excludeCold }
+
+  const calcReach = async () => {
+    setCalc(true); setReach(null); setResult(null)
+    try {
+      const res = await fetch('/api/email-marketing/send', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'broadcast_email', subject: subject || 'preview', message: message || 'preview', filters, dry_run: true }),
+      })
+      const data = await res.json()
+      if (data.ok) setReach({ count: data.count, customers: data.customers, leads: data.leads, sample: data.sample ?? [] })
+    } catch {}
+    setCalc(false)
+  }
+
+  const send = async () => {
+    if (!subject.trim() || !message.trim()) { setResult({ ok: false, error: 'Preencha assunto e mensagem' }); return }
+    const n = reach?.count ?? 0
+    if (!confirm(`Enviar esta campanha para ${n > 0 ? n : 'a base filtrada'} ${n === 1 ? 'pessoa' : 'pessoas'}? Esta ação não pode ser desfeita.`)) return
+    setSending(true); setResult(null)
+    try {
+      const res = await fetch('/api/email-marketing/send', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'broadcast_email', subject: subject.trim(), message: message.trim(), image_url: imageUrl.trim() || null, filters }),
+      })
+      const data = await res.json()
+      setResult(data)
+      if (data.ok) { setReach(null) }
+    } catch (e) { setResult({ ok: false, error: String(e) }) }
+    setSending(false)
+  }
+
+  const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 14px', fontSize: 14, border: `1px solid ${T.border}`, borderRadius: 9, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }
+  const labelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: T.inkSoft, marginBottom: 6, display: 'block', textTransform: 'uppercase', letterSpacing: 0.4 }
+
+  const audienceOpts: { v: Audience; label: string; desc: string }[] = [
+    { v: 'all', label: 'Toda a base', desc: 'clientes + leads' },
+    { v: 'customers', label: 'Só clientes ativos', desc: 'quem assina o plano' },
+    { v: 'leads_no_purchase', label: 'Leads que não compraram', desc: 'ainda não assinaram' },
+  ]
+
+  return (
+    <div style={{ maxWidth: 720 }}>
+      <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 14, padding: 24 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: T.ink, marginBottom: 4 }}>Nova campanha (broadcast)</div>
+        <div style={{ fontSize: 13, color: T.inkSoft, marginBottom: 20 }}>
+          Envia uma promoção para a base filtrada. Descadastrados são removidos automaticamente e todo email leva link de descadastro.
+        </div>
+
+        {/* Audiência */}
+        <label style={labelStyle}>Para quem</label>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 16 }}>
+          {audienceOpts.map(o => (
+            <button key={o.v} onClick={() => { setAudience(o.v); setReach(null) }} style={{
+              padding: '12px 10px', borderRadius: 10, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
+              border: `2px solid ${audience === o.v ? T.pink : T.border}`,
+              background: audience === o.v ? T.pinkBg : '#fff',
+            }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: audience === o.v ? T.pink : T.ink }}>{o.label}</div>
+              <div style={{ fontSize: 11, color: T.inkMuted, marginTop: 2 }}>{o.desc}</div>
+            </button>
+          ))}
+        </div>
+
+        {/* Exclude cold */}
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, cursor: 'pointer' }}>
+          <input type="checkbox" checked={excludeCold} onChange={e => { setExcludeCold(e.target.checked); setReach(null) }} />
+          <span style={{ fontSize: 13, color: T.ink }}>
+            Não enviar para contatos <strong>frios</strong> (receberam 4+ emails há mais de 30 dias e nunca abriram) — protege a entregabilidade
+          </span>
+        </label>
+
+        <label style={labelStyle}>Assunto</label>
+        <input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Ex: 🎁 Promoção especial pra você" style={{ ...inputStyle, marginBottom: 14 }} />
+
+        <label style={labelStyle}>Mensagem</label>
+        <textarea value={message} onChange={e => setMessage(e.target.value)} rows={7} placeholder="Escreva sua mensagem… (quebras de linha viram parágrafos)" style={{ ...inputStyle, marginBottom: 14, resize: 'vertical' }} />
+
+        <label style={labelStyle}>Imagem (URL, opcional)</label>
+        <input value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://…/banner.jpg" style={{ ...inputStyle, marginBottom: 18 }} />
+
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <button onClick={calcReach} disabled={calc} style={{ padding: '10px 18px', borderRadius: 9, background: '#fff', border: `1px solid ${T.border}`, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', color: T.ink }}>
+            {calc ? '⏳ Calculando…' : '🔍 Calcular alcance'}
+          </button>
+          <button onClick={send} disabled={sending || !subject.trim() || !message.trim()} style={{ padding: '10px 22px', borderRadius: 9, background: T.pink, color: '#fff', border: 'none', fontSize: 14, fontWeight: 700, cursor: sending ? 'default' : 'pointer', fontFamily: 'inherit', opacity: (!subject.trim() || !message.trim()) ? 0.5 : 1 }}>
+            {sending ? '⏳ Enviando…' : '📨 Enviar campanha'}
+          </button>
+        </div>
+
+        {reach && (
+          <div style={{ marginTop: 16, padding: '14px 16px', borderRadius: 10, background: T.blueBg, border: `1px solid ${T.blueSoft}`, fontSize: 13, color: T.ink }}>
+            Alcance: <strong>{reach.count}</strong> {reach.count === 1 ? 'pessoa' : 'pessoas'} ({reach.customers} clientes · {reach.leads} leads)
+            {reach.sample.length > 0 && (
+              <div style={{ fontSize: 11.5, color: T.inkSoft, marginTop: 6 }}>
+                Ex: {reach.sample.slice(0, 5).map(s => s.email).join(', ')}…
+              </div>
+            )}
+          </div>
+        )}
+
+        {result && (
+          <div style={{ marginTop: 16, padding: '14px 16px', borderRadius: 10, background: result.ok ? T.greenBg : T.redBg, border: `1px solid ${result.ok ? T.greenSoft : T.redSoft}`, fontSize: 13, fontWeight: 600, color: result.ok ? '#16A34A' : T.red }}>
+            {result.ok
+              ? `✓ Enviado: ${result.sent} · pulados (descadastro): ${result.skipped ?? 0} · erros: ${result.errors ?? 0} (de ${result.total})`
+              : `✗ ${result.error}`}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ╔════════════════════════════════════════════╗
+// ║            Higienização View               ║
+// ╚════════════════════════════════════════════╝
+function HygieneView() {
+  type HygData = {
+    total: number
+    counts: Record<string, number>
+    params: { engaged_window_days: number; cold_min_sent: number; cold_min_age_days: number }
+    samples: { frio: { email: string; name: string | null; sent: number; opened: number; clicked: number }[] }
+  }
+  const [data, setData] = useState<HygData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [cleaning, setCleaning] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/email-marketing/hygiene')
+      const d = await res.json()
+      if (d.ok) setData(d)
+    } catch {}
+    setLoading(false)
+  }, [])
+  useEffect(() => { load() }, [load])
+
+  const clean = async () => {
+    const n = data?.counts?.frio ?? 0
+    if (n === 0) return
+    if (!confirm(`Descadastrar ${n} contatos frios (nunca abriram após vários envios)? Eles param de receber promoções. Pode ser revertido manualmente no banco.`)) return
+    setCleaning(true); setMsg(null)
+    try {
+      const res = await fetch('/api/email-marketing/hygiene', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'suppress_cold' }),
+      })
+      const d = await res.json()
+      if (d.ok) { setMsg(`✓ ${d.suppressed} contatos descadastrados.`); await load() }
+      else setMsg(`✗ ${d.error}`)
+    } catch (e) { setMsg(`✗ ${String(e)}`) }
+    setCleaning(false)
+  }
+
+  const segMeta: { key: string; label: string; desc: string; color: string; bg: string }[] = [
+    { key: 'engajado', label: 'Engajados', desc: 'abriram/clicaram recentemente', color: '#16A34A', bg: T.greenBg },
+    { key: 'esfriando', label: 'Esfriando', desc: 'já abriram, mas não recentemente', color: T.orange, bg: T.orangeSoft },
+    { key: 'frio', label: 'Frios', desc: 'nunca abriram após várias chances', color: T.red, bg: T.redBg },
+    { key: 'protegido', label: 'Protegidos', desc: 'novos/poucos envios — dando tempo', color: T.blue, bg: T.blueBg },
+    { key: 'descadastrado', label: 'Descadastrados', desc: 'saíram da lista (opt-out)', color: T.inkSoft, bg: T.graySoft },
+  ]
+
+  return (
+    <div style={{ maxWidth: 820 }}>
+      <div style={{ padding: '12px 16px', background: T.blueBg, borderRadius: 10, border: `1px solid ${T.blueSoft}`, fontSize: 13, color: '#1E3A5F', marginBottom: 18 }}>
+        🧹 <strong>Como funciona:</strong> só marcamos alguém como <strong>frio</strong> depois de dar tempo e chance —
+        precisa ter recebido pelo menos <strong>{data?.params.cold_min_sent ?? 4} emails</strong>, com o 1º envio há mais de{' '}
+        <strong>{data?.params.cold_min_age_days ?? 30} dias</strong>, e nunca ter aberto nem clicado. Quem recebeu pouco ou entrou há pouco fica <strong>protegido</strong>.
+        Limpar a lista de quem nunca lê <strong>melhora a entregabilidade</strong> pra quem realmente lê.
+      </div>
+
+      {loading ? (
+        <div style={{ padding: '40px 20px', textAlign: 'center', color: T.inkSoft }}>Carregando engajamento…</div>
+      ) : !data ? (
+        <div style={{ padding: '40px 20px', textAlign: 'center', color: T.inkSoft }}>Não foi possível carregar.</div>
+      ) : (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 10, marginBottom: 18 }}>
+            {segMeta.map(s => (
+              <div key={s.key} style={{ background: s.bg, borderRadius: 12, padding: '14px 12px', textAlign: 'center' }}>
+                <div style={{ fontSize: 26, fontWeight: 800, color: s.color }}>{data.counts[s.key] ?? 0}</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: T.ink, marginTop: 2 }}>{s.label}</div>
+                <div style={{ fontSize: 10.5, color: T.inkMuted, marginTop: 2, lineHeight: 1.3 }}>{s.desc}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Ação de limpeza */}
+          <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 14, padding: 20, marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: T.ink }}>Limpar contatos frios</div>
+                <div style={{ fontSize: 12.5, color: T.inkSoft, marginTop: 2 }}>
+                  Move os <strong>{data.counts.frio ?? 0}</strong> frios para a lista de descadastro. Recomendado: antes disso, dispare uma campanha de reengajamento (“ainda quer receber?”) só pra eles.
+                </div>
+              </div>
+              <button onClick={clean} disabled={cleaning || (data.counts.frio ?? 0) === 0} style={{
+                padding: '10px 18px', borderRadius: 9, background: (data.counts.frio ?? 0) === 0 ? T.graySoft : T.red, color: (data.counts.frio ?? 0) === 0 ? T.inkMuted : '#fff',
+                border: 'none', fontSize: 14, fontWeight: 700, cursor: (data.counts.frio ?? 0) === 0 ? 'default' : 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+              }}>
+                {cleaning ? '⏳ Limpando…' : '🧹 Limpar frios'}
+              </button>
+            </div>
+            {msg && <div style={{ marginTop: 12, fontSize: 13, fontWeight: 600, color: msg.startsWith('✓') ? '#16A34A' : T.red }}>{msg}</div>}
+          </div>
+
+          {/* Amostra de frios */}
+          {data.samples.frio.length > 0 && (
+            <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 14, padding: 20 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: T.ink, marginBottom: 12 }}>Contatos frios (amostra)</div>
+              {data.samples.frio.slice(0, 30).map((c, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: i < 29 ? `1px solid ${T.borderSoft}` : 'none', fontSize: 12.5 }}>
+                  <span style={{ color: T.ink }}>{c.name || c.email}</span>
+                  <span style={{ color: T.inkMuted }}>{c.sent} envios · 0 aberturas</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+// ╔════════════════════════════════════════════╗
 // ║                 Main                       ║
 // ╚════════════════════════════════════════════╝
 export default function EmailMarketingClient() {
@@ -737,6 +979,8 @@ export default function EmailMarketingClient() {
       {/* Tab bar */}
       <div style={{ display: 'inline-flex', background: T.graySoft, padding: 4, borderRadius: 12, marginBottom: 24 }}>
         <TabPill label="Dashboard" icon="📊" active={view === 'dashboard'} onClick={() => setView('dashboard')} />
+        <TabPill label="Broadcast" icon="📢" active={view === 'broadcast'} onClick={() => setView('broadcast')} />
+        <TabPill label="Higienização" icon="🧹" active={view === 'higiene'} onClick={() => setView('higiene')} />
         <TabPill label="Sequências" icon="⚡" active={view === 'sequencias'} onClick={() => setView('sequencias')} />
         <TabPill label="Teste SMTP" icon="🔧" active={view === 'teste'} onClick={() => setView('teste')} />
       </div>
@@ -745,6 +989,10 @@ export default function EmailMarketingClient() {
       {view === 'dashboard' && (
         <DashboardView metrics={metrics} loading={loading} />
       )}
+
+      {view === 'broadcast' && <BroadcastView />}
+
+      {view === 'higiene' && <HygieneView />}
 
       {view === 'sequencias' && (
         <div style={{ maxWidth: 800 }}>

@@ -34,6 +34,8 @@ export interface MailOptions {
   html: string
   text?: string
   replyTo?: string
+  /** URL de descadastro — habilita List-Unsubscribe + One-Click (RFC 8058). */
+  listUnsubscribeUrl?: string
 }
 
 export interface MailResult {
@@ -54,6 +56,13 @@ export async function sendEmail(opts: MailOptions): Promise<MailResult> {
 
   try {
     const transport = createTransport()
+    // List-Unsubscribe + One-Click (RFC 8058) — melhora entregabilidade e
+    // exigido pelo Gmail/Yahoo para remetentes em massa.
+    const headers: Record<string, string> = {}
+    if (opts.listUnsubscribeUrl) {
+      headers['List-Unsubscribe'] = `<${opts.listUnsubscribeUrl}>`
+      headers['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click'
+    }
     const info = await transport.sendMail({
       from: `"${name}" <${from}>`,
       to: opts.toName ? `"${opts.toName}" <${opts.to}>` : opts.to,
@@ -61,6 +70,7 @@ export async function sendEmail(opts: MailOptions): Promise<MailResult> {
       html: opts.html,
       text: opts.text ?? opts.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
       replyTo: opts.replyTo ?? from,
+      ...(Object.keys(headers).length ? { headers } : {}),
     })
     return { ok: true, messageId: info.messageId }
   } catch (err: any) {
