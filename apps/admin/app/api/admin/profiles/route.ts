@@ -34,6 +34,9 @@ export async function POST(req: NextRequest) {
       ? Number(body.duration_months) : 12
     const is_gift = Boolean(body.is_gift)
     const admin_notes = String(body.admin_notes ?? '').trim() || null
+    // Senha opcional definida pelo admin. Mínimo 6 chars (regra do Supabase Auth).
+    // Se não vier, gera uma temporária aleatória (a usuária troca depois via /login).
+    const adminPassword = typeof body.password === 'string' && body.password.length >= 6 ? body.password : null
     const send_welcome = body.send_welcome !== false
 
     const sb = createAdminClient()
@@ -58,6 +61,7 @@ export async function POST(req: NextRequest) {
     // Senão, procura o auth user; se não existir, cria (o trigger on_auth_user_created
     // cria a linha base em profiles automaticamente).
     const tempPassword = `temp_${Math.random().toString(36).slice(2)}_${Date.now().toString(36)}`
+    const passwordToUse = adminPassword ?? tempPassword
     let userId: string | null = existing?.id ?? null
 
     if (!userId) {
@@ -65,11 +69,15 @@ export async function POST(req: NextRequest) {
       const listResp = await (sb.auth.admin as any).listUsers({ page: 1, perPage: 200 })
       const found = listResp.data?.users?.find((u: { email?: string }) => u.email?.toLowerCase() === email)
       if (found) {
-        userId = found.id
+        userId = found.id as string
+        // Auth user já existia mas o admin definiu senha — atualiza
+        if (adminPassword) {
+          await sb.auth.admin.updateUserById(found.id as string, { password: adminPassword })
+        }
       } else {
         const { data: created, error: createErr } = await sb.auth.admin.createUser({
           email,
-          password: tempPassword,
+          password: passwordToUse,
           email_confirm: true,
           user_metadata: { full_name: full_name ?? undefined },
         })
@@ -78,6 +86,9 @@ export async function POST(req: NextRequest) {
         }
         userId = created.user.id
       }
+    } else if (adminPassword && userId) {
+      // Profile já existia (pending/órfão) — atualiza a senha no auth user também
+      await sb.auth.admin.updateUserById(userId, { password: adminPassword })
     }
 
     // 3) Grava o profile com UPSERT (onConflict id).

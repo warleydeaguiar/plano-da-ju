@@ -16,8 +16,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const { id } = await params
     if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
 
-    const { action, months } = await req.json()
+    const { action, months, password } = await req.json()
     const sb = createAdminClient()
+
+    // ── Definir/redefinir senha (auth user) ──────────────────────
+    if (action === 'set_password') {
+      if (typeof password !== 'string' || password.length < 6) {
+        return NextResponse.json({ error: 'Senha precisa ter pelo menos 6 caracteres' }, { status: 400 })
+      }
+      const { error } = await sb.auth.admin.updateUserById(id, { password })
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ ok: true, message: 'Senha atualizada' })
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: profile } = await (sb.from('profiles') as any)

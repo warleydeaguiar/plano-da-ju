@@ -381,6 +381,22 @@ function EditPanel({ user, onClose, onChanged }: { user: User; onClose: () => vo
     }
   }
 
+  async function doSetPassword() {
+    const pwd = prompt(`Definir nova senha para ${user.email}:\n(mínimo 6 caracteres)`)
+    if (pwd === null) return
+    if (pwd.length < 6) { setMsg({ ok: false, text: 'Senha precisa ter pelo menos 6 caracteres' }); return }
+    setSaving(true); setMsg(null)
+    const res = await fetch(`/api/admin/profiles/${user.id}/actions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'set_password', password: pwd }),
+    })
+    const j = await res.json()
+    setSaving(false)
+    if (res.ok) setMsg({ ok: true, text: '✓ Senha atualizada' })
+    else setMsg({ ok: false, text: j.error ?? 'Erro' })
+  }
+
   const label: React.CSSProperties = { fontSize: 11, color: gray, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 5, display: 'block' }
   const input: React.CSSProperties = { width: '100%', padding: '8px 11px', borderRadius: 8, border: '1px solid #E0E0E8', fontSize: 13, color: '#2A1E2C', fontWeight: 500, outline: 'none', boxSizing: 'border-box', background: '#fff', fontFamily: 'inherit' }
 
@@ -480,6 +496,7 @@ function EditPanel({ user, onClose, onChanged }: { user: User; onClose: () => vo
         <div style={{ fontSize: 11, color: gray, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>Ações rápidas</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
           <ActionBtn icon="📧" label="Reenviar email de boas-vindas" onClick={() => doAction('resend_welcome', 'Reenviar email de boas-vindas')} />
+          <ActionBtn icon="🔑" label="Definir / redefinir senha" onClick={doSetPassword} />
           <ActionBtn icon="⏱" label="Estender 1 mês (cortesia)" onClick={() => doAction('extend', 'Estender 1 mês', 1)} />
           <ActionBtn icon="⏱" label="Estender 3 meses" onClick={() => doAction('extend', 'Estender 3 meses', 3)} />
           <ActionBtn icon="💸" label="Marcar como reembolso (encerra acesso)" color={red} onClick={() => doAction('refund', 'Reembolso — encerra acesso hoje')} />
@@ -667,6 +684,7 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
     email: '',
     full_name: '',
     phone: '',
+    password: '',
     subscription_type: 'annual_pix',
     duration_months: 12,
     is_gift: true,
@@ -724,6 +742,13 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
           <div>
             <label style={label}>Telefone (WhatsApp)</label>
             <input style={input} value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="só números, com DDD" />
+          </div>
+          <div>
+            <label style={label}>Senha (opcional)</label>
+            <input style={input} type="text" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} placeholder="mín. 6 caracteres — se deixar em branco, gera senha aleatória" />
+            <div style={{ fontSize: 11, color: gray, marginTop: 4 }}>
+              Em branco = a usuária define no 1º login pelo email de boas-vindas.
+            </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
