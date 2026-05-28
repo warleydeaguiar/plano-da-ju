@@ -8,6 +8,7 @@ import { T, fonts, shadow, gradient } from '../theme';
 import {
   IconCheck, IconBag, IconSparkles, iconForTask, iconForCategory,
 } from '../icons';
+import { normalizeTasks } from '../plan-helpers';
 
 type Tab = 'rotina' | 'produtos' | 'dicas';
 
@@ -73,7 +74,12 @@ export default function PlanoPage() {
         .eq('active', true).limit(8),
     ]);
     if (p.data)  setProfile(p.data as Profile);
-    if (pl.data) setPlans(pl.data as HairPlanRow[]);
+    if (pl.data) {
+      // Normaliza tasks: o banco tem 2 formatos (array de strings ou objetos) —
+      // sem isto, semanas no formato antigo crashavam o render.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setPlans((pl.data as any[]).map(p => ({ ...p, tasks: normalizeTasks(p.tasks) })) as HairPlanRow[]);
+    }
     if (pr.data) setProducts(pr.data as ProductRow[]);
     setLoading(false);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps

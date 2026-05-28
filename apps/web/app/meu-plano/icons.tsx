@@ -274,8 +274,8 @@ export function iconForCategory(cat: string | null, name?: string | null): React
   return IconHeart;
 }
 
-export function iconForTask(title: string): React.ComponentType<IconProps> {
-  const t = title.toLowerCase();
+export function iconForTask(title: string | null | undefined): React.ComponentType<IconProps> {
+  const t = (title ?? '').toLowerCase();
   if (t.includes('hidrat')) return IconDrop;
   if (t.includes('lavag') || t.includes('shampoo') || t.includes('lava')) return IconWash;
   if (t.includes('nutri')) return IconLeaf;

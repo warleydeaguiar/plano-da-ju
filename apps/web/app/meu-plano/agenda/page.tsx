@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { T, fonts, shadow } from '../theme';
 import { IconChevronLeft, IconChevronRight, iconForTask } from '../icons';
+import { normalizeTasks } from '../plan-helpers';
 
 interface HairPlanRow {
   week_number: number;
@@ -14,8 +15,8 @@ interface HairPlanRow {
 
 const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
-function metaForTask(title: string) {
-  const t = title.toLowerCase();
+function metaForTask(title: string | null | undefined) {
+  const t = (title ?? '').toLowerCase();
   if (t.includes('hidrat')) return { color: '#3B82F6', label: 'Hidratação' };
   if (t.includes('lav') || t.includes('shampoo')) return { color: '#8B5CF6', label: 'Lavagem' };
   if (t.includes('nutri')) return { color: T.pinkDeep, label: 'Nutrição' };
@@ -62,7 +63,11 @@ export default function AgendaPage() {
       (supabase as any).from('hair_plans').select('week_number,focus,tasks').eq('user_id', uid).order('week_number'),
       supabase.from('profiles').select('plan_released_at').eq('id', uid).single(),
     ]);
-    if (pl.data) setPlans(pl.data as HairPlanRow[]);
+    if (pl.data) {
+      // Normaliza tasks pra lidar com formato antigo (array de strings) vs novo (objetos)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setPlans((pl.data as any[]).map(p => ({ ...p, tasks: normalizeTasks(p.tasks) })) as HairPlanRow[]);
+    }
     if (p.data?.plan_released_at) setPlanReleased(new Date(p.data.plan_released_at));
     else if (pl.data && pl.data.length > 0) setPlanReleased(new Date());
     setLoading(false);
