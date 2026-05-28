@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { createBrowserClient } from '@supabase/ssr';
 import { T, fonts, gradient } from '../theme';
 
 type NavItem = {
@@ -60,6 +61,18 @@ const NAV: NavItem[] = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  async function handleLogout() {
+    try {
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      );
+      await supabase.auth.signOut();
+    } catch {}
+    router.push('/login');
+  }
 
   return (
     <aside style={{
@@ -188,7 +201,7 @@ export default function Sidebar() {
         }}>JC</div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: T.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Juliane Cost</div>
-          <div style={{ fontSize: 11, color: T.inkMuted, cursor: 'pointer' }}>Sair</div>
+          <div onClick={handleLogout} style={{ fontSize: 11, color: T.inkMuted, cursor: 'pointer' }}>Sair</div>
         </div>
       </div>
     </aside>
