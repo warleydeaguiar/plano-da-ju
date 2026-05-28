@@ -1948,10 +1948,25 @@ export default function QuizClient({ experiments = [] }: { experiments?: ActiveE
     setStepIndex(i => Math.min(total - 1, i + 1))
   }, [answers, nameInput, emailInput, phoneInput, total])
 
-  const finalContinue = useCallback(() => {
+  const finalContinue = useCallback(async () => {
     trackStepEvent(sessionIdRef.current, stepIndexRef.current, stepIdRef.current, 'answered', getStepVariantLabel(variantMapRef.current, stepIdRef.current))
     if (stepIndex >= total - 1) {
       try { localStorage.setItem('quiz_answers', JSON.stringify(answers)) } catch {}
+      // Gift/cortesia? (cliente já logada com assinatura ativa, sem quiz) — salva
+      // no profile e pula a oferta indo direto pro app. Endpoint responde
+      // {handled: false} para o fluxo normal anônimo.
+      try {
+        const r = await fetch('/api/quiz/save-to-profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ answers }),
+        })
+        const data = await r.json().catch(() => ({}))
+        if (data?.handled && typeof data?.redirect === 'string') {
+          router.push(data.redirect)
+          return
+        }
+      } catch {}
       router.push('/roleta')
     } else {
       setStepIndex(i => Math.min(total - 1, i + 1))

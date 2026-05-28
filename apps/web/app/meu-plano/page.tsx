@@ -239,7 +239,17 @@ export default function HojePage() {
       (supabase as any).from('photo_analyses').select('id', { count: 'exact', head: true }).eq('user_id', uid),
     ]);
 
-    if (p.data)  setProfile(p.data as Profile);
+    if (p.data) {
+      const prof = p.data as Profile
+      // Gift/cortesia logada sem quiz → manda fazer o quiz primeiro (vai voltar
+      // direto pra cá quando terminar, sem passar pela oferta).
+      const noQuiz = !prof.quiz_answers || (typeof prof.quiz_answers === 'object' && Object.keys(prof.quiz_answers).length === 0)
+      if (prof.subscription_status === 'active' && noQuiz) {
+        router.push('/quiz?gift=1')
+        return
+      }
+      setProfile(prof)
+    }
     if (pl.data) setPlans(pl.data as HairPlanRow[]);
     if (hs.data) setHairState(hs.data as HairState);
     if (ev.data) {
