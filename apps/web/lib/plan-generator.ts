@@ -171,6 +171,18 @@ export async function generatePlanWithClaude(
 
   if (!response.ok) {
     const errBody = await response.text();
+    // Mensagem amigável quando a chave do OpenRouter ficou sem crédito —
+    // o problema é da conta (limite diário / créditos), não do código.
+    if (response.status === 402) {
+      let detail = '';
+      try { detail = (JSON.parse(errBody)?.error?.message ?? '').slice(0, 280); } catch { /* ignore */ }
+      throw new Error(
+        `Sem créditos suficientes na chave do OpenRouter (HTTP 402). `
+        + `Adicione créditos ou aumente o limite diário em `
+        + `https://openrouter.ai/settings/credits e tente "Gerar com IA" de novo. `
+        + (detail ? `Detalhe: ${detail}` : '')
+      );
+    }
     throw new Error(`OpenRouter ${response.status}: ${errBody.slice(0, 400)}`);
   }
 
