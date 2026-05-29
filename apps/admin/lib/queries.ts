@@ -219,6 +219,8 @@ export async function getNewPlansByDay(): Promise<Array<{ day: string; count: nu
   const { data } = await (sb.from('profiles') as any)
     .select('subscription_activated_at')
     .eq('subscription_status', 'active')
+    // exclui gift/cortesia — não deve inflar faturamento (NULL-safe)
+    .or('is_gift.is.null,is_gift.eq.false')
     .gte('subscription_activated_at', sinceUtc);
 
   // data BR (YYYY-MM-DD) de um timestamp

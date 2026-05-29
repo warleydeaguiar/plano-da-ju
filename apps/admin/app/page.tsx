@@ -298,12 +298,14 @@ export default async function DashboardPage() {
     (sb.from('profiles') as any).select('*', { count: 'exact', head: true }),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sb.from('profiles') as any).select('*', { count: 'exact', head: true }).eq('subscription_status', 'active'),
+    // VENDAS — exclui presentes/cortesia (is_gift=true) pra não inflar receita.
+    // Filtro NULL-safe: aceita is_gift=false OU NULL (perfis antigos sem o campo).
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (sb.from('profiles') as any).select('*', { count: 'exact', head: true }).eq('subscription_status', 'active').gte('subscription_activated_at', todayStartBR.toISOString()),
+    (sb.from('profiles') as any).select('*', { count: 'exact', head: true }).eq('subscription_status', 'active').or('is_gift.is.null,is_gift.eq.false').gte('subscription_activated_at', todayStartBR.toISOString()),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (sb.from('profiles') as any).select('*', { count: 'exact', head: true }).eq('subscription_status', 'active').gte('subscription_activated_at', yesterdayStartBR.toISOString()).lt('subscription_activated_at', todayStartBR.toISOString()),
+    (sb.from('profiles') as any).select('*', { count: 'exact', head: true }).eq('subscription_status', 'active').or('is_gift.is.null,is_gift.eq.false').gte('subscription_activated_at', yesterdayStartBR.toISOString()).lt('subscription_activated_at', todayStartBR.toISOString()),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (sb.from('profiles') as any).select('*', { count: 'exact', head: true }).eq('subscription_status', 'active').gte('subscription_activated_at', monthStartBR.toISOString()),
+    (sb.from('profiles') as any).select('*', { count: 'exact', head: true }).eq('subscription_status', 'active').or('is_gift.is.null,is_gift.eq.false').gte('subscription_activated_at', monthStartBR.toISOString()),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sb.from('profiles') as any).select('*', { count: 'exact', head: true }).gte('created_at', day7agoBR.toISOString()),
     // Funil
