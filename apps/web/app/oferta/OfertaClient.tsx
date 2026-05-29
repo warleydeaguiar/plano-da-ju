@@ -1465,10 +1465,10 @@ export default function OfertaClient() {
             {/* CTA */}
             <GreenButton
               onClick={payType === 'card' ? handleCard : handlePix}
-              // Só bloqueia durante o processamento. Quando falta algum campo, o
-              // clique AINDA dispara o handler — que valida, registra o bloqueio
-              // (pra monitorarmos vendas perdidas) e mostra o que faltou.
-              disabled={isSubmitting}
+              // Para CARTÃO mantém clicável: o handler valida e registra o
+              // bloqueio (capta vendas perdidas) mostrando o que faltou.
+              // Para PIX exige CPF válido — pedido explícito de UX.
+              disabled={isSubmitting || (payType === 'pix' && !isValidCpf(cpf))}
             >
               {isSubmitting
                 ? '⏳ Processando…'
