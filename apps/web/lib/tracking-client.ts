@@ -123,7 +123,7 @@ export function newEventId(): string {
  * Dispare logo após o fbq('track', ...) correspondente, passando o mesmo eventId.
  */
 export function sendServerEvent(
-  eventName: 'Lead' | 'InitiateCheckout' | 'AddPaymentInfo',
+  eventName: 'Lead' | 'InitiateCheckout' | 'AddPaymentInfo' | 'PageView',
   opts: {
     eventId: string;
     value?: number;

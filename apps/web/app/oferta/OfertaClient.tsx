@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { enrichIdentity, newEventId, sendServerEvent } from '@/lib/tracking-client';
+import { pixelMatchingPayload, pixelPhone } from '@/lib/pixel-pii';
 
 // ╔══════════════════════════════════════════════════════════╗
 // ║  V2 — Página de oferta moderna feminina                  ║
@@ -885,23 +886,17 @@ export default function OfertaClient() {
     // Pixel Meta — InitiateCheckout com Advanced Matching
     // eventID compartilhado entre Pixel e CAPI → deduplicação no Meta.
     const ans: any = quizAnswers;
-    const icEmail = (ans.email ?? email ?? '').toString().toLowerCase().trim();
-    const icPhoneDigits = (ans.phone ?? '').toString().replace(/\D/g, '');
-    const icPhoneE164 = icPhoneDigits.length === 10 || icPhoneDigits.length === 11 ? '55' + icPhoneDigits : icPhoneDigits;
+    const icEmail = (ans.email ?? email ?? '').toString();
+    const icRawPhone = (ans.phone ?? '').toString();
+    const icRawName = (ans.name ?? name ?? '').toString();
+    const icPhoneE164 = pixelPhone(icRawPhone); // só dígitos com DDI, ou undefined
     const icEventId = newEventId();
     try {
       if (typeof window !== 'undefined' && (window as any).fbq) {
-        const fullName = (ans.name ?? name ?? '').toString().toLowerCase().trim().split(/\s+/);
-        const firstName = fullName[0] ?? '';
-        const lastName  = fullName.slice(1).join(' ');
-        if (icEmail || icPhoneE164) {
-          ;(window as any).fbq('init', '921783859786853', {
-            em: icEmail || undefined,
-            ph: icPhoneE164 || undefined,
-            fn: firstName || undefined,
-            ln: lastName || undefined,
-            country: 'br',
-          });
+        // Advanced Matching normalizado (sem acentos, sobrenome único, etc.)
+        const matching = pixelMatchingPayload({ email: icEmail, phone: icRawPhone, fullName: icRawName });
+        if (matching.em || matching.ph) {
+          ;(window as any).fbq('init', '921783859786853', matching);
         }
         ;(window as any).fbq('track', 'InitiateCheckout', {
           content_name: 'Plano Capilar Personalizado',

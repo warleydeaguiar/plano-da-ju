@@ -25,15 +25,15 @@ interface CapiUserData {
 }
 
 interface CapiCustomData {
-  value: number;        // ex: 34.90
-  currency: string;     // 'BRL'
+  value?: number;       // ex: 34.90 (omitido em PageView)
+  currency?: string;    // 'BRL' (omitido em PageView)
   content_name?: string;
   content_category?: string;
   order_id?: string;
 }
 
 export async function sendCapiEvent(opts: {
-  eventName: 'Purchase' | 'InitiateCheckout' | 'Lead' | 'AddPaymentInfo';
+  eventName: 'Purchase' | 'InitiateCheckout' | 'Lead' | 'AddPaymentInfo' | 'PageView';
   eventTime?: number;            // unix seconds
   eventId?: string;              // dedup com pixel client
   eventSourceUrl?: string;

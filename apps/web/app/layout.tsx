@@ -57,7 +57,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               s.parentNode.insertBefore(t,s)}(window, document,'script',
               'https://connect.facebook.net/en_US/fbevents.js');
               fbq('init', '${META_PIXEL_ID}');
-              fbq('track', 'PageView');
+              // PageView é disparado pelo TrackingBootstrap (com eventID + CAPI)
+              // pra deduplicar com o servidor — não chamamos fbq('track','PageView')
+              // aqui pra não duplicar.
             `,
           }}
         />

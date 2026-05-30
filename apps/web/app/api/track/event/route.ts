@@ -22,7 +22,7 @@ export const dynamic = 'force-dynamic';
  * Best-effort: nunca quebra o cliente.
  */
 
-const ALLOWED = new Set(['Lead', 'InitiateCheckout', 'AddPaymentInfo']);
+const ALLOWED = new Set(['Lead', 'InitiateCheckout', 'AddPaymentInfo', 'PageView']);
 
 function clean(v: unknown, max = 200): string | undefined {
   if (typeof v !== 'string') return undefined;
@@ -53,11 +53,14 @@ export async function POST(req: NextRequest) {
     // Identidade persistida (fbp/fbc/zip/cpf + email/phone de fallback)
     const trk = await getTrackingIdentity(sb, { sessionId: session_id, email: emailIn ?? null });
 
-    const value = typeof body.value === 'number' && isFinite(body.value) ? body.value : 34.9;
-    const currency = clean(body.currency, 8) ?? 'BRL';
+    // PageView não tem value/currency. Para outros, usamos o que veio (ou
+    // fallback 34.90 BRL p/ o plano).
+    const isPageView = event_name === 'PageView';
+    const value = isPageView ? undefined : (typeof body.value === 'number' && isFinite(body.value) ? body.value : 34.9);
+    const currency = isPageView ? undefined : (clean(body.currency, 8) ?? 'BRL');
 
     await sendCapiEvent({
-      eventName: event_name as 'Lead' | 'InitiateCheckout' | 'AddPaymentInfo',
+      eventName: event_name as 'Lead' | 'InitiateCheckout' | 'AddPaymentInfo' | 'PageView',
       eventId: event_id, // dedup com o Pixel (mesmo eventID no fbq)
       eventSourceUrl: clean(body.event_source_url, 500),
       user: {
@@ -71,8 +74,8 @@ export async function POST(req: NextRequest) {
         cpf: trk.cpf,
       },
       customData: {
-        value,
-        currency,
+        ...(value !== undefined ? { value } : {}),
+        ...(currency !== undefined ? { currency } : {}),
         content_name: clean(body.content_name, 100),
         content_category: clean(body.content_category, 100),
       },
