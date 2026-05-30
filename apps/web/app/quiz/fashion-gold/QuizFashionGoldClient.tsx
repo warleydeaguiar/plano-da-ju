@@ -594,13 +594,17 @@ export default function QuizFashionGoldClient() {
         }),
       })
       const data = await res.json()
-      // Fire Meta Pixel Lead event
-      if (typeof window !== 'undefined' && window.fbq) window.fbq('track', 'Lead')
+      // Fire Meta Pixel Lead event — sempre com currency (ROAS exige)
+      if (typeof window !== 'undefined' && window.fbq) {
+        window.fbq('track', 'Lead', { content_name: 'Quiz Fashion Gold', content_category: 'fashion-gold', currency: 'BRL' })
+      }
       // Redirect directly to WhatsApp group
       window.location.href = data.invite_link ?? '/g/entrar'
     } catch {
       // On network error, still fire pixel and redirect via server fallback
-      if (typeof window !== 'undefined' && window.fbq) window.fbq('track', 'Lead')
+      if (typeof window !== 'undefined' && window.fbq) {
+        window.fbq('track', 'Lead', { content_name: 'Quiz Fashion Gold', content_category: 'fashion-gold', currency: 'BRL' })
+      }
       window.location.href = '/g/entrar'
     } finally {
       setLoading(false)

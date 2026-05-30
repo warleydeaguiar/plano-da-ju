@@ -1923,19 +1923,20 @@ export default function QuizClient({ experiments = [] }: { experiments?: ActiveE
           ln: lastName,
           country: 'br',
         })
+        // Não enviamos 'value' fixo no Lead — todos iguais inflam o sinal sem
+        // ajudar o ROAS (Meta pediu p/ remover). O valor real vai no Purchase.
         ;(window as any).fbq('track', 'Lead', {
           content_name: 'Quiz Plano Capilar',
           content_category: 'plano-capilar',
-          value: 34.90,
           currency: 'BRL',
         }, { eventID: leadEventId })
       }
     } catch {}
 
-    // Espelha o Lead no CAPI server-side (mesmo eventID → dedup)
+    // Espelha o Lead no CAPI server-side (mesmo eventID → dedup). Sem value
+    // fixo (alinhado com o Pixel — Meta pediu).
     sendServerEvent('Lead', {
       eventId: leadEventId,
-      value: 34.90,
       currency: 'BRL',
       email: leadEmail,
       phone: leadPhoneE164,
