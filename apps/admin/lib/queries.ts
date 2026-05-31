@@ -18,10 +18,16 @@ export interface DashboardStats {
 export async function getDashboardStats(): Promise<DashboardStats> {
   const sb = createAdminClient();
 
-  const sevenDaysAgo = new Date(Date.now() - 7 * 86400 * 1000).toISOString();
-  const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
-  // 1º dia do mês corrente
-  const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+  // Sempre em horário de Brasília (UTC-3) — antes usava local time (UTC no Vercel),
+  // o que fazia "hoje" e "este mês" baterem em dias diferentes em outras métricas.
+  const BR_OFFSET = 3 * 60 * 60 * 1000;
+  const nowBR = new Date(Date.now() - BR_OFFSET);
+  const yyyy = nowBR.getUTCFullYear();
+  const mm = String(nowBR.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(nowBR.getUTCDate()).padStart(2, '0');
+  const todayStart = new Date(`${yyyy}-${mm}-${dd}T03:00:00.000Z`); // BR 00:00 = 03:00 UTC
+  const monthStart = new Date(`${yyyy}-${mm}-01T03:00:00.000Z`);    // BR 1º do mês 00:00
+  const sevenDaysAgo = new Date(todayStart.getTime() - 7 * 86400000).toISOString();
 
   const [active, activeProfiles, plansData, weekActivations, weekRefunds, todayCk, paymentsThisMonth] = await Promise.all([
     // 1) Total ativas

@@ -410,8 +410,10 @@ export default async function DashboardPage() {
   const yberaOrders = yberaMonthOrders.orders ?? [];
   const yberaStatus = yberaMonthOrders.status;
   const todayBR     = `${yyyy}-${mm}-${dd}`;
-  const ddYest      = String(new Date(todayStartBR.getTime() - 86400_000).getUTCDate()).padStart(2, '0');
-  const yesterdayBR = `${yyyy}-${mm}-${ddYest}`;
+  // "Ontem" precisa preservar ano+mês corretos na virada de mês — antes só
+  // trocava o dia, então no dia 1 do mês caía em "MM-31/30" do mês corrente (errado).
+  const yesterdayDt   = new Date(todayStartBR.getTime() - 86400_000);
+  const yesterdayBR   = `${yesterdayDt.getUTCFullYear()}-${String(yesterdayDt.getUTCMonth() + 1).padStart(2, '0')}-${String(yesterdayDt.getUTCDate()).padStart(2, '0')}`;
 
   const yberaSalesToday     = salesOnDateBR(yberaOrders, todayBR);
   const yberaSalesYesterday = salesOnDateBR(yberaOrders, yesterdayBR);

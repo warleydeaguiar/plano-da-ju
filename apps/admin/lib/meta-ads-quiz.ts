@@ -230,15 +230,20 @@ export async function getQuizAdSpend(): Promise<QuizAdsResult> {
   if (!TOKEN) return EMPTY
 
   try {
-    const now       = new Date()
-    const todayStr  = toDate(now)
-    const yesterday = new Date(now); yesterday.setDate(yesterday.getDate() - 1)
+    // Datas em horário de Brasília — antes usavam UTC (servidor Vercel), e
+    // entre 21h-00h BR a query Meta pedia "amanhã" e "hoje" sumia.
+    const BR_OFFSET = 3 * 60 * 60 * 1000
+    const nowBR     = new Date(Date.now() - BR_OFFSET)
+    const todayStr  = toDate(nowBR)
+    const yesterday = new Date(nowBR.getTime() - 86400000)
     const yestStr   = toDate(yesterday)
 
-    const monthStart     = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
-    const lastMonthD     = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const yyyy = nowBR.getUTCFullYear()
+    const mm   = String(nowBR.getUTCMonth() + 1).padStart(2, '0')
+    const monthStart     = `${yyyy}-${mm}-01`
+    const lastMonthD     = new Date(Date.UTC(yyyy, nowBR.getUTCMonth() - 1, 1))
     const lastMonthStart = toDate(lastMonthD)
-    const lastMonthEnd   = toDate(new Date(now.getFullYear(), now.getMonth(), 0))
+    const lastMonthEnd   = toDate(new Date(Date.UTC(yyyy, nowBR.getUTCMonth(), 0)))
 
     const fields = 'campaign_id,campaign_name,spend,impressions,clicks,inline_link_clicks,reach,cpc,cpm,ctr,actions'
 
