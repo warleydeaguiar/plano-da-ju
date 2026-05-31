@@ -236,10 +236,16 @@ export default function PlanoCapilarClient({ data }: { data: any }) {
           </div>
           <div style={{ fontSize: 13, color: gray }}>Quiz de 32 perguntas para venda do app</div>
         </div>
-        <a href="https://planodaju.julianecost.com/quiz" target="_blank" rel="noopener noreferrer"
-          style={{ background: accent, color: '#fff', padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
-          Ver quiz ↗
-        </a>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <Link href="/quiz/plano-capilar/painel-2"
+            style={{ background: '#fff', color: '#2A1E2C', padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, textDecoration: 'none', border: '1px solid #E5E7EB' }}>
+            📊 Painel 2
+          </Link>
+          <a href="https://planodaju.julianecost.com/quiz" target="_blank" rel="noopener noreferrer"
+            style={{ background: accent, color: '#fff', padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
+            Ver quiz ↗
+          </a>
+        </div>
       </div>
 
       {/* KPIs */}
