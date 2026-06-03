@@ -397,6 +397,24 @@ export async function POST(req: NextRequest) {
         else errors++
       }))
     }
+
+    // Registra a campanha pro histórico (tabela pequena — counts de
+    // abertura/clique são agregados depois a partir de wg_email_sends).
+    const audienceLabel = filters?.audience === 'customers' ? 'Só clientes ativos'
+      : filters?.audience === 'leads_no_purchase' ? 'Leads que não compraram'
+      : 'Toda a base'
+    await sb.from('wg_email_campaigns').insert({
+      campaign_id: campaignId,
+      subject: subject.trim(),
+      message: message.trim(),
+      image_url: image_url || null,
+      audience_label: audienceLabel,
+      recipients_total: recipients.length,
+      sent,
+      errors,
+      skipped,
+    })
+
     return NextResponse.json({ ok: true, sent, errors, skipped, total: recipients.length, campaign_id: campaignId })
   }
 

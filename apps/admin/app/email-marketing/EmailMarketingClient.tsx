@@ -39,7 +39,7 @@ const T = {
   graySoft:   '#F1F5F9',
 }
 
-type View = 'dashboard' | 'broadcast' | 'higiene' | 'sequencias' | 'teste'
+type View = 'dashboard' | 'broadcast' | 'historico' | 'higiene' | 'sequencias' | 'teste'
 
 interface Sequence {
   id: string
@@ -701,6 +701,125 @@ function TestEmailView() {
 }
 
 // ╔════════════════════════════════════════════╗
+// ║              Histórico View                ║
+// ╚════════════════════════════════════════════╝
+interface Campaign {
+  campaign_id: string
+  subject: string
+  message: string | null
+  image_url: string | null
+  audience_label: string | null
+  recipients_total: number
+  created_at: string
+  sent: number
+  errors: number
+  skipped: number
+  opened: number
+  clicked: number
+  openRate: number
+  clickRate: number
+}
+
+function HistoricoView() {
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [loading, setLoading] = useState(true)
+  const [err, setErr] = useState(false)
+  const [openId, setOpenId] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    setLoading(true); setErr(false)
+    try {
+      const res = await fetch('/api/email-marketing/campaigns')
+      const data = await res.json()
+      setCampaigns(data.campaigns ?? [])
+    } catch { setErr(true) }
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  if (loading) return <div style={{ color: T.inkSoft, fontSize: 14, padding: 20 }}>⏳ Carregando histórico…</div>
+  if (err) return (
+    <div style={{ maxWidth: 720 }}>
+      <div style={{ padding: '16px 18px', background: T.redBg, border: `1px solid ${T.redSoft}`, borderRadius: 10, fontSize: 13.5, color: '#7F1D1D' }}>
+        Não consegui carregar o histórico. <button onClick={load} style={{ marginLeft: 8, background: 'none', border: 'none', color: T.pink, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Tentar de novo</button>
+      </div>
+    </div>
+  )
+  if (campaigns.length === 0) return (
+    <div style={{ maxWidth: 720, textAlign: 'center', padding: '60px 20px', color: T.inkSoft }}>
+      <div style={{ fontSize: 40, marginBottom: 12 }}>📭</div>
+      <div style={{ fontSize: 15, fontWeight: 700, color: T.ink, marginBottom: 6 }}>Nenhuma campanha enviada ainda</div>
+      <div style={{ fontSize: 13 }}>Quando você disparar um broadcast, ele aparece aqui com os resultados.</div>
+    </div>
+  )
+
+  const fmtDate = (iso: string) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+
+  return (
+    <div style={{ maxWidth: 820 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <div style={{ fontSize: 13, color: T.inkSoft }}>{campaigns.length} {campaigns.length === 1 ? 'campanha enviada' : 'campanhas enviadas'}</div>
+        <button onClick={load} style={{ background: '#fff', border: `1px solid ${T.border}`, borderRadius: 8, padding: '6px 12px', fontSize: 12.5, fontWeight: 700, color: T.ink, cursor: 'pointer', fontFamily: 'inherit' }}>↻ Atualizar</button>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {campaigns.map(c => {
+          const isOpen = openId === c.campaign_id
+          return (
+            <div key={c.campaign_id} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, overflow: 'hidden' }}>
+              <button onClick={() => setOpenId(isOpen ? null : c.campaign_id)} style={{
+                width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer',
+                padding: '14px 16px', fontFamily: 'inherit',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 14.5, fontWeight: 700, color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.subject}</div>
+                    <div style={{ fontSize: 12, color: T.inkMuted, marginTop: 3 }}>{fmtDate(c.created_at)} · {c.audience_label ?? 'base'}</div>
+                  </div>
+                  <div style={{ fontSize: 18, color: T.inkMuted, flexShrink: 0 }}>{isOpen ? '▴' : '▾'}</div>
+                </div>
+                <div style={{ display: 'flex', gap: 18, marginTop: 12, flexWrap: 'wrap' }}>
+                  <Stat label="Enviados" value={c.sent.toLocaleString('pt-BR')} color={T.ink} />
+                  <Stat label="Abertura" value={`${c.openRate}%`} sub={`${c.opened.toLocaleString('pt-BR')}`} color={T.blue} />
+                  <Stat label="Cliques" value={`${c.clickRate}%`} sub={`${c.clicked.toLocaleString('pt-BR')}`} color={T.green} />
+                  {c.errors > 0 && <Stat label="Erros" value={c.errors.toLocaleString('pt-BR')} color={T.red} />}
+                  {c.skipped > 0 && <Stat label="Pulados" value={c.skipped.toLocaleString('pt-BR')} color={T.inkMuted} />}
+                </div>
+              </button>
+              {isOpen && (
+                <div style={{ borderTop: `1px solid ${T.borderSoft}`, padding: '14px 16px', background: T.bg }}>
+                  {c.image_url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={c.image_url} alt="" style={{ maxWidth: '100%', maxHeight: 180, borderRadius: 8, marginBottom: 12, display: 'block' }} />
+                  )}
+                  <div style={{ fontSize: 13.5, color: T.ink, lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>
+                    {c.message || <span style={{ color: T.inkMuted }}>— sem texto salvo —</span>}
+                  </div>
+                  <div style={{ fontSize: 11.5, color: T.inkMuted, marginTop: 12 }}>
+                    Destinatários no disparo: {c.recipients_total.toLocaleString('pt-BR')} · ID: {c.campaign_id}
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function Stat({ label, value, sub, color }: { label: string; value: string; sub?: string; color: string }) {
+  return (
+    <div>
+      <div style={{ fontSize: 10.5, fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', letterSpacing: 0.4 }}>{label}</div>
+      <div style={{ fontSize: 17, fontWeight: 800, color, marginTop: 2 }}>
+        {value}{sub && <span style={{ fontSize: 11.5, fontWeight: 600, color: T.inkMuted, marginLeft: 5 }}>({sub})</span>}
+      </div>
+    </div>
+  )
+}
+
+// ╔════════════════════════════════════════════╗
 // ║              Broadcast View                ║
 // ╚════════════════════════════════════════════╝
 type Audience = 'all' | 'customers' | 'leads_no_purchase'
@@ -709,6 +828,8 @@ function BroadcastView() {
   const [subject, setSubject] = useState('')
   const [message, setMessage] = useState('')
   const [imageUrl, setImageUrl] = useState('')
+  const [uploadingImg, setUploadingImg] = useState(false)
+  const [uploadErr, setUploadErr] = useState<string | null>(null)
   const [audience, setAudience] = useState<Audience>('all')
   const [excludeCold, setExcludeCold] = useState(true)
   const [reach, setReach] = useState<{ count: number; customers: number; leads: number; sample: { name: string | null; email: string; kind: string }[] } | null>(null)
@@ -746,6 +867,22 @@ function BroadcastView() {
       if (data.ok) { setReach(null) }
     } catch (e) { setResult({ ok: false, error: String(e) }) }
     setSending(false)
+  }
+
+  const uploadImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setUploadingImg(true); setUploadErr(null)
+    try {
+      const fd = new FormData()
+      fd.append('image', file)
+      const res = await fetch('/api/email-marketing/upload-image', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (data.ok && data.url) setImageUrl(data.url)
+      else setUploadErr(data.error ?? 'Falha no upload')
+    } catch { setUploadErr('Falha no upload') }
+    setUploadingImg(false)
   }
 
   const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 14px', fontSize: 14, border: `1px solid ${T.border}`, borderRadius: 9, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }
@@ -794,8 +931,35 @@ function BroadcastView() {
         <label style={labelStyle}>Mensagem</label>
         <textarea value={message} onChange={e => setMessage(e.target.value)} rows={7} placeholder="Escreva sua mensagem… (quebras de linha viram parágrafos)" style={{ ...inputStyle, marginBottom: 14, resize: 'vertical' }} />
 
-        <label style={labelStyle}>Imagem (URL, opcional)</label>
-        <input value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://…/banner.jpg" style={{ ...inputStyle, marginBottom: 18 }} />
+        <label style={labelStyle}>Imagem (opcional)</label>
+        {imageUrl ? (
+          <div style={{ marginBottom: 18, border: `1px solid ${T.border}`, borderRadius: 10, padding: 10, background: T.bg }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={imageUrl} alt="" style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 6, display: 'block', margin: '0 auto' }} />
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}>
+              <button onClick={() => setImageUrl('')} style={{ background: 'none', border: 'none', color: T.red, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}>
+                ✕ Remover imagem
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ marginBottom: 18 }}>
+            <label style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              padding: '14px', border: `2px dashed ${T.border}`, borderRadius: 10,
+              cursor: uploadingImg ? 'default' : 'pointer', background: T.bg,
+              fontSize: 13.5, fontWeight: 700, color: uploadingImg ? T.inkMuted : T.pink,
+            }}>
+              <input type="file" accept="image/*" onChange={uploadImage} disabled={uploadingImg} style={{ display: 'none' }} />
+              {uploadingImg ? '⏳ Enviando imagem…' : '📷 Enviar imagem do computador'}
+            </label>
+            <div style={{ fontSize: 11.5, color: T.inkMuted, marginTop: 6, textAlign: 'center' }}>
+              JPG, PNG, GIF ou WebP · até 5 MB · ou cole uma URL abaixo
+            </div>
+            <input value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://…/banner.jpg (opcional)" style={{ ...inputStyle, marginTop: 8 }} />
+            {uploadErr && <div style={{ fontSize: 12, color: T.red, marginTop: 6 }}>{uploadErr}</div>}
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <button onClick={calcReach} disabled={calc} style={{ padding: '10px 18px', borderRadius: 9, background: '#fff', border: `1px solid ${T.border}`, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', color: T.ink }}>
@@ -1020,6 +1184,7 @@ export default function EmailMarketingClient() {
       <div style={{ display: 'inline-flex', background: T.graySoft, padding: 4, borderRadius: 12, marginBottom: 24 }}>
         <TabPill label="Dashboard" icon="📊" active={view === 'dashboard'} onClick={() => setView('dashboard')} />
         <TabPill label="Broadcast" icon="📢" active={view === 'broadcast'} onClick={() => setView('broadcast')} />
+        <TabPill label="Histórico" icon="📜" active={view === 'historico'} onClick={() => setView('historico')} />
         <TabPill label="Higienização" icon="🧹" active={view === 'higiene'} onClick={() => setView('higiene')} />
         <TabPill label="Sequências" icon="⚡" active={view === 'sequencias'} onClick={() => setView('sequencias')} />
         <TabPill label="Teste SMTP" icon="🔧" active={view === 'teste'} onClick={() => setView('teste')} />
@@ -1031,6 +1196,8 @@ export default function EmailMarketingClient() {
       )}
 
       {view === 'broadcast' && <BroadcastView />}
+
+      {view === 'historico' && <HistoricoView />}
 
       {view === 'higiene' && <HygieneView />}
 
