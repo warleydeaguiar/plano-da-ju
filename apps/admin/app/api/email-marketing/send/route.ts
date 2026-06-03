@@ -512,6 +512,27 @@ async function buildAudience(sb: any, filters: any): Promise<Recip[]> {
   const supp = await loadSuppressedSet(sb, recips.map(r => r.email))
   recips = recips.filter(r => !supp.has(r.email.toLowerCase().trim()))
 
+  // opção: excluir quem ABRIU um broadcast anterior (usado no opt-in:
+  // o 2º email só vai pra quem NÃO abriu o 1º). Pode receber um campaign_id
+  // ou um array deles.
+  const excludeOpenersOf: string[] = Array.isArray(filters?.exclude_campaign_openers)
+    ? filters.exclude_campaign_openers
+    : filters?.exclude_campaign_openers ? [filters.exclude_campaign_openers] : []
+  if (excludeOpenersOf.length) {
+    const openerSet = new Set<string>()
+    const { data } = await sb.from('wg_email_sends')
+      .select('to_email, opened_at, clicked_at, campaign_id')
+      .in('campaign_id', excludeOpenersOf)
+      .limit(200000)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const r of (data ?? []) as any[]) {
+      if (!r.opened_at && !r.clicked_at) continue
+      const e = (r.to_email ?? '').toLowerCase().trim()
+      if (e) openerSet.add(e)
+    }
+    recips = recips.filter(r => !openerSet.has(r.email.toLowerCase().trim()))
+  }
+
   // opção: excluir contatos frios (recebeu muito e nunca abriu)
   if (filters?.exclude_cold) {
     const eng = await loadEngagement(sb)
