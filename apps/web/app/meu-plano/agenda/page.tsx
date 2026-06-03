@@ -47,6 +47,13 @@ export default function AgendaPage() {
   const [planReleased, setPlanReleased] = useState<Date | null>(null);
   const [monthOffset, setMonthOffset] = useState(0);
   const [loading, setLoading] = useState(true);
+  // Quais itens da agenda estão expandidos (mostrando a descrição completa).
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggleExpand = (key: string) => setExpanded(prev => {
+    const next = new Set(prev);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -227,52 +234,78 @@ export default function AgendaPage() {
             {thisWeek.map((ev, i) => {
               const TaskIcon = iconForTask(ev.title);
               const daysAway = Math.ceil((ev.date.getTime() - today.getTime()) / 86_400_000);
+              const key = `week-${i}`;
+              const isOpen = expanded.has(key);
+              const hasDesc = !!ev.description;
               return (
                 <div key={i} style={{
-                  background: T.surface, borderRadius: 14, padding: '14px 16px',
-                  display: 'flex', alignItems: 'center', gap: 12,
+                  background: T.surface, borderRadius: 14,
                   boxShadow: shadow.card,
                   border: `1px solid ${T.borderSoft}`,
+                  overflow: 'hidden',
                 }}>
-                  <div style={{ width: 46, textAlign: 'center', flexShrink: 0 }}>
-                    <div style={{
-                      fontSize: 10.5, color: T.inkSoft, fontWeight: 700,
-                      textTransform: 'uppercase', letterSpacing: 0.4,
+                  <button
+                    onClick={() => hasDesc && toggleExpand(key)}
+                    style={{
+                      width: '100%', background: 'transparent', border: 'none',
+                      padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12,
+                      cursor: hasDesc ? 'pointer' : 'default', textAlign: 'left',
                     }}>
-                      {['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][ev.date.getDay()]}
+                    <div style={{ width: 46, textAlign: 'center', flexShrink: 0 }}>
+                      <div style={{
+                        fontSize: 10.5, color: T.inkSoft, fontWeight: 700,
+                        textTransform: 'uppercase', letterSpacing: 0.4,
+                      }}>
+                        {['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][ev.date.getDay()]}
+                      </div>
+                      <div style={{
+                        fontSize: 22, fontWeight: 700, lineHeight: 1,
+                        color: ev.status === 'today' ? T.pinkDeep : T.ink,
+                        fontFamily: fonts.display,
+                      }}>{ev.date.getDate()}</div>
                     </div>
                     <div style={{
-                      fontSize: 22, fontWeight: 700, lineHeight: 1,
-                      color: ev.status === 'today' ? T.pinkDeep : T.ink,
-                      fontFamily: fonts.display,
-                    }}>{ev.date.getDate()}</div>
-                  </div>
-                  <div style={{
-                    width: 38, height: 38, borderRadius: 11,
-                    background: `${ev.meta.color}1A`, color: ev.meta.color,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0,
-                  }}>
-                    <TaskIcon size={20} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                      width: 38, height: 38, borderRadius: 11,
+                      background: `${ev.meta.color}1A`, color: ev.meta.color,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0,
+                    }}>
+                      <TaskIcon size={20} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: 10.5, fontWeight: 700, color: ev.meta.color,
+                        letterSpacing: 0.4, textTransform: 'uppercase',
+                      }}>{ev.meta.label}</div>
+                      {/* Título quebra em várias linhas — antes era cortado com "…" */}
+                      <div style={{
+                        fontSize: 13.5, fontWeight: 600, color: T.ink, marginTop: 1, lineHeight: 1.35,
+                      }}>{ev.title}</div>
+                    </div>
                     <div style={{
-                      fontSize: 10.5, fontWeight: 700, color: ev.meta.color,
-                      letterSpacing: 0.4, textTransform: 'uppercase',
-                    }}>{ev.meta.label}</div>
+                      fontSize: 10.5, fontWeight: 700,
+                      background: ev.status === 'done' ? T.greenSoft : ev.status === 'today' ? T.rose : T.cream,
+                      color: ev.status === 'done' ? T.green : ev.status === 'today' ? T.pinkDeep : T.inkSoft,
+                      borderRadius: 99, padding: '4px 10px', flexShrink: 0,
+                    }}>
+                      {ev.status === 'done' ? '✓' : ev.status === 'today' ? 'Hoje' : `${daysAway}d`}
+                    </div>
+                    {hasDesc && (
+                      <div style={{
+                        flexShrink: 0, color: T.inkMuted, display: 'flex',
+                        transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.18s',
+                      }}>
+                        <IconChevronRight size={16} stroke={2} />
+                      </div>
+                    )}
+                  </button>
+                  {isOpen && hasDesc && (
                     <div style={{
-                      fontSize: 13.5, fontWeight: 600, color: T.ink, marginTop: 1,
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    }}>{ev.title}</div>
-                  </div>
-                  <div style={{
-                    fontSize: 10.5, fontWeight: 700,
-                    background: ev.status === 'done' ? T.greenSoft : ev.status === 'today' ? T.rose : T.cream,
-                    color: ev.status === 'done' ? T.green : ev.status === 'today' ? T.pinkDeep : T.inkSoft,
-                    borderRadius: 99, padding: '4px 10px', flexShrink: 0,
-                  }}>
-                    {ev.status === 'done' ? '✓' : ev.status === 'today' ? 'Hoje' : `${daysAway}d`}
-                  </div>
+                      padding: '0 16px 14px 74px', fontSize: 12.5, color: T.inkSoft, lineHeight: 1.5,
+                    }}>
+                      {ev.description}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -290,31 +323,56 @@ export default function AgendaPage() {
             }}>
               {upcoming.map((ev, i) => {
                 const TaskIcon = iconForTask(ev.title);
+                const key = `up-${i}`;
+                const hasDesc = !!ev.description;
+                const isOpen = expanded.has(key);
                 return (
                   <div key={i} style={{
-                    padding: '13px 16px',
-                    display: 'flex', alignItems: 'center', gap: 12,
                     borderBottom: i < upcoming.length - 1 ? `1px solid ${T.borderSoft}` : 'none',
                   }}>
-                    <div style={{
-                      fontSize: 12, color: T.inkSoft, fontWeight: 700,
-                      width: 50, flexShrink: 0,
-                      fontFamily: fonts.display,
-                    }}>
-                      {ev.date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 600, color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {ev.title}
-                    </div>
-                    <div style={{
-                      width: 28, height: 28, borderRadius: 8,
-                      background: `${ev.meta.color}1A`, color: ev.meta.color,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      flexShrink: 0,
-                    }}>
-                      <TaskIcon size={15} />
-                    </div>
-                    <IconChevronRight size={16} color={T.inkMuted} stroke={2} />
+                    <button
+                      onClick={() => hasDesc && toggleExpand(key)}
+                      style={{
+                        width: '100%', textAlign: 'left', background: 'none', border: 'none',
+                        cursor: hasDesc ? 'pointer' : 'default',
+                        padding: '13px 16px',
+                        display: 'flex', alignItems: 'center', gap: 12,
+                      }}
+                    >
+                      <div style={{
+                        fontSize: 12, color: T.inkSoft, fontWeight: 700,
+                        width: 50, flexShrink: 0,
+                        fontFamily: fonts.display,
+                      }}>
+                        {ev.date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 600, color: T.ink, lineHeight: 1.35 }}>
+                        {ev.title}
+                      </div>
+                      <div style={{
+                        width: 28, height: 28, borderRadius: 8,
+                        background: `${ev.meta.color}1A`, color: ev.meta.color,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0,
+                      }}>
+                        <TaskIcon size={15} />
+                      </div>
+                      {hasDesc && (
+                        <div style={{
+                          flexShrink: 0, color: T.inkMuted, display: 'flex',
+                          transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.18s',
+                        }}>
+                          <IconChevronRight size={16} stroke={2} />
+                        </div>
+                      )}
+                    </button>
+                    {isOpen && hasDesc && (
+                      <div style={{
+                        padding: '0 16px 14px 78px', fontSize: 12.5, color: T.inkSoft, lineHeight: 1.5,
+                      }}>
+                        {ev.description}
+                      </div>
+                    )}
                   </div>
                 );
               })}

@@ -192,6 +192,8 @@ export default function HojePage() {
   const [loading, setLoading]   = useState(true);
   const [loggingEvt, setLoggingEvt] = useState<string | null>(null);
   const [justLogged, setJustLogged] = useState<string | null>(null);
+  const [justLoggedId, setJustLoggedId] = useState<string | null>(null);
+  const [undoing, setUndoing] = useState(false);
   const [stories, setStories] = useState<Story[]>([]);
   const [playerOpen, setPlayerOpen] = useState(false);
   const [playerStartIdx, setPlayerStartIdx] = useState(0);
@@ -285,12 +287,35 @@ export default function HojePage() {
         body: JSON.stringify({ event_type: eventType }),
       });
       if (res.ok) {
+        const data = await res.json().catch(() => ({}));
         setJustLogged(eventType);
-        setTimeout(() => setJustLogged(null), 3000);
+        setJustLoggedId(data?.id ?? null);
+        // Janela de "desfazer" — 6s dá tempo de perceber um toque errado.
+        setTimeout(() => { setJustLogged(null); setJustLoggedId(null); }, 6000);
         await load();
       }
     } finally {
       setLoggingEvt(null);
+    }
+  }
+
+  // Desfaz o registro recém-criado (toque errado em "Lavei o cabelo" etc.)
+  async function undoEvent() {
+    if (!justLoggedId || undoing) { setJustLogged(null); setJustLoggedId(null); return; }
+    setUndoing(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      await fetch('/api/meu-plano/event', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ event_id: justLoggedId }),
+      });
+      setJustLogged(null);
+      setJustLoggedId(null);
+      await load();
+    } finally {
+      setUndoing(false);
     }
   }
 
@@ -689,16 +714,20 @@ export default function HojePage() {
             const isLoading = loggingEvt === e.type;
             const wasDone = justLogged === e.type;
             return (
-              <button key={e.type} onClick={() => logEvent(e.type)} disabled={!!loggingEvt} style={{
-                background: T.surface, border: `1px solid ${wasDone ? T.green : T.borderSoft}`,
-                textAlign: 'left',
-                borderRadius: 16, padding: 14,
-                cursor: loggingEvt ? 'default' : 'pointer',
-                boxShadow: shadow.card,
-                opacity: isLoading ? 0.5 : 1,
-                display: 'flex', flexDirection: 'column', gap: 6,
-                transition: 'all 0.18s',
-              }}>
+              <button
+                key={e.type}
+                onClick={() => (wasDone ? undoEvent() : logEvent(e.type))}
+                disabled={!!loggingEvt || undoing}
+                style={{
+                  background: T.surface, border: `1px solid ${wasDone ? T.green : T.borderSoft}`,
+                  textAlign: 'left',
+                  borderRadius: 16, padding: 14,
+                  cursor: loggingEvt ? 'default' : 'pointer',
+                  boxShadow: shadow.card,
+                  opacity: isLoading ? 0.5 : 1,
+                  display: 'flex', flexDirection: 'column', gap: 6,
+                  transition: 'all 0.18s',
+                }}>
                 <div style={{
                   width: 36, height: 36, borderRadius: 10,
                   background: wasDone ? T.greenSoft : T.rose,
@@ -711,8 +740,8 @@ export default function HojePage() {
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: wasDone ? T.green : T.ink }}>
                   {e.label}
                 </div>
-                <div style={{ fontSize: 11.5, color: T.inkSoft }}>
-                  {wasDone ? 'Registrado!' : isLoading ? 'Salvando…' : e.sub}
+                <div style={{ fontSize: 11.5, color: wasDone ? T.pinkDeep : T.inkSoft, fontWeight: wasDone ? 700 : 400 }}>
+                  {wasDone ? '✓ Registrado · toque p/ desfazer' : isLoading ? 'Salvando…' : e.sub}
                 </div>
               </button>
             );
