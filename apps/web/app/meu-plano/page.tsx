@@ -199,6 +199,7 @@ export default function HojePage() {
   const [playerStartIdx, setPlayerStartIdx] = useState(0);
   const [accessToken, setAccessToken] = useState<string>('');
   const [photoCount, setPhotoCount] = useState(0);
+  const [loadErr, setLoadErr] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoMsg, setPhotoMsg] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -209,6 +210,8 @@ export default function HojePage() {
   );
 
   const load = useCallback(async () => {
+   setLoadErr(false);
+   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { router.push('/login'); return; }
     setAccessToken(session.access_token);
@@ -272,8 +275,12 @@ export default function HojePage() {
     }
     if (ci.data?.length) setCheckedInToday(true);
     setPhotoCount(ph.count ?? 0);
-
-    setLoading(false);
+   } catch (err) {
+     console.error('[meu-plano load]', err);
+     setLoadErr(true);
+   } finally {
+     setLoading(false);
+   }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -356,6 +363,31 @@ export default function HojePage() {
   }
 
   if (loading) return null;
+
+  if (loadErr) return (
+    <div style={{
+      minHeight: '100dvh', display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', textAlign: 'center',
+      padding: '40px 28px', gap: 14, background: T.bg,
+    }}>
+      <div style={{ fontSize: 44 }}>📡</div>
+      <div style={{ fontSize: 18, fontWeight: 700, color: T.ink, fontFamily: fonts.display }}>
+        Não consegui carregar
+      </div>
+      <div style={{ fontSize: 13.5, color: T.inkSoft, lineHeight: 1.5, maxWidth: 280 }}>
+        Pode ter sido a conexão. Toque abaixo para tentar de novo.
+      </div>
+      <button
+        onClick={() => { setLoading(true); load(); }}
+        style={{
+          marginTop: 6, padding: '12px 26px', borderRadius: 12,
+          background: T.pink, color: '#FFF', border: 'none',
+          fontSize: 14.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+        }}>
+        Tentar de novo
+      </button>
+    </div>
+  );
 
   const firstName = profile?.full_name?.split(' ')[0] ?? 'Usuária';
   const initial   = firstName[0]?.toUpperCase() ?? 'U';
@@ -700,7 +732,8 @@ export default function HojePage() {
               border: `1px solid ${T.borderSoft}`,
             }}>
               {upcoming.map((row, i) => (
-                <div key={i} style={{
+                <Link key={i} href="/meu-plano/agenda" style={{
+                  textDecoration: 'none',
                   padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 12,
                   borderBottom: i < upcoming.length - 1 ? `1px solid ${T.borderSoft}` : 'none',
                 }}>
@@ -737,7 +770,7 @@ export default function HojePage() {
                     )}
                     <IconChevronRight size={16} color={T.inkMuted} stroke={2} />
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </>

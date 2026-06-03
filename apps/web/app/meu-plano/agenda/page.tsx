@@ -147,9 +147,9 @@ export default function AgendaPage() {
             <em style={{ fontStyle: 'italic' }}>Agenda</em>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
-            <button onClick={() => setMonthOffset(o => o - 1)} style={{
+            <button onClick={() => setMonthOffset(o => o - 1)} aria-label="Mês anterior" style={{
               background: T.surface, border: `1px solid ${T.borderSoft}`,
-              borderRadius: 10, padding: 6,
+              borderRadius: 10, width: 44, height: 44,
               cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
@@ -162,9 +162,9 @@ export default function AgendaPage() {
             }}>
               {MONTHS[cal.month]} {cal.year}
             </div>
-            <button onClick={() => setMonthOffset(o => o + 1)} style={{
+            <button onClick={() => setMonthOffset(o => o + 1)} aria-label="Próximo mês" style={{
               background: T.surface, border: `1px solid ${T.borderSoft}`,
-              borderRadius: 10, padding: 6,
+              borderRadius: 10, width: 44, height: 44,
               cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>

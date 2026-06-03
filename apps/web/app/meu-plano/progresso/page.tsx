@@ -100,9 +100,11 @@ export default function ProgressoPage() {
   const photosInPeriod = photos.filter(p => new Date(p.analyzed_at) >= cutoff).reverse();
 
   const lengthNow = profile?.hair_length_cm ?? null;
+  // Só mostra crescimento quando há medição real das fotos — antes inventava
+  // "+4.5 cm" fixo, o que minava a confiança no app.
   const lengthDelta = oldest?.crescimento_estimado_cm && latest?.crescimento_estimado_cm
     ? (latest.crescimento_estimado_cm - oldest.crescimento_estimado_cm)
-    : photos.length >= 2 ? 4.5 : 0;
+    : 0;
 
   const delta = (curr?: number | null, prev?: number | null) => {
     if (curr == null || prev == null) return null;
@@ -123,7 +125,12 @@ export default function ProgressoPage() {
     last14.unshift(eventDays.has(tmp.toISOString().split('T')[0]));
     tmp.setDate(tmp.getDate() - 1);
   }
-  const completed = Math.round((events.length / (period || 1)) * 100);
+  // Consistência = dias únicos com registro dentro do período (antes contava
+  // todos os eventos, então vários registros no mesmo dia estouravam 100%).
+  const eventDaysInPeriod = new Set(
+    events.filter(e => new Date(e.occurred_at) >= cutoff).map(e => e.occurred_at.split('T')[0]),
+  );
+  const completed = Math.min(100, Math.round((eventDaysInPeriod.size / (period || 1)) * 100));
 
   function Sparkline({ points }: { points: number[] }) {
     if (points.length < 2) {
