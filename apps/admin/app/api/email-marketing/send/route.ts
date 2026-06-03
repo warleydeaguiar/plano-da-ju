@@ -255,6 +255,20 @@ async function runSequence(sb: any, seq: any, opts: { dryRun?: boolean; toleranc
 
 // ── Route handler ────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
+  try {
+    return await handlePost(req)
+  } catch (e) {
+    // Qualquer exceção não tratada vira JSON — nunca devolve texto cru
+    // (que quebraria o JSON.parse do cliente com "Unexpected token ...").
+    console.error('[email-marketing/send] erro não tratado:', e)
+    return NextResponse.json(
+      { ok: false, error: e instanceof Error ? e.message : 'Erro interno no servidor' },
+      { status: 500 },
+    )
+  }
+}
+
+async function handlePost(req: NextRequest) {
   const body = await req.json()
   const { mode } = body
   const sb = createAdminClient()
@@ -377,32 +391,17 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    const html = buildBroadcastEmailHtml(message.trim(), image_url || null)
+    // ── Enfileira (não envia síncrono) ──
+    // Enviar tudo dentro da request estoura o limite de 60s da função
+    // serverless em audiências grandes → 504 com corpo de texto → o cliente
+    // quebrava no JSON.parse. Em vez disso gravamos os destinatários como
+    // `pending` e drenamos em lotes via mode=broadcast_drain.
     const campaignId = `broadcast-${Date.now()}`
 
-    let sent = 0, errors = 0, skipped = 0
-    const BATCH = 12
-    for (let i = 0; i < recipients.length; i += BATCH) {
-      const batch = recipients.slice(i, i + BATCH)
-      await Promise.all(batch.map(async (r) => {
-        const result = await sendWithTracking(sb, {
-          to: r.email,
-          toName: r.name,
-          subject: subject.trim(),
-          html,
-          campaign_id: campaignId,
-        })
-        if (result.ok) sent++
-        else if (result.skipped) skipped++
-        else errors++
-      }))
-    }
-
-    // Registra a campanha pro histórico (tabela pequena — counts de
-    // abertura/clique são agregados depois a partir de wg_email_sends).
     const audienceLabel = filters?.audience === 'customers' ? 'Só clientes ativos'
       : filters?.audience === 'leads_no_purchase' ? 'Leads que não compraram'
       : 'Toda a base'
+
     await sb.from('wg_email_campaigns').insert({
       campaign_id: campaignId,
       subject: subject.trim(),
@@ -410,12 +409,136 @@ export async function POST(req: NextRequest) {
       image_url: image_url || null,
       audience_label: audienceLabel,
       recipients_total: recipients.length,
-      sent,
-      errors,
-      skipped,
+      sent: 0,
+      errors: 0,
+      skipped: 0,
     })
 
-    return NextResponse.json({ ok: true, sent, errors, skipped, total: recipients.length, campaign_id: campaignId })
+    // Insere os pendentes em chunks (evita payload gigante de uma vez).
+    const nowIso = new Date().toISOString()
+    const CHUNK = 1000
+    for (let i = 0; i < recipients.length; i += CHUNK) {
+      const rows = recipients.slice(i, i + CHUNK).map(r => ({
+        campaign_id: campaignId,
+        to_email: r.email,
+        to_name: r.name,
+        subject: subject.trim(),
+        status: 'pending',
+        updated_at: nowIso,
+      }))
+      const { error: insErr } = await sb.from('wg_email_sends').insert(rows)
+      if (insErr) {
+        return NextResponse.json(
+          { ok: false, error: `Falha ao enfileirar: ${insErr.message}`, campaign_id: campaignId },
+          { status: 500 },
+        )
+      }
+    }
+
+    return NextResponse.json({
+      ok: true,
+      queued: recipients.length,
+      total: recipients.length,
+      campaign_id: campaignId,
+    })
+  }
+
+  // ── 6) Drena um lote de uma campanha de broadcast enfileirada ──
+  if (mode === 'broadcast_drain') {
+    const { campaign_id, batch } = body
+    if (!campaign_id) return NextResponse.json({ error: 'campaign_id required' }, { status: 400 })
+    const BATCH_SIZE = Math.min(Math.max(Number(batch) || 400, 1), 800)
+
+    const { data: camp } = await (sb as any)
+      .from('wg_email_campaigns')
+      .select('subject, message, image_url')
+      .eq('campaign_id', campaign_id)
+      .single()
+    if (!camp) return NextResponse.json({ error: 'campanha não encontrada' }, { status: 404 })
+
+    // Recupera lotes travados (função morreu no meio): 'sending' parado >5min
+    // volta a 'pending' pra ser reprocessado.
+    const staleIso = new Date(Date.now() - 5 * 60_000).toISOString()
+    await sb.from('wg_email_sends')
+      .update({ status: 'pending', updated_at: new Date().toISOString() })
+      .eq('campaign_id', campaign_id)
+      .eq('status', 'sending')
+      .lt('updated_at', staleIso)
+
+    // Seleciona pendentes e os reivindica atomicamente (pending → sending)
+    // pra não duplicar envio se houver drenagem concorrente (cron + cliente).
+    const { data: pend } = await sb.from('wg_email_sends')
+      .select('id')
+      .eq('campaign_id', campaign_id)
+      .eq('status', 'pending')
+      .limit(BATCH_SIZE)
+    const ids = (pend ?? []).map((r: any) => r.id)
+
+    let claimed: any[] = []
+    if (ids.length) {
+      const { data } = await sb.from('wg_email_sends')
+        .update({ status: 'sending', updated_at: new Date().toISOString() })
+        .in('id', ids)
+        .eq('status', 'pending')
+        .select('id, to_email, to_name')
+      claimed = data ?? []
+    }
+
+    const html = buildBroadcastEmailHtml(camp.message ?? '', camp.image_url || null)
+    const subj = camp.subject ?? ''
+
+    let sent = 0, errors = 0, skipped = 0
+    const PAR = 12
+    for (let i = 0; i < claimed.length; i += PAR) {
+      const slice = claimed.slice(i, i + PAR)
+      await Promise.all(slice.map(async (row: any) => {
+        // opt-out de última hora
+        if (await isSuppressed(sb, row.to_email)) {
+          await sb.from('wg_email_sends').update({ status: 'skipped', error_message: 'unsubscribed', updated_at: new Date().toISOString() }).eq('id', row.id)
+          skipped++; return
+        }
+        const finalHtml = injectUnsubscribe(injectTracking(html, row.id), row.to_email)
+        const result = await sendEmail({
+          to: row.to_email,
+          toName: row.to_name ?? undefined,
+          subject: subj,
+          html: finalHtml,
+          listUnsubscribeUrl: unsubscribeUrl(row.to_email),
+        })
+        await sb.from('wg_email_sends').update({
+          status: result.ok ? 'sent' : 'error',
+          message_id: result.messageId ?? null,
+          error_message: result.error ?? null,
+          sent_at: result.ok ? new Date().toISOString() : null,
+          updated_at: new Date().toISOString(),
+        }).eq('id', row.id)
+        if (result.ok) sent++; else errors++
+      }))
+    }
+
+    // Atualiza contadores agregados da campanha (recontagem barata por status).
+    const counts = await Promise.all(['sent', 'error', 'skipped', 'pending', 'sending'].map(async (st) => {
+      const { count } = await sb.from('wg_email_sends')
+        .select('id', { count: 'exact', head: true })
+        .eq('campaign_id', campaign_id)
+        .eq('status', st)
+      return [st, count ?? 0] as const
+    }))
+    const byStatus = Object.fromEntries(counts) as Record<string, number>
+    await sb.from('wg_email_campaigns').update({
+      sent: byStatus.sent,
+      errors: byStatus.error,
+      skipped: byStatus.skipped,
+    }).eq('campaign_id', campaign_id)
+
+    const remaining = (byStatus.pending ?? 0) + (byStatus.sending ?? 0)
+    return NextResponse.json({
+      ok: true,
+      processed: claimed.length,
+      sent, errors, skipped,
+      remaining,
+      totals: { sent: byStatus.sent, errors: byStatus.error, skipped: byStatus.skipped },
+    })
   }
 
   return NextResponse.json({ error: 'mode inválido' }, { status: 400 })

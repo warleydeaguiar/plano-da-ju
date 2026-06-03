@@ -28,9 +28,35 @@ export async function GET(req: NextRequest) {
     body: JSON.stringify({ mode: 'run_all' }),
   })
   const json = await res.json()
+
+  // Rede de segurança: drena broadcasts enfileirados que ficaram com pendentes
+  // (ex.: o operador fechou a aba no meio do envio). Um lote por campanha por tick.
+  const drained: any[] = []
+  try {
+    const { createAdminClient } = await import('@/lib/supabase')
+    const sb = createAdminClient()
+    const { data: pendingRows } = await (sb as any).from('wg_email_sends')
+      .select('campaign_id')
+      .like('campaign_id', 'broadcast-%')
+      .in('status', ['pending', 'sending'])
+      .limit(5000)
+    const campaignIds = [...new Set((pendingRows ?? []).map((r: any) => r.campaign_id))].slice(0, 5)
+    for (const cid of campaignIds) {
+      const dr = await fetch(`${origin}/api/email-marketing/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'broadcast_drain', campaign_id: cid }),
+      })
+      drained.push({ campaign_id: cid, ...(await dr.json()) })
+    }
+  } catch (e) {
+    console.error('[cron] falha ao drenar broadcasts:', e)
+  }
+
   return NextResponse.json({
     ok: res.ok,
     fired_at: new Date().toISOString(),
+    drained,
     ...json,
   })
 }

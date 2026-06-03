@@ -824,6 +824,23 @@ function Stat({ label, value, sub, color }: { label: string; value: string; sub?
 // ╚════════════════════════════════════════════╝
 type Audience = 'all' | 'customers' | 'leads_no_purchase'
 
+/**
+ * Lê a resposta como texto e tenta parsear JSON. Se o servidor devolver
+ * texto cru (timeout/erro de plataforma → "An error occurred…"), converte
+ * num erro legível em vez de quebrar com "Unexpected token".
+ */
+async function parseJsonSafe(res: Response): Promise<any> {
+  const text = await res.text()
+  try {
+    return JSON.parse(text)
+  } catch {
+    const hint = res.status >= 500
+      ? `O servidor demorou ou falhou (HTTP ${res.status}). Confira o Histórico pra ver o que já saiu.`
+      : `Resposta inesperada do servidor (HTTP ${res.status}).`
+    throw new Error(hint)
+  }
+}
+
 function BroadcastView() {
   const [subject, setSubject] = useState('')
   const [message, setMessage] = useState('')
@@ -835,6 +852,7 @@ function BroadcastView() {
   const [reach, setReach] = useState<{ count: number; customers: number; leads: number; sample: { name: string | null; email: string; kind: string }[] } | null>(null)
   const [calc, setCalc] = useState(false)
   const [sending, setSending] = useState(false)
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   const [result, setResult] = useState<{ ok: boolean; sent?: number; errors?: number; skipped?: number; total?: number; error?: string } | null>(null)
 
   const filters = { audience, exclude_cold: excludeCold }
@@ -846,9 +864,10 @@ function BroadcastView() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mode: 'broadcast_email', subject: subject || 'preview', message: message || 'preview', filters, dry_run: true }),
       })
-      const data = await res.json()
+      const data = await parseJsonSafe(res)
       if (data.ok) setReach({ count: data.count, customers: data.customers, leads: data.leads, sample: data.sample ?? [] })
-    } catch {}
+      else setResult({ ok: false, error: data.error ?? 'Falha ao calcular alcance' })
+    } catch (e) { setResult({ ok: false, error: e instanceof Error ? e.message : String(e) }) }
     setCalc(false)
   }
 
@@ -856,16 +875,45 @@ function BroadcastView() {
     if (!subject.trim() || !message.trim()) { setResult({ ok: false, error: 'Preencha assunto e mensagem' }); return }
     const n = reach?.count ?? 0
     if (!confirm(`Enviar esta campanha para ${n > 0 ? n : 'a base filtrada'} ${n === 1 ? 'pessoa' : 'pessoas'}? Esta ação não pode ser desfeita.`)) return
-    setSending(true); setResult(null)
+    setSending(true); setResult(null); setProgress(null)
     try {
+      // 1) Enfileira a campanha (rápido — não envia ainda)
       const res = await fetch('/api/email-marketing/send', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mode: 'broadcast_email', subject: subject.trim(), message: message.trim(), image_url: imageUrl.trim() || null, filters }),
       })
-      const data = await res.json()
-      setResult(data)
-      if (data.ok) { setReach(null) }
-    } catch (e) { setResult({ ok: false, error: String(e) }) }
+      const data = await parseJsonSafe(res)
+      if (!data.ok) { setResult({ ok: false, error: data.error ?? 'Falha ao enfileirar' }); setSending(false); return }
+
+      const campaignId = data.campaign_id as string
+      const total = data.queued ?? data.total ?? 0
+      if (total === 0) { setResult({ ok: true, sent: 0, errors: 0, skipped: 0, total: 0 }); setSending(false); return }
+
+      // 2) Drena em lotes até zerar (cada chamada cabe no limite da função)
+      setProgress({ done: 0, total })
+      let guard = 0
+      const maxIters = Math.ceil(total / 100) + 20 // margem de segurança
+      let totals = { sent: 0, errors: 0, skipped: 0 }
+      while (guard++ < maxIters) {
+        const dr = await fetch('/api/email-marketing/send', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mode: 'broadcast_drain', campaign_id: campaignId }),
+        })
+        const dd = await parseJsonSafe(dr)
+        if (!dd.ok) { setResult({ ok: false, error: dd.error ?? 'Falha ao enviar lote' }); setSending(false); return }
+        if (dd.totals) totals = dd.totals
+        const done = total - (dd.remaining ?? 0)
+        setProgress({ done, total })
+        if ((dd.remaining ?? 0) <= 0) break
+        if ((dd.processed ?? 0) === 0) break // nada avançou — evita loop infinito
+      }
+
+      setResult({ ok: true, sent: totals.sent, errors: totals.errors, skipped: totals.skipped, total })
+      setReach(null)
+    } catch (e) {
+      setResult({ ok: false, error: e instanceof Error ? e.message : String(e) })
+    }
+    setProgress(null)
     setSending(false)
   }
 
@@ -969,6 +1017,18 @@ function BroadcastView() {
             {sending ? '⏳ Enviando…' : '📨 Enviar campanha'}
           </button>
         </div>
+
+        {progress && (
+          <div style={{ marginTop: 16 }}>
+            <div style={{ fontSize: 12.5, color: T.inkSoft, marginBottom: 6 }}>
+              Enviando… <strong>{progress.done.toLocaleString('pt-BR')}</strong> de {progress.total.toLocaleString('pt-BR')}
+              {' '}— mantenha esta aba aberta até concluir.
+            </div>
+            <div style={{ height: 8, borderRadius: 99, background: T.border, overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${progress.total ? Math.round((progress.done / progress.total) * 100) : 0}%`, background: T.pink, transition: 'width 0.3s' }} />
+            </div>
+          </div>
+        )}
 
         {reach && (
           <div style={{ marginTop: 16, padding: '14px 16px', borderRadius: 10, background: T.blueBg, border: `1px solid ${T.blueSoft}`, fontSize: 13, color: T.ink }}>
