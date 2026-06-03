@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { T, fonts, shadow, gradient } from '../theme';
+import { PlanoLoading } from '../Loading';
 import { IconCamera, IconChevronRight, IconFlame, IconRuler, IconSparkles, IconDrop } from '../icons';
 
 interface PhotoAnalysis {
@@ -90,7 +91,7 @@ export default function ProgressoPage() {
     }
   }
 
-  if (loading) return null;
+  if (loading) return <PlanoLoading label="Carregando seu progresso…" />;
 
   const latest = photos[0];
   const previous = photos[1];
@@ -177,16 +178,30 @@ export default function ProgressoPage() {
             </div>
             <div style={{ fontSize: 13, color: T.inkSoft, marginTop: 4 }}>{period} dias de rotina</div>
           </div>
-          <select value={period} onChange={e => setPeriod(parseInt(e.target.value, 10) as Period)} style={{
-            background: T.surface, border: `1px solid ${T.borderSoft}`, borderRadius: 10,
-            padding: '7px 12px', fontSize: 13, fontWeight: 600, color: T.ink,
-            boxShadow: shadow.card, cursor: 'pointer',
-            fontFamily: fonts.ui,
+          <div style={{
+            display: 'inline-flex', gap: 3, background: T.surface,
+            border: `1px solid ${T.borderSoft}`, borderRadius: 12, padding: 3,
+            boxShadow: shadow.card,
           }}>
-            <option value={30}>1 mês</option>
-            <option value={90}>3 meses</option>
-            <option value={180}>6 meses</option>
-          </select>
+            {([[30, '1 mês'], [90, '3 meses'], [180, '6 meses']] as [Period, string][]).map(([p, lbl]) => {
+              const active = period === p;
+              return (
+                <button
+                  key={p}
+                  onClick={() => setPeriod(p)}
+                  aria-pressed={active}
+                  style={{
+                    border: 'none', borderRadius: 9, cursor: 'pointer',
+                    padding: '6px 11px', fontSize: 12.5, fontWeight: 700,
+                    fontFamily: fonts.ui, whiteSpace: 'nowrap',
+                    background: active ? T.pink : 'transparent',
+                    color: active ? '#FFF' : T.inkSoft,
+                    transition: 'background .15s, color .15s',
+                  }}
+                >{lbl}</button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Photo hero */}

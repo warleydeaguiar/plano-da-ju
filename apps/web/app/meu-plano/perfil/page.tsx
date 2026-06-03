@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { T, fonts, shadow, gradient } from '../theme';
+import { PlanoLoading } from '../Loading';
 import { IconCamera, IconChevronLeft } from '../icons';
 
 interface Profile {
@@ -104,19 +105,30 @@ export default function PerfilPage() {
     router.push('/login');
   }
 
-  if (loading || !profile) return null;
+  // Volta sem risco de sair do app: se não há histórico interno, vai pra home.
+  function goBack() {
+    if (typeof window !== 'undefined' && window.history.length > 1) router.back();
+    else router.push('/meu-plano');
+  }
+
+  if (loading || !profile) return <PlanoLoading label="Carregando seu perfil…" />;
 
   const initial = (profile.full_name ?? profile.email ?? 'U')[0].toUpperCase();
   const expiresAt = profile.subscription_expires_at ? new Date(profile.subscription_expires_at) : null;
-  const subLabel = profile.subscription_type === 'annual_card' || profile.subscription_type === 'annual_pix'
-    ? 'Plano de 90 dias' : (profile.subscription_type ?? '—');
+  const SUB_LABELS: Record<string, string> = {
+    annual_card: 'Plano de 90 dias',
+    annual_pix: 'Plano de 90 dias',
+    none: 'Sem plano ativo',
+  };
+  const subLabel = SUB_LABELS[profile.subscription_type ?? ''] ?? 'Plano ativo';
 
   return (
     <div style={{ maxWidth: 480, margin: '0 auto', paddingBottom: 40 }}>
       {/* Header */}
       <div style={{ padding: '20px 20px 8px', display: 'flex', alignItems: 'center', gap: 8 }}>
         <button
-          onClick={() => router.back()}
+          onClick={goBack}
+          aria-label="Voltar"
           style={{
             width: 36, height: 36, borderRadius: 10, border: 'none',
             background: T.surface, color: T.ink,

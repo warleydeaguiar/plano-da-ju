@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { T, fonts, shadow, gradient } from '../theme';
 import { IconSearch, IconClose, IconBag, IconSparkles, iconForCategory } from '../icons';
+import { PlanoLoading } from '../Loading';
 
 interface ProductRow {
   id: string;
@@ -74,7 +75,7 @@ export default function LojaPage() {
   const ybera = filtered.filter(p => p.is_ybera);
   const alternatives = filtered.filter(p => !p.is_ybera);
 
-  if (loading) return null;
+  if (loading) return <PlanoLoading label="Carregando promoções…" />;
 
   return (
     <div>

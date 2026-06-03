@@ -9,6 +9,7 @@ import {
   IconCheck, IconBag, IconSparkles, iconForTask, iconForCategory,
 } from '../icons';
 import { normalizeTasks } from '../plan-helpers';
+import { PlanoLoading } from '../Loading';
 
 type Tab = 'rotina' | 'produtos' | 'dicas';
 
@@ -86,7 +87,7 @@ export default function PlanoPage() {
 
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (loading) return null;
+  if (loading) return <PlanoLoading label="Carregando seu plano…" />;
 
   // ── Estado "preparando" — plano ainda não aprovado pela Juliane ─────────
   // Bloqueia a view do plano completo até admin aprovar (plan_status === 'ready').

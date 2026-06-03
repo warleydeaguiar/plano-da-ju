@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { T, fonts, gradient } from '../theme';
 import { IconChevronLeft, IconCheck, IconArrowRight, IconSparkles, IconDrop } from '../icons';
+import { PlanoLoading } from '../Loading';
 
 interface HairState {
   last_wash_at: string | null;
@@ -96,7 +97,7 @@ export default function CheckInPage() {
     }
   }
 
-  if (loading) return null;
+  if (loading) return <PlanoLoading label="Carregando seu check-in…" />;
 
   const washDays = daysAgo(hairState?.last_wash_at ?? null);
   const todayName = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'][new Date().getDay()];
@@ -121,7 +122,11 @@ export default function CheckInPage() {
           <div style={{ position: 'absolute', right: -40, top: -40, width: 180, height: 180, borderRadius: '50%', background: 'rgba(255,255,255,0.10)' }} />
           <div style={{ position: 'relative', zIndex: 1 }}>
             <button
-              onClick={() => step > 0 ? setStep(step - 1) : router.back()}
+              onClick={() => {
+                if (step > 0) { setStep(step - 1); return; }
+                if (typeof window !== 'undefined' && window.history.length > 1) router.back();
+                else router.push('/meu-plano');
+              }}
               style={{
                 background: 'rgba(255,255,255,0.18)',
                 border: '1px solid rgba(255,255,255,0.22)',

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createBrowserClient } from '@supabase/ssr';
 import { T, fonts, shadow, gradient } from './theme';
+import { PlanoLoading } from './Loading';
 import {
   IconCheck, IconFlame, IconChevronRight, iconForEvent, iconForTask,
   IconWash, IconDrop, IconWind, IconCamera, IconSparkles,
@@ -362,7 +363,7 @@ export default function HojePage() {
     }
   }
 
-  if (loading) return null;
+  if (loading) return <PlanoLoading label="Carregando seu plano…" />;
 
   if (loadErr) return (
     <div style={{

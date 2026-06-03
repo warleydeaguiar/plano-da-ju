@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { T, fonts, shadow } from '../theme';
 import { IconChevronLeft, IconChevronRight, iconForTask } from '../icons';
+import { PlanoLoading } from '../Loading';
 import { normalizeTasks } from '../plan-helpers';
 
 interface HairPlanRow {
@@ -82,7 +83,7 @@ export default function AgendaPage() {
 
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (loading) return null;
+  if (loading) return <PlanoLoading label="Carregando sua agenda…" />;
 
   const cal = buildCalendar(monthOffset);
   const today = new Date();
