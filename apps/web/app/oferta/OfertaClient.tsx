@@ -763,7 +763,10 @@ export default function OfertaClient() {
           missing_fields: missing,
         },
       });
-      setError('Preencha todos os campos corretamente.');
+      // Mensagem específica: nomeia o que faltou (igual ao PIX).
+      // Antes era genérica ("Preencha todos os campos") — cliente clicava
+      // várias vezes sem saber QUAL campo estava faltando (ex.: só o CPF).
+      setError(`Falta preencher: ${missing.join(', ') || 'confira os campos'}`);
       // Marca todos como tocados pra mostrar erros
       setTouched({ number: true, name: true, expiry: true, cvv: true, cpf: true, cep: true, addressNumber: true });
       return;
@@ -1471,6 +1474,17 @@ export default function OfertaClient() {
                   ? '🔒 Gerar PIX — R$34,90'
                   : `🔒 Pagar ${installAmt}`}
             </GreenButton>
+
+            {/* Hint: explica por que o botão PIX está desabilitado.
+                Sem isso o cliente via um botão "morto" e não sabia o motivo
+                (origem de vários bloqueios "faltou: CPF" no PIX). */}
+            {payType === 'pix' && !isSubmitting && !isValidCpf(cpf) && (
+              <p style={{ textAlign: 'center', marginTop: 10, fontSize: 12.5, color: T.pinkDeep, fontWeight: 600, fontFamily: fonts.ui }}>
+                {cpf.replace(/\D/g, '').length === 0
+                  ? '☝ Preencha seu CPF acima para liberar o PIX'
+                  : '☝ Confira o CPF — ainda está incompleto ou inválido'}
+              </p>
+            )}
 
             {/* Trust row */}
             <div style={{ display: 'flex', justifyContent: 'center', gap: 18, marginTop: 14, flexWrap: 'wrap' }}>
