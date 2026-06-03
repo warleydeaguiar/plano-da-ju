@@ -56,8 +56,11 @@ export async function GET(req: NextRequest) {
     const userChem  = (profile?.chemical_history ?? '').toLowerCase();
     const userProbs = (profile?.main_problems ?? []).map((p: string) => p.toLowerCase());
 
-    const matches = (stories as Story[] ?? [])
-      .filter(s => !seenIds.has(s.id))
+    const filtered = (stories as Story[] ?? [])
+      // NÃO removemos mais os já vistos — o conteúdo da Juliane é evergreen
+      // e deve continuar acessível (re-assistível). Antes, qualquer story
+      // "visto" sumia pra sempre — e o player marcava como visto no instante
+      // em que aparecia, esvaziando a bandeja permanentemente.
       .filter(s => {
         // Hair type filter — if list is set, user must match
         if (s.target_hair_types.length > 0 && userHair &&
@@ -75,8 +78,15 @@ export async function GET(req: NextRequest) {
         if (s.trigger_day_max != null && s.trigger_day_max < daysSincePlan) return false;
 
         return true;
-      })
-      .slice(0, 10);
+      });
+
+    // Anexa flag `seen` e ordena não-vistos primeiro (sort estável no V8
+    // preserva a ordem de prioridade dentro de cada grupo).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const matches = (filtered as any[])
+      .map(s => ({ ...s, seen: seenIds.has(s.id) }))
+      .sort((a, b) => Number(a.seen) - Number(b.seen))
+      .slice(0, 15);
 
     return NextResponse.json({ stories: matches });
   } catch (err) {

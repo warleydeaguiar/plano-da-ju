@@ -12,6 +12,7 @@ export interface Story {
   media_url: string;
   cover_image_url: string | null;
   duration_seconds: number | null;
+  seen?: boolean;
 }
 
 const AUDIO_FALLBACK_DURATION = 30;   // seconds, used if duration not yet known
@@ -64,24 +65,6 @@ export default function StoriesPlayer({
     return null;
   }
 
-  const advance = useCallback(() => {
-    if (index < stories.length - 1) {
-      setIndex(i => i + 1);
-      setProgress(0);
-      offsetRef.current = 0;
-    } else {
-      onClose();
-    }
-  }, [index, stories.length, onClose]);
-
-  const goBack = useCallback(() => {
-    if (index > 0) {
-      setIndex(i => i - 1);
-      setProgress(0);
-      offsetRef.current = 0;
-    }
-  }, [index]);
-
   // Track view on advance
   const trackView = useCallback(async (storyId: string, completed: boolean) => {
     try {
@@ -93,10 +76,27 @@ export default function StoriesPlayer({
     } catch {}
   }, [accessToken]);
 
-  // Mark current story as viewed when it starts
-  useEffect(() => {
-    if (story) trackView(story.id, false);
-  }, [story?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const advance = useCallback(() => {
+    // Só marca como visto ao SAIR do story (fim natural, tap/seta pra frente
+    // ou fechar no último). Antes marcava no instante em que aparecia, o que
+    // sumia com a bandeja permanentemente.
+    if (story) trackView(story.id, true);
+    if (index < stories.length - 1) {
+      setIndex(i => i + 1);
+      setProgress(0);
+      offsetRef.current = 0;
+    } else {
+      onClose();
+    }
+  }, [index, stories.length, onClose, story, trackView]);
+
+  const goBack = useCallback(() => {
+    if (index > 0) {
+      setIndex(i => i - 1);
+      setProgress(0);
+      offsetRef.current = 0;
+    }
+  }, [index]);
 
   // Progress timer
   useEffect(() => {
@@ -116,8 +116,7 @@ export default function StoriesPlayer({
       const elapsed = (now - startTimeRef.current) / duration + startOffset;
       if (elapsed >= 1) {
         setProgress(1);
-        trackView(story.id, true);
-        advance();
+        advance(); // advance() já marca o story como visto
         return;
       }
       setProgress(elapsed);

@@ -406,9 +406,16 @@ export default function HojePage() {
                 fontSize: 11, fontWeight: 700, color: T.inkSoft,
                 textTransform: 'uppercase', letterSpacing: 1.2,
               }}>Dicas da Juliane</div>
-              <div style={{ fontSize: 11.5, color: T.pinkDeep, fontWeight: 600 }}>
-                {stories.length} nova{stories.length !== 1 ? 's' : ''}
-              </div>
+              {(() => {
+                const novas = stories.filter(s => !s.seen).length;
+                return novas > 0 ? (
+                  <div style={{ fontSize: 11.5, color: T.pinkDeep, fontWeight: 600 }}>
+                    {novas} nova{novas !== 1 ? 's' : ''}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 11.5, color: T.inkSoft, fontWeight: 600 }}>ver de novo</div>
+                );
+              })()}
             </div>
             <div style={{
               padding: '0 16px', display: 'flex', gap: 10,
@@ -425,9 +432,11 @@ export default function HojePage() {
                 >
                   <div style={{
                     width: 76, height: 76, borderRadius: '50%',
-                    background: `linear-gradient(135deg, ${T.pinkDeep}, ${T.gold})`,
+                    background: s.seen
+                      ? 'linear-gradient(135deg, #D9CFE4, #C9BCD8)'
+                      : `linear-gradient(135deg, ${T.pinkDeep}, ${T.gold})`,
                     padding: 3,
-                    boxShadow: '0 4px 12px rgba(190,24,93,0.22)',
+                    boxShadow: s.seen ? 'none' : '0 4px 12px rgba(190,24,93,0.22)',
                   }}>
                     <div style={{
                       width: '100%', height: '100%', borderRadius: '50%',
