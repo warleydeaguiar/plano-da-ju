@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createBrowserClient } from '@supabase/ssr';
@@ -199,6 +199,9 @@ export default function HojePage() {
   const [playerStartIdx, setPlayerStartIdx] = useState(0);
   const [accessToken, setAccessToken] = useState<string>('');
   const [photoCount, setPhotoCount] = useState(0);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoMsg, setPhotoMsg] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -275,8 +278,41 @@ export default function HojePage() {
 
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Abre a câmera/galeria direto da home (antes só redirecionava e a foto
+  // "não ia pra lugar nenhum" — o usuário precisava tocar de novo na outra tela).
+  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (photoInputRef.current) photoInputRef.current.value = '';
+    if (!file) return;
+    setPhotoUploading(true);
+    setPhotoMsg(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { router.push('/login'); return; }
+      const fd = new FormData();
+      fd.append('photo', file);
+      const res = await fetch('/api/meu-plano/photo', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: fd,
+      });
+      if (res.ok) {
+        setPhotoMsg('Foto enviada! Veja sua evolução em Progresso →');
+        await load();
+        setTimeout(() => router.push('/meu-plano/progresso'), 900);
+      } else {
+        const j = await res.json().catch(() => ({}));
+        setPhotoMsg(j.error ?? 'Não consegui enviar a foto. Tente de novo.');
+      }
+    } catch {
+      setPhotoMsg('Não consegui enviar a foto. Tente de novo.');
+    } finally {
+      setPhotoUploading(false);
+    }
+  }
+
   async function logEvent(eventType: string) {
-    if (eventType === 'photo') { router.push('/meu-plano/progresso'); return; }
+    if (eventType === 'photo') { photoInputRef.current?.click(); return; }
     setLoggingEvt(eventType);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -709,20 +745,31 @@ export default function HojePage() {
 
         {/* Quick log */}
         <SectionLabel>Registrar</SectionLabel>
+        {/* input escondido — disparado pelo botão "Foto de progresso" */}
+        <input
+          ref={photoInputRef}
+          type="file"
+          accept="image/*"
+          capture="user"
+          onChange={handlePhotoUpload}
+          style={{ display: 'none' }}
+        />
         <div style={{ padding: '0 16px 18px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           {EVENT_TYPES.map(e => {
-            const isLoading = loggingEvt === e.type;
+            const isPhoto = e.type === 'photo';
+            const isLoading = loggingEvt === e.type || (isPhoto && photoUploading);
             const wasDone = justLogged === e.type;
+            const busy = !!loggingEvt || undoing || photoUploading;
             return (
               <button
                 key={e.type}
                 onClick={() => (wasDone ? undoEvent() : logEvent(e.type))}
-                disabled={!!loggingEvt || undoing}
+                disabled={busy}
                 style={{
                   background: T.surface, border: `1px solid ${wasDone ? T.green : T.borderSoft}`,
                   textAlign: 'left',
                   borderRadius: 16, padding: 14,
-                  cursor: loggingEvt ? 'default' : 'pointer',
+                  cursor: busy ? 'default' : 'pointer',
                   boxShadow: shadow.card,
                   opacity: isLoading ? 0.5 : 1,
                   display: 'flex', flexDirection: 'column', gap: 6,
@@ -741,12 +788,21 @@ export default function HojePage() {
                   {e.label}
                 </div>
                 <div style={{ fontSize: 11.5, color: wasDone ? T.pinkDeep : T.inkSoft, fontWeight: wasDone ? 700 : 400 }}>
-                  {wasDone ? '✓ Registrado · toque p/ desfazer' : isLoading ? 'Salvando…' : e.sub}
+                  {isPhoto && photoUploading ? 'Enviando…' : wasDone ? '✓ Registrado · toque p/ desfazer' : isLoading ? 'Salvando…' : e.sub}
                 </div>
               </button>
             );
           })}
         </div>
+        {photoMsg && (
+          <div style={{
+            margin: '-8px 16px 16px', padding: '10px 14px', borderRadius: 12,
+            background: T.greenSoft, color: T.green, fontSize: 12.5, fontWeight: 600,
+            textAlign: 'center',
+          }}>
+            {photoMsg}
+          </div>
+        )}
 
         {/* Dica do dia */}
         <SectionLabel>Dica do dia</SectionLabel>
