@@ -548,13 +548,39 @@ async function handlePost(req: NextRequest) {
 
 type Recip = { email: string; name: string | null; kind: 'customer' | 'lead' }
 
+/**
+ * Pagina TODAS as linhas de uma query (contorna o teto de max-rows do PostgREST
+ * e o antigo .limit(50000) que cortava silenciosamente audiências grandes).
+ * makeQuery deve aplicar .range(from,to) — passamos a janela a cada página.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function fetchAllRows(makeQuery: (from: number, to: number) => any, pageSize = 1000, hardCap = 300000): Promise<any[]> {
+  const out: any[] = []
+  for (let from = 0; from < hardCap; from += pageSize) {
+    const { data, error } = await makeQuery(from, from + pageSize - 1)
+    if (error) { console.error('[fetchAllRows] paginação falhou:', error.message); break }
+    const rows = data ?? []
+    out.push(...rows)
+    if (rows.length < pageSize) break
+  }
+  return out
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function loadSuppressedSet(sb: any, emails: string[]): Promise<Set<string>> {
   if (emails.length === 0) return new Set()
-  const lowered = emails.map(e => e.toLowerCase().trim())
-  const { data } = await sb.from('wg_email_unsubscribes').select('email').in('email', lowered)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return new Set((data ?? []).map((r: any) => (r.email ?? '').toLowerCase()))
+  const lowered = [...new Set(emails.map(e => e.toLowerCase().trim()).filter(Boolean))]
+  const result = new Set<string>()
+  // .in() com dezenas de milhares de emails estoura o limite de URL/statement —
+  // consultamos em lotes de 1000.
+  const CHUNK = 1000
+  for (let i = 0; i < lowered.length; i += CHUNK) {
+    const slice = lowered.slice(i, i + CHUNK)
+    const { data } = await sb.from('wg_email_unsubscribes').select('email').in('email', slice)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const r of (data ?? []) as any[]) { const e = (r.email ?? '').toLowerCase(); if (e) result.add(e) }
+  }
+  return result
 }
 
 export type EngStat = { sent: number; opened: number; clicked: number; lastEngaged: number | null; firstSent: number | null }
@@ -563,10 +589,11 @@ export type EngStat = { sent: number; opened: number; clicked: number; lastEngag
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function loadEngagement(sb: any): Promise<Map<string, EngStat>> {
   const map = new Map<string, EngStat>()
-  const { data } = await sb.from('wg_email_sends')
+  const data = await fetchAllRows((from, to) => sb.from('wg_email_sends')
     .select('to_email, opened_at, clicked_at, last_opened_at, last_clicked_at, sent_at')
     .eq('status', 'sent')
-    .limit(100000)
+    .order('id', { ascending: true })
+    .range(from, to))
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const r of (data ?? []) as any[]) {
     const e = (r.to_email ?? '').toLowerCase().trim()
@@ -601,9 +628,10 @@ async function buildAudience(sb: any, filters: any): Promise<Recip[]> {
   // emails de clientes ativos (p/ audiência leads_no_purchase)
   const activeEmails = new Set<string>()
   {
-    const { data } = await sb.from('profiles').select('email').eq('subscription_status', 'active').not('email', 'is', null).limit(50000)
+    const rows = await fetchAllRows((from, to) =>
+      sb.from('profiles').select('email').eq('subscription_status', 'active').not('email', 'is', null).order('email', { ascending: true }).range(from, to))
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    for (const p of (data ?? []) as any[]) { const e = (p.email || '').toLowerCase().trim(); if (e) activeEmails.add(e) }
+    for (const p of rows as any[]) { const e = (p.email || '').toLowerCase().trim(); if (e) activeEmails.add(e) }
   }
 
   const includeCustomers = audience === 'all' || audience === 'customers'
@@ -611,22 +639,26 @@ async function buildAudience(sb: any, filters: any): Promise<Recip[]> {
   const map = new Map<string, Recip>()
 
   if (includeCustomers) {
-    let q = sb.from('profiles').select('email, full_name, subscription_status, created_at').not('email', 'is', null).limit(50000)
-    if (statuses.length) q = q.in('subscription_status', statuses)
-    if (after) q = q.gte('created_at', after)
-    if (before) q = q.lte('created_at', before)
-    const { data } = await q
+    const rows = await fetchAllRows((from, to) => {
+      let q = sb.from('profiles').select('email, full_name, subscription_status, created_at').not('email', 'is', null).order('email', { ascending: true }).range(from, to)
+      if (statuses.length) q = q.in('subscription_status', statuses)
+      if (after) q = q.gte('created_at', after)
+      if (before) q = q.lte('created_at', before)
+      return q
+    })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    for (const p of (data ?? []) as any[]) { const e = (p.email || '').toLowerCase().trim(); if (!e) continue; map.set(e, { email: p.email, name: p.full_name ?? null, kind: 'customer' }) }
+    for (const p of rows as any[]) { const e = (p.email || '').toLowerCase().trim(); if (!e) continue; map.set(e, { email: p.email, name: p.full_name ?? null, kind: 'customer' }) }
   }
   if (includeLeads) {
-    let q = sb.from('wg_quiz_leads').select('email, name, created_at, quiz_slug').not('email', 'is', null).limit(50000)
-    if (quizSlug) q = q.eq('quiz_slug', quizSlug)
-    if (after) q = q.gte('created_at', after)
-    if (before) q = q.lte('created_at', before)
-    const { data } = await q
+    const rows = await fetchAllRows((from, to) => {
+      let q = sb.from('wg_quiz_leads').select('email, name, created_at, quiz_slug').not('email', 'is', null).order('id', { ascending: true }).range(from, to)
+      if (quizSlug) q = q.eq('quiz_slug', quizSlug)
+      if (after) q = q.gte('created_at', after)
+      if (before) q = q.lte('created_at', before)
+      return q
+    })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    for (const l of (data ?? []) as any[]) { const e = (l.email || '').toLowerCase().trim(); if (!e) continue; if (audience === 'leads_no_purchase' && activeEmails.has(e)) continue; if (!map.has(e)) map.set(e, { email: l.email, name: l.name ?? null, kind: 'lead' }) }
+    for (const l of rows as any[]) { const e = (l.email || '').toLowerCase().trim(); if (!e) continue; if (audience === 'leads_no_purchase' && activeEmails.has(e)) continue; if (!map.has(e)) map.set(e, { email: l.email, name: l.name ?? null, kind: 'lead' }) }
   }
 
   let recips = [...map.values()]
@@ -643,12 +675,13 @@ async function buildAudience(sb: any, filters: any): Promise<Recip[]> {
     : filters?.exclude_campaign_openers ? [filters.exclude_campaign_openers] : []
   if (excludeOpenersOf.length) {
     const openerSet = new Set<string>()
-    const { data } = await sb.from('wg_email_sends')
+    const rows = await fetchAllRows((from, to) => sb.from('wg_email_sends')
       .select('to_email, opened_at, clicked_at, campaign_id')
       .in('campaign_id', excludeOpenersOf)
-      .limit(200000)
+      .order('id', { ascending: true })
+      .range(from, to))
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    for (const r of (data ?? []) as any[]) {
+    for (const r of rows as any[]) {
       if (!r.opened_at && !r.clicked_at) continue
       const e = (r.to_email ?? '').toLowerCase().trim()
       if (e) openerSet.add(e)
