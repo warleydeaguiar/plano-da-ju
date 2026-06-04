@@ -57,6 +57,7 @@ export default function CheckInPage() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [saveErr, setSaveErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const supabase = createBrowserClient(
@@ -78,20 +79,30 @@ export default function CheckInPage() {
 
   async function save() {
     setSaving(true);
+    setSaveErr(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      await fetch('/api/meu-plano/checkin', {
+      if (!session) { setSaveErr('Sessão expirada. Faça login de novo.'); return; }
+      const res = await fetch('/api/meu-plano/checkin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify({
           hair_feel:   answers.hair_feel ?? null,
           scalp_feel:  answers.scalp_feel ?? null,
-          breakage:    answers.breakage === 'true',
+          // só envia true/false quando a pergunta foi respondida; senão null
+          breakage:    answers.breakage === undefined ? null : answers.breakage === 'true',
           all_answers: answers,
         }),
       });
+      // Antes navegava embora SEMPRE — em falha (rede ou 4xx/5xx) o check-in se
+      // perdia silenciosamente. Agora só navega se realmente salvou.
+      if (!res.ok) {
+        setSaveErr('Não consegui salvar seu check-in. Tente de novo.');
+        return;
+      }
       router.push('/meu-plano');
+    } catch {
+      setSaveErr('Falha de conexão. Verifique sua internet e tente de novo.');
     } finally {
       setSaving(false);
     }
@@ -361,6 +372,9 @@ export default function CheckInPage() {
             >
               {saving ? 'Salvando…' : <>Salvar check-in <IconArrowRight size={16} stroke={2.2} /></>}
             </button>
+          )}
+          {saveErr && (
+            <div style={{ marginTop: 10, fontSize: 13, color: '#DC2626', textAlign: 'center' }}>{saveErr}</div>
           )}
           <button onClick={() => router.push('/meu-plano')} style={{
             width: '100%', marginTop: 10, padding: '10px 14px', borderRadius: 12,

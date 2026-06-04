@@ -60,10 +60,11 @@ export default function StoriesPlayer({
   const offsetRef = useRef<number>(0);
 
   const story = stories[index];
-  if (!story) {
-    onClose();
-    return null;
-  }
+
+  // Se o índice saiu do range, fecha — SEMPRE via efeito. Chamar onClose()
+  // (setState do pai) durante o render quebra o React, e não dá pra dar
+  // `return` aqui porque há hooks abaixo (violaria as regras de hooks).
+  useEffect(() => { if (!story) onClose(); }, [story, onClose]);
 
   // Track view on advance
   const trackView = useCallback(async (storyId: string, completed: boolean) => {
@@ -100,7 +101,7 @@ export default function StoriesPlayer({
 
   // Progress timer
   useEffect(() => {
-    if (paused) {
+    if (paused || !story) {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       offsetRef.current = progress;
       return;
@@ -164,6 +165,8 @@ export default function StoriesPlayer({
       setMediaDuration(el.duration);
     }
   }
+
+  if (!story) return null;
 
   return (
     <div style={{

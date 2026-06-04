@@ -23,25 +23,32 @@ export async function POST(req: NextRequest) {
     const supabase = await createServiceClient();
     const now = new Date().toISOString();
 
-    // Insert check-in
+    // Insert check-in — erro aqui não pode passar despercebido (o cliente
+    // navegava embora achando que salvou).
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from('check_ins').insert({
+    const { error: insErr } = await (supabase as any).from('check_ins').insert({
       user_id: user.id,
       checked_at: now,
       hair_feel,
       scalp_feel: scalp_feel ?? null,
-      breakage_observed: breakage === true,
+      // null = pergunta não respondida (não force "sem quebra")
+      breakage_observed: breakage === true ? true : breakage === false ? false : null,
       questions_asked: Object.keys(all_answers ?? { hair_feel, scalp_feel }),
       answers_raw: all_answers ?? { hair_feel, scalp_feel, breakage },
     });
+    if (insErr) {
+      console.error('[api/meu-plano/checkin] insert', insErr);
+      return NextResponse.json({ error: 'Falha ao salvar check-in' }, { status: 500 });
+    }
 
     // Update current_condition in hair_state
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from('hair_state').upsert({
+    const { error: upErr } = await (supabase as any).from('hair_state').upsert({
       user_id: user.id,
       current_condition: hair_feel,
       updated_at: now,
     }, { onConflict: 'user_id' });
+    if (upErr) console.error('[api/meu-plano/checkin] hair_state upsert', upErr);
 
     return NextResponse.json({ ok: true });
   } catch (err) {

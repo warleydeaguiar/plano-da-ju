@@ -129,9 +129,12 @@ export default function AgendaPage() {
     monthEventsByDay.get(day)!.push(ev);
   }
 
-  const weekFrom = new Date(today);
-  const weekTo = new Date(today);
-  weekTo.setDate(weekTo.getDate() + 7);
+  // Normaliza pro INÍCIO do dia: antes `weekFrom` carregava a hora atual, então
+  // depois do meio-dia a própria tarefa de hoje (ancorada às 12h) caía fora de
+  // "Esta semana". Agora pega de 00:00 de hoje até o fim do 7º dia.
+  const weekFrom = new Date(today); weekFrom.setHours(0, 0, 0, 0);
+  const weekTo = new Date(weekFrom);
+  weekTo.setDate(weekTo.getDate() + 7); weekTo.setHours(23, 59, 59, 999);
   const thisWeek = scheduled.filter(e => e.date >= weekFrom && e.date <= weekTo).slice(0, 8);
   const upcoming = scheduled.filter(e => e.date > weekTo).slice(0, 8);
 

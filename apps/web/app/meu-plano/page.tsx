@@ -390,7 +390,7 @@ export default function HojePage() {
     </div>
   );
 
-  const firstName = profile?.full_name?.split(' ')[0] ?? 'Usuária';
+  const firstName = profile?.full_name?.trim().split(' ')[0] || 'Usuária';
   const initial   = firstName[0]?.toUpperCase() ?? 'U';
   const washDays  = daysAgo(hairState?.last_wash_at ?? null);
   const hour      = new Date().getHours();
@@ -780,11 +780,12 @@ export default function HojePage() {
         {/* Quick log */}
         <SectionLabel>Registrar</SectionLabel>
         {/* input escondido — disparado pelo botão "Foto de progresso" */}
+        {/* sem `capture` — `capture="user"` forçava a câmera frontal e bloqueava
+            escolher da galeria; pra foto de cabelo a cliente quer as duas opções */}
         <input
           ref={photoInputRef}
           type="file"
           accept="image/*"
-          capture="user"
           onChange={handlePhotoUpload}
           style={{ display: 'none' }}
         />

@@ -64,13 +64,16 @@ export default function PerfilPage() {
         headers: { Authorization: `Bearer ${session.access_token}` },
         body: fd,
       });
-      const j = await res.json();
+      // res.json() sem guarda quebra se o corpo não for JSON (413/502/HTML de proxy)
+      const j = await res.json().catch(() => ({} as { avatar_url?: string; error?: string }));
       if (res.ok && j.avatar_url) {
-        setProfile(p => p ? { ...p, avatar_url: j.avatar_url } : p);
+        setProfile(p => p ? { ...p, avatar_url: j.avatar_url! } : p);
         setFeedback({ ok: true, msg: 'Foto de perfil atualizada' });
       } else {
-        setFeedback({ ok: false, msg: j.error ?? 'Erro ao enviar' });
+        setFeedback({ ok: false, msg: j.error ?? 'Erro ao enviar (a imagem pode ser muito grande)' });
       }
+    } catch {
+      setFeedback({ ok: false, msg: 'Falha de conexão ao enviar a foto' });
     } finally {
       setUploadingAvatar(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -78,7 +81,7 @@ export default function PerfilPage() {
   }
 
   async function handleSaveName() {
-    if (!nameDraft.trim() || nameDraft === profile?.full_name) return;
+    if (!nameDraft.trim() || nameDraft.trim() === (profile?.full_name ?? '')) return;
     setSavingName(true); setFeedback(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -172,7 +175,12 @@ export default function PerfilPage() {
           }}>
             {profile.avatar_url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={profile.avatar_url} alt="Foto de perfil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img
+                src={profile.avatar_url}
+                alt="Foto de perfil"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                onError={() => setProfile(p => (p ? { ...p, avatar_url: null } : p))}
+              />
             ) : (
               <div style={{
                 color: T.pinkDeep, fontWeight: 700, fontSize: 48,

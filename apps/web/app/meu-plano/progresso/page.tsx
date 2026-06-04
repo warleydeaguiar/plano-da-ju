@@ -101,10 +101,15 @@ export default function ProgressoPage() {
   const photosInPeriod = photos.filter(p => new Date(p.analyzed_at) >= cutoff).reverse();
 
   const lengthNow = profile?.hair_length_cm ?? null;
-  // Só mostra crescimento quando há medição real das fotos — antes inventava
-  // "+4.5 cm" fixo, o que minava a confiança no app.
-  const lengthDelta = oldest?.crescimento_estimado_cm && latest?.crescimento_estimado_cm
-    ? (latest.crescimento_estimado_cm - oldest.crescimento_estimado_cm)
+  // Crescimento DENTRO do período selecionado (antes usava a foto mais antiga
+  // de TODAS, contradizendo o rótulo "em {period} dias"). Usa != null pra não
+  // descartar score 0, e exige ≥2 fotos no período.
+  const periodOldest = photosInPeriod[0];
+  const periodLatest = photosInPeriod[photosInPeriod.length - 1];
+  const lengthDelta = photosInPeriod.length >= 2
+    && periodOldest?.crescimento_estimado_cm != null
+    && periodLatest?.crescimento_estimado_cm != null
+    ? (periodLatest.crescimento_estimado_cm - periodOldest.crescimento_estimado_cm)
     : 0;
 
   const delta = (curr?: number | null, prev?: number | null) => {
@@ -293,8 +298,8 @@ export default function ProgressoPage() {
           <ScoreCard label="Frizz"      value={latest?.frizz_score}      delta={delta(latest?.frizz_score, previous?.frizz_score)} inverse icon={<IconSparkles size={18} color={T.pinkDeep} />} />
         </div>
 
-        {/* Antes & Depois */}
-        {oldest && latest && oldest.id !== latest.id && (
+        {/* Antes & Depois — só com 2 fotos REAIS (senão comparava gradiente vs gradiente) */}
+        {oldest && latest && oldest.id !== latest.id && oldest.photo_url && latest.photo_url && (
           <>
             <SectionLabel>Antes & Depois</SectionLabel>
             <div style={{
@@ -445,7 +450,7 @@ export default function ProgressoPage() {
                     background: 'rgba(0,0,0,0.65)', color: '#FFF',
                     fontSize: 9.5, fontWeight: 700, padding: '2px 6px', borderRadius: 5,
                   }}>{new Date(p.analyzed_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</div>
-                  {p.brilho_score && (
+                  {p.brilho_score != null && (
                     <div style={{
                       position: 'absolute', top: 5, right: 5,
                       background: '#FFF', color: T.pinkDeep,

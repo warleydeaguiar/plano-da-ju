@@ -3,6 +3,10 @@ import { createServiceClient } from '@/lib/supabase/server';
 import { createServerClient } from '@supabase/ssr';
 
 export const runtime = 'nodejs';
+// Upload + análise da Claude Vision podem passar de 30s; sem isto a função
+// serverless corta em ~10-15s e o usuário vê "Erro ao enviar foto" mesmo com
+// a foto já salva.
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
