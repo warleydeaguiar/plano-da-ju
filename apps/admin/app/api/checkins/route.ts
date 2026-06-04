@@ -15,21 +15,33 @@ export async function GET(req: NextRequest) {
   try {
     const page = Math.max(0, parseInt(req.nextUrl.searchParams.get('page') || '0', 10) || 0)
     const sb = createAdminClient()
-    const from = page * PAGE_SIZE
-    const to = from + PAGE_SIZE - 1
 
+    // Busca TODAS as fotos (mais antigas primeiro) e DESCARTA a 1ª de cada
+    // usuária — essa é a foto INICIAL (estado do cabelo no começo). O feed de
+    // Progresso deve mostrar só a evolução, não o ponto de partida.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, count } = await (sb.from('photo_analyses') as any)
+    const { data: allData } = await (sb.from('photo_analyses') as any)
       .select(
         'id,user_id,photo_url,brilho_score,hidratacao_score,frizz_score,pontas_score,crescimento_estimado_cm,avaliacao_texto,analyzed_at',
-        { count: 'exact' },
       )
       .not('photo_url', 'is', null)
-      .order('analyzed_at', { ascending: false })
-      .range(from, to)
+      .order('analyzed_at', { ascending: true })
+      .limit(2000)
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rows = (data ?? []) as any[]
+    const all = (allData ?? []) as any[]
+    const seen = new Set<string>()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const progressOnly: any[] = []
+    for (const r of all) {
+      if (!seen.has(r.user_id)) { seen.add(r.user_id); continue } // pula a inicial
+      progressOnly.push(r)
+    }
+    // mais recentes primeiro + pagina em memória
+    progressOnly.reverse()
+    const total = progressOnly.length
+    const from = page * PAGE_SIZE
+    const rows = progressOnly.slice(from, from + PAGE_SIZE)
     const ids = [...new Set(rows.map((r) => r.user_id).filter(Boolean))]
     const nameMap = new Map<string, string | null>()
     if (ids.length) {
@@ -56,7 +68,6 @@ export async function GET(req: NextRequest) {
       texto: r.avaliacao_texto as string | null,
     }))
 
-    const total = count ?? 0
     return NextResponse.json({
       items,
       page,

@@ -212,6 +212,7 @@ export default function HojePage() {
   const [photoCount, setPhotoCount] = useState(0);
   const [loadErr, setLoadErr] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
+  const [showActions, setShowActions] = useState(false);
   const [photoMsg, setPhotoMsg] = useState<string | null>(null);
   // Banner do grupo VIP de promoções — some (persistente) quando a pessoa entra
   const [showGroupBanner, setShowGroupBanner] = useState(false);
@@ -838,8 +839,25 @@ export default function HojePage() {
         <TodayTasks />
         <WaterTracker />
 
-        {/* Quick log */}
-        <SectionLabel>Registrar</SectionLabel>
+        {/* Quick log — recolhido atrás de um "+" (eram muitos botões na home) */}
+        <button
+          onClick={() => setShowActions(s => !s)}
+          style={{
+            width: '100%', background: 'transparent', border: 'none', cursor: 'pointer',
+            padding: '4px 20px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          }}
+        >
+          <span style={{ fontSize: 11, fontWeight: 700, color: T.inkSoft, textTransform: 'uppercase', letterSpacing: 1.2 }}>
+            Registrar ação
+          </span>
+          <span style={{
+            width: 30, height: 30, borderRadius: '50%',
+            background: showActions ? T.pinkSoft : gradient.heroSoft,
+            color: showActions ? T.pinkDeep : '#fff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 20, fontWeight: 700, lineHeight: 1, transition: 'all 0.18s',
+          }}>{showActions ? '×' : '+'}</span>
+        </button>
         {/* input escondido — disparado pelo botão "Foto de progresso" */}
         {/* sem `capture` — `capture="user"` forçava a câmera frontal e bloqueava
             escolher da galeria; pra foto de cabelo a cliente quer as duas opções */}
@@ -850,6 +868,7 @@ export default function HojePage() {
           onChange={handlePhotoUpload}
           style={{ display: 'none' }}
         />
+        {showActions && (
         <div style={{ padding: '0 16px 18px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           {EVENT_TYPES.map(e => {
             const isPhoto = e.type === 'photo';
@@ -890,6 +909,7 @@ export default function HojePage() {
             );
           })}
         </div>
+        )}
         {photoMsg && (
           <div style={{
             margin: '-8px 16px 16px', padding: '10px 14px', borderRadius: 12,
