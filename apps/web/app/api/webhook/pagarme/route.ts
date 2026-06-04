@@ -99,8 +99,14 @@ export async function POST(req: NextRequest) {
           (data as any).invoice?.subscription?.id ??
           null;
 
+        // Ativação ATÔMICA + à prova de corrida: o PagarMe dispara order.paid E
+        // charge.paid pra mesma venda (às vezes no mesmo segundo). A guarda
+        // `subscription_status != 'active'` (incluindo NULL) garante que só UM
+        // dos eventos realmente transiciona o perfil — o UPDATE concorrente
+        // espera o lock, re-avalia o WHERE já com status='active' e afeta 0 linhas.
+        // Só esse evento "vencedor" dispara Discord/CAPI → sem duplicatas.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase.from('profiles') as any)
+        const { data: activatedRows } = await (supabase.from('profiles') as any)
           .update({
             subscription_type: subType,
             subscription_status: 'active',
@@ -114,7 +120,10 @@ export async function POST(req: NextRequest) {
             plan_status: 'pending_photo',
             plan_requested_at: new Date().toISOString(),
           })
-          .eq('email', email);
+          .eq('email', email)
+          .or('subscription_status.is.null,subscription_status.neq.active')
+          .select('id');
+        const justActivated = Array.isArray(activatedRows) && activatedRows.length > 0;
 
         // Idempotência: PagarMe dispara order.paid + charge.paid pra mesma
         // venda. Antes gravávamos 2 events 'payment_confirmed' por session
@@ -166,6 +175,9 @@ export async function POST(req: NextRequest) {
           email,
         });
 
+        // Purchase (CAPI) + Discord disparam SÓ no evento que ativou o perfil —
+        // evita Purchase duplicado no Meta e notificação repetida no Discord.
+        if (justActivated) {
         await sendCapiEvent({
           eventName: 'Purchase',
           eventId: data.id, // dedup
@@ -207,6 +219,7 @@ export async function POST(req: NextRequest) {
           paymentMethod: subType === 'annual_card' ? 'card' : 'pix',
           amountCents: data.amount ?? 3490,
         }).catch(err => console.error('[discord notify]', err));
+        } // fim if (justActivated)
 
         break;
       }
