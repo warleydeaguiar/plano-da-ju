@@ -40,6 +40,18 @@ export async function POST(req: NextRequest) {
       if (!isNaN(n) && n > 0 && n < 200) hairLengthCm = n;
     }
 
+    // Peso → meta diária de água (35ml × kg). Editável depois no perfil.
+    const rawWeight = form.get('weight_kg');
+    let weightKg: number | null = null;
+    let waterGoalMl: number | null = null;
+    if (rawWeight && typeof rawWeight === 'string') {
+      const w = parseFloat(rawWeight.replace(',', '.'));
+      if (!isNaN(w) && w >= 30 && w <= 300) {
+        weightKg = w;
+        waterGoalMl = Math.round((w * 35) / 50) * 50; // arredonda p/ 50ml
+      }
+    }
+
     const supabase = await createServiceClient();
     const ext = f.type === 'image/png' ? 'png' : f.type === 'image/webp' ? 'webp' : 'jpg';
     const fileName = `${user.id}/${Date.now()}.${ext}`;
@@ -150,6 +162,7 @@ export async function POST(req: NextRequest) {
         photo_url: photoUrl,
         photo_taken_at: new Date().toISOString(),
         ...(hairLengthCm !== null ? { hair_length_cm: hairLengthCm } : {}),
+        ...(weightKg !== null ? { weight_kg: weightKg, water_goal_ml: waterGoalMl } : {}),
       })
       .eq('id', user.id);
 

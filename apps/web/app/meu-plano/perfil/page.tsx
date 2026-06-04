@@ -15,12 +15,16 @@ interface Profile {
   hair_type: string | null;
   subscription_type: string | null;
   subscription_expires_at: string | null;
+  weight_kg: number | null;
+  water_goal_ml: number | null;
 }
 
 export default function PerfilPage() {
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [nameDraft, setNameDraft] = useState('');
+  const [weightDraft, setWeightDraft] = useState('');
+  const [savingWeight, setSavingWeight] = useState(false);
   const [loading, setLoading] = useState(true);
   const [savingName, setSavingName] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -39,12 +43,13 @@ export default function PerfilPage() {
     if (!session) { router.push('/login'); return; }
     const { data } = await supabase
       .from('profiles')
-      .select('id,email,full_name,avatar_url,hair_type,subscription_type,subscription_expires_at')
+      .select('id,email,full_name,avatar_url,hair_type,subscription_type,subscription_expires_at,weight_kg,water_goal_ml')
       .eq('id', session.user.id)
       .single();
     if (data) {
       setProfile(data as Profile);
       setNameDraft((data as Profile).full_name ?? '');
+      setWeightDraft((data as Profile).weight_kg != null ? String((data as Profile).weight_kg) : '');
     }
     setLoading(false);
   }
@@ -100,6 +105,32 @@ export default function PerfilPage() {
       }
     } finally {
       setSavingName(false);
+    }
+  }
+
+  async function handleSaveWeight() {
+    const w = parseFloat(weightDraft.replace(',', '.'));
+    if (isNaN(w) || w < 30 || w > 300) { setFeedback({ ok: false, msg: 'Peso inválido (30–300 kg)' }); return; }
+    setSavingWeight(true); setFeedback(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const res = await fetch('/api/meu-plano/avatar', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ weight_kg: w }),
+      });
+      if (res.ok) {
+        const goal = Math.round((w * 35) / 50) * 50;
+        setProfile(p => p ? { ...p, weight_kg: w, water_goal_ml: goal } : p);
+        setFeedback({ ok: true, msg: `Peso salvo · meta de água ${(goal / 1000).toFixed(1)}L/dia` });
+      } else {
+        setFeedback({ ok: false, msg: 'Erro ao salvar peso' });
+      }
+    } catch {
+      setFeedback({ ok: false, msg: 'Falha de conexão' });
+    } finally {
+      setSavingWeight(false);
     }
   }
 
@@ -250,6 +281,44 @@ export default function PerfilPage() {
             {savingName ? '…' : 'Salvar'}
           </button>
         </div>
+      </div>
+
+      {/* Peso → meta de água */}
+      <div style={{ padding: '20px 20px 0' }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: T.inkSoft, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
+          Peso (meta de água 💧)
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            type="number"
+            inputMode="decimal"
+            value={weightDraft}
+            onChange={e => setWeightDraft(e.target.value)}
+            placeholder="ex: 65"
+            style={{
+              flex: 1, background: T.surface, border: `1px solid ${T.borderSoft}`,
+              borderRadius: 12, padding: '12px 14px', fontSize: 15, color: T.ink,
+              fontFamily: fonts.ui, outline: 'none',
+            }}
+          />
+          <button
+            onClick={handleSaveWeight}
+            disabled={savingWeight || !weightDraft.trim()}
+            style={{
+              background: !weightDraft.trim() ? T.borderSoft : T.pink,
+              color: !weightDraft.trim() ? T.inkSoft : '#FFF',
+              border: 'none', borderRadius: 12, padding: '0 18px', fontSize: 13, fontWeight: 700,
+              cursor: savingWeight ? 'default' : 'pointer', fontFamily: fonts.ui, opacity: savingWeight ? 0.6 : 1,
+            }}
+          >
+            {savingWeight ? '…' : 'Salvar'}
+          </button>
+        </div>
+        {profile.water_goal_ml ? (
+          <div style={{ fontSize: 11.5, color: T.inkMuted, marginTop: 6 }}>
+            Meta atual: <strong style={{ color: T.ink }}>{(profile.water_goal_ml / 1000).toFixed(1)}L</strong> por dia
+          </div>
+        ) : null}
       </div>
 
       {/* Conta info */}

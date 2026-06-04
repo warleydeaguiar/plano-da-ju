@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     const { data: { user }, error: authErr } = await anonClient.auth.getUser(token);
     if (authErr || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { event_type } = await req.json();
+    const { event_type, quantity, notes } = await req.json();
     if (!event_type) return NextResponse.json({ error: 'event_type required' }, { status: 400 });
 
     const supabase = await createServiceClient();
@@ -37,9 +37,12 @@ export async function POST(req: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: inserted } = await (supabase as any).from('hair_events').insert({
       user_id: user.id,
-      event_type,
+      event_type: String(event_type).slice(0, 60),
       occurred_at: now,
       created_at: now,
+      // quantity: água em ml; notes: ex. a tarefa do plano que foi marcada
+      quantity: typeof quantity === 'number' && isFinite(quantity) ? quantity : null,
+      notes: notes ? String(notes).slice(0, 300) : null,
     }).select('id').single();
 
     // Upsert hair_state

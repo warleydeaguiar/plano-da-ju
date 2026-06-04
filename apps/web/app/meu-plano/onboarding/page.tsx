@@ -58,6 +58,7 @@ export default function OnboardingPage() {
   const [photoPreview, setPhotoPreview] = useState('');
   const [lengthCm, setLengthCm] = useState('');
   const [skipLength, setSkipLength] = useState(false);
+  const [weightKg, setWeightKg] = useState('');
 
   // Etapa 2: produtos em casa
   const [productsText, setProductsText] = useState('');
@@ -136,6 +137,10 @@ export default function OnboardingPage() {
       if (!skipLength && lengthCm) {
         const n = parseFloat(lengthCm.replace(',', '.'));
         if (!isNaN(n) && n > 0 && n < 200) fd.append('hair_length_cm', String(n));
+      }
+      if (weightKg) {
+        const w = parseFloat(weightKg.replace(',', '.'));
+        if (!isNaN(w) && w >= 30 && w <= 300) fd.append('weight_kg', String(w));
       }
 
       const res = await fetch('/api/meu-plano/photo', {
@@ -510,6 +515,40 @@ export default function OnboardingPage() {
           </button>
           <p style={{ fontSize: 11.5, color: T.inkMuted, margin: '10px 0 0', lineHeight: 1.5 }}>
             Se não tem fita métrica, sem problema. Você consegue adicionar isso depois pelo perfil.
+          </p>
+        </div>
+
+        {/* Peso → meta de água */}
+        <div style={{
+          background: T.surface, borderRadius: 18, padding: 18,
+          marginBottom: 14, boxShadow: shadow.card, border: `1px solid ${T.borderSoft}`,
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+            <label htmlFor="onb-weight" style={{ fontSize: 13, fontWeight: 700, color: T.ink, fontFamily: fonts.display }}>
+              Seu peso
+            </label>
+            <span style={{ fontSize: 11, color: T.inkSoft }}>Opcional</span>
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input
+              id="onb-weight"
+              type="number"
+              inputMode="decimal"
+              min={30}
+              max={300}
+              placeholder="ex: 65"
+              value={weightKg}
+              onChange={e => setWeightKg(e.target.value)}
+              style={{
+                flex: 1, padding: '12px 14px', fontSize: 15,
+                border: `1.5px solid ${T.border}`, borderRadius: 12,
+                background: '#FFF', color: T.ink, outline: 'none', fontFamily: fonts.ui,
+              }}
+            />
+            <span style={{ fontSize: 14, color: T.inkSoft, fontWeight: 600, paddingRight: 4 }}>kg</span>
+          </div>
+          <p style={{ fontSize: 11.5, color: T.inkMuted, margin: '10px 0 0', lineHeight: 1.5 }}>
+            Usamos pra calcular sua <strong>meta diária de água</strong> 💧 (cabelo hidratado começa de dentro). Dá pra editar depois no perfil.
           </p>
         </div>
 

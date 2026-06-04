@@ -83,8 +83,17 @@ export async function PATCH(req: NextRequest) {
     const full_name = typeof body.full_name === 'string' ? body.full_name.trim().slice(0, 120) : null;
 
     const supabase = await createServiceClient();
-    const updates: Record<string, string> = {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const updates: Record<string, any> = {};
     if (full_name) updates.full_name = full_name;
+    // Peso → recalcula meta de água (35ml × kg, arredondado a 50ml)
+    if (body.weight_kg !== undefined) {
+      const w = parseFloat(String(body.weight_kg).replace(',', '.'));
+      if (!isNaN(w) && w >= 30 && w <= 300) {
+        updates.weight_kg = w;
+        updates.water_goal_ml = Math.round((w * 35) / 50) * 50;
+      }
+    }
     if (Object.keys(updates).length === 0) return NextResponse.json({ error: 'Nada para atualizar' }, { status: 400 });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

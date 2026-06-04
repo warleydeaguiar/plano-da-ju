@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { createBrowserClient } from '@supabase/ssr';
 import { T, fonts, shadow, gradient } from './theme';
 import { PlanoLoading } from './Loading';
+import WaterTracker from './WaterTracker';
+import TodayTasks from './TodayTasks';
 import {
   IconCheck, IconFlame, IconChevronRight, iconForEvent, iconForTask,
   IconWash, IconDrop, IconWind, IconCamera, IconSparkles,
@@ -100,10 +102,14 @@ const TIPS = [
 ];
 
 const EVENT_TYPES = [
-  { type: 'wash',            Icon: IconWash,   label: 'Lavei o cabelo',    sub: 'Marcar agora'    },
-  { type: 'hydration_mask',  Icon: IconDrop,   label: 'Hidratação',         sub: 'Máscara, óleo…'  },
-  { type: 'heat_used',       Icon: IconWind,   label: 'Usei calor',         sub: 'Secador, chapinha' },
-  { type: 'photo',           Icon: IconCamera, label: 'Foto de progresso',  sub: 'Registrar evolução' },
+  { type: 'wash',            Icon: IconWash,     label: 'Lavei o cabelo',  sub: 'Shampoo'        },
+  { type: 'hydration_mask',  Icon: IconDrop,     label: 'Hidratação',      sub: 'Máscara'        },
+  { type: 'nutrition_mask',  Icon: IconHeart,    label: 'Nutrição',        sub: 'Máscara/óleo'   },
+  { type: 'reconstruction',  Icon: IconSparkles, label: 'Reconstrução',    sub: 'Proteína'       },
+  { type: 'cronograma',      Icon: IconCheck,    label: 'Cronograma',      sub: 'Etapa de hoje'  },
+  { type: 'oil_mirra',       Icon: IconDrop,     label: 'Óleo de mirra',   sub: 'Apliquei'       },
+  { type: 'heat_used',       Icon: IconWind,     label: 'Usei calor',      sub: 'Secador/chapa'  },
+  { type: 'photo',           Icon: IconCamera,   label: 'Foto de progresso', sub: 'Evolução'     },
 ];
 
 // Build last 7 days week strip
@@ -143,7 +149,11 @@ function buildUpcoming(plan: HairPlanRow | undefined, events: HairEvent[]): Upco
     nutrition_mask: { name: 'Tratamento de Nutrição', note: 'Manteiga de Karité'    },
     reconstruction: { name: 'Reconstrução',           note: 'Máscara de proteína'   },
     oil_treatment:  { name: 'Aplicação de óleo',      note: 'Óleo de coco/argan'    },
+    oil_mirra:      { name: 'Óleo de Mirra',          note: 'Aplicação'             },
+    cronograma:     { name: 'Cronograma capilar',     note: 'Etapa do dia'          },
     heat_used:      { name: 'Calor / Modelagem',      note: 'Secador ou chapinha'   },
+    water:          { name: 'Água',                   note: 'Hidratação de dentro'  },
+    plan_task:      { name: 'Tarefa do plano',        note: 'Pedida pela Ju'        },
   };
   const items: UpcomingItem[] = [];
 
@@ -823,6 +833,10 @@ export default function HojePage() {
             </div>
           </>
         )}
+
+        {/* Tarefas do plano de hoje + controle de água */}
+        <TodayTasks />
+        <WaterTracker />
 
         {/* Quick log */}
         <SectionLabel>Registrar</SectionLabel>
