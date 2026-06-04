@@ -94,6 +94,35 @@ export default function LojaPage() {
           </div>
         </div>
 
+        {/* Convite — grupo VIP de promoções no WhatsApp */}
+        <div style={{ padding: '0 16px 14px' }}>
+          <a
+            href="https://planodaju.julianecost.com/g/entrar"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none',
+              background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)',
+              borderRadius: 16, padding: '14px 16px',
+              boxShadow: '0 6px 16px rgba(18,140,126,0.28)',
+            }}
+          >
+            <div style={{
+              width: 42, height: 42, borderRadius: '50%', background: 'rgba(255,255,255,0.22)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0,
+            }}>💬</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ color: '#fff', fontWeight: 700, fontSize: 15, fontFamily: fonts.ui }}>
+                Entre no grupo VIP de promoções
+              </div>
+              <div style={{ color: 'rgba(255,255,255,0.92)', fontSize: 12.5, marginTop: 2, lineHeight: 1.35 }}>
+                Descontos exclusivos no WhatsApp — e você recebe primeiro 💚
+              </div>
+            </div>
+            <div style={{ color: '#fff', fontSize: 20, fontWeight: 700, flexShrink: 0 }}>→</div>
+          </a>
+        </div>
+
         {/* Search */}
         <div style={{ padding: '0 16px 12px' }}>
           <div style={{
