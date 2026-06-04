@@ -106,7 +106,15 @@ export default function StoriesPlayer({
       offsetRef.current = progress;
       return;
     }
-    const fallback = isYouTubeUrl(story.media_url)
+    const isYT = isYouTubeUrl(story.media_url);
+    // O iframe do YouTube não reporta a duração real. Se o admin NÃO definiu
+    // duration_seconds, NÃO auto-avança — senão um vídeo de 10min era cortado no
+    // fallback. A usuária assiste o vídeo todo e avança no tap/seta.
+    if (isYT && !story.duration_seconds) {
+      setProgress(0);
+      return;
+    }
+    const fallback = isYT
       ? YOUTUBE_FALLBACK_DURATION
       : (story.media_type === 'video' ? VIDEO_FALLBACK_DURATION : AUDIO_FALLBACK_DURATION);
     const duration = (mediaDuration ?? story.duration_seconds ?? fallback) * 1000;
@@ -248,7 +256,11 @@ export default function StoriesPlayer({
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
               style={{
-                width: '100%', maxWidth: 720, aspectRatio: '16/9',
+                // Conteúdo da Juliane é VERTICAL — antes embedava em 16/9
+                // (horizontal) e o vídeo ficava espremido no meio com tarjas.
+                // 9/16 ocupa a tela de stories como um vídeo vertical.
+                width: '100%', maxWidth: 480, aspectRatio: '9 / 16',
+                maxHeight: '100%',
                 border: 'none', borderRadius: 0,
               }}
             />
