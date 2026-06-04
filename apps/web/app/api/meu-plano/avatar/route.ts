@@ -94,6 +94,16 @@ export async function PATCH(req: NextRequest) {
         updates.water_goal_ml = Math.round((w * 35) / 50) * 50;
       }
     }
+    // Meta de água direta (ml) — sobrepõe a derivada do peso
+    if (body.water_goal_ml !== undefined) {
+      const g = Math.round(Number(body.water_goal_ml));
+      if (Number.isFinite(g) && g >= 500 && g <= 8000) updates.water_goal_ml = g;
+    }
+    // Tamanho do copo/porção (ml)
+    if (body.water_cup_ml !== undefined) {
+      const c = Math.round(Number(body.water_cup_ml));
+      if (Number.isFinite(c) && c >= 100 && c <= 2000) updates.water_cup_ml = c;
+    }
     if (Object.keys(updates).length === 0) return NextResponse.json({ error: 'Nada para atualizar' }, { status: 400 });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
