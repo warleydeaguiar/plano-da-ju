@@ -32,8 +32,27 @@ export async function POST(req: NextRequest) {
       ? body.produtos_casa.trim().slice(0, 2000)
       : undefined;
 
+    // Conjunto de respostas do quiz in-app (cadastro manual). Só campos
+    // conhecidos, coagidos a string curta — evita gravar lixo no jsonb.
+    const ALLOWED_KEYS = new Set([
+      'tipo', 'cor', 'idade', 'espessura', 'quimica', 'incomoda', 'porosidade',
+      'oleosidade', 'lavagem', 'calor', 'caspa', 'objetivo', 'como_plano',
+    ]);
+    const rawAnswers = (body && typeof body.answers === 'object' && body.answers)
+      ? body.answers as Record<string, unknown> : null;
+    const answers: Record<string, string> = {};
+    if (rawAnswers) {
+      for (const [k, v] of Object.entries(rawAnswers)) {
+        if (ALLOWED_KEYS.has(k) && typeof v === 'string' && v.trim()) {
+          answers[k] = v.trim().slice(0, 200);
+        }
+      }
+    }
+
     // Nada pra salvar — retorna ok pra não bloquear o flow
-    if (!produtosCasa) return NextResponse.json({ ok: true, skipped: true });
+    if (!produtosCasa && Object.keys(answers).length === 0) {
+      return NextResponse.json({ ok: true, skipped: true });
+    }
 
     const supabase = await createServiceClient();
 
@@ -45,11 +64,20 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     const current = (profile?.quiz_answers ?? {}) as Record<string, unknown>;
-    const merged = { ...current, produtos_casa: produtosCasa };
+    const merged = {
+      ...current,
+      ...answers,
+      ...(produtosCasa ? { produtos_casa: produtosCasa } : {}),
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const updatePayload: Record<string, unknown> = { quiz_answers: merged };
+    // Espelha o tipo de cabelo na coluna dedicada (prioriza catálogo no plano)
+    if (answers.tipo) updatePayload.hair_type = answers.tipo;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase.from('profiles') as any)
-      .update({ quiz_answers: merged })
+      .update(updatePayload)
       .eq('id', user.id);
 
     if (error) {

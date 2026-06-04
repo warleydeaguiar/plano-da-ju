@@ -18,7 +18,33 @@ import { IconCamera, IconSparkles } from '../icons';
  *
  *  Ao final → router.replace('/meu-plano') (banner "plano em preparação")
  */
-type Step = 'photo' | 'submitting' | 'products' | 'saving';
+type Step = 'quiz' | 'photo' | 'submitting' | 'products' | 'saving';
+
+// Mini-quiz in-app — só aparece pra quem foi cadastrada manualmente (sem
+// quiz_answers). São as perguntas que mais pesam na geração do plano.
+const QUIZ_QUESTIONS: { key: string; q: string; opts: { v: string; l: string }[] }[] = [
+  { key: 'tipo', q: 'Qual é o seu tipo de cabelo?', opts: [
+    { v: 'liso', l: 'Liso' }, { v: 'ondulado', l: 'Ondulado' }, { v: 'cacheado', l: 'Cacheado' }, { v: 'crespo', l: 'Crespo' } ] },
+  { key: 'quimica', q: 'Fez alguma química recente?', opts: [
+    { v: 'progressiva', l: 'Progressiva' }, { v: 'descoloracao', l: 'Descoloração / luzes' }, { v: 'tintura', l: 'Tintura' },
+    { v: 'relaxamento', l: 'Relaxamento' }, { v: 'botox', l: 'Botox / selagem' }, { v: 'nenhuma', l: 'Nenhuma' } ] },
+  { key: 'incomoda', q: 'O que mais te incomoda hoje?', opts: [
+    { v: 'pontas', l: 'Pontas ressecadas' }, { v: 'frizz', l: 'Frizz' }, { v: 'quebra', l: 'Quebra' },
+    { v: 'queda', l: 'Queda' }, { v: 'crescimento', l: 'Cresce pouco' }, { v: 'volume', l: 'Volume / armado' } ] },
+  { key: 'porosidade', q: 'Como seu cabelo absorve água e produto?', opts: [
+    { v: 'baixa', l: 'Demora pra molhar e secar (baixa)' }, { v: 'media', l: 'Normal (média)' },
+    { v: 'alta', l: 'Molha e seca rápido (alta)' }, { v: 'nao_sei', l: 'Não sei' } ] },
+  { key: 'oleosidade', q: 'Como é a sua raiz / couro cabeludo?', opts: [
+    { v: 'seca', l: 'Resseca' }, { v: 'normal', l: 'Normal' }, { v: 'oleosa', l: 'Oleosa' } ] },
+  { key: 'lavagem', q: 'Com que frequência você lava o cabelo?', opts: [
+    { v: 'diaria', l: 'Todo dia' }, { v: '3x_semana', l: '2 a 3x na semana' },
+    { v: '1x_semana', l: '1x na semana' }, { v: 'quinzenal', l: 'A cada 15 dias ou mais' } ] },
+  { key: 'calor', q: 'Usa calor (chapinha, secador, babyliss)?', opts: [
+    { v: 'sempre', l: 'Quase sempre' }, { v: 'as_vezes', l: 'Às vezes' }, { v: 'raramente', l: 'Raramente / nunca' } ] },
+  { key: 'objetivo', q: 'Qual é o seu maior objetivo?', opts: [
+    { v: 'crescimento', l: 'Crescer mais rápido' }, { v: 'reparar', l: 'Reparar / recuperar' },
+    { v: 'hidratar', l: 'Hidratar e dar brilho' }, { v: 'reduzir_queda', l: 'Reduzir a queda' }, { v: 'definir', l: 'Definir cachos / ondas' } ] },
+];
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -36,6 +62,10 @@ export default function OnboardingPage() {
   // Etapa 2: produtos em casa
   const [productsText, setProductsText] = useState('');
 
+  // Etapa 0 (cadastro manual): mini-quiz
+  const [quizAnswers, setQuizAnswers] = useState<Record<string, string>>({});
+  const [quizStep, setQuizStep] = useState(0);
+
   const [error, setError] = useState('');
   const [checkingProfile, setCheckingProfile] = useState(true);
 
@@ -51,11 +81,15 @@ export default function OnboardingPage() {
       if (!session) { router.replace('/login'); return; }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: prof } = await (supabase.from('profiles') as any)
-        .select('full_name, photo_url')
+        .select('full_name, photo_url, quiz_answers')
         .eq('id', session.user.id)
         .maybeSingle();
       if (prof?.photo_url) { router.replace('/meu-plano'); return; }
       setFirstName(prof?.full_name?.split(' ')[0] ?? '');
+      // Cadastro manual (sem respostas do quiz) → começa pelo mini-quiz.
+      // Quem veio do funil já tem quiz_answers.tipo → vai direto pra foto.
+      const qa = (prof?.quiz_answers ?? null) as Record<string, unknown> | null;
+      if (!qa || !qa.tipo) setStep('quiz');
       setCheckingProfile(false);
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -68,6 +102,24 @@ export default function OnboardingPage() {
     setError('');
     setPhotoFile(file);
     setPhotoPreview(URL.createObjectURL(file));
+  }
+
+  // ── Etapa 0 → salvar respostas do mini-quiz e ir pra foto ──
+  async function submitQuiz() {
+    setError('');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { router.replace('/login'); return; }
+      const res = await fetch('/api/meu-plano/quiz-extra', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ answers: quizAnswers }),
+      });
+      if (!res.ok) { setError('Não consegui salvar suas respostas. Tente de novo.'); return; }
+      setStep('photo');
+    } catch {
+      setError('Falha de conexão. Tente de novo.');
+    }
   }
 
   // ── Etapa 1 → enviar foto + length ─────────────────────────
@@ -135,6 +187,79 @@ export default function OnboardingPage() {
       <div style={{ minHeight: '100vh', background: T.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ width: 40, height: 40, border: `3px solid ${T.pinkSoft}`, borderTopColor: T.pink, borderRadius: '50%', animation: 'spin 0.9s linear infinite' }} />
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      </div>
+    );
+  }
+
+  // ────────────────────────────────────────────────────────────
+  // ETAPA 0: mini-quiz (cadastro manual sem respostas)
+  // ────────────────────────────────────────────────────────────
+  if (step === 'quiz') {
+    const q = QUIZ_QUESTIONS[quizStep];
+    const total = QUIZ_QUESTIONS.length;
+    const answered = !!quizAnswers[q.key];
+    const isLast = quizStep === total - 1;
+    return (
+      <div style={{ minHeight: '100vh', background: T.bg, padding: '28px 20px 40px', fontFamily: fonts.ui }}>
+        <div style={{ maxWidth: 440, margin: '0 auto' }}>
+          {/* Progresso */}
+          <div style={{ display: 'flex', gap: 4, marginBottom: 20 }}>
+            {QUIZ_QUESTIONS.map((_, i) => (
+              <div key={i} style={{ flex: 1, height: 4, borderRadius: 99, background: i <= quizStep ? T.pink : T.pinkSoft }} />
+            ))}
+          </div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: T.inkSoft, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>
+            Pergunta {quizStep + 1} de {total}
+          </div>
+          <h1 style={{ fontSize: 23, fontWeight: 700, color: T.ink, margin: '0 0 20px', fontFamily: fonts.display, lineHeight: 1.2 }}>
+            {firstName && quizStep === 0 ? `${firstName}, ` : ''}{q.q}
+          </h1>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {q.opts.map(o => {
+              const sel = quizAnswers[q.key] === o.v;
+              return (
+                <button
+                  key={o.v}
+                  onClick={() => setQuizAnswers(a => ({ ...a, [q.key]: o.v }))}
+                  style={{
+                    width: '100%', textAlign: 'left', padding: '15px 16px', borderRadius: 14,
+                    border: `1.5px solid ${sel ? T.pink : T.border}`, background: sel ? T.pinkSoft : T.surface,
+                    color: T.ink, fontSize: 15, fontWeight: sel ? 700 : 500, cursor: 'pointer', fontFamily: fonts.ui,
+                    boxShadow: sel ? '0 4px 12px rgba(236,72,153,0.15)' : 'none', transition: 'all 0.15s',
+                  }}
+                >
+                  {o.l}
+                </button>
+              );
+            })}
+          </div>
+          {error && <p style={{ color: '#C0392B', fontSize: 13, marginTop: 14, textAlign: 'center' }}>{error}</p>}
+          <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
+            {quizStep > 0 && (
+              <button
+                onClick={() => { setError(''); setQuizStep(s => s - 1); }}
+                style={{ padding: '14px 18px', borderRadius: 14, border: `1px solid ${T.border}`, background: 'transparent', color: T.inkSoft, fontSize: 14, cursor: 'pointer', fontFamily: fonts.ui }}
+              >
+                ← Voltar
+              </button>
+            )}
+            <button
+              onClick={() => { if (!answered) return; if (isLast) submitQuiz(); else { setError(''); setQuizStep(s => s + 1); } }}
+              disabled={!answered}
+              style={{
+                flex: 1, padding: 15, borderRadius: 14, border: 'none',
+                background: answered ? `linear-gradient(135deg, ${T.pink}, ${T.pinkDeep})` : '#D4A0AC',
+                color: '#FFF', fontSize: 15, fontWeight: 800, cursor: answered ? 'pointer' : 'not-allowed',
+                fontFamily: fonts.ui, boxShadow: answered ? '0 8px 22px rgba(190,24,93,0.28)' : 'none',
+              }}
+            >
+              {isLast ? 'Continuar pra foto →' : 'Continuar →'}
+            </button>
+          </div>
+          <p style={{ textAlign: 'center', color: T.inkMuted, fontSize: 11, marginTop: 16, lineHeight: 1.6 }}>
+            Essas respostas ajudam a Juliane a montar seu plano personalizado.
+          </p>
+        </div>
       </div>
     );
   }
