@@ -721,13 +721,21 @@ export default function HojePage() {
                 <rec.Icon size={26} color="#FFF" stroke={1.8} />
               </div>
               <div style={{
-                fontSize: 22, fontWeight: 600, letterSpacing: -0.3,
-                fontFamily: fonts.display, lineHeight: 1.15,
+                fontSize: 18, fontWeight: 600, letterSpacing: -0.2,
+                fontFamily: fonts.display, lineHeight: 1.22,
+                // títulos gerados pela IA podem ser frases longas — limita a 3
+                // linhas pra não tomar a tela toda (texto completo em "Como fazer")
+                display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
               }}>
                 {rec.title}
               </div>
             </div>
-            <div style={{ fontSize: 13.5, opacity: 0.92, marginTop: 4, lineHeight: 1.5 }}>
+            <div style={{
+              fontSize: 13.5, opacity: 0.92, marginTop: 4, lineHeight: 1.5,
+              display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+            }}>
               {rec.desc}
             </div>
 

@@ -239,9 +239,20 @@ function PromoCard({ promo }: { promo: Promotion }) {
 }
 
 function ProductThumb({ url, name, size = 60 }: { url: string | null; name: string; size?: number }) {
-  if (url) {
+  const [failed, setFailed] = useState(false);
+  // <img> real (com onError) em vez de background CSS: a URL da Ybera tem query
+  // string dupla (…?w=420&h=420&v=…?w=&h=) que quebrava o parsing do url() inline,
+  // caindo sempre no ícone genérico. Com <img>, carrega a foto; se falhar, ícone.
+  if (url && !failed) {
     return (
-      <div style={{ width: size, height: size, borderRadius: 12, flexShrink: 0, background: `url(${url}) center/cover`, border: `1px solid ${T.borderSoft}` }} aria-label={name} />
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={url}
+        alt={name}
+        loading="lazy"
+        onError={() => setFailed(true)}
+        style={{ width: size, height: size, borderRadius: 12, flexShrink: 0, objectFit: 'cover', border: `1px solid ${T.borderSoft}`, background: T.cream }}
+      />
     );
   }
   return (
