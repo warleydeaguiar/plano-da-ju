@@ -14,6 +14,7 @@ import {
   IconClock, IconPin, IconHeart, IconBag, IconWhatsApp,
 } from './icons';
 import StoriesPlayer, { type Story } from './StoriesPlayer';
+import { normalizeTasks } from './plan-helpers';
 
 // ── types ────────────────────────────────────────────────
 interface HairState {
@@ -27,10 +28,25 @@ interface HairState {
 interface HairPlanRow {
   week_number: number;
   focus: string;
-  tasks: Array<{ day: number; title: string; description: string; done: boolean }>;
+  // ⚠️ tasks vem do banco em DOIS formatos: array de strings (planos gerados
+  // pela IA atual) ou array de objetos {title, description} (planos antigos).
+  // Sempre normalize com taskText() antes de ler .title/.description — senão
+  // `t.description.length` numa string estoura a renderização (página em branco).
+  tasks: Array<string | { day?: number; title?: string; description?: string; done?: boolean }>;
   products: string[];
   tips: string[];
   juliane_notes: string | null;
+}
+
+// Normaliza uma tarefa (string OU objeto) para { title, description } seguro.
+function taskText(t: unknown): { title: string; description: string } {
+  if (typeof t === 'string') return { title: t, description: '' };
+  if (t && typeof t === 'object') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const o = t as any;
+    return { title: String(o.title ?? o.description ?? ''), description: String(o.description ?? '') };
+  }
+  return { title: '', description: '' };
 }
 interface Profile {
   full_name: string | null;
@@ -84,8 +100,11 @@ function getRecommendation(state: HairState | null, profile: Profile | null, pla
     return { Icon: IconCheck, title: 'Reconstrução Capilar', desc: `Faz ${r} dias sem reconstrução — fortaleça a estrutura.`, product: 'Máscara de Proteína', duration: '25 minutos', when: 'Todo o cabelo' };
   const t = plan?.tasks?.[0];
   if (t) {
-    const TaskIcon = iconForTask(t.title);
-    return { Icon: TaskIcon, title: t.title, desc: t.description, product: plan?.focus ?? 'Cronograma', duration: 'Cronograma', when: 'Hoje' };
+    const { title, description } = taskText(t);
+    if (title) {
+      const TaskIcon = iconForTask(title);
+      return { Icon: TaskIcon, title, desc: description, product: plan?.focus ?? 'Cronograma', duration: 'Cronograma', when: 'Hoje' };
+    }
   }
   return { Icon: IconSparkles, title: 'Rotina em dia!', desc: 'Continue seguindo seu cronograma personalizado.', product: 'Consistência', duration: 'Sempre', when: 'Hoje' };
 }
@@ -178,12 +197,14 @@ function buildUpcoming(plan: HairPlanRow | undefined, events: HairEvent[]): Upco
 
   // Today + future from plan
   const tasks = plan?.tasks ?? [];
-  tasks.slice(0, 2).forEach((t, idx) => {
+  tasks.slice(0, 2).forEach((raw, idx) => {
+    const { title, description } = taskText(raw);
+    if (!title) return;
     items.push({
-      Icon: iconForTask(t.title),
+      Icon: iconForTask(title),
       day: idx === 0 ? 'Hoje · Recomendado' : 'Próximos dias',
-      name: t.title,
-      note: t.description.length > 50 ? t.description.slice(0, 50) + '…' : t.description,
+      name: title,
+      note: description.length > 50 ? description.slice(0, 50) + '…' : description,
       status: idx === 0 ? 'today' : 'future',
     });
   });
@@ -276,7 +297,10 @@ export default function HojePage() {
       }
       setProfile(prof)
     }
-    if (pl.data) setPlans(pl.data as HairPlanRow[]);
+    // Normaliza tasks (string[] antigo vs objeto novo) já no fetch — evita
+    // qualquer .title/.description em undefined ao renderizar (página em branco).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (pl.data) setPlans((pl.data as any[]).map(p => ({ ...p, tasks: normalizeTasks(p.tasks) })) as HairPlanRow[]);
     if (hs.data) setHairState(hs.data as HairState);
     if (ev.data) {
       setEvents(ev.data as HairEvent[]);
@@ -420,6 +444,7 @@ export default function HojePage() {
   const tip       = TIPS[tipIndex];
   const rec       = getRecommendation(hairState, profile, plans[0]);
   const upcoming  = buildUpcoming(plans[0], events);
+  const nextStep  = plans[0]?.tasks?.[1] ? taskText(plans[0].tasks[1]).title : '';
 
   return (
     <div>
@@ -712,7 +737,7 @@ export default function HojePage() {
               <HeroChip icon={<IconPin size={13} stroke={2} />} text={rec.when} />
             </div>
 
-            {plans[0]?.tasks?.[1] && (
+            {nextStep && (
               <div style={{
                 marginTop: 16, paddingTop: 14,
                 borderTop: '1px solid rgba(255,255,255,0.20)',
@@ -723,7 +748,7 @@ export default function HojePage() {
                   <strong style={{
                     display: 'block', fontWeight: 700, color: '#FFF', opacity: 1, marginTop: 2,
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  }}>{plans[0].tasks[1].title}</strong>
+                  }}>{nextStep}</strong>
                 </div>
                 <Link href="/meu-plano/plano" style={{
                   background: 'rgba(255,255,255,0.95)', color: T.pinkDeep,
