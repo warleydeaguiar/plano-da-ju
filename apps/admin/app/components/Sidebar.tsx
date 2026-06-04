@@ -27,6 +27,7 @@ const NAV: NavItem[] = [
     children: [
       { label: 'Lista', href: '/grupos' },
       { label: 'Broadcast', href: '/grupos/broadcast' },
+      { label: 'Promoções no App', href: '/promocoes' },
       { label: 'Gerenciar', href: '/grupos/gerenciar' },
       { label: 'Conexões Evolution', href: '/grupos/conexao' },
     ],
