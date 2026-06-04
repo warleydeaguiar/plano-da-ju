@@ -44,7 +44,15 @@ export default function TodayTasks() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase as any).from('hair_events').select('id, notes, occurred_at').eq('user_id', uid).eq('event_type', 'plan_task').order('occurred_at', { ascending: false }).limit(60),
     ]);
-    const t: string[] = Array.isArray(plan?.tasks) ? plan.tasks.slice(0, 6) : [];
+    // tasks em hair_plans são OBJETOS {day, title, description} (jsonb) — extrai o
+    // texto. (Renderizar o objeto direto quebrava a home: React error #31.)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rawTasks: any[] = Array.isArray(plan?.tasks) ? plan.tasks : [];
+    const t: string[] = rawTasks
+      .map((x) => (typeof x === 'string' ? x : (x?.title || x?.description || '')))
+      .map((s) => String(s).trim())
+      .filter(Boolean)
+      .slice(0, 6);
     setTasks(t);
     const today = localDay(new Date());
     const map: Record<string, string> = {};
