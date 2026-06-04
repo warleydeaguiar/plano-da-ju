@@ -295,3 +295,38 @@ export async function getPlanDetail(userId: string): Promise<AdminPlanDetail | n
     plans: plansRes.data ?? [],
   };
 }
+
+// ── Conversão de PIX (checkout_events) ─────────────────────────────
+export type PixStats = {
+  generated: number;   // pix_generated
+  paid: number;        // payment_confirmed (pix)
+  rate: number;        // % pagos / gerados (cap 100)
+  generated7: number;
+  paid7: number;
+  rate7: number;
+};
+
+export async function getPixStats(): Promise<PixStats> {
+  const sb = createAdminClient();
+  const since7 = new Date(Date.now() - 7 * 86400000).toISOString();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ce = () => (sb.from('checkout_events') as any).select('*', { count: 'exact', head: true });
+  const [genR, paidR, gen7R, paid7R] = await Promise.all([
+    ce().eq('event_type', 'pix_generated'),
+    ce().eq('event_type', 'payment_confirmed').eq('payment_type', 'pix'),
+    ce().eq('event_type', 'pix_generated').gte('created_at', since7),
+    ce().eq('event_type', 'payment_confirmed').eq('payment_type', 'pix').gte('created_at', since7),
+  ]);
+
+  const generated = genR.count ?? 0;
+  const paidN = paidR.count ?? 0;
+  const generated7 = gen7R.count ?? 0;
+  const paid7 = paid7R.count ?? 0;
+  const pct = (p: number, g: number) => (g > 0 ? Math.min(100, Math.round((p / g) * 100)) : 0);
+
+  return {
+    generated, paid: paidN, rate: pct(paidN, generated),
+    generated7, paid7, rate7: pct(paid7, generated7),
+  };
+}

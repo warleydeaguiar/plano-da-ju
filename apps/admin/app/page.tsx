@@ -6,6 +6,7 @@ import {
   getPendingPlans,
   getRecentCheckIns,
   getNewPlansByDay,
+  getPixStats,
 } from '../lib/queries';
 import { createAdminClient } from '../lib/supabase';
 import { getQuizAdSpend, type AdGroupResult } from '../lib/meta-ads-quiz';
@@ -376,6 +377,8 @@ export default async function DashboardPage() {
     })(),
   ]);
 
+  const pixStats = await getPixStats();
+
   // ── PLANO: KPIs derivados ────────────────────────────────────────
   const planoSpendToday      = metaAds.plano.today;
   const planoSpendYesterday  = metaAds.plano.yesterday;
@@ -613,6 +616,27 @@ export default async function DashboardPage() {
                 {stats.pendingPlans} {stats.pendingPlans === 1 ? 'plano' : 'planos'} p/ revisar
               </a>
             )}
+          </div>
+        </div>
+
+        {/* ── Conversão de PIX ── */}
+        <div style={{ ...card, padding: 22 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: T.ink }}>💸 Conversão de PIX</div>
+            <div style={{ fontSize: 12, color: T.inkMuted }}>Total · (7 dias)</div>
+          </div>
+          <div className="dash-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>
+            {[
+              { label: 'PIX gerados',       value: pixStats.generated.toLocaleString('pt-BR'), sub: `${pixStats.generated7} em 7d`, color: T.blue },
+              { label: 'PIX pagos',         value: pixStats.paid.toLocaleString('pt-BR'),      sub: `${pixStats.paid7} em 7d`,      color: T.green },
+              { label: 'Taxa de conversão', value: `${pixStats.rate}%`,                        sub: `${pixStats.rate7}% em 7d`,     color: T.pinkDeep },
+            ].map(({ label, value, sub, color }) => (
+              <div key={label} style={{ textAlign: 'center', padding: 16, background: T.cream, borderRadius: 10 }}>
+                <div style={{ fontSize: 24, fontWeight: 700, fontFamily: fonts.display, color }}>{value}</div>
+                <div style={{ fontSize: 12, color: T.inkMuted, marginTop: 4 }}>{label}</div>
+                <div style={{ fontSize: 10.5, color: T.inkMuted, marginTop: 2 }}>{sub}</div>
+              </div>
+            ))}
           </div>
         </div>
 
