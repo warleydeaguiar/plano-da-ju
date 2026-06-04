@@ -1,4 +1,5 @@
 import Sidebar from './components/Sidebar';
+import ProgressFeed from './components/ProgressFeed';
 import {
   getDashboardStats,
   getPendingPlans,
@@ -1112,6 +1113,9 @@ export default async function DashboardPage() {
             ))}
           </div>
         </div>
+
+        {/* Feed paginado das fotos de progresso (check-ins) das clientes */}
+        <ProgressFeed />
       </main>
     </div>
   );
