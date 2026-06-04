@@ -1,38 +1,49 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { T, fonts, shadow, gradient } from '../theme';
-import { IconSearch, IconClose, IconBag, IconSparkles, IconWhatsApp, iconForCategory } from '../icons';
+import { IconBag, IconSparkles, IconWhatsApp, iconForCategory } from '../icons';
 import { PlanoLoading } from '../Loading';
 
-interface ProductRow {
+interface Promotion {
+  id: string;
+  title: string;
+  description: string | null;
+  image_url: string | null;
+  cta_url: string | null;
+  discount_label: string | null;
+  ends_at: string | null;
+}
+interface Recommendation {
   id: string;
   name: string;
   brand: string | null;
   category: string | null;
-  affiliate_url: string | null;
   image_url: string | null;
-  hair_types: string[] | null;
-  is_ybera: boolean;
+  affiliate_url: string | null;
+  reason: string | null;
 }
 
-const CATEGORIES = [
-  { key: 'all',           label: 'Todos'         },
-  { key: 'limpeza',       label: 'Shampoo'       },
-  { key: 'condicionador', label: 'Condicionador' },
-  { key: 'mascara',       label: 'Máscara'       },
-  { key: 'oleo',          label: 'Óleo'          },
-  { key: 'protetor',      label: 'Protetor'      },
-];
+const GROUP_URL = 'https://planodaju.julianecost.com/g/entrar';
 
-export default function LojaPage() {
+function endsLabel(iso: string | null): string | null {
+  if (!iso) return null;
+  const end = new Date(iso);
+  const ms = end.getTime() - Date.now();
+  if (ms <= 0) return null;
+  const days = Math.ceil(ms / 86_400_000);
+  if (days <= 1) return 'Acaba hoje';
+  if (days === 2) return 'Acaba amanhã';
+  return `Até ${end.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}`;
+}
+
+export default function PromocoesPage() {
   const router = useRouter();
-  const [products, setProducts] = useState<ProductRow[]>([]);
-  const [profileHairType, setProfileHairType] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
-  const [cat, setCat] = useState('all');
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [recFallback, setRecFallback] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const supabase = createBrowserClient(
@@ -43,37 +54,22 @@ export default function LojaPage() {
   const load = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { router.push('/login'); return; }
-    const uid = session.user.id;
-
-    const [pr, p] = await Promise.all([
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (supabase as any).from('products').select('*').eq('active', true).order('is_ybera', { ascending: false }),
-      supabase.from('profiles').select('hair_type').eq('id', uid).single(),
-    ]);
-    if (pr.data) setProducts(pr.data as ProductRow[]);
-    if (p.data?.hair_type) setProfileHairType(p.data.hair_type);
+    try {
+      const res = await fetch('/api/meu-plano/promocoes', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const txt = await res.text();
+      const data = JSON.parse(txt);
+      setPromotions(Array.isArray(data.promotions) ? data.promotions : []);
+      setRecommendations(Array.isArray(data.recommendations) ? data.recommendations : []);
+      setRecFallback(!!data.recommendationsFallback);
+    } catch {
+      // mantém vazio — mostra estados vazios
+    }
     setLoading(false);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return products.filter(p => {
-      const matchSearch = !q ||
-        p.name.toLowerCase().includes(q) ||
-        (p.brand ?? '').toLowerCase().includes(q);
-      const matchCat = cat === 'all' || (
-        (p.category ?? '').toLowerCase().includes(cat) ||
-        (cat === 'mascara' && p.name.toLowerCase().includes('máscara')) ||
-        (cat === 'oleo' && (p.name.toLowerCase().includes('óleo') || p.name.toLowerCase().includes('oleo')))
-      );
-      return matchSearch && matchCat;
-    });
-  }, [products, search, cat]);
-
-  const ybera = filtered.filter(p => p.is_ybera);
-  const alternatives = filtered.filter(p => !p.is_ybera);
 
   if (loading) return <PlanoLoading label="Carregando promoções…" />;
 
@@ -83,21 +79,18 @@ export default function LojaPage() {
 
         {/* Header */}
         <div style={{ padding: '24px 24px 14px' }}>
-          <div style={{
-            fontSize: 28, fontWeight: 600, color: T.ink,
-            fontFamily: fonts.display, letterSpacing: -0.5,
-          }}>
+          <div style={{ fontSize: 28, fontWeight: 600, color: T.ink, fontFamily: fonts.display, letterSpacing: -0.5 }}>
             <em style={{ fontStyle: 'italic' }}>Promoções</em>
           </div>
           <div style={{ fontSize: 13, color: T.inkSoft, marginTop: 4 }}>
-            Produtos selecionados pela Ju com desconto especial
+            Ofertas do momento e produtos escolhidos pra você
           </div>
         </div>
 
         {/* Convite — grupo VIP de promoções no WhatsApp */}
-        <div style={{ padding: '0 16px 14px' }}>
+        <div style={{ padding: '0 16px 16px' }}>
           <a
-            href="https://planodaju.julianecost.com/g/entrar"
+            href={GROUP_URL}
             target="_blank"
             rel="noopener noreferrer"
             style={{
@@ -113,94 +106,68 @@ export default function LojaPage() {
             }}><IconWhatsApp size={28} color="#25D366" /></div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ color: '#fff', fontWeight: 700, fontSize: 15, fontFamily: fonts.ui }}>
-                Entre no grupo VIP de promoções
+                Grupo VIP de promoções
               </div>
               <div style={{ color: 'rgba(255,255,255,0.92)', fontSize: 12.5, marginTop: 2, lineHeight: 1.35 }}>
-                Descontos exclusivos no WhatsApp — e você recebe primeiro 💚
+                Descontos exclusivos no WhatsApp — você recebe primeiro 💚
               </div>
             </div>
             <div style={{ color: '#fff', fontSize: 20, fontWeight: 700, flexShrink: 0 }}>→</div>
           </a>
         </div>
 
-        {/* Search */}
-        <div style={{ padding: '0 16px 12px' }}>
-          <div style={{
-            background: T.surface, borderRadius: 14, padding: '11px 14px',
-            display: 'flex', alignItems: 'center', gap: 10,
-            boxShadow: shadow.card, border: `1px solid ${T.borderSoft}`,
-          }}>
-            <IconSearch size={16} color={T.inkSoft} />
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Buscar produto…"
-              style={{
-                flex: 1, border: 'none', outline: 'none', background: 'transparent',
-                fontSize: 14, color: T.ink, fontFamily: fonts.ui,
-              }}
-            />
-            {search && (
-              <button onClick={() => setSearch('')} style={{ background: 'transparent', border: 'none', color: T.inkSoft, cursor: 'pointer', padding: 0 }}>
-                <IconClose size={14} />
-              </button>
-            )}
+        {/* ── Seção 1: Promoções ativas (temporárias) ── */}
+        <SectionLabel>🔥 Promoções da semana</SectionLabel>
+        {promotions.length > 0 ? (
+          <div style={{ padding: '0 16px 22px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {promotions.map(p => <PromoCard key={p.id} promo={p} />)}
+          </div>
+        ) : (
+          <div style={{ padding: '0 16px 22px' }}>
+            <div style={{
+              background: T.surface, border: `1px dashed ${T.border}`, borderRadius: 16,
+              padding: '20px 18px', textAlign: 'center',
+            }}>
+              <div style={{ fontSize: 30, marginBottom: 6 }}>🎁</div>
+              <div style={{ fontSize: 13.5, color: T.ink, fontWeight: 600 }}>Sem promoção ativa agora</div>
+              <div style={{ fontSize: 12, color: T.inkSoft, marginTop: 4, lineHeight: 1.5 }}>
+                As promoções com desconto saem primeiro no grupo do WhatsApp. Entra lá pra não perder!
+              </div>
+              <a href={GROUP_URL} target="_blank" rel="noopener noreferrer" style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 12,
+                background: '#25D366', color: '#fff', textDecoration: 'none',
+                fontSize: 13, fontWeight: 700, padding: '9px 16px', borderRadius: 10,
+              }}>
+                <IconWhatsApp size={16} color="#fff" /> Entrar no grupo
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* ── Seção 2: Indicados pra você (do plano) ── */}
+        <SectionLabel>✨ Indicados pra você</SectionLabel>
+        <div style={{ padding: '0 24px 8px', marginTop: -4 }}>
+          <div style={{ fontSize: 12, color: T.inkSoft, lineHeight: 1.5 }}>
+            {recFallback
+              ? 'Produtos que combinam com o seu tipo de cabelo. Seu plano vai refinar isso.'
+              : 'A Juliane escolheu estes produtos com base no seu plano personalizado.'}
           </div>
         </div>
-
-        {/* Category pills */}
-        <div style={{ padding: '0 16px 18px', display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none' }}>
-          {CATEGORIES.map(c => (
-            <button key={c.key} onClick={() => setCat(c.key)} style={{
-              flexShrink: 0, padding: '7px 14px', borderRadius: 99,
-              border: 'none', cursor: 'pointer',
-              background: cat === c.key ? gradient.heroSoft : T.surface,
-              color: cat === c.key ? '#FFF' : T.ink,
-              fontSize: 12.5, fontWeight: 600,
-              boxShadow: cat === c.key ? '0 2px 8px rgba(190,24,93,0.25)' : shadow.card,
+        {recommendations.length > 0 ? (
+          <div style={{ padding: '12px 16px 28px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {recommendations.map((r, i) => <RecCard key={r.id} rec={r} index={i} />)}
+          </div>
+        ) : (
+          <div style={{ padding: '12px 16px 28px' }}>
+            <div style={{
+              background: T.surface, border: `1px dashed ${T.border}`, borderRadius: 16,
+              padding: '20px 18px', textAlign: 'center',
             }}>
-              {c.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Ybera Paris section */}
-        {ybera.length > 0 && (
-          <>
-            <SectionLabel>
-              ✨ Produtos Ybera Paris{' '}
-              <span style={{ color: T.inkSoft, fontWeight: 500, textTransform: 'none', letterSpacing: 0 }}>
-                · recomendados pela Ju
-              </span>
-            </SectionLabel>
-            <div style={{ padding: '0 16px 18px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              {ybera.map((p, i) => (
-                <ProductCard
-                  key={p.id} product={p} index={i}
-                  isMatch={profileHairType ? (p.hair_types ?? []).some(h => h.toLowerCase().includes(profileHairType.toLowerCase())) : false}
-                />
-              ))}
-            </div>
-          </>
-        )}
-
-        {/* Alternatives */}
-        {alternatives.length > 0 && (
-          <>
-            <SectionLabel>💚 Alternativas acessíveis</SectionLabel>
-            <div style={{ padding: '0 16px 22px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              {alternatives.map((p, i) => (
-                <ProductCard key={p.id} product={p} index={i} outlined />
-              ))}
-            </div>
-          </>
-        )}
-
-        {filtered.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '40px 24px' }}>
-            <div style={{ fontSize: 44, marginBottom: 10 }}>🛍️</div>
-            <div style={{ fontSize: 14, color: T.inkSoft }}>
-              {products.length === 0 ? 'Catálogo sendo preparado.' : 'Nenhum produto encontrado.'}
+              <div style={{ fontSize: 30, marginBottom: 6 }}>💇‍♀️</div>
+              <div style={{ fontSize: 13.5, color: T.ink, fontWeight: 600 }}>Suas indicações estão a caminho</div>
+              <div style={{ fontSize: 12, color: T.inkSoft, marginTop: 4, lineHeight: 1.5 }}>
+                Assim que seu plano ficar pronto, a Juliane lista aqui os produtos ideais pro seu caso.
+              </div>
             </div>
           </div>
         )}
@@ -213,100 +180,120 @@ export default function LojaPage() {
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ padding: '4px 24px 10px' }}>
-      <div style={{
-        fontSize: 11, fontWeight: 700, color: T.ink,
-        textTransform: 'uppercase', letterSpacing: 1.2,
-      }}>{children}</div>
+      <div style={{ fontSize: 11, fontWeight: 700, color: T.ink, textTransform: 'uppercase', letterSpacing: 1.2 }}>
+        {children}
+      </div>
     </div>
   );
 }
 
-function ProductCard({ product, index, isMatch = false, outlined = false }: {
-  product: ProductRow; index: number; isMatch?: boolean; outlined?: boolean;
-}) {
-  const Icon = iconForCategory(product.category, product.name);
+function PromoCard({ promo }: { promo: Promotion }) {
+  const ends = endsLabel(promo.ends_at);
+  const href = promo.cta_url || GROUP_URL;
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        display: 'block', textDecoration: 'none',
+        background: T.surface, borderRadius: 16, overflow: 'hidden',
+        boxShadow: shadow.card, border: `1px solid ${T.borderSoft}`,
+      }}
+    >
+      {promo.image_url && (
+        <div style={{ width: '100%', height: 150, background: `url(${promo.image_url}) center/cover` }} />
+      )}
+      <div style={{ padding: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+          {promo.discount_label && (
+            <span style={{
+              fontSize: 11, fontWeight: 800, color: '#fff',
+              background: gradient.heroSoft, padding: '3px 9px', borderRadius: 6,
+            }}>{promo.discount_label}</span>
+          )}
+          {ends && (
+            <span style={{ fontSize: 11, fontWeight: 700, color: T.pinkDeep, background: T.pinkSoft, padding: '3px 9px', borderRadius: 6 }}>
+              ⏳ {ends}
+            </span>
+          )}
+        </div>
+        <div style={{ fontSize: 15.5, fontWeight: 700, color: T.ink, fontFamily: fonts.display, lineHeight: 1.25 }}>
+          {promo.title}
+        </div>
+        {promo.description && (
+          <div style={{ fontSize: 13, color: T.inkSoft, marginTop: 5, lineHeight: 1.5 }}>{promo.description}</div>
+        )}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 12,
+          background: gradient.heroSoft, color: '#fff', fontSize: 13.5, fontWeight: 700,
+          padding: '10px 0', borderRadius: 11, boxShadow: '0 4px 12px rgba(190,24,93,0.22)',
+        }}>
+          <IconBag size={15} stroke={2} /> Aproveitar oferta
+        </div>
+      </div>
+    </a>
+  );
+}
+
+function RecCard({ rec, index }: { rec: Recommendation; index: number }) {
+  const Icon = iconForCategory(rec.category, rec.name);
   const gradients = [
     gradient.heroSoft,
     `linear-gradient(135deg, ${T.gold}, ${T.goldDeep})`,
     `linear-gradient(135deg, ${T.pinkBlush}, ${T.pink})`,
     `linear-gradient(135deg, ${T.champagne}, ${T.gold})`,
   ];
-  const bg = product.image_url ? `url(${product.image_url}) center/cover` : gradients[index % gradients.length];
-
+  const bg = rec.image_url ? `url(${rec.image_url}) center/cover` : gradients[index % gradients.length];
   return (
     <div style={{
       background: T.surface, borderRadius: 16, padding: 10, position: 'relative',
-      boxShadow: shadow.card,
-      border: `1px solid ${T.borderSoft}`,
+      boxShadow: shadow.card, border: `1px solid ${T.borderSoft}`,
+      display: 'flex', flexDirection: 'column',
     }}>
-      {/* Image area */}
       <div style={{
-        height: 96, borderRadius: 12,
-        background: bg,
-        position: 'relative', marginBottom: 10,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color: '#FFF',
+        height: 96, borderRadius: 12, background: bg, position: 'relative', marginBottom: 10,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFF',
       }}>
-        {!product.image_url && <Icon size={36} color="#FFF" stroke={1.6} />}
-        {product.is_ybera && (
-          <div style={{
-            position: 'absolute', top: 6, right: 6,
-            background: 'rgba(255,255,255,0.95)', color: T.pinkDeep,
-            fontSize: 9, fontWeight: 700, padding: '3px 7px', borderRadius: 5,
-            display: 'inline-flex', alignItems: 'center', gap: 3,
-          }}>
-            <IconSparkles size={10} stroke={2} /> Desconto Ju
-          </div>
-        )}
+        {!rec.image_url && <Icon size={36} color="#FFF" stroke={1.6} />}
+        <div style={{
+          position: 'absolute', top: 6, right: 6,
+          background: 'rgba(255,255,255,0.95)', color: T.pinkDeep,
+          fontSize: 9, fontWeight: 700, padding: '3px 7px', borderRadius: 5,
+          display: 'inline-flex', alignItems: 'center', gap: 3,
+        }}>
+          <IconSparkles size={10} stroke={2} /> Pra você
+        </div>
       </div>
       <div style={{ fontSize: 10, fontWeight: 700, color: T.inkSoft, textTransform: 'uppercase', letterSpacing: 0.6 }}>
-        {product.brand ?? '—'}
+        {rec.brand ?? '—'}
       </div>
-      <div style={{
-        fontSize: 12.5, fontWeight: 700, color: T.ink, marginTop: 2,
-        lineHeight: 1.3, minHeight: 32, overflow: 'hidden',
-      }}>
-        {product.name}
+      <div style={{ fontSize: 12.5, fontWeight: 700, color: T.ink, marginTop: 2, lineHeight: 1.3 }}>
+        {rec.name}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 8, minHeight: 18 }}>
-        {isMatch && (
-          <span style={{
-            fontSize: 9.5, fontWeight: 700, color: T.green,
-            background: T.greenSoft, borderRadius: 5, padding: '2px 6px',
-          }}>Para seu tipo</span>
-        )}
-        {!isMatch && product.is_ybera && (
-          <span style={{
-            fontSize: 9.5, fontWeight: 700, color: T.goldDeep,
-            background: T.goldSoft, borderRadius: 5, padding: '2px 6px',
-          }}>Mais vendido</span>
-        )}
-        {outlined && (
-          <span style={{
-            fontSize: 9.5, fontWeight: 700, color: T.inkSoft,
-            background: T.cream, borderRadius: 5, padding: '2px 6px',
-          }}>Econômico</span>
-        )}
-      </div>
-      {product.affiliate_url ? (
-        <a href={product.affiliate_url} target="_blank" rel="noopener noreferrer" style={{
-          display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 5,
-          marginTop: 8, textAlign: 'center',
-          background: outlined ? 'transparent' : gradient.heroSoft,
-          color: outlined ? T.pinkDeep : '#FFF',
-          border: outlined ? `1.5px solid ${T.pink}` : 'none',
-          fontSize: 12, fontWeight: 700, padding: '8px 0', borderRadius: 10,
-          textDecoration: 'none',
-          boxShadow: outlined ? 'none' : '0 2px 6px rgba(190,24,93,0.20)',
+      {rec.reason && (
+        <div style={{
+          fontSize: 11, color: T.inkSoft, marginTop: 6, lineHeight: 1.4,
+          background: T.cream, borderRadius: 8, padding: '6px 8px',
         }}>
-          <IconBag size={13} stroke={2} />
-          Ver produto
+          💡 {rec.reason}
+        </div>
+      )}
+      <div style={{ flex: 1 }} />
+      {rec.affiliate_url ? (
+        <a href={rec.affiliate_url} target="_blank" rel="noopener noreferrer" style={{
+          display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 5,
+          marginTop: 10, background: gradient.heroSoft, color: '#FFF',
+          fontSize: 12, fontWeight: 700, padding: '8px 0', borderRadius: 10,
+          textDecoration: 'none', boxShadow: '0 2px 6px rgba(190,24,93,0.20)',
+        }}>
+          <IconBag size={13} stroke={2} /> Ver produto
         </a>
       ) : (
         <div style={{
-          marginTop: 8, textAlign: 'center', background: T.cream,
+          marginTop: 10, textAlign: 'center', background: T.cream,
           color: T.inkSoft, fontSize: 12, fontWeight: 600, padding: '7px 0', borderRadius: 10,
-        }}>Sem link</div>
+        }}>Em breve</div>
       )}
     </div>
   );

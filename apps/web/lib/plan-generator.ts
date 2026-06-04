@@ -21,6 +21,9 @@ interface GeneratedPlan {
     dica: string;
   }>;
   produtos_essenciais: string[];
+  // Indicações personalizadas: produto do catálogo + o porquê de servir pro caso
+  // específico dela (exibido na aba Promoções como "Indicados pra você").
+  produtos_indicados?: Array<{ produto_id: string; motivo: string }>;
   mensagem_juliane: string;
 }
 
@@ -40,6 +43,7 @@ PRODUTOS — REGRA CRÍTICA
 - Distribua os produtos pelas 12 semanas. Repita produtos entre semanas quando fizer sentido.
 - Se a lista estiver curta, é melhor repetir os mesmos do que inventar.
 - Para cada produto que recomendar numa semana, coloque o ID dele em "produto_ids" na ordem correspondente a "produtos".
+- Em "produtos_indicados", liste de 4 a 6 produtos do catálogo (use o ID real em "produto_id") e escreva em "motivo" uma frase curta (1 linha), em 2ª pessoa ("seu cabelo…"), explicando POR QUE aquele produto serve pro caso ESPECÍFICO dela (tipo de cabelo, química, problema relatado). Sem jargão.
 
 FORMATO DA RESPOSTA
 Retorne SOMENTE um JSON válido, sem markdown, sem texto extra:
@@ -57,6 +61,9 @@ Retorne SOMENTE um JSON válido, sem markdown, sem texto extra:
     }
   ],
   "produtos_essenciais": ["5 a 8 nomes exatos do catálogo, em ordem de prioridade"],
+  "produtos_indicados": [
+    { "produto_id": "<uuid do catálogo>", "motivo": "Por que serve pro caso dela, 1 linha" }
+  ],
   "mensagem_juliane": "Mensagem pessoal, em 2–3 frases, mencionando algo específico do quiz ou da foto"
 }
 

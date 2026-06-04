@@ -65,6 +65,8 @@ export async function POST(req: NextRequest) {
         plan_status: 'processing',
         plan_requested_at: new Date().toISOString(),
         hair_type: plan.tipo_cabelo?.toLowerCase() ?? profile.hair_type,
+        // Indicações personalizadas (produto + motivo) pra aba Promoções
+        recommended_products: Array.isArray(plan.produtos_indicados) ? plan.produtos_indicados : null,
       })
       .eq('id', profile.id);
 
