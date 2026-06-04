@@ -86,9 +86,16 @@ export async function GET(req: NextRequest) {
         .select('id,name,brand,category,image_url,affiliate_url')
         .eq('active', true)
         .contains('hair_types', [prof.hair_type])
-        .limit(6);
+        // exclui produtos específicos de cor/tom que não casam (ex: loiro p/ crespo)
+        .not('name', 'ilike', '%loiro%')
+        .not('name', 'ilike', '%platinad%')
+        .not('name', 'ilike', '%matizad%')
+        .not('name', 'ilike', '%ruiv%')
+        .not('name', 'ilike', '%blond%')
+        .order('is_ybera', { ascending: false })
+        .limit(5);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      recommendations = (prods ?? []).map((p: any) => ({ ...p, reason: null }));
+      recommendations = (prods ?? []).map((p: any) => ({ ...p, reason: null, alternative: null }));
       recommendationsFallback = recommendations.length > 0;
     }
 

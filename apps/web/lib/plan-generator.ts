@@ -50,6 +50,8 @@ INDICAÇÕES PERSONALIZADAS ("produtos_indicados") — REGRAS DE OURO
 - Em "alternativa_id", coloque o ID de um produto de OUTRA marca (NÃO Ybera) do catálogo que sirva como versão mais barata pro mesmo objetivo — a 2ª opção pra quem quer economizar. Se não houver alternativa adequada no catálogo, use null. NUNCA deixe a cliente achar que só indicamos Ybera.
 - "motivo": 1 frase curta, em 2ª pessoa ("seu cabelo…"), dizendo POR QUE serve pro caso ESPECÍFICO dela (tipo, química, problema). Sem jargão.
 - CARROS-CHEFE da Ybera (priorize quando fizer sentido pro caso dela — a maioria precisa): Cronograma capilar (kit), Progressiva Fashion Gold, Antiqueda, Óleo de Mirra. Use os nomes/ids exatos do catálogo.
+- RELEVÂNCIA POR COR: NUNCA indique produtos específicos de cor/tom (ex.: "loiro", "platinado", "ruivo", "matizador", "blond") se NÃO corresponder à cor do cabelo dela (veja a cor no quiz). Cabelo preto/castanho/crespo NÃO usa produto de loiro.
+- CONSISTÊNCIA: os produtos citados nas SEMANAS (rotina) devem sair das suas "produtos_indicados" (principal ou alternativa). NÃO cite na rotina nenhum produto que não esteja nas suas indicações — a cliente precisa entender que o que ela compra é o que usa.
 
 FORMATO DA RESPOSTA
 Retorne SOMENTE um JSON válido, sem markdown, sem texto extra:

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { T, fonts, shadow, gradient } from '../theme';
-import { IconBag, IconSparkles, IconWhatsApp, iconForCategory } from '../icons';
+import { IconBag, IconSparkles, IconWhatsApp } from '../icons';
 import { PlanoLoading } from '../Loading';
 
 interface Promotion {
@@ -155,7 +155,7 @@ export default function PromocoesPage() {
           </div>
         </div>
         {recommendations.length > 0 ? (
-          <div style={{ padding: '12px 16px 28px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div style={{ padding: '12px 16px 28px', display: 'flex', flexDirection: 'column', gap: 12 }}>
             {recommendations.map((r, i) => <RecCard key={r.id} rec={r} index={i} />)}
           </div>
         ) : (
@@ -237,76 +237,85 @@ function PromoCard({ promo }: { promo: Promotion }) {
   );
 }
 
-function RecCard({ rec, index }: { rec: Recommendation; index: number }) {
-  const Icon = iconForCategory(rec.category, rec.name);
-  const gradients = [
-    gradient.heroSoft,
-    `linear-gradient(135deg, ${T.gold}, ${T.goldDeep})`,
-    `linear-gradient(135deg, ${T.pinkBlush}, ${T.pink})`,
-    `linear-gradient(135deg, ${T.champagne}, ${T.gold})`,
-  ];
-  const bg = rec.image_url ? `url(${rec.image_url}) center/cover` : gradients[index % gradients.length];
+function ProductThumb({ url, name, size = 60 }: { url: string | null; name: string; size?: number }) {
+  if (url) {
+    return (
+      <div style={{ width: size, height: size, borderRadius: 12, flexShrink: 0, background: `url(${url}) center/cover`, border: `1px solid ${T.borderSoft}` }} aria-label={name} />
+    );
+  }
+  return (
+    <div style={{ width: size, height: size, borderRadius: 12, flexShrink: 0, background: gradient.heroSoft, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <IconBag size={size * 0.4} color="#fff" stroke={1.6} />
+    </div>
+  );
+}
+
+function RecCard({ rec }: { rec: Recommendation; index: number }) {
   return (
     <div style={{
-      background: T.surface, borderRadius: 16, padding: 10, position: 'relative',
+      background: T.surface, borderRadius: 16, padding: 14, position: 'relative',
       boxShadow: shadow.card, border: `1px solid ${T.borderSoft}`,
-      display: 'flex', flexDirection: 'column',
     }}>
+      {/* Tag: indicação principal */}
       <div style={{
-        height: 96, borderRadius: 12, background: bg, position: 'relative', marginBottom: 10,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFF',
+        display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 10,
+        background: T.pinkSoft, color: T.pinkDeep, fontSize: 10, fontWeight: 800,
+        textTransform: 'uppercase', letterSpacing: 0.5, padding: '3px 8px', borderRadius: 6,
       }}>
-        {!rec.image_url && <Icon size={36} color="#FFF" stroke={1.6} />}
-        <div style={{
-          position: 'absolute', top: 6, right: 6,
-          background: 'rgba(255,255,255,0.95)', color: T.pinkDeep,
-          fontSize: 9, fontWeight: 700, padding: '3px 7px', borderRadius: 5,
-          display: 'inline-flex', alignItems: 'center', gap: 3,
-        }}>
-          <IconSparkles size={10} stroke={2} /> Pra você
+        <IconSparkles size={11} stroke={2} /> Indicação principal
+      </div>
+
+      {/* Principal */}
+      <div style={{ display: 'flex', gap: 12 }}>
+        <ProductThumb url={rec.image_url} name={rec.name} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: T.inkSoft, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+            {rec.brand ?? 'Ybera'}
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: T.ink, marginTop: 2, lineHeight: 1.25 }}>
+            {rec.name}
+          </div>
+          {rec.affiliate_url && (
+            <a href={rec.affiliate_url} target="_blank" rel="noopener noreferrer" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 8,
+              background: gradient.heroSoft, color: '#FFF', fontSize: 12.5, fontWeight: 700,
+              padding: '7px 14px', borderRadius: 10, textDecoration: 'none',
+              boxShadow: '0 2px 6px rgba(190,24,93,0.20)',
+            }}>
+              <IconBag size={13} stroke={2} /> Ver produto
+            </a>
+          )}
         </div>
       </div>
-      <div style={{ fontSize: 10, fontWeight: 700, color: T.inkSoft, textTransform: 'uppercase', letterSpacing: 0.6 }}>
-        {rec.brand ?? '—'}
-      </div>
-      <div style={{ fontSize: 12.5, fontWeight: 700, color: T.ink, marginTop: 2, lineHeight: 1.3 }}>
-        {rec.name}
-      </div>
+
       {rec.reason && (
-        <div style={{
-          fontSize: 11, color: T.inkSoft, marginTop: 6, lineHeight: 1.4,
-          background: T.cream, borderRadius: 8, padding: '6px 8px',
-        }}>
+        <div style={{ fontSize: 12, color: T.inkSoft, marginTop: 10, lineHeight: 1.45, background: T.cream, borderRadius: 10, padding: '8px 10px' }}>
           💡 {rec.reason}
         </div>
       )}
-      <div style={{ flex: 1 }} />
-      {rec.affiliate_url ? (
-        <a href={rec.affiliate_url} target="_blank" rel="noopener noreferrer" style={{
-          display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 5,
-          marginTop: 10, background: gradient.heroSoft, color: '#FFF',
-          fontSize: 12, fontWeight: 700, padding: '8px 0', borderRadius: 10,
-          textDecoration: 'none', boxShadow: '0 2px 6px rgba(190,24,93,0.20)',
-        }}>
-          <IconBag size={13} stroke={2} /> Ver produto
-        </a>
-      ) : (
-        <div style={{
-          marginTop: 10, textAlign: 'center', background: T.cream,
-          color: T.inkSoft, fontSize: 12, fontWeight: 600, padding: '7px 0', borderRadius: 10,
-        }}>Em breve</div>
-      )}
+
+      {/* Alternativa mais barata */}
       {rec.alternative && (
-        <div style={{ marginTop: 8, fontSize: 10.5, color: T.inkSoft, lineHeight: 1.4 }}>
-          Quer gastar menos?{' '}
-          {rec.alternative.affiliate_url ? (
-            <a href={rec.alternative.affiliate_url} target="_blank" rel="noopener noreferrer"
-              style={{ color: T.pinkDeep, fontWeight: 700, textDecoration: 'none' }}>
-              {rec.alternative.name} →
-            </a>
-          ) : (
-            <span style={{ color: T.ink, fontWeight: 700 }}>{rec.alternative.name}</span>
-          )}
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px dashed ${T.border}` }}>
+          <div style={{ fontSize: 10, fontWeight: 800, color: T.gold, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+            💰 Opção mais econômica
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: T.inkSoft, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+                {rec.alternative.brand ?? 'Outra marca'}
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: T.ink, lineHeight: 1.25 }}>{rec.alternative.name}</div>
+            </div>
+            {rec.alternative.affiliate_url && (
+              <a href={rec.alternative.affiliate_url} target="_blank" rel="noopener noreferrer" style={{
+                flexShrink: 0, border: `1.5px solid ${T.gold}`, color: T.goldDeep,
+                fontSize: 12, fontWeight: 700, padding: '6px 12px', borderRadius: 10, textDecoration: 'none',
+              }}>
+                Ver →
+              </a>
+            )}
+          </div>
         </div>
       )}
     </div>
