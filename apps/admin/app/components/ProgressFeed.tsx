@@ -126,7 +126,7 @@ export default function ProgressFeed() {
           Nenhuma foto de progresso ainda.
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14 }}>
+        <div className="feed-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14 }}>
           {items.map((it) => (
             <div
               key={it.id}

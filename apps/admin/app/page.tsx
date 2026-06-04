@@ -1,5 +1,6 @@
 import Sidebar from './components/Sidebar';
 import ProgressFeed from './components/ProgressFeed';
+import InitialHairFeed from './components/InitialHairFeed';
 import {
   getDashboardStats,
   getPendingPlans,
@@ -538,7 +539,7 @@ export default async function DashboardPage() {
       background: T.bg, fontFamily: fonts.ui, color: T.ink,
     }}>
       <Sidebar />
-      <main style={{
+      <main className="dash-main" style={{
         marginLeft: 234, flex: 1, height: '100vh', overflowY: 'auto',
         padding: 32, display: 'flex', flexDirection: 'column', gap: 22,
       }}>
@@ -626,7 +627,7 @@ export default async function DashboardPage() {
         />
 
         {/* KPIs Plano — hoje */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
+        <div className="dash-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
           <StatCard
             icon={IconMoney} label="Investimento hoje" value={brl(planoSpendToday)}
             accent={T.blue} accentSoft={T.blueSoft} valueColor={T.blue}
@@ -655,7 +656,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* KPIs Plano — mês */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
+        <div className="dash-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
           <StatCard label="Investimento mês" value={brl(planoSpendMonth)} sub="acumulado" />
           <StatCard label="Receita mês" value={brl(revenueMonth)} valueColor={T.green} sub={`${salesMonth} venda${salesMonth !== 1 ? 's' : ''}`} />
           <StatCard
@@ -772,7 +773,7 @@ export default async function DashboardPage() {
         />
 
         {/* KPIs Grupos — linha 1 */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
+        <div className="dash-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
           <StatCard
             icon={IconMoney} label="Investimento hoje" value={brl(gruposSpendToday)}
             accent={T.blue} accentSoft={T.blueSoft} valueColor={T.blue}
@@ -800,7 +801,7 @@ export default async function DashboardPage() {
         {/* KPIs Grupos — linha 2: vendas Ybera + comissão */}
         {yberaStatus === 'ok' ? (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
+            <div className="dash-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
               <StatCard
                 icon={IconBag} label="Vendas Ybera hoje" value={brl(yberaSalesToday)}
                 accent={T.gold} accentSoft={T.goldSoft}
@@ -828,7 +829,7 @@ export default async function DashboardPage() {
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
+            <div className="dash-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
               <StatCard label="Vendas Ybera mês" value={brl(yberaSalesMonth)} sub={`${yberaOrders.length} pedido${yberaOrders.length !== 1 ? 's' : ''}`} />
               <StatCard label="Comissão mês" value={brl(commissionMonth)} valueColor={T.green} />
               <StatCard
@@ -876,7 +877,7 @@ export default async function DashboardPage() {
           <div style={{ fontSize: 14, fontWeight: 700, color: T.ink, marginBottom: 16 }}>
             Cliques no link de entrada dos grupos
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>
+          <div className="dash-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>
             {[
               { label: 'Hoje',       value: clicksToday.count ?? 0 },
               { label: 'Últimos 7d', value: clicksLast7.count ?? 0 },
@@ -1077,7 +1078,7 @@ export default async function DashboardPage() {
           accent={T.ink}
         />
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
+        <div className="dash-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
           <StatCard icon={IconUsers} label="Total usuárias" value={(totalUsers.count ?? 0).toLocaleString('pt-BR')} sub="cadastradas" />
           <StatCard
             icon={IconCheckCircle} label="Assinantes ativas"
@@ -1100,7 +1101,7 @@ export default async function DashboardPage() {
 
         <div style={{ ...card, padding: 22 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: T.ink, marginBottom: 16 }}>Check-ins no app</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>
+          <div className="dash-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>
             {[
               { label: 'Hoje',        value: checkInsToday.count ?? 0,  color: T.pinkDeep },
               { label: 'Últimos 7d',  value: checkInsLast7.count ?? 0,  color: T.blue },
@@ -1116,6 +1117,9 @@ export default async function DashboardPage() {
 
         {/* Feed paginado das fotos de progresso (check-ins) das clientes */}
         <ProgressFeed />
+
+        {/* Foto inicial (onboarding) das últimas 15 clientes */}
+        <InitialHairFeed />
       </main>
     </div>
   );

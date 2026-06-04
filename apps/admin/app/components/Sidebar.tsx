@@ -75,7 +75,7 @@ export default function Sidebar() {
   }
 
   return (
-    <aside style={{
+    <aside className="dash-sidebar" style={{
       width: 234, minWidth: 234, background: T.cream,
       display: 'flex', flexDirection: 'column', height: '100vh',
       position: 'fixed', left: 0, top: 0,

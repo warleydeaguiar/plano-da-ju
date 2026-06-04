@@ -35,3 +35,32 @@ html, body {
   background: rgba(190,24,93,0.35);
   background-clip: padding-box;
 }
+
+/* ── Dashboard responsivo (mobile) ───────────────────────────────────────
+   O painel usa estilos inline; usamos !important pra sobrepor no mobile.
+   Foco: a página inicial (dashboard) legível no celular. */
+@media (max-width: 768px) {
+  /* Sidebar fixa de 234px atrapalha no celular — esconde e libera a largura.
+     (Navegação completa fica no desktop, conforme combinado.) */
+  .dash-sidebar { display: none !important; }
+  .dash-main {
+    margin-left: 0 !important;
+    padding: 14px !important;
+    gap: 14px !important;
+  }
+  /* Grids de 4 e 3 colunas viram 2; feeds de fotos viram 2 colunas */
+  .dash-grid-4,
+  .dash-grid-3,
+  .feed-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+}
+
+@media (max-width: 430px) {
+  /* Telas bem estreitas: stats em 1 coluna pra não espremer números */
+  .dash-grid-4,
+  .dash-grid-3 {
+    grid-template-columns: 1fr !important;
+  }
+}
