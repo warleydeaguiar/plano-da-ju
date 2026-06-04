@@ -68,6 +68,25 @@ export async function POST(req: NextRequest) {
       })
       .eq('id', profile.id);
 
+    // Registra a foto INICIAL como 1º ponto da timeline de progresso. A foto do
+    // onboarding fica em profiles.photo_url, mas a tela de Progresso lê
+    // photo_analyses — sem isto, a foto "antes" não aparecia lá. Guardado por
+    // contagem pra não duplicar se o trigger rodar 2x.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { count: existingPhotos } = await (supabase.from('photo_analyses') as any)
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', profile.id);
+    if (!existingPhotos) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase.from('photo_analyses') as any).insert({
+        user_id: profile.id,
+        photo_url: photoUrl,
+        avaliacao_texto: plan.diagnostico ?? 'Foto inicial do cabelo',
+        analyzed_at: new Date().toISOString(),
+        raw_response: { source: 'onboarding' },
+      });
+    }
+
     return NextResponse.json({
       success: true,
       diagnostico: plan.diagnostico,
