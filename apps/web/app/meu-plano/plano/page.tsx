@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { createBrowserClient } from '@supabase/ssr';
 import { T, fonts, shadow, gradient } from '../theme';
 import {
-  IconCheck, IconBag, IconSparkles, iconForTask, iconForCategory,
+  IconCheck, IconBag, IconSparkles, IconInstagram, iconForTask, iconForCategory,
 } from '../icons';
 import { normalizeTasks } from '../plan-helpers';
 import { PlanoLoading } from '../Loading';
@@ -50,6 +50,11 @@ export default function PlanoPage() {
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [activeWeek, setActiveWeek] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [showIg, setShowIg] = useState(false);
+
+  useEffect(() => {
+    try { setShowIg(localStorage.getItem('ig_followed') !== '1'); } catch { setShowIg(true); }
+  }, []);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -208,6 +213,38 @@ export default function PlanoPage() {
             Revisado
           </div>
         </div>
+
+        {/* Banner — seguir a Juliane no Instagram (some ao clicar) */}
+        {showIg && (
+          <div style={{ margin: '0 16px 18px' }}>
+            <a
+              href="https://instagram.com/julianecost"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => { try { localStorage.setItem('ig_followed', '1'); } catch {} setShowIg(false); }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none',
+                background: 'linear-gradient(105deg, #F58529 0%, #DD2A7B 50%, #8134AF 100%)',
+                borderRadius: 16, padding: '13px 15px',
+                boxShadow: '0 6px 16px rgba(221,42,123,0.28)',
+              }}
+            >
+              <div style={{
+                width: 42, height: 42, borderRadius: '50%', background: '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              }}><IconInstagram size={26} color="#DD2A7B" /></div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ color: '#fff', fontWeight: 700, fontSize: 14.5, fontFamily: fonts.ui }}>
+                  Siga a Juliane no Instagram
+                </div>
+                <div style={{ color: 'rgba(255,255,255,0.92)', fontSize: 12.5, marginTop: 2 }}>
+                  Dicas, bastidores e novidades · @julianecost
+                </div>
+              </div>
+              <div style={{ color: '#fff', fontSize: 20, fontWeight: 700, flexShrink: 0 }}>→</div>
+            </a>
+          </div>
+        )}
 
         {/* Sub-tabs */}
         <div style={{

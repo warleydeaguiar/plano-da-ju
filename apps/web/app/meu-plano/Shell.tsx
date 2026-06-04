@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { createBrowserClient } from '@supabase/ssr';
 import { T, fonts } from './theme';
 import { IconHome, IconCalendar, IconList, IconChart, IconSparkles } from './icons';
+import InstallPrompt from './InstallPrompt';
 
 const TABS = [
   { href: '/meu-plano',           Icon: IconHome,     label: 'Início'    },
@@ -130,6 +131,8 @@ export default function MeuPlanoShell({ children }: { children: React.ReactNode 
           </div>
         </nav>
       )}
+
+      {!hideNav && <InstallPrompt />}
 
       <style jsx global>{`
         body { background: ${T.bg}; font-family: ${fonts.ui}; color: ${T.ink}; }

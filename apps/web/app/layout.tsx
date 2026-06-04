@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import Script from 'next/script';
 import './globals.css';
 import TrackingBootstrap from './TrackingBootstrap';
@@ -19,6 +19,14 @@ export const metadata: Metadata = {
     description: 'Mais de 3.500 mulheres transformadas. Descubra o plano ideal para o seu cabelo.',
     type: 'website',
   },
+  // PWA — permite instalar o app na tela inicial
+  manifest: '/manifest.webmanifest',
+  appleWebApp: { capable: true, title: 'Plano da Ju', statusBarStyle: 'default' },
+  icons: { icon: '/icon.svg', apple: '/icon.svg' },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#BE185D',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
