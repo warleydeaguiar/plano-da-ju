@@ -15,6 +15,8 @@ interface ProductRow {
   hair_types: string[] | null
   is_ybera: boolean
   active: boolean
+  alternative_product_id: string | null
+  parent_product_id: string | null
 }
 
 async function getProducts(): Promise<ProductRow[]> {

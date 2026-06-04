@@ -20,6 +20,8 @@ interface ProductRow {
   hair_types: string[] | null
   is_ybera: boolean
   active: boolean
+  alternative_product_id: string | null
+  parent_product_id: string | null
 }
 
 type FormData = {
@@ -31,6 +33,8 @@ type FormData = {
   hair_types: string[]
   is_ybera: boolean
   active: boolean
+  alternative_product_id: string
+  parent_product_id: string
 }
 
 const EMPTY_FORM: FormData = {
@@ -42,14 +46,32 @@ const EMPTY_FORM: FormData = {
   hair_types: [],
   is_ybera: false,
   active: true,
+  alternative_product_id: '',
+  parent_product_id: '',
 }
 
 const CATEGORIES = [
-  { key: 'limpeza',       label: 'Shampoo / Limpeza' },
-  { key: 'condicionador', label: 'Condicionador' },
-  { key: 'mascara',       label: 'Máscara' },
-  { key: 'oleo',          label: 'Óleo' },
-  { key: 'protetor',      label: 'Protetor' },
+  { key: 'limpeza',        label: 'Shampoo / Limpeza' },
+  { key: 'pre_shampoo',    label: 'Pré-shampoo' },
+  { key: 'condicionador',  label: 'Condicionador' },
+  { key: 'mascara',        label: 'Máscara de tratamento' },
+  { key: 'hidratacao',     label: 'Hidratação' },
+  { key: 'nutricao',       label: 'Nutrição' },
+  { key: 'reconstrucao',   label: 'Reconstrução' },
+  { key: 'cronograma',     label: 'Cronograma / Kit' },
+  { key: 'leavein',        label: 'Leave-in / Creme de pentear' },
+  { key: 'oleo',           label: 'Óleo capilar' },
+  { key: 'protetor',       label: 'Protetor térmico' },
+  { key: 'finalizador',    label: 'Finalizador / Ativador' },
+  { key: 'antifrizz',      label: 'Anti-frizz' },
+  { key: 'progressiva',    label: 'Progressiva / Alisamento' },
+  { key: 'antiqueda',      label: 'Antiqueda / Crescimento' },
+  { key: 'tonalizante',    label: 'Matizador / Tonalizante' },
+  { key: 'serum',          label: 'Sérum / Ampola' },
+  { key: 'suplemento',     label: 'Suplemento / Vitamina' },
+  { key: 'acessorio',      label: 'Acessório' },
+  { key: 'combo',          label: 'Combo / Kit promocional' },
+  { key: 'outro',          label: 'Outro' },
 ]
 
 const HAIR_TYPES = [
@@ -74,6 +96,8 @@ function productToForm(p: ProductRow): FormData {
     hair_types: p.hair_types ?? [],
     is_ybera: p.is_ybera,
     active: p.active,
+    alternative_product_id: p.alternative_product_id ?? '',
+    parent_product_id: p.parent_product_id ?? '',
   }
 }
 
@@ -86,6 +110,8 @@ function Modal({
   onClose,
   saving,
   errorMsg,
+  products,
+  editingId,
 }: {
   title: string
   form: FormData
@@ -94,6 +120,8 @@ function Modal({
   onClose: () => void
   saving: boolean
   errorMsg: string | null
+  products: ProductRow[]
+  editingId: string | null
 }) {
   function toggleHairType(key: string) {
     const current = form.hair_types
@@ -203,6 +231,42 @@ function Modal({
             />
             <div style={{ fontSize: 11, color: gray, marginTop: 4 }}>
               Link que abre ao clicar em "Ver produto" no app
+            </div>
+          </div>
+
+          {/* Alternativa mais barata (outra marca) */}
+          <div>
+            <label style={labelStyle}>Alternativa mais barata (outra marca)</label>
+            <select
+              style={{ ...inputStyle, cursor: 'pointer' }}
+              value={form.alternative_product_id}
+              onChange={e => setForm({ ...form, alternative_product_id: e.target.value })}
+            >
+              <option value="">Nenhuma</option>
+              {products
+                .filter(p => p.id !== editingId && !p.is_ybera)
+                .map(p => <option key={p.id} value={p.id}>{p.name}{p.brand ? ` · ${p.brand}` : ''}</option>)}
+            </select>
+            <div style={{ fontSize: 11, color: gray, marginTop: 4 }}>
+              Opção econômica (de outra marca) sugerida quando este produto Ybera for indicado.
+            </div>
+          </div>
+
+          {/* Combo de qual produto */}
+          <div>
+            <label style={labelStyle}>É um combo / variação de</label>
+            <select
+              style={{ ...inputStyle, cursor: 'pointer' }}
+              value={form.parent_product_id}
+              onChange={e => setForm({ ...form, parent_product_id: e.target.value })}
+            >
+              <option value="">Não — é um produto principal</option>
+              {products
+                .filter(p => p.id !== editingId && !p.parent_product_id)
+                .map(p => <option key={p.id} value={p.id}>{p.name}{p.brand ? ` · ${p.brand}` : ''}</option>)}
+            </select>
+            <div style={{ fontSize: 11, color: gray, marginTop: 4 }}>
+              Se este item é um COMBO/kit que inclui outro produto (ex.: Fashion Gold + Shampoo), escolha o produto principal. Ele aparece como variação dele, não como produto separado.
             </div>
           </div>
 
@@ -593,6 +657,8 @@ export default function ProdutosClient({ initialProducts }: { initialProducts: P
         hair_types: form.hair_types,
         is_ybera: form.is_ybera,
         active: form.active,
+        alternative_product_id: form.alternative_product_id || null,
+        parent_product_id: form.parent_product_id || null,
       }
 
       if (modalMode === 'edit' && editingProduct) {
@@ -847,6 +913,8 @@ export default function ProdutosClient({ initialProducts }: { initialProducts: P
           onClose={() => setModalMode(null)}
           saving={saving}
           errorMsg={errorMsg}
+          products={products}
+          editingId={editingProduct?.id ?? null}
         />
       )}
 

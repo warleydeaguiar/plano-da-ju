@@ -37,6 +37,8 @@ export async function POST(req: NextRequest) {
       hair_types: body.hair_types ?? [],
       is_ybera: Boolean(body.is_ybera),
       active: body.active !== false,
+      alternative_product_id: body.alternative_product_id || null,
+      parent_product_id: body.parent_product_id || null,
     }
 
     if (!payload.name) {
@@ -79,6 +81,8 @@ export async function PATCH(req: NextRequest) {
     if ('hair_types' in rest)    payload.hair_types   = rest.hair_types ?? []
     if ('is_ybera' in rest)      payload.is_ybera     = Boolean(rest.is_ybera)
     if ('active' in rest)        payload.active       = Boolean(rest.active)
+    if ('alternative_product_id' in rest) payload.alternative_product_id = rest.alternative_product_id || null
+    if ('parent_product_id' in rest)      payload.parent_product_id      = rest.parent_product_id || null
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase as any)

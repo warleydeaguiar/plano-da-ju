@@ -25,6 +25,7 @@ interface Recommendation {
   affiliate_url: string | null;
   reason: string | null;
   alternative: { id: string; name: string; brand: string | null; affiliate_url: string | null } | null;
+  combos?: Array<{ id: string; name: string; brand: string | null; affiliate_url: string | null }> | null;
 }
 
 const GROUP_URL = 'https://planodaju.julianecost.com/g/entrar';
@@ -291,6 +292,28 @@ function RecCard({ rec }: { rec: Recommendation; index: number }) {
       {rec.reason && (
         <div style={{ fontSize: 12, color: T.inkSoft, marginTop: 10, lineHeight: 1.45, background: T.cream, borderRadius: 10, padding: '8px 10px' }}>
           💡 {rec.reason}
+        </div>
+      )}
+
+      {/* Combos / kits do mesmo produto */}
+      {rec.combos && rec.combos.length > 0 && (
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px dashed ${T.border}` }}>
+          <div style={{ fontSize: 10, fontWeight: 800, color: T.pinkDeep, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+            🎁 Sai em combo (mais em conta)
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {rec.combos.map(c => (
+              <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: T.ink, lineHeight: 1.25 }}>{c.name}</div>
+                {c.affiliate_url && (
+                  <a href={c.affiliate_url} target="_blank" rel="noopener noreferrer" style={{
+                    flexShrink: 0, border: `1.5px solid ${T.pink}`, color: T.pinkDeep,
+                    fontSize: 12, fontWeight: 700, padding: '6px 12px', borderRadius: 10, textDecoration: 'none',
+                  }}>Ver →</a>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
