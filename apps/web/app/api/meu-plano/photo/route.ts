@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { createServerClient } from '@supabase/ssr';
 
@@ -167,17 +167,28 @@ export async function POST(req: NextRequest) {
             .update({ plan_status: 'processing', plan_requested_at: new Date().toISOString() })
             .eq('id', user.id);
 
-          // Chama plan/generate (assíncrono — fire-and-forget já que demora ~30s)
+          // Dispara plan/generate (~30s). Antes era `void fetch` — em serverless
+          // a função podia congelar/morrer ao retornar a resposta ANTES do fetch
+          // sair, deixando o plano travado em "processing". `after()` mantém a
+          // execução viva até o trigger completar (dentro do maxDuration=60).
           const origin = req.nextUrl.origin;
-          void fetch(`${origin}/api/plan/generate`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: profile.email,
-              photo_base64: Buffer.from(buffer).toString('base64'),
-              photo_mime_type: f.type,
-            }),
-          }).catch(e => console.error('[photo→plan trigger]', e));
+          const planBody = JSON.stringify({
+            email: profile.email,
+            photo_base64: Buffer.from(buffer).toString('base64'),
+            photo_mime_type: f.type,
+          });
+          after(async () => {
+            try {
+              const r = await fetch(`${origin}/api/plan/generate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: planBody,
+              });
+              if (!r.ok) console.error('[photo→plan trigger] status', r.status);
+            } catch (e) {
+              console.error('[photo→plan trigger]', e);
+            }
+          });
           planTriggered = true;
         }
       } catch (e) {

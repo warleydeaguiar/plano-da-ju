@@ -263,15 +263,18 @@ export default function HojePage() {
     if (hs.data) setHairState(hs.data as HairState);
     if (ev.data) {
       setEvents(ev.data as HairEvent[]);
-      const days = new Set((ev.data as HairEvent[]).map((e: HairEvent) => e.occurred_at.split('T')[0]));
+      // Dia em horário LOCAL (não UTC) — senão registro à noite no Brasil cai no
+      // dia seguinte (UTC) e zera a ofensiva.
+      const localDayKey = (d: Date) => {
+        const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+        return local.toISOString().split('T')[0];
+      };
+      const days = new Set((ev.data as HairEvent[]).map((e: HairEvent) => localDayKey(new Date(e.occurred_at))));
       let s = 0;
       const cur = new Date();
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const iso = cur.toISOString().split('T')[0];
-        if (days.has(iso)) { s++; cur.setDate(cur.getDate() - 1); }
-        else break;
-      }
+      // Se ainda não registrou hoje, conta a partir de ontem (não zera).
+      if (!days.has(localDayKey(cur))) cur.setDate(cur.getDate() - 1);
+      while (days.has(localDayKey(cur))) { s++; cur.setDate(cur.getDate() - 1); }
       setStreak(s);
     }
     if (ci.data?.length) setCheckedInToday(true);

@@ -106,37 +106,51 @@ export default function ProgressoPage() {
   // descartar score 0, e exige ≥2 fotos no período.
   const periodOldest = photosInPeriod[0];
   const periodLatest = photosInPeriod[photosInPeriod.length - 1];
-  const lengthDelta = photosInPeriod.length >= 2
+  const rawDelta = photosInPeriod.length >= 2
     && periodOldest?.crescimento_estimado_cm != null
     && periodLatest?.crescimento_estimado_cm != null
     ? (periodLatest.crescimento_estimado_cm - periodOldest.crescimento_estimado_cm)
     : 0;
+  // A estimativa de cm por foto da IA é ruidosa: só exibe crescimento dentro de
+  // uma faixa plausível (cabelo cresce ~1–1,5 cm/mês). Negativo/ruído/absurdo → oculta.
+  const plausibleMax = Math.max(1.5, (period / 30) * 3);
+  const lengthDelta = rawDelta > 0.1 && rawDelta <= plausibleMax ? rawDelta : 0;
 
   const delta = (curr?: number | null, prev?: number | null) => {
     if (curr == null || prev == null) return null;
     return curr - prev;
   };
 
-  const eventDays = new Set(events.map(e => e.occurred_at.split('T')[0]));
+  // Chave de dia em horário LOCAL (não UTC). Antes usava .toISOString() (UTC),
+  // então um registro às 22h no Brasil (01h UTC do dia seguinte) caía no dia
+  // errado e podia zerar a ofensiva.
+  const localDayKey = (d: Date) => {
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+    return local.toISOString().split('T')[0];
+  };
+  const eventDays = new Set(events.map(e => localDayKey(new Date(e.occurred_at))));
   let streak = 0; const cur = new Date();
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    const iso = cur.toISOString().split('T')[0];
-    if (eventDays.has(iso)) { streak++; cur.setDate(cur.getDate() - 1); }
-    else break;
-  }
+  // Se ainda não registrou HOJE, não zera a ofensiva — conta a partir de ontem.
+  if (!eventDays.has(localDayKey(cur))) cur.setDate(cur.getDate() - 1);
+  while (eventDays.has(localDayKey(cur))) { streak++; cur.setDate(cur.getDate() - 1); }
+
   const last14: boolean[] = [];
   const tmp = new Date();
   for (let i = 0; i < 14; i++) {
-    last14.unshift(eventDays.has(tmp.toISOString().split('T')[0]));
+    last14.unshift(eventDays.has(localDayKey(tmp)));
     tmp.setDate(tmp.getDate() - 1);
   }
-  // Consistência = dias únicos com registro dentro do período (antes contava
-  // todos os eventos, então vários registros no mesmo dia estouravam 100%).
+  // Consistência = dias únicos com registro dentro do período. Denominador =
+  // dias que a usuária realmente teve pra registrar (desde o 1º evento), limitado
+  // ao período — senão quem entrou há 3 dias num período de 30 via "10%".
   const eventDaysInPeriod = new Set(
-    events.filter(e => new Date(e.occurred_at) >= cutoff).map(e => e.occurred_at.split('T')[0]),
+    events.filter(e => new Date(e.occurred_at) >= cutoff).map(e => localDayKey(new Date(e.occurred_at))),
   );
-  const completed = Math.min(100, Math.round((eventDaysInPeriod.size / (period || 1)) * 100));
+  const firstEver = events.length ? new Date(events[events.length - 1].occurred_at) : null;
+  const daysActive = firstEver
+    ? Math.min(period, Math.floor((Date.now() - firstEver.getTime()) / 86_400_000) + 1)
+    : period;
+  const completed = Math.min(100, Math.round((eventDaysInPeriod.size / Math.max(1, daysActive)) * 100));
 
   function Sparkline({ points }: { points: number[] }) {
     if (points.length < 2) {

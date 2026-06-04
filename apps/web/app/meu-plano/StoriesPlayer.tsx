@@ -241,7 +241,9 @@ export default function StoriesPlayer({
           <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={e => e.stopPropagation()}>
             <iframe
               key={story.id}
-              src={buildYouTubeEmbedUrl(story.media_url, !paused)}
+              // autoplay FIXO (não depende de `paused`): antes, ao pausar/retomar
+              // o tap, o src mudava (autoplay=1↔0) e o YouTube RECARREGAVA do zero.
+              src={buildYouTubeEmbedUrl(story.media_url, true)}
               title={story.title}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
