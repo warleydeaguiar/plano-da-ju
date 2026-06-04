@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase'
 import { sendEmail, fillTemplate } from '@/lib/ses-mailer'
 import { buildPersonalizationVars, fillRichTemplate } from '@/lib/email-personalization'
 import { injectTracking, injectUnsubscribe, unsubscribeUrl } from '@/lib/email-tracking'
+import { validateEmail } from '@/lib/email-hygiene'
 
 /**
  * Helper que faz o ciclo completo de envio com tracking:
@@ -662,6 +663,25 @@ async function buildAudience(sb: any, filters: any): Promise<Recip[]> {
   }
 
   let recips = [...map.values()]
+
+  // ── Higiene anti-bounce: corrige typos previsíveis (gmil.com -> gmail.com),
+  // descarta e-mails inválidos/lixo/descartáveis e re-deduplica. Crítico pra
+  // não queimar a reputação do SES (bounce alto = conta suspensa).
+  {
+    const before = recips.length
+    const seenClean = new Set<string>()
+    const cleaned: Recip[] = []
+    let dropped = 0
+    for (const r of recips) {
+      const chk = validateEmail(r.email)
+      if (!chk.valid) { dropped++; continue }
+      if (seenClean.has(chk.email)) continue
+      seenClean.add(chk.email)
+      cleaned.push({ ...r, email: chk.email })
+    }
+    recips = cleaned
+    if (dropped > 0) console.log(`[buildAudience] higiene: ${dropped} e-mail(s) inválido(s) descartado(s) de ${before}`)
+  }
 
   // remove quem descadastrou
   const supp = await loadSuppressedSet(sb, recips.map(r => r.email))

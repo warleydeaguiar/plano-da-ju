@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { cleanEmail } from '@/lib/email-hygiene'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,7 +35,10 @@ export async function POST(req: NextRequest) {
   }
 
   const name       = truncate(body.name, MAX_LEN.name)
-  const email      = truncate(body.email, MAX_LEN.email)
+  const emailRaw   = truncate(body.email, MAX_LEN.email)
+  // Corrige typos previsíveis de domínio (gmil.com -> gmail.com, etc.) já na
+  // captação, pra não acumular e-mail problemático que vira bounce depois.
+  const email      = emailRaw ? (cleanEmail(emailRaw) || emailRaw) : null
   const phone      = truncate(body.phone, MAX_LEN.phone)
   const session_id = truncate(body.session_id, 64)
   const utm_source   = truncate(body.utm_source, MAX_LEN.utm)
