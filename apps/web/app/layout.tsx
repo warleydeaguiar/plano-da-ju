@@ -22,7 +22,14 @@ export const metadata: Metadata = {
   // PWA — permite instalar o app na tela inicial
   manifest: '/manifest.webmanifest',
   appleWebApp: { capable: true, title: 'Plano da Ju', statusBarStyle: 'default' },
-  icons: { icon: '/icon.svg', apple: '/icon.svg' },
+  icons: {
+    icon: [
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    // iOS usa o apple-touch-icon (ignora o manifest) — foto da Juliane
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
 };
 
 export const viewport: Viewport = {
