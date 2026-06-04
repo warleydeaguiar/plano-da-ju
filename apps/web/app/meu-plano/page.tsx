@@ -449,8 +449,11 @@ export default function HojePage() {
           </button>
         </div>
 
-        {/* Banner de primeira foto — só aparece quando user nunca registrou foto */}
-        {photoCount === 0 && (
+        {/* Banner "foto ANTES" — só enquanto o plano AGUARDA a foto inicial.
+            Antes usava photoCount (photo_analyses), mas a foto do onboarding
+            salva em profiles.photo_url SEM criar photo_analyses → o banner nunca
+            sumia. plan_status sai de 'pending_photo' assim que a foto é enviada. */}
+        {profile?.plan_status === 'pending_photo' && (
           <button
             onClick={() => router.push('/meu-plano/progresso')}
             style={{
