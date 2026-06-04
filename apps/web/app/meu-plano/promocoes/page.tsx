@@ -24,6 +24,7 @@ interface Recommendation {
   image_url: string | null;
   affiliate_url: string | null;
   reason: string | null;
+  alternative: { id: string; name: string; brand: string | null; affiliate_url: string | null } | null;
 }
 
 const GROUP_URL = 'https://planodaju.julianecost.com/g/entrar';
@@ -294,6 +295,19 @@ function RecCard({ rec, index }: { rec: Recommendation; index: number }) {
           marginTop: 10, textAlign: 'center', background: T.cream,
           color: T.inkSoft, fontSize: 12, fontWeight: 600, padding: '7px 0', borderRadius: 10,
         }}>Em breve</div>
+      )}
+      {rec.alternative && (
+        <div style={{ marginTop: 8, fontSize: 10.5, color: T.inkSoft, lineHeight: 1.4 }}>
+          Quer gastar menos?{' '}
+          {rec.alternative.affiliate_url ? (
+            <a href={rec.alternative.affiliate_url} target="_blank" rel="noopener noreferrer"
+              style={{ color: T.pinkDeep, fontWeight: 700, textDecoration: 'none' }}>
+              {rec.alternative.name} →
+            </a>
+          ) : (
+            <span style={{ color: T.ink, fontWeight: 700 }}>{rec.alternative.name}</span>
+          )}
+        </div>
       )}
     </div>
   );

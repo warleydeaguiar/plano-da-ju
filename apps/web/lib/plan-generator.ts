@@ -21,9 +21,9 @@ interface GeneratedPlan {
     dica: string;
   }>;
   produtos_essenciais: string[];
-  // Indicações personalizadas: produto do catálogo + o porquê de servir pro caso
-  // específico dela (exibido na aba Promoções como "Indicados pra você").
-  produtos_indicados?: Array<{ produto_id: string; motivo: string }>;
+  // Indicações personalizadas (3 a 5): produto PRINCIPAL Ybera + uma alternativa
+  // mais barata de outra marca (2ª opção pra quem quer economizar) + o porquê.
+  produtos_indicados?: Array<{ produto_id: string; motivo: string; alternativa_id?: string | null }>;
   mensagem_juliane: string;
 }
 
@@ -43,7 +43,13 @@ PRODUTOS — REGRA CRÍTICA
 - Distribua os produtos pelas 12 semanas. Repita produtos entre semanas quando fizer sentido.
 - Se a lista estiver curta, é melhor repetir os mesmos do que inventar.
 - Para cada produto que recomendar numa semana, coloque o ID dele em "produto_ids" na ordem correspondente a "produtos".
-- Em "produtos_indicados", liste de 4 a 6 produtos do catálogo (use o ID real em "produto_id") e escreva em "motivo" uma frase curta (1 linha), em 2ª pessoa ("seu cabelo…"), explicando POR QUE aquele produto serve pro caso ESPECÍFICO dela (tipo de cabelo, química, problema relatado). Sem jargão.
+
+INDICAÇÕES PERSONALIZADAS ("produtos_indicados") — REGRAS DE OURO
+- Liste de 3 a 5 indicações (NÃO mais — são só 12 semanas, não pode pesar no bolso da cliente).
+- Em CADA indicação, o produto PRINCIPAL ("produto_id") é SEMPRE um produto YBERA do catálogo (is_ybera).
+- Em "alternativa_id", coloque o ID de um produto de OUTRA marca (NÃO Ybera) do catálogo que sirva como versão mais barata pro mesmo objetivo — a 2ª opção pra quem quer economizar. Se não houver alternativa adequada no catálogo, use null. NUNCA deixe a cliente achar que só indicamos Ybera.
+- "motivo": 1 frase curta, em 2ª pessoa ("seu cabelo…"), dizendo POR QUE serve pro caso ESPECÍFICO dela (tipo, química, problema). Sem jargão.
+- CARROS-CHEFE da Ybera (priorize quando fizer sentido pro caso dela — a maioria precisa): Cronograma capilar (kit), Progressiva Fashion Gold, Antiqueda, Óleo de Mirra. Use os nomes/ids exatos do catálogo.
 
 FORMATO DA RESPOSTA
 Retorne SOMENTE um JSON válido, sem markdown, sem texto extra:
@@ -62,7 +68,7 @@ Retorne SOMENTE um JSON válido, sem markdown, sem texto extra:
   ],
   "produtos_essenciais": ["5 a 8 nomes exatos do catálogo, em ordem de prioridade"],
   "produtos_indicados": [
-    { "produto_id": "<uuid do catálogo>", "motivo": "Por que serve pro caso dela, 1 linha" }
+    { "produto_id": "<uuid Ybera principal>", "motivo": "Por que serve pro caso dela, 1 linha", "alternativa_id": "<uuid de outra marca mais barata, ou null>" }
   ],
   "mensagem_juliane": "Mensagem pessoal, em 2–3 frases, mencionando algo específico do quiz ou da foto"
 }

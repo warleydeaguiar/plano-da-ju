@@ -43,18 +43,19 @@ export async function GET(req: NextRequest) {
       .eq('id', user.id)
       .maybeSingle();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const stored: Array<{ produto_id?: string; motivo?: string }> =
+    const stored: Array<{ produto_id?: string; motivo?: string; alternativa_id?: string | null }> =
       Array.isArray(prof?.recommended_products) ? prof.recommended_products : [];
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let recommendations: any[] = [];
     if (stored.length) {
-      const ids = [...new Set(stored.map(r => r.produto_id).filter(Boolean))] as string[];
+      const ids = [...new Set(
+        stored.flatMap(r => [r.produto_id, r.alternativa_id]).filter(Boolean),
+      )] as string[];
       if (ids.length) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: prods } = await (sb.from('products') as any)
-          .select('id,name,brand,category,image_url,affiliate_url')
+          .select('id,name,brand,category,image_url,affiliate_url,is_ybera')
           .in('id', ids)
           .eq('active', true);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -62,7 +63,16 @@ export async function GET(req: NextRequest) {
         recommendations = stored
           .map(r => {
             const p = map.get(r.produto_id);
-            return p ? { ...p, reason: r.motivo ?? null } : null;
+            if (!p) return null;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const alt: any = r.alternativa_id ? map.get(r.alternativa_id) : null;
+            return {
+              ...p,
+              reason: r.motivo ?? null,
+              alternative: alt
+                ? { id: alt.id, name: alt.name, brand: alt.brand, affiliate_url: alt.affiliate_url }
+                : null,
+            };
           })
           .filter(Boolean);
       }
