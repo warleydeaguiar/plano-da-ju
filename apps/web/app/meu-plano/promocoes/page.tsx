@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { T, fonts, shadow, gradient } from '../theme';
-import { IconSearch, IconClose, IconBag, IconSparkles, iconForCategory } from '../icons';
+import { IconSearch, IconClose, IconBag, IconSparkles, IconWhatsApp, iconForCategory } from '../icons';
 import { PlanoLoading } from '../Loading';
 
 interface ProductRow {
@@ -108,9 +108,9 @@ export default function LojaPage() {
             }}
           >
             <div style={{
-              width: 42, height: 42, borderRadius: '50%', background: 'rgba(255,255,255,0.22)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0,
-            }}>💬</div>
+              width: 42, height: 42, borderRadius: '50%', background: '#fff',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}><IconWhatsApp size={28} color="#25D366" /></div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ color: '#fff', fontWeight: 700, fontSize: 15, fontFamily: fonts.ui }}>
                 Entre no grupo VIP de promoções

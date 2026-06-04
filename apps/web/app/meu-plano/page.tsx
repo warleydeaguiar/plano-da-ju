@@ -9,7 +9,7 @@ import { PlanoLoading } from './Loading';
 import {
   IconCheck, IconFlame, IconChevronRight, iconForEvent, iconForTask,
   IconWash, IconDrop, IconWind, IconCamera, IconSparkles,
-  IconClock, IconPin, IconHeart, IconBag,
+  IconClock, IconPin, IconHeart, IconBag, IconWhatsApp,
 } from './icons';
 import StoriesPlayer, { type Story } from './StoriesPlayer';
 
@@ -523,9 +523,9 @@ export default function HojePage() {
               }}
             >
               <div style={{
-                width: 42, height: 42, borderRadius: '50%', background: 'rgba(255,255,255,0.22)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0,
-              }}>💬</div>
+                width: 42, height: 42, borderRadius: '50%', background: '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              }}><IconWhatsApp size={28} color="#25D366" /></div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ color: '#fff', fontWeight: 700, fontSize: 15, fontFamily: fonts.ui }}>
                   Grupo VIP de promoções
