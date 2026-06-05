@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { newEventId, sendServerEvent } from '../../../lib/tracking-client'
 
 // ─── Design tokens ──────────────────────────────────────────
 const T = {
@@ -594,17 +595,22 @@ export default function QuizFashionGoldClient() {
         }),
       })
       const data = await res.json()
-      // Fire Meta Pixel Lead event — sempre com currency (ROAS exige)
+      // Lead com eventID compartilhado Pixel + CAPI → dedup e cobertura no servidor.
+      // Sem `value` (preço fixo no Lead derruba ROAS); só currency.
+      const leadEventId = newEventId()
       if (typeof window !== 'undefined' && window.fbq) {
-        window.fbq('track', 'Lead', { content_name: 'Quiz Fashion Gold', content_category: 'fashion-gold', currency: 'BRL' })
+        window.fbq('track', 'Lead', { content_name: 'Quiz Fashion Gold', content_category: 'fashion-gold', currency: 'BRL' }, { eventID: leadEventId })
       }
+      sendServerEvent('Lead', { eventId: leadEventId, email, phone, contentName: 'Quiz Fashion Gold', contentCategory: 'fashion-gold', currency: 'BRL' })
       // Redirect directly to WhatsApp group
       window.location.href = data.invite_link ?? '/g/entrar'
     } catch {
-      // On network error, still fire pixel and redirect via server fallback
+      // On network error, still fire pixel + CAPI (mesmo eventID) e redireciona
+      const leadEventId = newEventId()
       if (typeof window !== 'undefined' && window.fbq) {
-        window.fbq('track', 'Lead', { content_name: 'Quiz Fashion Gold', content_category: 'fashion-gold', currency: 'BRL' })
+        window.fbq('track', 'Lead', { content_name: 'Quiz Fashion Gold', content_category: 'fashion-gold', currency: 'BRL' }, { eventID: leadEventId })
       }
+      sendServerEvent('Lead', { eventId: leadEventId, email, phone, contentName: 'Quiz Fashion Gold', contentCategory: 'fashion-gold', currency: 'BRL' })
       window.location.href = '/g/entrar'
     } finally {
       setLoading(false)

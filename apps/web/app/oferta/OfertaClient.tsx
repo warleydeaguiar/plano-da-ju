@@ -523,7 +523,7 @@ export default function OfertaClient() {
         );
         const data = await res.json();
         if (data.paid) {
-          localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now() }));
+          localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now(), orderId: pixOrderId }));
           localStorage.removeItem('pix_pending');
           setStep('pix_confirmed');
           setTimeout(() => router.push('/obrigado'), 2000);
@@ -544,7 +544,7 @@ export default function OfertaClient() {
     if (cardPollCount >= 60) {
       // 3 minutos (60 × 3s) — assume que o webhook vai chegar; redireciona
       try {
-        localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now() }));
+        localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now(), orderId: cardOrderId }));
       } catch {}
       router.push('/obrigado?pending=1');
       return;
@@ -557,7 +557,7 @@ export default function OfertaClient() {
         );
         const data = await res.json();
         if (data.paid) {
-          localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now() }));
+          localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now(), orderId: cardOrderId }));
           await logEvent({ event_type: 'payment_confirmed', email, payment_type: 'card', amount_cents: 3490 });
           router.push('/obrigado');
         } else if (data.failed) {
@@ -855,7 +855,7 @@ export default function OfertaClient() {
 
       // Cobrança aprovada imediatamente?
       if (data.paid) {
-        localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now() }));
+        localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now(), orderId: data.order_id }));
         await logEvent({ event_type: 'payment_confirmed', email, payment_type: 'card', amount_cents: 3490 });
         router.push('/obrigado');
       } else {

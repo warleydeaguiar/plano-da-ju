@@ -53,10 +53,12 @@ export async function POST(req: NextRequest) {
     // Identidade persistida (fbp/fbc/zip/cpf + email/phone de fallback)
     const trk = await getTrackingIdentity(sb, { sessionId: session_id, email: emailIn ?? null });
 
-    // PageView não tem value/currency. Para outros, usamos o que veio (ou
-    // fallback 34.90 BRL p/ o plano).
+    // PageView e Lead NÃO levam `value` (Lead com preço fixo faz o Meta acusar
+    // "todos os Leads com o mesmo preço" e derruba a qualidade/ROAS). Lead mantém
+    // só `currency`. IC/AddPaymentInfo levam value (fallback 34.90 BRL do plano).
     const isPageView = event_name === 'PageView';
-    const value = isPageView ? undefined : (typeof body.value === 'number' && isFinite(body.value) ? body.value : 34.9);
+    const noValueEvent = isPageView || event_name === 'Lead';
+    const value = noValueEvent ? undefined : (typeof body.value === 'number' && isFinite(body.value) ? body.value : 34.9);
     const currency = isPageView ? undefined : (clean(body.currency, 8) ?? 'BRL');
 
     await sendCapiEvent({
