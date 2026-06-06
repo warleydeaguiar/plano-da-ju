@@ -310,19 +310,33 @@ export async function getPixStats(): Promise<PixStats> {
   const sb = createAdminClient();
   const since7 = new Date(Date.now() - 7 * 86400000).toISOString();
 
+  // Contamos CLIENTES DISTINTOS (por email), não eventos crus. Motivo: o webhook
+  // grava payment_confirmed em order.paid E charge.paid (ids diferentes), e o
+  // cliente pode regerar o QR (vários pix_generated). Contar evento cru inflava
+  // os "pagos" (ex.: 108 eventos p/ 66 pessoas) → conversão estourava 100%.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const ce = () => (sb.from('checkout_events') as any).select('*', { count: 'exact', head: true });
-  const [genR, paidR, gen7R, paid7R] = await Promise.all([
-    ce().eq('event_type', 'pix_generated'),
-    ce().eq('event_type', 'payment_confirmed').eq('payment_type', 'pix'),
-    ce().eq('event_type', 'pix_generated').gte('created_at', since7),
-    ce().eq('event_type', 'payment_confirmed').eq('payment_type', 'pix').gte('created_at', since7),
+  const [genRows, paidRows] = await Promise.all([
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sb.from('checkout_events') as any).select('email, created_at').eq('event_type', 'pix_generated').not('email', 'is', null).limit(50000),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sb.from('checkout_events') as any).select('email, created_at').eq('event_type', 'payment_confirmed').eq('payment_type', 'pix').not('email', 'is', null).limit(50000),
   ]);
 
-  const generated = genR.count ?? 0;
-  const paidN = paidR.count ?? 0;
-  const generated7 = gen7R.count ?? 0;
-  const paid7 = paid7R.count ?? 0;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const distinct = (rows: { data: any[] | null }, sinceIso?: string): number => {
+    const s = new Set<string>();
+    for (const r of rows.data ?? []) {
+      if (sinceIso && (r.created_at ?? '') < sinceIso) continue;
+      const e = (r.email ?? '').toLowerCase().trim();
+      if (e) s.add(e);
+    }
+    return s.size;
+  };
+
+  const generated  = distinct(genRows);
+  const paidN      = distinct(paidRows);
+  const generated7 = distinct(genRows, since7);
+  const paid7      = distinct(paidRows, since7);
   const pct = (p: number, g: number) => (g > 0 ? Math.min(100, Math.round((p / g) * 100)) : 0);
 
   return {

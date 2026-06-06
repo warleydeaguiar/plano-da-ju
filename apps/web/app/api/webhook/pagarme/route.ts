@@ -138,7 +138,12 @@ export async function POST(req: NextRequest) {
           .limit(1)
           .maybeSingle();
 
-        if (!existingEvent) {
+        // Só grava no evento que REALMENTE ativou o perfil (justActivated é
+        // atômico — exatamente 1 dos eventos order.paid/charge.paid vence).
+        // Antes o dedup por session_id falhava quando checkout_session_id era
+        // nulo (caía em data.id, que difere entre order.paid=or_ e charge.paid=ch_)
+        // → 2 payment_confirmed por venda, inflando "PIX pagos" e a conversão.
+        if (justActivated && !existingEvent) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await (supabase.from('checkout_events') as any).insert({
             session_id: sessionKey,

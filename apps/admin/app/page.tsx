@@ -470,7 +470,9 @@ export default async function DashboardPage() {
 
   function pct(a: number, b: number) {
     if (!b) return '—';
-    return `${Math.round((a / b) * 100)}%`;
+    // Limita a 100%: eventos de uma etapa podem disparar mais de uma vez (ex.:
+    // offer_viewed repetido), o que gerava conversões impossíveis (101%+).
+    return `${Math.min(100, Math.round((a / b) * 100))}%`;
   }
 
   // ── Dashboard greeting / chart ───────────────────────────────────
