@@ -389,15 +389,18 @@ export default async function DashboardPage() {
   const salesMonth      = activeMonth.count ?? 0;
 
   const revenueToday      = salesToday      * PLAN_PRICE;
+  const revenueYesterday  = salesYesterday  * PLAN_PRICE;
   const revenueMonth      = salesMonth      * PLAN_PRICE;
 
-  const roasToday = planoSpendToday    > 0 ? revenueToday    / planoSpendToday    : null;
-  const roasMonth = planoSpendMonth    > 0 ? revenueMonth    / planoSpendMonth    : null;
+  const roasToday     = planoSpendToday     > 0 ? revenueToday     / planoSpendToday     : null;
+  const roasYesterday = planoSpendYesterday > 0 ? revenueYesterday / planoSpendYesterday : null;
+  const roasMonth     = planoSpendMonth     > 0 ? revenueMonth     / planoSpendMonth     : null;
   const cpaToday  = salesToday         > 0 ? planoSpendToday / salesToday         : null;
   const cpaMonth  = salesMonth         > 0 ? planoSpendMonth / salesMonth         : null;
 
-  const profitToday = revenueToday - planoSpendToday;
-  const profitMonth = revenueMonth - planoSpendMonth;
+  const profitToday     = revenueToday     - planoSpendToday;
+  const profitYesterday = revenueYesterday - planoSpendYesterday;
+  const profitMonth     = revenueMonth     - planoSpendMonth;
 
   // ── GRUPOS: KPIs ─────────────────────────────────────────────────
   const gruposSpendToday      = metaAds.grupos.today;
@@ -621,27 +624,6 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* ── Conversão de PIX ── */}
-        <div style={{ ...card, padding: 22 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: T.ink }}>💸 Conversão de PIX</div>
-            <div style={{ fontSize: 12, color: T.inkMuted }}>Total · (7 dias)</div>
-          </div>
-          <div className="dash-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>
-            {[
-              { label: 'PIX gerados',       value: pixStats.generated.toLocaleString('pt-BR'), sub: `${pixStats.generated7} em 7d`, color: T.blue },
-              { label: 'PIX pagos',         value: pixStats.paid.toLocaleString('pt-BR'),      sub: `${pixStats.paid7} em 7d`,      color: T.green },
-              { label: 'Taxa de conversão', value: `${pixStats.rate}%`,                        sub: `${pixStats.rate7}% em 7d`,     color: T.pinkDeep },
-            ].map(({ label, value, sub, color }) => (
-              <div key={label} style={{ textAlign: 'center', padding: 16, background: T.cream, borderRadius: 10 }}>
-                <div style={{ fontSize: 24, fontWeight: 700, fontFamily: fonts.display, color }}>{value}</div>
-                <div style={{ fontSize: 12, color: T.inkMuted, marginTop: 4 }}>{label}</div>
-                <div style={{ fontSize: 10.5, color: T.inkMuted, marginTop: 2 }}>{sub}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
         {/* ════════════════════════════════════════════════════════ */}
         {/* SEÇÃO 1: PLANO CAPILAR                                    */}
         {/* ════════════════════════════════════════════════════════ */}
@@ -662,14 +644,14 @@ export default async function DashboardPage() {
           <StatCard
             icon={IconReceipt} label="Receita hoje" value={brl(revenueToday)}
             accent={T.green} accentSoft={T.greenSoft} valueColor={T.green}
-            sub={`${salesToday} venda${salesToday !== 1 ? 's' : ''}`}
+            sub={`ontem ${brl(revenueYesterday)}`}
           />
           <StatCard
             icon={IconChart} label="ROAS hoje"
             value={roasToday !== null ? `${roasToday.toFixed(2)}x` : '—'}
             accent={T.pink} accentSoft={T.pinkSoft}
             valueColor={roasToday !== null && roasToday >= 1 ? T.green : roasToday !== null ? T.danger : T.inkMuted}
-            sub={roasToday !== null ? (roasToday >= 1 ? 'lucrativo' : 'no prejuízo') : 'sem investimento hoje'}
+            sub={`ontem ${roasYesterday !== null ? `${roasYesterday.toFixed(2)}x` : '—'}`}
           />
           <StatCard
             icon={profitToday >= 0 ? IconTrendUp : IconTrendDown} label="Lucro hoje"
@@ -677,7 +659,7 @@ export default async function DashboardPage() {
             accent={profitToday >= 0 ? T.green : T.danger}
             accentSoft={profitToday >= 0 ? T.greenSoft : T.dangerSoft}
             valueColor={profitToday >= 0 ? T.green : T.danger}
-            sub={`R$ ${cpaToday !== null ? cpaToday.toFixed(2) : '—'} custo/venda`}
+            sub={`ontem ${brl(profitYesterday)}`}
           />
         </div>
 
@@ -1146,6 +1128,27 @@ export default async function DashboardPage() {
 
         {/* Foto inicial (onboarding) das últimas 15 clientes */}
         <InitialHairFeed />
+
+        {/* ── Conversão de PIX (movido para o rodapé) ── */}
+        <div style={{ ...card, padding: 22 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: T.ink }}>💸 Conversão de PIX</div>
+            <div style={{ fontSize: 12, color: T.inkMuted }}>Total · (7 dias)</div>
+          </div>
+          <div className="dash-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>
+            {[
+              { label: 'PIX gerados',       value: pixStats.generated.toLocaleString('pt-BR'), sub: `${pixStats.generated7} em 7d`, color: T.blue },
+              { label: 'PIX pagos',         value: pixStats.paid.toLocaleString('pt-BR'),      sub: `${pixStats.paid7} em 7d`,      color: T.green },
+              { label: 'Taxa de conversão', value: `${pixStats.rate}%`,                        sub: `${pixStats.rate7}% em 7d`,     color: T.pinkDeep },
+            ].map(({ label, value, sub, color }) => (
+              <div key={label} style={{ textAlign: 'center', padding: 16, background: T.cream, borderRadius: 10 }}>
+                <div style={{ fontSize: 24, fontWeight: 700, fontFamily: fonts.display, color }}>{value}</div>
+                <div style={{ fontSize: 12, color: T.inkMuted, marginTop: 4 }}>{label}</div>
+                <div style={{ fontSize: 10.5, color: T.inkMuted, marginTop: 2 }}>{sub}</div>
+              </div>
+            ))}
+          </div>
+        </div>
       </main>
     </div>
   );
