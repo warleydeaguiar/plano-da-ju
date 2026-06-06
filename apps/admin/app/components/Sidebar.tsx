@@ -14,7 +14,13 @@ type NavItem = {
 
 const NAV: NavItem[] = [
   { icon: '📊', label: 'Dashboard', href: '/' },
-  { icon: '🔍', label: 'Revisão de Planos', href: '/planos' },
+  {
+    icon: '🔍', label: 'Revisão de Planos', href: '/planos',
+    children: [
+      { label: 'Revisar planos', href: '/planos' },
+      { label: 'Galeria de fotos', href: '/planos/galeria' },
+    ],
+  },
   {
     icon: '👥', label: 'Usuárias', href: '/usuarios',
     children: [
