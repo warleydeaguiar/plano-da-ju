@@ -238,9 +238,27 @@ export async function POST(req: NextRequest) {
       err,
       context: { installments: logInstallments },
     });
+    // Traduz erros técnicos do PagarMe (vinham em inglês pro cliente) numa
+    // mensagem acionável em PT. O #1 hoje é o "card verification failed" (412):
+    // o banco recusa a verificação do cartão — geralmente resolve com outro
+    // cartão ou PIX (aprovação na hora).
+    const raw = err instanceof Error ? err.message : '';
+    const low = raw.toLowerCase();
+    let friendly = 'Não consegui processar seu cartão. Tente outro cartão ou pague via PIX (aprovação na hora).';
+    if (low.includes('verification failed') || low.includes('could not create credit card')) {
+      friendly = 'Seu banco recusou a verificação do cartão. Tente outro cartão de crédito ou use o PIX — a aprovação é na hora. 💳';
+    } else if (low.includes('insufficient') || low.includes('saldo')) {
+      friendly = 'Cartão sem saldo/limite disponível. Tente outro cartão ou pague via PIX.';
+    } else if (low.includes('expired') || low.includes('expir')) {
+      friendly = 'Cartão vencido. Confira a validade ou tente outro cartão.';
+    } else if (low.includes('cvv')) {
+      friendly = 'CVV inválido. Confira o código de segurança do cartão.';
+    } else if (low.includes('refused') || low.includes('not_authorized') || low.includes('declined') || low.includes('não autoriz')) {
+      friendly = 'Pagamento não autorizado pelo banco. Tente outro cartão ou pague via PIX (aprovação na hora).';
+    }
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Erro ao processar cartão' },
-      { status: 500 },
+      { error: friendly },
+      { status: 400 },
     );
   }
 }
