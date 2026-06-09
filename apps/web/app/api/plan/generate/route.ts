@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { generatePlanWithClaude, savePlanToDb } from '@/lib/plan-generator';
+import { logServerError } from '@/lib/server-log';
 
 // 300s = max do Vercel Pro plan. Plano de 90 dias = 12 semanas.
 // Gera 12 semanas (90 dias) — cabe folgado em 300s.
@@ -13,8 +14,10 @@ export const maxDuration = 300;
  * Gera plano usando Claude Vision com o CATÁLOGO REAL Ybera injetado no prompt.
  */
 export async function POST(req: NextRequest) {
+  let emailForLog: string | null = null;
   try {
     const { email, photo_base64, photo_mime_type } = await req.json();
+    emailForLog = email ?? null;
 
     if (!email || !photo_base64) {
       return NextResponse.json({ error: 'Email e foto são obrigatórios' }, { status: 400 });
@@ -97,7 +100,23 @@ export async function POST(req: NextRequest) {
       photo_url: photoUrl,
     });
   } catch (err) {
-    console.error('[plan/generate]', err);
+    // Log RICO + persistente: era a maior cegueira (planos travavam em
+    // 'processing' sem ninguém ver). Também tira o perfil do limbo: marca
+    // plan_status='photo_error' pra aparecer como problema, não como "gerando".
+    await logServerError({
+      route: 'plan/generate',
+      err,
+      email: emailForLog,
+      severity: 'critical',
+      context: { impact: 'cliente pagante pode ficar sem plano (travado em processing)' },
+    });
+    if (emailForLog) {
+      try {
+        const sb = await createServiceClient();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (sb.from('profiles') as any).update({ plan_status: 'photo_error' }).eq('email', emailForLog).eq('plan_status', 'processing');
+      } catch { /* best-effort */ }
+    }
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Erro ao gerar plano' },
       { status: 500 },

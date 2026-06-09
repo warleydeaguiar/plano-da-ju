@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { createServerClient } from '@supabase/ssr';
+import { logServerError } from '@/lib/server-log';
 
 export const runtime = 'nodejs';
 // Upload + análise da Claude Vision podem passar de 30s; sem isto a função
@@ -211,7 +212,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true, photo_url: photoUrl, analysis, plan_triggered: planTriggered });
   } catch (err) {
-    console.error('[api/meu-plano/photo]', err);
+    await logServerError({ route: 'meu-plano/photo', err, severity: 'error', context: { impact: 'cliente não conseguiu enviar foto de progresso/onboarding' } });
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
   }
 }

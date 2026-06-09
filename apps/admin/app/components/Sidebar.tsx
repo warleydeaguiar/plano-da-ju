@@ -64,6 +64,7 @@ const NAV: NavItem[] = [
       { label: 'Erros', href: '/checkout/erros' },
     ],
   },
+  { icon: '🐞', label: 'Erros do Sistema', href: '/erros' },
   { icon: '⚙️', label: 'Configurações', href: '/configuracoes' },
 ];
 

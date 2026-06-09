@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { createServerClient } from '@supabase/ssr';
+import { logServerError } from '@/lib/server-log';
 
 export const runtime = 'nodejs';
 
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true, avatar_url: avatarUrl });
   } catch (err) {
-    console.error('[avatar POST]', err);
+    await logServerError({ route: 'meu-plano/avatar:POST', err, context: { impact: 'falha ao salvar foto de perfil' } });
     return NextResponse.json({ error: 'Erro inesperado' }, { status: 500 });
   }
 }
@@ -110,7 +111,7 @@ export async function PATCH(req: NextRequest) {
     await (supabase.from('profiles') as any).update(updates).eq('id', user.id);
     return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error('[avatar PATCH]', err);
+    await logServerError({ route: 'meu-plano/avatar:PATCH', err, context: { impact: 'falha ao atualizar perfil (nome/peso/meta de água)' } });
     return NextResponse.json({ error: 'Erro inesperado' }, { status: 500 });
   }
 }
