@@ -10,6 +10,7 @@ import {
 } from '../icons';
 import { normalizeTasks } from '../plan-helpers';
 import { PlanoLoading } from '../Loading';
+import PlanFeedback from './PlanFeedback';
 
 type Tab = 'rotina' | 'produtos' | 'dicas';
 
@@ -30,6 +31,7 @@ interface Profile {
   hair_length_cm: number | null;
   quiz_answers: Record<string, unknown> | null;
   plan_released_at: string | null;
+  plan_requested_at: string | null;
   plan_status: string;
 }
 interface ProductRow {
@@ -68,7 +70,7 @@ export default function PlanoPage() {
 
     const [p, pl, pr] = await Promise.all([
       supabase.from('profiles')
-        .select('full_name,hair_type,porosity,chemical_history,main_problems,hair_length_cm,quiz_answers,plan_released_at,plan_status')
+        .select('full_name,hair_type,porosity,chemical_history,main_problems,hair_length_cm,quiz_answers,plan_released_at,plan_requested_at,plan_status')
         .eq('id', uid).single(),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase as any).from('hair_plans')
@@ -94,13 +96,17 @@ export default function PlanoPage() {
 
   if (loading) return <PlanoLoading label="Carregando seu plano…" />;
 
-  // ── Estado "preparando" — plano ainda não aprovado pela Juliane ─────────
-  // Bloqueia a view do plano completo até admin aprovar (plan_status === 'ready').
-  // Mostra um card claro: "Juliane está lendo suas respostas e preparando".
-  const planReady = profile?.plan_status === 'ready';
-  if (!planReady) {
+  // ── Estado "preparando" — ENTREGA AUTOMÁTICA por tempo (sem aprovação manual).
+  // O plano é liberado em plan_released_at (~30 min após gerar). Até lá, mostra a
+  // contagem "fica pronto em até 24h" (prometemos 24h, entregamos em ~30 min).
+  const releasedAtMs = profile?.plan_released_at ? new Date(profile.plan_released_at).getTime() : null;
+  const delivered = !!releasedAtMs && Date.now() >= releasedAtMs;
+  if (!delivered) {
     return <PreparingState profile={profile} />;
   }
+  // Entregue ANTES do prazo? (liberado antes de pedido + 24h)
+  const requestedMs = profile?.plan_requested_at ? new Date(profile.plan_requested_at).getTime() : null;
+  const aheadOfSchedule = !!requestedMs && !!releasedAtMs && releasedAtMs < requestedMs + 24 * 3600_000;
 
   const currentPlan = plans.find(p => p.week_number === activeWeek);
 
@@ -146,6 +152,15 @@ export default function PlanoPage() {
             {releasedDate && (
               <div style={{ fontSize: 12.5, opacity: 0.85, marginTop: 4 }}>
                 Criado para você em {releasedDate}
+              </div>
+            )}
+            {aheadOfSchedule && (
+              <div style={{
+                marginTop: 12, display: 'inline-flex', alignItems: 'center', gap: 7,
+                background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.28)',
+                borderRadius: 99, padding: '7px 14px', fontSize: 12.5, fontWeight: 700,
+              }}>
+                ⚡ Entregue antes do prazo! Prometemos 24h e a Juliane já preparou o seu.
               </div>
             )}
             {chips.length > 0 && (
@@ -459,6 +474,9 @@ export default function PlanoPage() {
           </>
         )}
 
+        {/* Avaliação + pedido de ajuste do plano */}
+        <PlanFeedback />
+
       </div>
     </div>
   );
@@ -585,9 +603,30 @@ function EmptyState({ emoji, title, description }: { emoji: string; title: strin
   );
 }
 
-// ── Preparando: plano ainda não aprovado pela Juliane ─────────────────────
+// ── Preparando: contagem regressiva até a entrega (auto, sem aprovação) ────
 function PreparingState({ profile }: { profile: Profile | null }) {
   const firstName = profile?.full_name?.split(' ')[0] ?? '';
+  // Prometemos ATÉ 24h — a contagem mira o pedido + 24h. (Na prática libera em ~30 min.)
+  const requestedMs = profile?.plan_requested_at ? new Date(profile.plan_requested_at).getTime() : null;
+  const releasedMs  = profile?.plan_released_at  ? new Date(profile.plan_released_at).getTime()  : null;
+  const deadlineMs  = requestedMs ? requestedMs + 24 * 3600_000 : null;
+
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  // Assim que liberar (released_at), recarrega pra mostrar o plano.
+  useEffect(() => {
+    if (releasedMs && Date.now() >= releasedMs) window.location.reload();
+  }, [now, releasedMs]);
+
+  const remainingMs = deadlineMs ? Math.max(0, deadlineMs - now) : null;
+  const hh = remainingMs != null ? Math.floor(remainingMs / 3600_000) : null;
+  const mm = remainingMs != null ? Math.floor((remainingMs % 3600_000) / 60_000) : null;
+  const ss = remainingMs != null ? Math.floor((remainingMs % 60_000) / 1000) : null;
+  const pad = (n: number) => String(n).padStart(2, '0');
+
   return (
     <div>
       <div style={{ maxWidth: 480, margin: '0 auto' }}>
@@ -690,19 +729,30 @@ function PreparingState({ profile }: { profile: Profile | null }) {
           </div>
         </div>
 
-        {/* Aviso prazo */}
+        {/* Contagem regressiva — entrega em até 24h */}
         <div style={{
           margin: '0 16px 18px',
           background: gradient.warm,
           border: `1px solid ${T.gold}55`,
-          borderRadius: 14, padding: '14px 16px',
-          display: 'flex', gap: 12, alignItems: 'flex-start',
+          borderRadius: 16, padding: '18px 16px', textAlign: 'center',
         }}>
-          <span style={{ fontSize: 22, lineHeight: 1, flexShrink: 0 }}>⏳</span>
-          <div style={{ fontSize: 13, color: T.ink, lineHeight: 1.55 }}>
-            Plano fica pronto em até <strong>3 dias úteis</strong>. Você pode
-            seguir usando o app normalmente enquanto isso —
-            registre suas lavagens, hidratações e veja as dicas da Juliane.
+          <div style={{ fontSize: 12.5, color: T.ink, fontWeight: 600, marginBottom: 8 }}>
+            ⏳ Seu plano fica pronto em até <strong>24 horas</strong>
+          </div>
+          {remainingMs != null && (
+            <div style={{
+              display: 'inline-flex', gap: 6, alignItems: 'center',
+              fontFamily: fonts.display, fontWeight: 800, color: T.pinkDeep, fontSize: 30,
+              letterSpacing: 1,
+            }}>
+              <span>{pad(hh!)}</span><span style={{ opacity: 0.4 }}>:</span>
+              <span>{pad(mm!)}</span><span style={{ opacity: 0.4 }}>:</span>
+              <span>{pad(ss!)}</span>
+            </div>
+          )}
+          <div style={{ fontSize: 12, color: T.inkSoft, marginTop: 8, lineHeight: 1.5 }}>
+            Mas relaxa — quase sempre entregamos <strong>muito antes</strong> 💛
+            Continue usando o app enquanto isso: registre lavagens, hidratações e veja as dicas.
           </div>
         </div>
 

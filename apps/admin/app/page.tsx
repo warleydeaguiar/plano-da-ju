@@ -359,8 +359,9 @@ export default async function DashboardPage() {
     // App
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sb.from('hair_plans') as any).select('*', { count: 'exact', head: true }).eq('week_number', 1),
+    // "Planos p/ revisar" = pedidos de ajuste das clientes (entrega é automática agora)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (sb.from('hair_plans') as any).select('*', { count: 'exact', head: true }).eq('week_number', 1).eq('approved_by_juliane', false),
+    (sb.from('profiles') as any).select('*', { count: 'exact', head: true }).eq('subscription_status', 'active').eq('plan_status', 'revision_requested'),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sb.from('check_ins') as any).select('*', { count: 'exact', head: true }).gte('checked_at', todayStartBR.toISOString()),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

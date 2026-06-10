@@ -60,13 +60,20 @@ export async function POST(req: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await savePlanToDb(supabase as any, profile.id, plan);
 
+    // ENTREGA AUTOMÁTICA: sem aprovação manual da Juliane. O plano é gerado e
+    // já fica 'ready'; a VISIBILIDADE é liberada 30 min depois (plan_released_at),
+    // mantendo a percepção de preparo — mas MUITO antes do prazo prometido (24h).
+    const now = Date.now();
+    const releasedAt = new Date(now + 30 * 60 * 1000).toISOString();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase.from('profiles') as any)
       .update({
         photo_url: photoUrl,
-        photo_taken_at: new Date().toISOString(),
-        plan_status: 'processing',
-        plan_requested_at: new Date().toISOString(),
+        photo_taken_at: new Date(now).toISOString(),
+        plan_status: 'ready',
+        plan_requested_at: new Date(now).toISOString(),
+        plan_released_at: releasedAt,
+        plan_delivered_email_sent_at: null, // o cron envia o e-mail quando liberar
         hair_type: plan.tipo_cabelo?.toLowerCase() ?? profile.hair_type,
         // Indicações personalizadas (produto + motivo) pra aba Promoções
         recommended_products: Array.isArray(plan.produtos_indicados) ? plan.produtos_indicados : null,
