@@ -1,12 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import { T, fonts } from '../theme';
 
+// WhatsApp de suporte (fallback quando a revisão estoura o prazo).
+const WA_SUPORTE = '5531971445597';
+const WA_MSG = 'Oi! Já passou das 48h do prazo de revisão do meu plano capilar e gostaria de ajuda com ele 💛';
+const waLink = () => `https://wa.me/${WA_SUPORTE}?text=${encodeURIComponent(WA_MSG)}`;
+
 export default function PlanFeedback(
-  { alreadySubmitted = false, revisionPending = false }:
-  { alreadySubmitted?: boolean; revisionPending?: boolean },
+  { alreadySubmitted = false, revisionPending = false, revisionDueAt = null }:
+  { alreadySubmitted?: boolean; revisionPending?: boolean; revisionDueAt?: string | null },
 ) {
   const [rating, setRating] = useState(0);
   const [mode, setMode] = useState<'ask' | 'revision'>('ask'); // 'ask' = pergunta se quer ajuste
@@ -18,6 +23,15 @@ export default function PlanFeedback(
     alreadySubmitted ? { revision: revisionPending } : null,
   );
   const [err, setErr] = useState('');
+  const [now, setNow] = useState(() => Date.now());
+
+  // Contador da revisão: só roda enquanto houver prazo pendente.
+  const dueMs = revisionDueAt ? new Date(revisionDueAt).getTime() : null;
+  useEffect(() => {
+    if (!(done?.revision && dueMs)) return;
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, [done, dueMs]);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -47,17 +61,80 @@ export default function PlanFeedback(
   }
 
   if (done) {
+    // Caso simples: avaliou sem pedir ajuste.
+    if (!done.revision) {
+      return (
+        <div style={{ margin: '0 16px 28px', background: T.surface, border: `1px solid ${T.borderSoft}`, borderRadius: 16, padding: 20, textAlign: 'center' }}>
+          <div style={{ fontSize: 30 }}>💛</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: T.ink, fontFamily: fonts.display, marginTop: 6 }}>
+            Obrigada pela avaliação!
+          </div>
+          <div style={{ fontSize: 13, color: T.inkSoft, marginTop: 6, lineHeight: 1.5 }}>
+            Que bom que gostou! Bora seguir o cronograma 💪
+          </div>
+        </div>
+      );
+    }
+
+    // Pediu ajuste: mostra contador até o prazo da Juliane; depois, fallback WhatsApp.
+    const remaining = dueMs ? dueMs - now : null;
+    const overdue = remaining != null && remaining <= 0;
+
+    let countdownLabel = '';
+    if (remaining != null && remaining > 0) {
+      const totalMin = Math.floor(remaining / 60_000);
+      const h = Math.floor(totalMin / 60);
+      const m = totalMin % 60;
+      if (h >= 24) {
+        const d = Math.floor(h / 24);
+        const hr = h % 24;
+        countdownLabel = `${d}d ${hr}h restantes`;
+      } else if (h >= 1) {
+        countdownLabel = `${h}h ${m}min restantes`;
+      } else {
+        countdownLabel = `${Math.max(1, totalMin)}min restantes`;
+      }
+    }
+
     return (
       <div style={{ margin: '0 16px 28px', background: T.surface, border: `1px solid ${T.borderSoft}`, borderRadius: 16, padding: 20, textAlign: 'center' }}>
-        <div style={{ fontSize: 30 }}>{done.revision ? '📝' : '💛'}</div>
+        <div style={{ fontSize: 30 }}>{overdue ? '💬' : '📝'}</div>
         <div style={{ fontSize: 15, fontWeight: 700, color: T.ink, fontFamily: fonts.display, marginTop: 6 }}>
-          {done.revision ? 'Pedido de ajuste recebido!' : 'Obrigada pela avaliação!'}
+          {overdue ? 'Vamos resolver isso juntas 💛' : 'Pedido de ajuste recebido!'}
         </div>
-        <div style={{ fontSize: 13, color: T.inkSoft, marginTop: 6, lineHeight: 1.5 }}>
-          {done.revision
-            ? 'A Juliane vai revisar seu plano e responde em até 2 dias úteis (não contamos sábado e domingo).'
-            : 'Que bom que gostou! Bora seguir o cronograma 💪'}
-        </div>
+
+        {!overdue && (
+          <>
+            <div style={{ fontSize: 13, color: T.inkSoft, marginTop: 6, lineHeight: 1.5 }}>
+              A Juliane vai revisar seu plano e responde em até <strong>2 dias úteis</strong> (não contamos sábado e domingo).
+            </div>
+            {countdownLabel && (
+              <div style={{ marginTop: 14, display: 'inline-block', background: T.pinkSoft, border: `1px solid ${T.borderSoft}`, borderRadius: 999, padding: '8px 16px' }}>
+                <span style={{ fontSize: 11, color: T.inkSoft, textTransform: 'uppercase', letterSpacing: 0.5 }}>Prazo da resposta</span>
+                <div style={{ fontSize: 18, fontWeight: 800, color: T.ink, fontFamily: fonts.display, marginTop: 2 }}>
+                  ⏳ {countdownLabel}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {overdue && (
+          <>
+            <div style={{ fontSize: 13, color: T.inkSoft, marginTop: 6, lineHeight: 1.5 }}>
+              Já passou do prazo de resposta e a gente não quer te deixar esperando.
+              Chama a gente no WhatsApp que resolvemos seu ajuste rapidinho 💛
+            </div>
+            <a
+              href={waLink()}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ display: 'inline-block', marginTop: 16, background: '#25D366', color: '#fff', textDecoration: 'none', fontWeight: 700, fontSize: 15, padding: '14px 26px', borderRadius: 12 }}
+            >
+              💬 Falar no WhatsApp
+            </a>
+          </>
+        )}
       </div>
     );
   }

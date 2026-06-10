@@ -34,6 +34,7 @@ interface Profile {
   plan_requested_at: string | null;
   plan_status: string;
   plan_feedback_rating: number | null;
+  plan_revision_due_at: string | null;
 }
 interface ProductRow {
   id: string;
@@ -71,7 +72,7 @@ export default function PlanoPage() {
 
     const [p, pl, pr] = await Promise.all([
       supabase.from('profiles')
-        .select('full_name,hair_type,porosity,chemical_history,main_problems,hair_length_cm,quiz_answers,plan_released_at,plan_requested_at,plan_status,plan_feedback_rating')
+        .select('full_name,hair_type,porosity,chemical_history,main_problems,hair_length_cm,quiz_answers,plan_released_at,plan_requested_at,plan_status,plan_feedback_rating,plan_revision_due_at')
         .eq('id', uid).single(),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase as any).from('hair_plans')
@@ -479,6 +480,7 @@ export default function PlanoPage() {
         <PlanFeedback
           alreadySubmitted={profile?.plan_feedback_rating != null || profile?.plan_status === 'revision_requested'}
           revisionPending={profile?.plan_status === 'revision_requested'}
+          revisionDueAt={profile?.plan_revision_due_at ?? null}
         />
 
       </div>
