@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useTransition } from 'react'
+import { useState, useMemo, useTransition, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
 const accent = '#BE185D'
@@ -106,14 +106,30 @@ function isoForDateInput(iso: string | null) {
   return new Date(iso).toISOString().slice(0, 10)
 }
 
-export default function UsuariasClient({ initialUsers }: { initialUsers: User[] }) {
+export default function UsuariasClient({ initialUsers, initialQuery = '' }: { initialUsers: User[]; initialQuery?: string }) {
   const router = useRouter()
-  const [search, setSearch] = useState('')
+  const [search, setSearch] = useState(initialQuery)
   const [statusFilter, setStatus] = useState<string>('all')
   const [giftFilter, setGiftFilter] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [showCreate, setShowCreate] = useState(false)
-  const [, startTransition] = useTransition()
+  const [isPending, startTransition] = useTransition()
+
+  // Busca server-side: a lista carrega só as 200 mais recentes, então buscamos
+  // no banco inteiro (debounce de 400ms) atualizando ?q= na URL. O filtro local
+  // abaixo ainda refina instantaneamente o conjunto retornado.
+  const lastPushed = useRef(initialQuery)
+  useEffect(() => {
+    const t = search.trim()
+    if (t === lastPushed.current) return
+    const id = setTimeout(() => {
+      lastPushed.current = t
+      startTransition(() => {
+        router.push(t.length >= 2 ? `/usuarios?q=${encodeURIComponent(t)}` : '/usuarios')
+      })
+    }, 400)
+    return () => clearTimeout(id)
+  }, [search, router])
 
   const selected = useMemo(() => initialUsers.find(u => u.id === selectedId) ?? null, [initialUsers, selectedId])
 
@@ -156,7 +172,9 @@ export default function UsuariasClient({ initialUsers }: { initialUsers: User[] 
           <div>
             <div style={{ fontSize: 22, fontWeight: 700, color: '#2A1E2C' }}>Usuárias</div>
             <div style={{ fontSize: 13, color: gray, marginTop: 3 }}>
-              {initialUsers.length} cadastradas{counts.gifts > 0 ? ` · ${counts.gifts} presentes 🎁` : ''}
+              {initialQuery
+                ? `${initialUsers.length} resultado${initialUsers.length === 1 ? '' : 's'} para "${initialQuery}"`
+                : `${initialUsers.length} mais recentes${counts.gifts > 0 ? ` · ${counts.gifts} presentes 🎁` : ''}`}
             </div>
           </div>
           <button onClick={() => setShowCreate(true)} style={{
@@ -197,11 +215,11 @@ export default function UsuariasClient({ initialUsers }: { initialUsers: User[] 
 
         {/* Search */}
         <div style={{ position: 'relative', marginBottom: 20 }}>
-          <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 14, color: gray }}>🔍</span>
+          <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 14, color: gray }}>{isPending ? '⏳' : '🔍'}</span>
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar por nome, email ou telefone…"
+            placeholder="Buscar por nome, email ou telefone (em toda a base)…"
             style={{
               width: '100%', padding: '10px 14px 10px 36px', borderRadius: 10,
               border: '1px solid #E0E0E8', fontSize: 14, outline: 'none',
