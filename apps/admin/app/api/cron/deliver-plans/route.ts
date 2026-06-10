@@ -33,8 +33,14 @@ function emailHtml(firstName: string): string {
 }
 
 async function run(req: NextRequest) {
-  const token = req.headers.get('x-cron-token') ?? req.nextUrl.searchParams.get('token')
-  if (!process.env.EMAIL_CRON_TOKEN || token !== process.env.EMAIL_CRON_TOKEN) {
+  // Mesmo padrão dos outros crons: Authorization: Bearer <CRON_SECRET>.
+  // (O middleware do admin já valida isso; revalidamos aqui por garantia.)
+  const auth = req.headers.get('authorization') ?? ''
+  const cronSecret = process.env.CRON_SECRET
+  const altToken = req.headers.get('x-cron-token') ?? req.nextUrl.searchParams.get('token')
+  const ok = (cronSecret && auth === `Bearer ${cronSecret}`)
+    || (process.env.EMAIL_CRON_TOKEN && altToken === process.env.EMAIL_CRON_TOKEN)
+  if (!ok) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
   const sb = createAdminClient()
