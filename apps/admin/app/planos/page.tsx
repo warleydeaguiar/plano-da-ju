@@ -76,8 +76,11 @@ export default async function PlanosPage() {
     const hasPlan = !!plan;
     const hasPhoto = !!p.photo_url;
 
+    // Entrega é AUTOMÁTICA: plano gerado + status 'ready' = ENTREGUE (não precisa
+    // de aprovação manual). 'needs_review' só sobra p/ casos raros (tem plano mas
+    // status não-ready). Incompletos reais = sem plano (aguardando foto ou gerando).
     let stage: PlanCardData['stage'];
-    if (plan?.approved_by_juliane) stage = 'approved';
+    if (plan?.approved_by_juliane || (hasPlan && p.plan_status === 'ready')) stage = 'approved';
     else if (hasPlan)               stage = 'needs_review';
     else if (p.plan_status === 'processing') stage = 'processing';
     else if (!hasPhoto)             stage = 'awaiting_photo';

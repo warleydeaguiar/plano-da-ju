@@ -48,8 +48,8 @@ function formatDate(iso: string): string {
 const STAGE_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   awaiting_photo: { label: 'Aguardando foto',  color: '#D97706', bg: 'rgba(255,149,0,0.10)' },
   processing:     { label: 'Processando IA',   color: '#2563EB', bg: 'rgba(0,122,255,0.10)' },
-  needs_review:   { label: 'Para revisar',     color: ACCENT,    bg: 'rgba(196,96,122,0.10)' },
-  approved:       { label: 'Aprovado',         color: '#22A06B', bg: 'rgba(52,199,89,0.10)'  },
+  needs_review:   { label: 'Pra revisar',      color: ACCENT,    bg: 'rgba(196,96,122,0.10)' },
+  approved:       { label: 'Entregue',         color: '#22A06B', bg: 'rgba(52,199,89,0.10)'  },
   no_subscription:{ label: 'Sem assinatura',   color: '#7C6B7E', bg: 'rgba(138,138,142,0.10)'},
 };
 
@@ -111,9 +111,9 @@ interface CatalogProduct {
 
 // ── Filter / tab constants ────────────────────────────────────────────────────
 const FILTER_TABS = [
-  { key: 'pending'  as const, label: 'Pendentes' },
-  { key: 'approved' as const, label: 'Aprovados' },
-  { key: 'all'      as const, label: 'Todos'     },
+  { key: 'pending'  as const, label: 'Incompletos' },
+  { key: 'approved' as const, label: 'Entregues'   },
+  { key: 'all'      as const, label: 'Todos'       },
 ];
 const PLAN_TABS: Array<{ key: 'cronograma' | 'produtos' | 'dicas'; label: string }> = [
   { key: 'cronograma', label: 'Cronograma' },
@@ -591,18 +591,21 @@ export default function PlanosClient(
     }
   }, []);
 
-  // Derived state
+  // Derived state. Entrega é automática, então "entregue" = stage 'approved'
+  // (plano gerado + ready). "Incompletos" = ainda sem plano (aguardando foto /
+  // gerando / travado) — esses sim precisam de atenção.
+  const isDelivered = useCallback((c: PlanCard) => c.stage === 'approved', []);
   const filtered = useMemo(() => {
-    if (filterTab === 'pending')  return cards.filter(c => !c.approved);
-    if (filterTab === 'approved') return cards.filter(c =>  c.approved);
+    if (filterTab === 'pending')  return cards.filter(c => !isDelivered(c));
+    if (filterTab === 'approved') return cards.filter(c =>  isDelivered(c));
     return cards;
-  }, [cards, filterTab]);
+  }, [cards, filterTab, isDelivered]);
 
   const counts = useMemo(() => ({
-    pending:  cards.filter(c => !c.approved).length,
-    approved: cards.filter(c =>  c.approved).length,
+    pending:  cards.filter(c => !isDelivered(c)).length,
+    approved: cards.filter(c =>  isDelivered(c)).length,
     all:      cards.length,
-  }), [cards]);
+  }), [cards, isDelivered]);
 
   const selected = useMemo(
     () => cards.find(c => c.user_id === selectedUserId) ?? null,
@@ -840,7 +843,7 @@ export default function PlanosClient(
             color:       counts.pending > 0 ? '#D97706' : '#22A06B',
             fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 20,
           }}>
-            {counts.pending} {counts.pending === 1 ? 'pendente' : 'pendentes'}
+            {counts.pending} {counts.pending === 1 ? 'incompleto' : 'incompletos'} · {counts.approved} entregues
           </span>
           {revisions.length > 0 && (
             <span style={{
@@ -956,8 +959,8 @@ export default function PlanosClient(
             <div style={{ overflowY: 'auto', flex: 1 }}>
               {filtered.length === 0 ? (
                 <div style={{ padding: 30, textAlign: 'center', color: '#7C6B7E', fontSize: 13 }}>
-                  {filterTab === 'pending' ? 'Nenhum plano pendente 🎉'
-                    : filterTab === 'approved' ? 'Sem planos aprovados ainda'
+                  {filterTab === 'pending' ? 'Nenhum plano incompleto 🎉'
+                    : filterTab === 'approved' ? 'Nenhum plano entregue ainda'
                     : 'Sem planos no sistema'}
                 </div>
               ) : (
