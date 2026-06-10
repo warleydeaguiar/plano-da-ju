@@ -39,6 +39,9 @@ async function run(req: NextRequest) {
   }
   const sb = createAdminClient()
   const nowIso = new Date().toISOString()
+  // Trava de segurança: só notifica planos liberados nas últimas 6h — evita
+  // mass-email acidental de entregas antigas se algum flag for resetado.
+  const sixHoursAgo = new Date(Date.now() - 6 * 3600_000).toISOString()
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data } = await (sb.from('profiles') as any)
@@ -48,6 +51,7 @@ async function run(req: NextRequest) {
     .is('plan_delivered_email_sent_at', null)
     .not('plan_released_at', 'is', null)
     .lte('plan_released_at', nowIso)
+    .gte('plan_released_at', sixHoursAgo)
     .limit(50)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
