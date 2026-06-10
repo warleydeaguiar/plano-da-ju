@@ -53,6 +53,15 @@ INDICAÇÕES PERSONALIZADAS ("produtos_indicados") — REGRAS DE OURO
 - RELEVÂNCIA POR COR: NUNCA indique produtos específicos de cor/tom (ex.: "loiro", "platinado", "ruivo", "matizador", "blond") se NÃO corresponder à cor do cabelo dela (veja a cor no quiz). Cabelo preto/castanho/crespo NÃO usa produto de loiro.
 - CONSISTÊNCIA: os produtos citados nas SEMANAS (rotina) devem sair das suas "produtos_indicados" (principal ou alternativa). NÃO cite na rotina nenhum produto que não esteja nas suas indicações — a cliente precisa entender que o que ela compra é o que usa.
 
+PADRÕES DOS PLANOS REVISADOS PELA JULIANE (siga à risca — foi assim que os melhores planos ficaram)
+- SEMANA 1 É SEMPRE DIAGNÓSTICO + LIMPEZA PROFUNDA / RESET DO COURO. Nada agressivo: zerar o acúmulo de resíduos e "só observar" como o fio responde. Ex. de foco: "Reset do couro cabeludo — limpeza profunda e equilíbrio". Só a partir da semana 2 entra o cronograma de hidratação/nutrição/reconstrução.
+- TAREFAS COM TÉCNICA, NÃO GENÉRICAS. Cada tarefa diz COMO fazer, não só "use o produto X". Inclua: ordem (ex.: PRÉ-SHAMPOO antes do shampoo), parte do cabelo (raiz/comprimento/pontas), tempo de pausa, frequência na semana ("lave 2x") e o gesto ("massageando o couro", "nas pontas ainda úmidas", "finalize com água fria pra selar a cutícula", "1 gota de óleo nas pontas").
+  RUIM: "Aplicar máscara hidratante 20min."
+  BOM: "Aplique a Máscara Mirracura 200g nos comprimentos e pontas (longe da raiz), deixe 15 min com touca e enxágue com água fria pra selar a cutícula."
+- DICA ("dica") = educativa e gentil, explicando o PORQUÊ e ajustando a expectativa. Ex.: "O pré-shampoo é o segredo pra não agredir o couro oleoso." / "Nesta 1ª semana o objetivo é só observar — não espere transformação ainda." / "Não esfregue a toalha: pressione suavemente pra não abrir a cutícula."
+- VOCABULÁRIO DA ESPECIALISTA (use quando couber): pré-shampoo, selar a cutícula, água fria no enxágue final, massagem no couro, pontas ainda úmidas, pente de dentes largos, não esfregar a toalha.
+- A "mensagem_juliane" deve SEMPRE terminar com esta observação padrão (texto fixo, não altere): "Os produtos indicados são os que eu uso e confio nos resultados. Mas podem ser substituídos por produtos de outras marcas, desde que cumpram a mesma função."
+
 FORMATO DA RESPOSTA
 Retorne SOMENTE um JSON válido, sem markdown, sem texto extra:
 {
@@ -61,11 +70,11 @@ Retorne SOMENTE um JSON válido, sem markdown, sem texto extra:
   "semanas": [
     {
       "semana": 1,
-      "foco": "Hidratação intensa — recuperar umidade",
-      "tarefas": ["Lavar com shampoo do catálogo", "Aplicar máscara hidratante 20min", "Finalizar com leave-in"],
+      "foco": "Reset do couro cabeludo — limpeza profunda pra zerar o acúmulo",
+      "tarefas": ["Aplique o <pré-shampoo do catálogo> nos fios secos antes de lavar, massageando o couro por 2 min", "Lave com o <shampoo do catálogo> focando a espuma na raiz e enxágue bem", "Finalize com água fria nos fios pra selar a cutícula — sem máscara nesta semana"],
       "produtos": ["Nome exato do produto 1", "Nome exato do produto 2"],
       "produto_ids": ["<uuid-1>", "<uuid-2>"],
-      "dica": "Dica motivadora curta"
+      "dica": "Nesta 1ª semana o objetivo é só observar como o fio responde — não espere transformação ainda."
     }
   ],
   "produtos_essenciais": ["5 a 8 nomes exatos do catálogo, em ordem de prioridade"],
@@ -226,6 +235,9 @@ export async function savePlanToDb(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (sb.from('hair_plans') as any).delete().eq('user_id', userId);
 
+  // Nota padrão da Juliane (mesma dos planos revisados manualmente) — já vem
+  // preenchida na semana 1 pra não precisar adicionar à mão na aprovação.
+  const NOTA_PADRAO = 'Os produtos indicados são os que eu uso e confio nos resultados. Mas podem ser substituídos por produtos de outras marcas, desde que cumpram a mesma função.';
   const rows = plan.semanas.map(s => ({
     user_id: userId,
     week_number: s.semana,
@@ -233,6 +245,7 @@ export async function savePlanToDb(
     tasks: s.tarefas ?? [],
     products: s.produtos ?? [],
     tips: s.dica ? [s.dica] : [],
+    juliane_notes: s.semana === 1 ? NOTA_PADRAO : null,
   }));
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
