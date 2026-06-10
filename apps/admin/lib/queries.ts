@@ -122,47 +122,51 @@ export interface PlanRow {
 export async function getPendingPlans(limit = 8): Promise<PlanRow[]> {
   const sb = createAdminClient();
 
-  // NOVO MODELO: o plano é entregue AUTOMÁTICO (sem aprovação manual). A fila de
-  // revisão agora = clientes que PEDIRAM ajuste (plan_status='revision_requested').
-  // Mais antigas primeiro (prazo de 2 dias úteis correndo).
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: profs } = await (sb.from('profiles') as any)
-    .select('id,full_name,email,hair_type,plan_revision_due_at,subscription_activated_at,created_at')
-    .eq('subscription_status', 'active')
-    .eq('plan_status', 'revision_requested')
-    .order('plan_revision_due_at', { ascending: true, nullsFirst: false })
-    .limit(limit);
-
-  if (!profs?.length) return [];
-
-  const activeProfiles = profs as Array<{
-    id: string; full_name: string | null; email: string; hair_type: string | null;
-    plan_revision_due_at: string | null; subscription_activated_at: string | null; created_at: string;
-  }>;
-
-  // Pega o pedido de ajuste mais recente (aberto) de cada cliente.
-  const userIds = activeProfiles.map(p => p.id);
+  // FONTE DA VERDADE = plan_feedback com status='open' (pedido de ajuste da
+  // cliente). Antes isso dependia de profiles.plan_status='revision_requested',
+  // que se perdia se o status voltasse pra 'ready' (cron de entrega, regeneração,
+  // aprovação). Lendo do plan_feedback, o pedido NUNCA some até ser resolvido.
+  // Mais antigos primeiro (prazo de 2 dias úteis correndo).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: fb } = await (sb.from('plan_feedback') as any)
-    .select('user_id,message,created_at')
-    .in('user_id', userIds)
+    .select('user_id,message,due_at,created_at')
     .eq('status', 'open')
-    .order('created_at', { ascending: false });
-  const msgMap = new Map<string, string>();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const f of (fb ?? []) as any[]) { if (!msgMap.has(f.user_id) && f.message) msgMap.set(f.user_id, f.message); }
+    .order('due_at', { ascending: true, nullsFirst: false })
+    .limit(limit);
 
-  return activeProfiles.map(prof => ({
-    user_id: prof.id,
-    full_name: prof.full_name,
-    email: prof.email,
-    hair_type: prof.hair_type,
-    approved_by_juliane: false,
-    created_at: prof.subscription_activated_at ?? prof.created_at,
-    juliane_notes: null,
-    revision_message: msgMap.get(prof.id) ?? null,
-    revision_due_at: prof.plan_revision_due_at,
-  }));
+  if (!fb?.length) return [];
+
+  // Mantém só o pedido aberto mais recente por cliente.
+  const byUser = new Map<string, { message: string | null; due_at: string | null; created_at: string }>();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const f of fb as any[]) {
+    if (!byUser.has(f.user_id)) byUser.set(f.user_id, { message: f.message ?? null, due_at: f.due_at ?? null, created_at: f.created_at });
+  }
+  const userIds = [...byUser.keys()];
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: profs } = await (sb.from('profiles') as any)
+    .select('id,full_name,email,hair_type,subscription_activated_at,created_at')
+    .in('id', userIds);
+  const profMap = new Map<string, { full_name: string | null; email: string; hair_type: string | null; subscription_activated_at: string | null; created_at: string }>();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const p of (profs ?? []) as any[]) profMap.set(p.id, p);
+
+  return userIds.map(uid => {
+    const f = byUser.get(uid)!;
+    const p = profMap.get(uid);
+    return {
+      user_id: uid,
+      full_name: p?.full_name ?? null,
+      email: p?.email ?? '',
+      hair_type: p?.hair_type ?? null,
+      approved_by_juliane: false,
+      created_at: p?.subscription_activated_at ?? p?.created_at ?? f.created_at,
+      juliane_notes: null,
+      revision_message: f.message,
+      revision_due_at: f.due_at,
+    };
+  });
 }
 
 export interface RecentCheckIn {

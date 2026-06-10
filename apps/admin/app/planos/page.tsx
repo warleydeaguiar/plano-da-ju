@@ -106,5 +106,48 @@ export default async function PlanosPage() {
     };
   });
 
-  return <PlanosClient initialCards={cards} />;
+  // 3) Pedidos de revisão ABERTOS (fonte da verdade: plan_feedback). Aparecem
+  // no topo da tela independentemente do plan_status do perfil — assim um
+  // pedido nunca se perde se o status voltar pra 'ready'.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: openFb } = await (sb.from('plan_feedback') as any)
+    .select('id,user_id,email,message,rating,due_at,created_at')
+    .eq('status', 'open')
+    .not('message', 'is', null)
+    .order('due_at', { ascending: true, nullsFirst: false })
+    .limit(50);
+
+  const fbRows = (openFb ?? []) as Array<{
+    id: string; user_id: string; email: string | null; message: string | null;
+    rating: number | null; due_at: string | null; created_at: string;
+  }>;
+
+  // nomes/telefones dos solicitantes (podem não estar entre as 200 ativas acima)
+  const fbUserIds = [...new Set(fbRows.map(f => f.user_id))];
+  const fbProfMap = new Map<string, { full_name: string | null; email: string; phone: string | null }>();
+  if (fbUserIds.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: fbProfs } = await (sb.from('profiles') as any)
+      .select('id,full_name,email,phone')
+      .in('id', fbUserIds);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const p of (fbProfs ?? []) as any[]) fbProfMap.set(p.id, p);
+  }
+
+  const revisionRequests = fbRows.map(f => {
+    const p = fbProfMap.get(f.user_id);
+    return {
+      id: f.id,
+      user_id: f.user_id,
+      full_name: p?.full_name ?? (f.email?.split('@')[0] ?? 'Cliente'),
+      email: p?.email ?? f.email ?? '',
+      phone: p?.phone ?? null,
+      message: f.message ?? '',
+      rating: f.rating,
+      due_at: f.due_at,
+      created_at: f.created_at,
+    };
+  });
+
+  return <PlanosClient initialCards={cards} revisionRequests={revisionRequests} />;
 }

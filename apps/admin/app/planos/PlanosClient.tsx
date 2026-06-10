@@ -522,8 +522,25 @@ const fieldBase: React.CSSProperties = {
 };
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export default function PlanosClient({ initialCards }: { initialCards: PlanCard[] }) {
+export interface RevisionRequest {
+  id: string;
+  user_id: string;
+  full_name: string;
+  email: string;
+  phone: string | null;
+  message: string;
+  rating: number | null;
+  due_at: string | null;
+  created_at: string;
+}
+
+export default function PlanosClient(
+  { initialCards, revisionRequests = [] }:
+  { initialCards: PlanCard[]; revisionRequests?: RevisionRequest[] },
+) {
   const [cards, setCards]             = useState(initialCards);
+  const [revisions, setRevisions]     = useState<RevisionRequest[]>(revisionRequests);
+  const [resolving, setResolving]     = useState<string | null>(null);
   const [filterTab, setFilterTab]     = useState<'pending' | 'approved' | 'all'>('pending');
   const [planTab, setPlanTab]         = useState<'cronograma' | 'produtos' | 'dicas'>('cronograma');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(
@@ -557,6 +574,21 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
       .then(r => r.json())
       .then((d: unknown) => setCatalog(Array.isArray(d) ? (d as CatalogProduct[]) : []))
       .catch(() => {});
+  }, []);
+
+  // Marca um pedido de revisão como resolvido (sai da lista do topo).
+  const resolveRevision = useCallback(async (id: string) => {
+    setResolving(id);
+    try {
+      const res = await fetch('/api/admin/plan-feedback/resolve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      if (res.ok) setRevisions(prev => prev.filter(r => r.id !== id));
+    } finally {
+      setResolving(null);
+    }
   }, []);
 
   // Derived state
@@ -810,7 +842,91 @@ export default function PlanosClient({ initialCards }: { initialCards: PlanCard[
           }}>
             {counts.pending} {counts.pending === 1 ? 'pendente' : 'pendentes'}
           </span>
+          {revisions.length > 0 && (
+            <span style={{
+              background: 'rgba(190,24,93,0.12)', color: ACCENT,
+              fontSize: 12, fontWeight: 700, padding: '4px 10px', borderRadius: 20,
+            }}>
+              🔧 {revisions.length} {revisions.length === 1 ? 'pedido de ajuste' : 'pedidos de ajuste'}
+            </span>
+          )}
         </div>
+
+        {/* ── Pedidos de revisão das clientes (fonte: plan_feedback) ───────── */}
+        {revisions.length > 0 && (
+          <div style={{
+            background: '#FFF1F4', borderBottom: '1px solid #F3D6DE',
+            padding: '14px 32px', flexShrink: 0, maxHeight: 220, overflowY: 'auto',
+          }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: ACCENT, marginBottom: 10 }}>
+              🔧 Pedidos de ajuste enviados pelas clientes
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {revisions.map(r => {
+                const due = r.due_at ? new Date(r.due_at) : null;
+                const overdue = !!due && due.getTime() < Date.now();
+                const dueLabel = due
+                  ? due.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+                  : null;
+                const digits = (r.phone ?? '').replace(/\D/g, '');
+                const waNum = digits ? (digits.startsWith('55') ? digits : `55${digits}`) : null;
+                return (
+                  <div key={r.id} style={{
+                    background: '#fff', border: '1px solid #F3D6DE', borderRadius: 12,
+                    padding: '12px 14px', display: 'flex', gap: 12, alignItems: 'flex-start',
+                  }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 13.5, fontWeight: 700, color: '#2A1E2C' }}>{r.full_name}</span>
+                        {r.rating != null && (
+                          <span style={{ fontSize: 12, color: '#C9A877' }}>{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</span>
+                        )}
+                        <span style={{
+                          fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 10,
+                          background: overdue ? 'rgba(220,38,38,0.10)' : 'rgba(217,119,6,0.10)',
+                          color: overdue ? '#DC2626' : '#D97706',
+                        }}>
+                          {overdue ? '⚠️ prazo vencido' : 'prazo'}{dueLabel ? ` · ${dueLabel}` : ''}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 13, color: '#4A3A4C', marginTop: 6, lineHeight: 1.45, whiteSpace: 'pre-wrap' }}>
+                        “{r.message}”
+                      </div>
+                      <div style={{ fontSize: 11.5, color: '#8A7A8C', marginTop: 4 }}>{r.email}</div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
+                      <button
+                        onClick={() => setSelectedUserId(r.user_id)}
+                        style={{
+                          background: ACCENT, color: '#fff', border: 'none', borderRadius: 8,
+                          padding: '7px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
+                        }}
+                      >Ver / editar plano</button>
+                      {waNum && (
+                        <a
+                          href={`https://wa.me/${waNum}`} target="_blank" rel="noopener noreferrer"
+                          style={{
+                            background: '#25D366', color: '#fff', textDecoration: 'none', borderRadius: 8,
+                            padding: '7px 12px', fontSize: 12, fontWeight: 600, textAlign: 'center', whiteSpace: 'nowrap',
+                          }}
+                        >WhatsApp</a>
+                      )}
+                      <button
+                        onClick={() => resolveRevision(r.id)}
+                        disabled={resolving === r.id}
+                        style={{
+                          background: '#fff', color: '#22A06B', border: '1px solid #22A06B', borderRadius: 8,
+                          padding: '7px 12px', fontSize: 12, fontWeight: 600,
+                          cursor: resolving === r.id ? 'wait' : 'pointer', whiteSpace: 'nowrap',
+                        }}
+                      >{resolving === r.id ? '...' : '✓ Resolver'}</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
           {/* ── Left list ───────────────────────────────────────────────── */}
