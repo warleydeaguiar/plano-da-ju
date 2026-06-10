@@ -4,12 +4,19 @@ import { useState } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import { T, fonts } from '../theme';
 
-export default function PlanFeedback() {
+export default function PlanFeedback(
+  { alreadySubmitted = false, revisionPending = false }:
+  { alreadySubmitted?: boolean; revisionPending?: boolean },
+) {
   const [rating, setRating] = useState(0);
   const [mode, setMode] = useState<'ask' | 'revision'>('ask'); // 'ask' = pergunta se quer ajuste
   const [msg, setMsg] = useState('');
   const [sending, setSending] = useState(false);
-  const [done, setDone] = useState<null | { revision: boolean }>(null);
+  // Avaliação é ÚNICA: se a cliente já avaliou (vindo do perfil), já abre no
+  // estado concluído — não mostra o formulário de novo ao voltar pra aba.
+  const [done, setDone] = useState<null | { revision: boolean }>(
+    alreadySubmitted ? { revision: revisionPending } : null,
+  );
   const [err, setErr] = useState('');
 
   const supabase = createBrowserClient(

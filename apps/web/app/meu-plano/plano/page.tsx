@@ -33,6 +33,7 @@ interface Profile {
   plan_released_at: string | null;
   plan_requested_at: string | null;
   plan_status: string;
+  plan_feedback_rating: number | null;
 }
 interface ProductRow {
   id: string;
@@ -70,7 +71,7 @@ export default function PlanoPage() {
 
     const [p, pl, pr] = await Promise.all([
       supabase.from('profiles')
-        .select('full_name,hair_type,porosity,chemical_history,main_problems,hair_length_cm,quiz_answers,plan_released_at,plan_requested_at,plan_status')
+        .select('full_name,hair_type,porosity,chemical_history,main_problems,hair_length_cm,quiz_answers,plan_released_at,plan_requested_at,plan_status,plan_feedback_rating')
         .eq('id', uid).single(),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase as any).from('hair_plans')
@@ -474,8 +475,11 @@ export default function PlanoPage() {
           </>
         )}
 
-        {/* Avaliação + pedido de ajuste do plano */}
-        <PlanFeedback />
+        {/* Avaliação + pedido de ajuste do plano (avaliação é ÚNICA) */}
+        <PlanFeedback
+          alreadySubmitted={profile?.plan_feedback_rating != null || profile?.plan_status === 'revision_requested'}
+          revisionPending={profile?.plan_status === 'revision_requested'}
+        />
 
       </div>
     </div>
