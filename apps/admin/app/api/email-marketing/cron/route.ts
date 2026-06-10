@@ -20,11 +20,20 @@ export async function GET(req: NextRequest) {
   }
 
   // Reaproveita a route /send com mode=run_all
-  // Construímos uma URL absoluta usando o próprio request — funciona em VPS e local
+  // Construímos uma URL absoluta usando o próprio request — funciona em VPS e local.
+  // IMPORTANTE: o middleware do admin bloqueia /api/* sem Bearer <CRON_SECRET>.
+  // Como esta é uma chamada server-to-server, precisamos repassar o header de
+  // auth (senão o hop interno toma 401 "Não autorizado" e nada é enviado).
   const origin = req.nextUrl.origin
+  const cronSecret = process.env.CRON_SECRET
+  const internalHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
+  const incomingAuth = req.headers.get('authorization')
+  if (incomingAuth) internalHeaders['Authorization'] = incomingAuth
+  else if (cronSecret) internalHeaders['Authorization'] = `Bearer ${cronSecret}`
+
   const res = await fetch(`${origin}/api/email-marketing/send`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: internalHeaders,
     body: JSON.stringify({ mode: 'run_all' }),
   })
   const json = await res.json()
@@ -44,7 +53,7 @@ export async function GET(req: NextRequest) {
     for (const cid of campaignIds) {
       const dr = await fetch(`${origin}/api/email-marketing/send`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: internalHeaders,
         body: JSON.stringify({ mode: 'broadcast_drain', campaign_id: cid }),
       })
       drained.push({ campaign_id: cid, ...(await dr.json()) })
