@@ -33,6 +33,19 @@ export async function POST(req: NextRequest) {
     if (f.size > 10 * 1024 * 1024) return NextResponse.json({ error: 'Foto muito grande (máx. 10 MB)' }, { status: 400 });
     if (!f.type.startsWith('image/')) return NextResponse.json({ error: 'Arquivo precisa ser uma imagem' }, { status: 400 });
 
+    // Foto de COSTAS (opcional). A de frente (acima) é a principal — usada na
+    // análise e na geração do plano. A de costas é guardada como complemento.
+    const backFile = form.get('photo_back');
+    const backF = backFile && typeof backFile !== 'string' ? (backFile as File) : null;
+    if (backF && (backF.size > 10 * 1024 * 1024 || !backF.type.startsWith('image/'))) {
+      return NextResponse.json({ error: 'Foto de costas inválida (máx. 10 MB, precisa ser imagem)' }, { status: 400 });
+    }
+
+    // Vídeo (opcional) — sobe direto pro Storage via URL assinada; aqui só chega
+    // a URL pública pra salvar no perfil.
+    const videoUrlRaw = form.get('video_url');
+    const videoUrl = typeof videoUrlRaw === 'string' && videoUrlRaw.startsWith('http') ? videoUrlRaw : null;
+
     // Optional hair length (cm) — vem do onboarding ou progresso
     const rawLength = form.get('hair_length_cm');
     let hairLengthCm: number | null = null;
@@ -72,6 +85,22 @@ export async function POST(req: NextRequest) {
 
     const { data: pub } = supabase.storage.from('hair-photos').getPublicUrl(fileName);
     const photoUrl = pub.publicUrl;
+
+    // Upload da foto de COSTAS (opcional) — guardada como complemento.
+    let photoBackUrl: string | null = null;
+    if (backF) {
+      const backExt = backF.type === 'image/png' ? 'png' : backF.type === 'image/webp' ? 'webp' : 'jpg';
+      const backName = `${user.id}/${Date.now()}-costas.${backExt}`;
+      const backBuf = new Uint8Array(await backF.arrayBuffer());
+      const { error: backErr } = await supabase.storage.from('hair-photos').upload(backName, backBuf, {
+        contentType: backF.type, upsert: false,
+      });
+      if (!backErr) {
+        photoBackUrl = supabase.storage.from('hair-photos').getPublicUrl(backName).data.publicUrl;
+      } else {
+        console.error('[photo] back upload error', backErr);
+      }
+    }
 
     // Optional: Claude Vision analysis (only if key configured)
     let analysis = {
@@ -162,6 +191,8 @@ export async function POST(req: NextRequest) {
       .update({
         photo_url: photoUrl,
         photo_taken_at: new Date().toISOString(),
+        ...(photoBackUrl ? { photo_back_url: photoBackUrl } : {}),
+        ...(videoUrl ? { video_url: videoUrl } : {}),
         ...(hairLengthCm !== null ? { hair_length_cm: hairLengthCm } : {}),
         ...(weightKg !== null ? { weight_kg: weightKg, water_goal_ml: waterGoalMl } : {}),
       })

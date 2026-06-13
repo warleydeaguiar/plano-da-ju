@@ -46,16 +46,52 @@ const QUIZ_QUESTIONS: { key: string; q: string; opts: { v: string; l: string }[]
     { v: 'hidratar', l: 'Hidratar e dar brilho' }, { v: 'reduzir_queda', l: 'Reduzir a queda' }, { v: 'definir', l: 'Definir cachos / ondas' } ] },
 ];
 
+/**
+ * Comprime/redimensiona uma imagem no navegador (respeitando a orientação EXIF)
+ * pra deixar o upload leve e dentro do limite de corpo da serverless (~4.5MB).
+ * Se algo falhar, devolve o arquivo original.
+ */
+async function compressImage(file: File, maxDim = 1600, quality = 0.82): Promise<File> {
+  if (!file.type.startsWith('image/')) return file;
+  try {
+    const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    let { width, height } = bitmap;
+    const scale = Math.min(1, maxDim / Math.max(width, height));
+    width = Math.round(width * scale);
+    height = Math.round(height * scale);
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return file;
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    const blob: Blob | null = await new Promise(res => canvas.toBlob(res, 'image/jpeg', quality));
+    bitmap.close?.();
+    if (!blob) return file;
+    return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+  } catch {
+    return file;
+  }
+}
+
 export default function OnboardingPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const backInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+
   const [firstName, setFirstName] = useState('');
   const [step, setStep] = useState<Step>('photo');
 
-  // Etapa 1: foto + comprimento
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  // Etapa 1: fotos (frente obrigatória + costas obrigatória) + vídeo (opcional)
+  const [photoFile, setPhotoFile] = useState<File | null>(null);       // frente
   const [photoPreview, setPhotoPreview] = useState('');
+  const [backFile, setBackFile] = useState<File | null>(null);          // costas
+  const [backPreview, setBackPreview] = useState('');
+  const [videoFile, setVideoFile] = useState<File | null>(null);        // vídeo opcional
+  const [videoName, setVideoName] = useState('');
+  const [submitMsg, setSubmitMsg] = useState('Enviando…');
   const [lengthCm, setLengthCm] = useState('');
   const [skipLength, setSkipLength] = useState(false);
   const [weightKg, setWeightKg] = useState('');
@@ -95,14 +131,24 @@ export default function OnboardingPage() {
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handlePhotoPick(which: 'front' | 'back', e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { setError('Foto muito grande (máx. 10 MB)'); return; }
+    if (file.size > 20 * 1024 * 1024) { setError('Foto muito grande (máx. 20 MB)'); return; }
     if (!file.type.startsWith('image/')) { setError('Arquivo precisa ser uma imagem'); return; }
     setError('');
-    setPhotoFile(file);
-    setPhotoPreview(URL.createObjectURL(file));
+    if (which === 'front') { setPhotoFile(file); setPhotoPreview(URL.createObjectURL(file)); }
+    else { setBackFile(file); setBackPreview(URL.createObjectURL(file)); }
+  }
+
+  function handleVideoPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('video/')) { setError('O arquivo precisa ser um vídeo'); return; }
+    if (file.size > 80 * 1024 * 1024) { setError('Vídeo muito grande (máx. 80 MB). Grave um clipe curto 🙂'); return; }
+    setError('');
+    setVideoFile(file);
+    setVideoName(file.name);
   }
 
   // ── Etapa 0 → salvar respostas do mini-quiz e ir pra foto ──
@@ -123,17 +169,44 @@ export default function OnboardingPage() {
     }
   }
 
-  // ── Etapa 1 → enviar foto + length ─────────────────────────
+  // ── Etapa 1 → enviar fotos (+ vídeo opcional) + length ─────
   async function submitPhoto() {
-    if (!photoFile || step !== 'photo') return;
+    if (!photoFile || !backFile || step !== 'photo') return;
     setError('');
+    setSubmitMsg('Preparando suas fotos…');
     setStep('submitting');
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { router.replace('/login'); return; }
+      const authH = { Authorization: `Bearer ${session.access_token}` };
 
+      // Comprime as duas fotos no navegador (rápido + cabe no limite da Vercel).
+      const [frontC, backC] = await Promise.all([compressImage(photoFile), compressImage(backFile)]);
+
+      // Vídeo opcional → sobe DIRETO pro Storage via URL assinada (sem limite de corpo).
+      let videoUrl = '';
+      if (videoFile) {
+        try {
+          setSubmitMsg('Enviando seu vídeo…');
+          const ext = (videoFile.name.split('.').pop() || 'mp4').toLowerCase();
+          const r = await fetch('/api/meu-plano/video-url', {
+            method: 'POST',
+            headers: { ...authH, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ext }),
+          });
+          const sig = await r.json();
+          if (r.ok && sig.path && sig.token) {
+            const up = await supabase.storage.from('hair-videos').uploadToSignedUrl(sig.path, sig.token, videoFile);
+            if (!up.error) videoUrl = sig.publicUrl;
+          }
+        } catch { /* vídeo é opcional — segue sem ele se falhar */ }
+      }
+
+      setSubmitMsg('Enviando suas fotos…');
       const fd = new FormData();
-      fd.append('photo', photoFile);
+      fd.append('photo', frontC);
+      fd.append('photo_back', backC);
+      if (videoUrl) fd.append('video_url', videoUrl);
       if (!skipLength && lengthCm) {
         const n = parseFloat(lengthCm.replace(',', '.'));
         if (!isNaN(n) && n > 0 && n < 200) fd.append('hair_length_cm', String(n));
@@ -145,7 +218,7 @@ export default function OnboardingPage() {
 
       const res = await fetch('/api/meu-plano/photo', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${session.access_token}` },
+        headers: authH,
         body: fd,
       });
       const data = await res.json();
@@ -406,67 +479,97 @@ export default function OnboardingPage() {
             margin: '0 0 10px', letterSpacing: -0.5,
             fontFamily: fonts.display, lineHeight: 1.15,
           }}>
-            {firstName ? `${firstName}, ` : ''}envie a foto do seu cabelo
+            {firstName ? `${firstName}, ` : ''}envie 2 fotos do seu cabelo
           </h1>
           <p style={{ fontSize: 14, color: T.inkSoft, lineHeight: 1.6, margin: 0, padding: '0 4px' }}>
-            A Juliane vai analisar seu cabelo na foto + suas respostas do quiz
-            e montar um plano <strong style={{ color: T.ink }}>100% personalizado</strong> pra você.
+            Uma <strong style={{ color: T.ink }}>de frente</strong> e uma <strong style={{ color: T.ink }}>de costas</strong> —
+            assim a Juliane analisa seu cabelo por inteiro e monta um plano
+            <strong style={{ color: T.ink }}> 100% personalizado</strong>. Um vídeo é opcional, mas ajuda muito 💛
           </p>
         </div>
 
-        {/* Photo upload */}
-        <label htmlFor="onb-photo" style={{ display: 'block', cursor: 'pointer', marginBottom: 14 }}>
-          <div style={{
-            background: T.surface, borderRadius: 22,
-            border: `2px dashed ${photoPreview ? T.pink : T.border}`,
-            aspectRatio: '4/3', display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center',
-            overflow: 'hidden', position: 'relative',
-            boxShadow: photoPreview ? `0 8px 24px rgba(236,72,153,0.18)` : shadow.card,
-            transition: 'all 0.2s',
-          }}>
-            {photoPreview ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={photoPreview} alt="Prévia" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              <>
+        {/* Fotos: frente + costas (ambas obrigatórias), lado a lado */}
+        <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+          {([
+            { key: 'front' as const, emoji: '🙂', title: 'De frente', preview: photoPreview, id: 'onb-photo-front', ref: fileInputRef,
+              clear: () => { setPhotoFile(null); setPhotoPreview(''); if (fileInputRef.current) fileInputRef.current.value = ''; } },
+            { key: 'back' as const, emoji: '🔄', title: 'De costas', preview: backPreview, id: 'onb-photo-back', ref: backInputRef,
+              clear: () => { setBackFile(null); setBackPreview(''); if (backInputRef.current) backInputRef.current.value = ''; } },
+          ]).map(slot => (
+            <div key={slot.key} style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: T.ink, marginBottom: 6, textAlign: 'center', fontFamily: fonts.display }}>
+                {slot.emoji} {slot.title}
+              </div>
+              <label htmlFor={slot.id} style={{ display: 'block', cursor: 'pointer' }}>
                 <div style={{
-                  width: 64, height: 64, borderRadius: 18,
-                  background: gradient.heroSoft, color: '#fff',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  marginBottom: 14, boxShadow: '0 8px 22px rgba(190,24,93,0.28)',
+                  background: T.surface, borderRadius: 18,
+                  border: `2px dashed ${slot.preview ? T.pink : T.border}`,
+                  aspectRatio: '3/4', display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center',
+                  overflow: 'hidden', position: 'relative',
+                  boxShadow: slot.preview ? `0 8px 24px rgba(236,72,153,0.18)` : shadow.card,
+                  transition: 'all 0.2s',
                 }}>
-                  <IconCamera size={30} stroke={1.6} color="#fff" />
+                  {slot.preview ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={slot.preview} alt={slot.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <>
+                      <div style={{
+                        width: 46, height: 46, borderRadius: 14,
+                        background: gradient.heroSoft, color: '#fff',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8,
+                        boxShadow: '0 6px 18px rgba(190,24,93,0.26)',
+                      }}>
+                        <IconCamera size={22} stroke={1.6} color="#fff" />
+                      </div>
+                      <p style={{ color: T.ink, fontSize: 12.5, fontWeight: 700, margin: 0, fontFamily: fonts.display }}>Toque pra enviar</p>
+                    </>
+                  )}
                 </div>
-                <p style={{ color: T.ink, fontSize: 16, fontWeight: 700, margin: '0 0 4px', fontFamily: fonts.display }}>
-                  Toque para enviar foto
-                </p>
-                <p style={{ color: T.inkSoft, fontSize: 12, margin: 0 }}>Câmera ou galeria</p>
-              </>
-            )}
+              </label>
+              <input id={slot.id} ref={slot.ref} type="file" accept="image/*"
+                onChange={e => handlePhotoPick(slot.key, e)} style={{ display: 'none' }} />
+              {slot.preview && (
+                <button onClick={slot.clear} style={{
+                  width: '100%', background: 'transparent', border: `1px solid ${T.border}`,
+                  borderRadius: 10, padding: 7, fontSize: 12, color: T.inkSoft,
+                  cursor: 'pointer', marginTop: 6, fontFamily: fonts.ui,
+                }}>Trocar</button>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Vídeo opcional */}
+        <label htmlFor="onb-video" style={{ display: 'block', cursor: 'pointer', marginBottom: 14 }}>
+          <div style={{
+            background: videoName ? T.pinkSoft : T.surface, borderRadius: 14,
+            border: `2px dashed ${videoName ? T.pink : T.border}`,
+            padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12,
+            boxShadow: shadow.card,
+          }}>
+            <span style={{ fontSize: 22, lineHeight: 1, flexShrink: 0 }}>{videoName ? '🎬' : '🎥'}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: T.ink, fontFamily: fonts.display }}>
+                {videoName ? 'Vídeo adicionado ✓' : 'Adicionar um vídeo'}
+                {!videoName && <span style={{ fontSize: 11, color: T.inkSoft, fontWeight: 500 }}> · opcional</span>}
+              </div>
+              <div style={{ fontSize: 11.5, color: T.inkSoft, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {videoName ? videoName : 'Mostre o movimento, brilho e volume do cabelo'}
+              </div>
+            </div>
           </div>
         </label>
-        <input
-          ref={fileInputRef}
-          id="onb-photo"
-          type="file"
-          accept="image/*"
-          onChange={handleFileChange}
-          style={{ display: 'none' }}
-        />
-
-        {photoPreview && (
-          <button
-            onClick={() => { setPhotoFile(null); setPhotoPreview(''); fileInputRef.current!.value = ''; }}
+        <input id="onb-video" ref={videoInputRef} type="file" accept="video/*"
+          onChange={handleVideoPick} style={{ display: 'none' }} />
+        {videoName && (
+          <button onClick={() => { setVideoFile(null); setVideoName(''); if (videoInputRef.current) videoInputRef.current.value = ''; }}
             style={{
-              width: '100%', background: 'transparent',
-              border: `1px solid ${T.border}`, borderRadius: 12,
-              padding: 10, fontSize: 13, color: T.inkSoft,
-              cursor: 'pointer', marginBottom: 14, fontFamily: fonts.ui,
-            }}
-          >
-            Trocar foto
-          </button>
+              width: '100%', background: 'transparent', border: `1px solid ${T.border}`,
+              borderRadius: 10, padding: 8, fontSize: 12, color: T.inkSoft,
+              cursor: 'pointer', marginTop: -8, marginBottom: 14, fontFamily: fonts.ui,
+            }}>Remover vídeo</button>
         )}
 
         {/* Hair length input (optional) */}
@@ -560,7 +663,7 @@ export default function OnboardingPage() {
         }}>
           <span style={{ fontSize: 18, flexShrink: 0, lineHeight: 1 }}>💡</span>
           <div style={{ fontSize: 12.5, color: T.ink, lineHeight: 1.55 }}>
-            <strong>Dica:</strong> foto com a cabeça inteira, boa iluminação natural e cabelo solto. Sem filtros!
+            <strong>Dica:</strong> cabeça inteira, boa luz natural e cabelo solto. Sem filtros! A de costas mostra comprimento e pontas.
           </div>
         </div>
 
@@ -571,26 +674,34 @@ export default function OnboardingPage() {
         )}
 
         {/* Submit */}
-        <button
-          onClick={submitPhoto}
-          disabled={!photoFile || isSubmittingPhoto}
-          style={{
-            width: '100%', padding: 16,
-            background: !photoFile || isSubmittingPhoto
-              ? '#D4A0AC' : `linear-gradient(135deg, ${T.pink}, ${T.pinkDeep})`,
-            border: 'none', borderRadius: 14,
-            fontSize: 15, fontWeight: 800, color: '#FFF',
-            cursor: !photoFile || isSubmittingPhoto ? 'not-allowed' : 'pointer',
-            fontFamily: fonts.ui,
-            boxShadow: !photoFile ? 'none' : '0 8px 22px rgba(190,24,93,0.28)',
-            transition: 'all 0.18s',
-          }}
-        >
-          {isSubmittingPhoto ? 'Enviando…' : '✨ Enviar foto e continuar'}
-        </button>
+        {(() => {
+          const ready = !!photoFile && !!backFile;
+          const disabled = !ready || isSubmittingPhoto;
+          return (
+            <button
+              onClick={submitPhoto}
+              disabled={disabled}
+              style={{
+                width: '100%', padding: 16,
+                background: disabled ? '#D4A0AC' : `linear-gradient(135deg, ${T.pink}, ${T.pinkDeep})`,
+                border: 'none', borderRadius: 14,
+                fontSize: 15, fontWeight: 800, color: '#FFF',
+                cursor: disabled ? 'not-allowed' : 'pointer',
+                fontFamily: fonts.ui,
+                boxShadow: disabled ? 'none' : '0 8px 22px rgba(190,24,93,0.28)',
+                transition: 'all 0.18s',
+              }}
+            >
+              {isSubmittingPhoto ? submitMsg
+                : !photoFile ? 'Envie a foto de frente'
+                : !backFile ? 'Falta a foto de costas'
+                : '✨ Enviar e continuar'}
+            </button>
+          );
+        })()}
 
         <p style={{ textAlign: 'center', color: T.inkMuted, fontSize: 11, marginTop: 14, lineHeight: 1.6 }}>
-          Sua foto é privada — só a Juliane e você têm acesso.
+          Suas fotos e vídeo são privados — só a Juliane e você têm acesso.
         </p>
       </div>
     </div>
