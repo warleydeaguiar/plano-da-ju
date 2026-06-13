@@ -392,8 +392,12 @@ function EditPanel({ user, onClose, onChanged }: { user: User; onClose: () => vo
     const j = await res.json()
     setSaving(false)
     if (res.ok) {
-      setMsg({ ok: true, text: `✓ ${label}` })
-      setTimeout(() => onChanged(), 800)
+      // Reembolso pode ter sucesso PARCIAL (acesso encerrado mas estorno falhou) —
+      // nesse caso o backend manda refunded:false; mostramos como alerta e
+      // damos tempo de ler antes de recarregar.
+      const partial = j.refunded === false
+      setMsg({ ok: !partial, text: j.message ?? `✓ ${label}` })
+      setTimeout(() => onChanged(), partial ? 4500 : 800)
     } else {
       setMsg({ ok: false, text: j.error ?? 'Erro' })
     }
@@ -517,7 +521,7 @@ function EditPanel({ user, onClose, onChanged }: { user: User; onClose: () => vo
           <ActionBtn icon="🔑" label="Definir / redefinir senha" onClick={doSetPassword} />
           <ActionBtn icon="⏱" label="Estender 1 mês (cortesia)" onClick={() => doAction('extend', 'Estender 1 mês', 1)} />
           <ActionBtn icon="⏱" label="Estender 3 meses" onClick={() => doAction('extend', 'Estender 3 meses', 3)} />
-          <ActionBtn icon="💸" label="Marcar como reembolso (encerra acesso)" color={red} onClick={() => doAction('refund', 'Reembolso — encerra acesso hoje')} />
+          <ActionBtn icon="💸" label="Reembolsar (estorna na PagarMe + encerra acesso)" color={red} onClick={() => doAction('refund', 'Reembolsar agora — estorna o dinheiro na PagarMe e encerra o acesso')} />
           <ActionBtn icon="🚫" label="Cancelar acesso" color={red} onClick={() => doAction('cancel', 'Cancelar acesso')} />
         </div>
       </div>

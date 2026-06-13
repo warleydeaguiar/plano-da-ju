@@ -423,6 +423,15 @@ function OfferCard({ countdown, name, onBuy }: { countdown: string; name: string
 export default function OfertaClient() {
   const router = useRouter();
   const [step, setStep] = useState<Step>('offer');
+
+  // Sempre que a etapa muda (ex.: offer → checkout), volta pro TOPO. Antes o
+  // checkout abria NO MEIO da página (a posição de scroll de onde a pessoa
+  // clicou era preservada), confundindo e fazendo muita gente nem ver o topo
+  // do formulário — contribuindo pro CPF não preenchido.
+  useEffect(() => {
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [step]);
+
   const [error, setError] = useState('');
   const [loadingMsg, setLoadingMsg] = useState(LOADING_MESSAGES[0]);
 
@@ -586,8 +595,15 @@ export default function OfertaClient() {
     if (cardCvv.length > 0 && cardCvv.length < 3) {
       errs.cvv = 'CVV inválido';
     }
+    // CPF é OBRIGATÓRIO (exigência da PagarMe). Antes só validávamos quando já
+    // tinha 11 dígitos, então o campo vazio não mostrava nada — muita gente
+    // travava sem entender. Agora sinaliza vazio/incompleto/inválido.
     const cpfClean = cpf.replace(/\D/g, '');
-    if (cpfClean.length > 0 && cpfClean.length === 11 && !isValidCpf(cpf)) {
+    if (cpfClean.length === 0) {
+      errs.cpf = 'CPF é obrigatório';
+    } else if (cpfClean.length < 11) {
+      errs.cpf = 'CPF incompleto';
+    } else if (!isValidCpf(cpf)) {
       errs.cpf = 'CPF inválido';
     }
     // CEP só é erro se não achou E a pessoa não preencheu o endereço manual
@@ -1209,13 +1225,18 @@ export default function OfertaClient() {
                   />
                 </div>
                 <div>
-                  <label style={labelS}>CPF</label>
+                  <label style={labelS}>
+                    CPF <span style={{ color: T.red }}>*</span>
+                    <span style={{ fontWeight: 400, fontSize: 11, color: T.inkSoft, marginLeft: 6 }}>obrigatório</span>
+                  </label>
                   <input
-                    className="co-input" style={inputS}
+                    className="co-input"
+                    style={{ ...inputS, ...(touched.cpf && cardErrors.cpf ? { borderColor: T.red } : {}) }}
                     placeholder="000.000.000-00"
                     value={cpf} onChange={e => setCpf(formatCpf(e.target.value))}
                     onBlur={() => setTouched(t => ({ ...t, cpf: true }))}
                     maxLength={14} inputMode="numeric"
+                    required
                   />
                   {touched.cpf && cardErrors.cpf && (
                     <p style={{ color: T.red, fontSize: 12, marginTop: 4 }}>{cardErrors.cpf}</p>

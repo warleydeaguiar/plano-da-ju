@@ -167,61 +167,82 @@ export async function generatePlanWithClaude(
   const apiKey = process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('OPENROUTER_API_KEY não configurado');
 
-  // AbortController + max_tokens reduzido — antes (mais semanas/12k tokens)
-  // estourava 504 do Vercel. 12 semanas/6k tokens fica em ~30-60s.
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 240_000);
+  // As 12 semanas geram um JSON grande (~14k+ chars). max_tokens precisa de
+  // FOLGA: com 6000 a resposta truncava (~13,8k chars em PT) no meio do array
+  // → "Expected ',' or ']'" — causa nº1 dos planos travados. 16000 cobre as 12
+  // semanas com sobra e cabe nos 300s de maxDuration. Tentamos até 2x: se a IA
+  // devolver JSON quebrado/truncado, regeramos uma vez antes de desistir.
+  const MAX_TOKENS = 16000;
 
-  let response: Response;
-  try {
-    response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://planodaju.julianecost.com',
-        'X-Title': 'Plano da Ju',
-      },
-      body: JSON.stringify({
-        model: 'anthropic/claude-sonnet-4-6',
-        max_tokens: 6000,
-        messages: [{ role: 'user', content }],
-      }),
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timeoutId);
-  }
-
-  if (!response.ok) {
-    const errBody = await response.text();
-    // Mensagem amigável quando a chave do OpenRouter ficou sem crédito —
-    // o problema é da conta (limite diário / créditos), não do código.
-    if (response.status === 402) {
-      let detail = '';
-      try { detail = (JSON.parse(errBody)?.error?.message ?? '').slice(0, 280); } catch { /* ignore */ }
-      throw new Error(
-        `Sem créditos suficientes na chave do OpenRouter (HTTP 402). `
-        + `Adicione créditos ou aumente o limite diário em `
-        + `https://openrouter.ai/settings/credits e tente "Gerar com IA" de novo. `
-        + (detail ? `Detalhe: ${detail}` : '')
-      );
+  async function requestPlan(): Promise<GeneratedPlan> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 240_000);
+    let response: Response;
+    try {
+      response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://planodaju.julianecost.com',
+          'X-Title': 'Plano da Ju',
+        },
+        body: JSON.stringify({
+          model: 'anthropic/claude-sonnet-4-6',
+          max_tokens: MAX_TOKENS,
+          messages: [{ role: 'user', content }],
+        }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
     }
-    throw new Error(`OpenRouter ${response.status}: ${errBody.slice(0, 400)}`);
+
+    if (!response.ok) {
+      const errBody = await response.text();
+      // Mensagem amigável quando a chave do OpenRouter ficou sem crédito —
+      // o problema é da conta (limite diário / créditos), não do código.
+      if (response.status === 402) {
+        let detail = '';
+        try { detail = (JSON.parse(errBody)?.error?.message ?? '').slice(0, 280); } catch { /* ignore */ }
+        throw new Error(
+          `Sem créditos suficientes na chave do OpenRouter (HTTP 402). `
+          + `Adicione créditos ou aumente o limite diário em `
+          + `https://openrouter.ai/settings/credits e tente "Gerar com IA" de novo. `
+          + (detail ? `Detalhe: ${detail}` : '')
+        );
+      }
+      throw new Error(`OpenRouter ${response.status}: ${errBody.slice(0, 400)}`);
+    }
+
+    const aiResult = await response.json();
+    const finishReason = aiResult.choices?.[0]?.finish_reason;
+    const text = aiResult.choices?.[0]?.message?.content || '';
+    // Se a resposta foi cortada por tamanho, o JSON está incompleto — não
+    // adianta tentar fazer parse, melhor sinalizar pra repetir.
+    if (finishReason === 'length') throw new Error('Resposta da IA truncada (finish_reason=length)');
+
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('JSON do plano não encontrado na resposta da IA');
+
+    const plan = JSON.parse(jsonMatch[0]) as GeneratedPlan;
+    if (!Array.isArray(plan.semanas) || plan.semanas.length === 0) {
+      throw new Error('Plano sem semanas válidas');
+    }
+    return plan;
   }
 
-  const aiResult = await response.json();
-  const text = aiResult.choices?.[0]?.message?.content || '';
-
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error('JSON do plano não encontrado na resposta da IA');
-
-  const plan = JSON.parse(jsonMatch[0]) as GeneratedPlan;
-  // Validações mínimas
-  if (!Array.isArray(plan.semanas) || plan.semanas.length === 0) {
-    throw new Error('Plano sem semanas válidas');
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      return await requestPlan();
+    } catch (e) {
+      lastErr = e;
+      // Erro de crédito (402) não se resolve repetindo — propaga na hora.
+      if (e instanceof Error && e.message.includes('HTTP 402')) throw e;
+    }
   }
-  return plan;
+  throw lastErr instanceof Error ? lastErr : new Error('Falha ao gerar plano');
 }
 
 /**

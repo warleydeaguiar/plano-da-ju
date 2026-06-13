@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { sendWelcomeEmail } from '@/lib/welcome-email'
-import { pagarmeCancelSubscription } from '@/lib/pagarme'
+import { pagarmeCancelSubscription, pagarmeRefundCharge } from '@/lib/pagarme'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: profile } = await (sb.from('profiles') as any)
-      .select('id, email, full_name, subscription_expires_at, subscription_status, quiz_session_id, pagarme_subscription_id')
+      .select('id, email, full_name, subscription_expires_at, subscription_status, quiz_session_id, pagarme_subscription_id, pagarme_charge_id')
       .eq('id', id)
       .single()
     if (!profile) return NextResponse.json({ error: 'Profile não encontrado' }, { status: 404 })
@@ -46,17 +46,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ ok: res.ok, error: res.error })
     }
 
-    // ── Reembolso ────────────────────────────────────────────────
+    // ── Reembolso (estorna o dinheiro na PagarMe + encerra acesso) ──
     if (action === 'refund') {
-      // Cancela na PagarMe também (se houver subscription)
-      if (profile.pagarme_subscription_id) {
-        const cancelRes = await pagarmeCancelSubscription(profile.pagarme_subscription_id)
-        if (!cancelRes.ok) {
-          console.warn(`[admin/actions refund] falha ao cancelar subscription na PagarMe:`, cancelRes.error)
-          // Continua com cancelamento local — admin pode reprocessar depois
-        }
+      // 1) ESTORNO real do dinheiro: cancela a cobrança paga na PagarMe.
+      let refundOk = false
+      let refundError: string | null = null
+      if (profile.pagarme_charge_id) {
+        const r = await pagarmeRefundCharge(profile.pagarme_charge_id)
+        refundOk = r.ok
+        if (!r.ok) refundError = r.error ?? 'falha ao estornar'
+      } else {
+        refundError = 'Sem pagarme_charge_id no cadastro — estorne manualmente na PagarMe.'
       }
 
+      // 2) Cancela a assinatura (impede cobranças futuras), se houver.
+      if (profile.pagarme_subscription_id) {
+        const cancelRes = await pagarmeCancelSubscription(profile.pagarme_subscription_id)
+        if (!cancelRes.ok) console.warn(`[admin/actions refund] falha ao cancelar subscription:`, cancelRes.error)
+      }
+
+      // 3) Atualiza o cadastro: encerra o acesso e marca reembolso.
       const now = new Date()
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (sb.from('profiles') as any)
@@ -67,7 +76,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         })
         .eq('id', id)
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-      return NextResponse.json({ ok: true, message: 'Assinatura reembolsada e acesso encerrado' })
+
+      // Sucesso parcial é possível: acesso encerrado mas estorno falhou → o
+      // admin precisa saber pra concluir na mão. Sinalizamos no retorno.
+      return NextResponse.json({
+        ok: true,
+        refunded: refundOk,
+        refund_error: refundError,
+        message: refundOk
+          ? '✅ Reembolso feito na PagarMe e acesso encerrado.'
+          : `⚠️ Acesso encerrado, mas o estorno automático NÃO foi concluído (${refundError}). Faça o estorno manualmente na PagarMe.`,
+      })
     }
 
     // ── Estende N meses ──────────────────────────────────────────
