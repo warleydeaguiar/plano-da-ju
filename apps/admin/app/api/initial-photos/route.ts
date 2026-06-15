@@ -9,8 +9,8 @@ const MAX_CLIENTS = 15
 /**
  * GET /api/initial-photos?page=0
  * Foto INICIAL (do onboarding, profiles.photo_url) das últimas 15 clientes
- * ativas. 5 por página. Mostra também quem ainda NÃO subiu (photoUrl null) pra
- * dar visibilidade de engajamento.
+ * ativas QUE ENVIARAM FOTO. 5 por página. Quem ainda não subiu foto NÃO
+ * aparece aqui (essa seção é a galeria de fotos iniciais).
  * Protegido pelo middleware do admin.
  */
 export async function GET(req: NextRequest) {
@@ -18,11 +18,13 @@ export async function GET(req: NextRequest) {
     const page = Math.max(0, parseInt(req.nextUrl.searchParams.get('page') || '0', 10) || 0)
     const sb = createAdminClient()
 
-    // Últimas clientes ativas (por ativação; fallback created_at via 2ª ordenação)
+    // Últimas clientes ativas COM foto inicial (mais recentes pela data da foto).
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data } = await (sb.from('profiles') as any)
       .select('id, full_name, email, photo_url, photo_taken_at, subscription_activated_at, created_at')
       .eq('subscription_status', 'active')
+      .not('photo_url', 'is', null)
+      .order('photo_taken_at', { ascending: false, nullsFirst: false })
       .order('subscription_activated_at', { ascending: false, nullsFirst: false })
       .order('created_at', { ascending: false })
       .limit(MAX_CLIENTS)

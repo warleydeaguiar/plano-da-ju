@@ -629,43 +629,6 @@ export default async function DashboardPage() {
         </div>
 
         {/* ════════════════════════════════════════════════════════ */}
-        {/* CUSTOS DE IA (OpenRouter) — geração dos planos            */}
-        {/* ════════════════════════════════════════════════════════ */}
-        <SectionHeader
-          icon={IconChart}
-          title="Custos de IA (OpenRouter)"
-          subtitle={aiCosts.ok
-            ? `Geração dos planos · cotação ${aiCosts.rateLabel}: US$ 1 = ${brl(aiCosts.rate)}`
-            : 'Não foi possível ler os custos do OpenRouter agora.'}
-          accent={T.pinkDeep}
-        />
-        <div className="dash-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
-          <StatCard
-            icon={IconMoney} label="IA hoje" value={brl(aiCosts.dailyUsd * aiCosts.rate)}
-            accent={T.blue} accentSoft={T.blueSoft} valueColor={T.blue}
-            sub={aiCosts.limitUsd != null
-              ? `limite ${aiCosts.limitReset === 'daily' ? 'diário' : aiCosts.limitReset === 'monthly' ? 'mensal' : ''} ${brl(aiCosts.limitUsd * aiCosts.rate)} · resta ${brl((aiCosts.limitRemainingUsd ?? 0) * aiCosts.rate)}`
-              : `US$ ${aiCosts.dailyUsd.toFixed(2)}`}
-          />
-          <StatCard
-            icon={IconReceipt} label="IA no mês" value={brl(aiCosts.monthlyUsd * aiCosts.rate)}
-            accent={T.pink} accentSoft={T.pinkSoft}
-            sub={`US$ ${aiCosts.monthlyUsd.toFixed(2)}`}
-          />
-          <StatCard
-            icon={IconChart} label="IA total (chave)" value={brl(aiCosts.totalUsd * aiCosts.rate)}
-            sub={`US$ ${aiCosts.totalUsd.toFixed(2)}`}
-          />
-          <StatCard
-            icon={IconCreditCard} label="Saldo OpenRouter"
-            value={aiCosts.balanceUsd != null ? brl(aiCosts.balanceUsd * aiCosts.rate) : '—'}
-            accent={T.green} accentSoft={T.greenSoft}
-            valueColor={aiCosts.balanceUsd != null && aiCosts.balanceUsd < 5 ? T.danger : T.green}
-            sub={aiCosts.balanceUsd != null ? `US$ ${aiCosts.balanceUsd.toFixed(2)} disponível` : 'indisponível'}
-          />
-        </div>
-
-        {/* ════════════════════════════════════════════════════════ */}
         {/* SEÇÃO 1: PLANO CAPILAR                                    */}
         {/* ════════════════════════════════════════════════════════ */}
         <SectionHeader
@@ -1189,6 +1152,43 @@ export default async function DashboardPage() {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* ════════════════════════════════════════════════════════ */}
+        {/* CUSTOS DE IA (OpenRouter) — último item do dashboard       */}
+        {/* ════════════════════════════════════════════════════════ */}
+        <SectionHeader
+          icon={IconChart}
+          title="Custos de IA (OpenRouter)"
+          subtitle={aiCosts.ok
+            ? `Geração dos planos · cotação ${aiCosts.rateLabel}: US$ 1 = ${brl(aiCosts.rate)}`
+            : 'Não foi possível ler os custos do OpenRouter agora.'}
+          accent={T.pinkDeep}
+        />
+        <div className="dash-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
+          <StatCard
+            icon={IconMoney} label="IA hoje" value={brl(aiCosts.dailyUsd * aiCosts.rate)}
+            accent={T.blue} accentSoft={T.blueSoft} valueColor={T.blue}
+            sub={aiCosts.limitUsd != null
+              ? `limite ${aiCosts.limitReset === 'daily' ? 'diário' : aiCosts.limitReset === 'monthly' ? 'mensal' : ''} ${brl(aiCosts.limitUsd * aiCosts.rate)} · resta ${brl((aiCosts.limitRemainingUsd ?? 0) * aiCosts.rate)}`
+              : `US$ ${aiCosts.dailyUsd.toFixed(2)}`}
+          />
+          <StatCard
+            icon={IconReceipt} label="IA no mês" value={brl(aiCosts.monthlyUsd * aiCosts.rate)}
+            accent={T.pink} accentSoft={T.pinkSoft}
+            sub={`US$ ${aiCosts.monthlyUsd.toFixed(2)}`}
+          />
+          <StatCard
+            icon={IconChart} label="IA total (chave)" value={brl(aiCosts.totalUsd * aiCosts.rate)}
+            sub={`US$ ${aiCosts.totalUsd.toFixed(2)}`}
+          />
+          <StatCard
+            icon={IconCreditCard} label="Saldo OpenRouter"
+            value={aiCosts.balanceUsd != null ? brl(aiCosts.balanceUsd * aiCosts.rate) : '—'}
+            accent={T.green} accentSoft={T.greenSoft}
+            valueColor={aiCosts.balanceUsd != null && aiCosts.balanceUsd < 5 ? T.danger : T.green}
+            sub={aiCosts.balanceUsd != null ? `US$ ${aiCosts.balanceUsd.toFixed(2)} disponível` : 'indisponível'}
+          />
         </div>
       </main>
     </div>
