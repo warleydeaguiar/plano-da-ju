@@ -4,32 +4,37 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { T, fonts, gradient } from '../theme';
+import {
+  SbDashboard, SbPlanos, SbUsuarias, SbGrupos, SbFollowup, SbAnuncios, SbAnalytics,
+  SbEmail, SbQuiz, SbStories, SbSuporte, SbChat, SbProdutos, SbYbera, SbExperimentos,
+  SbCheckout, SbErros, SbConfig, type SidebarIcon,
+} from './sidebar-icons';
 
 type NavItem = {
-  icon: string
+  icon: SidebarIcon
   label: string
   href: string
   children?: { label: string; href: string }[]
 }
 
 const NAV: NavItem[] = [
-  { icon: '📊', label: 'Dashboard', href: '/' },
+  { icon: SbDashboard, label: 'Dashboard', href: '/' },
   {
-    icon: '🔍', label: 'Revisão de Planos', href: '/planos',
+    icon: SbPlanos, label: 'Revisão de Planos', href: '/planos',
     children: [
       { label: 'Revisar planos', href: '/planos' },
       { label: 'Galeria de fotos', href: '/planos/galeria' },
     ],
   },
   {
-    icon: '👥', label: 'Usuárias', href: '/usuarios',
+    icon: SbUsuarias, label: 'Usuárias', href: '/usuarios',
     children: [
       { label: 'Assinaturas', href: '/assinaturas' },
       { label: 'Leads', href: '/leads' },
     ],
   },
   {
-    icon: '💬', label: 'Grupos de Promoções', href: '/grupos',
+    icon: SbGrupos, label: 'Grupos de Promoções', href: '/grupos',
     children: [
       { label: 'Lista', href: '/grupos' },
       { label: 'Broadcast', href: '/grupos/broadcast' },
@@ -38,12 +43,12 @@ const NAV: NavItem[] = [
       { label: 'Conexões Evolution', href: '/grupos/conexao' },
     ],
   },
-  { icon: '📞', label: 'Followup', href: '/followup' },
-  { icon: '📣', label: 'Anúncios', href: '/anuncios' },
-  { icon: '📈', label: 'Google Analytics', href: '/analytics' },
-  { icon: '📧', label: 'Email Marketing', href: '/email-marketing' },
+  { icon: SbFollowup, label: 'Followup', href: '/followup' },
+  { icon: SbAnuncios, label: 'Anúncios', href: '/anuncios' },
+  { icon: SbAnalytics, label: 'Google Analytics', href: '/analytics' },
+  { icon: SbEmail, label: 'Email Marketing', href: '/email-marketing' },
   {
-    icon: '🎯', label: 'Quiz', href: '/quiz',
+    icon: SbQuiz, label: 'Quiz', href: '/quiz',
     children: [
       { label: 'Fashion Gold', href: '/quiz/fashion-gold' },
       { label: 'Plano Capilar', href: '/quiz/plano-capilar' },
@@ -51,21 +56,21 @@ const NAV: NavItem[] = [
       { label: 'Depoimentos & Fotos', href: '/quiz/configuracoes' },
     ],
   },
-  { icon: '🎬', label: 'Stories da Juliane', href: '/stories' },
-  { icon: '🎧', label: 'Suporte Plano Capilar', href: '/suporte' },
-  { icon: '🗨️', label: 'Atendimento (Chatwoot)', href: 'https://chat.julianecost.com' },
-  { icon: '🛍️', label: 'Produtos', href: '/produtos' },
-  { icon: '🌿', label: 'Ybera', href: '/ybera' },
-  { icon: '🧪', label: 'Experimentos A/B', href: '/experimentos' },
+  { icon: SbStories, label: 'Stories da Juliane', href: '/stories' },
+  { icon: SbSuporte, label: 'Suporte Plano Capilar', href: '/suporte' },
+  { icon: SbChat, label: 'Atendimento (Chatwoot)', href: 'https://chat.julianecost.com' },
+  { icon: SbProdutos, label: 'Produtos', href: '/produtos' },
+  { icon: SbYbera, label: 'Ybera', href: '/ybera' },
+  { icon: SbExperimentos, label: 'Experimentos A/B', href: '/experimentos' },
   {
-    icon: '🛒', label: 'Checkout', href: '/checkout',
+    icon: SbCheckout, label: 'Checkout', href: '/checkout',
     children: [
       { label: 'Funil', href: '/checkout' },
       { label: 'Erros', href: '/checkout/erros' },
     ],
   },
-  { icon: '🐞', label: 'Erros do Sistema', href: '/erros' },
-  { icon: '⚙️', label: 'Configurações', href: '/configuracoes' },
+  { icon: SbErros, label: 'Erros do Sistema', href: '/erros' },
+  { icon: SbConfig, label: 'Configurações', href: '/configuracoes' },
 ];
 
 export default function Sidebar() {
@@ -140,9 +145,12 @@ export default function Sidebar() {
             itemStyle.boxShadow = 'none';
           }
 
+          const Icon = item.icon;
           const innerContent = (
             <>
-              <span style={{ fontSize: 15, width: 18, textAlign: 'center', flexShrink: 0 }}>{item.icon}</span>
+              <span style={{ width: 18, height: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Icon size={18} />
+              </span>
               <span style={{ flex: 1 }}>{item.label}</span>
               {isExternal && (
                 <span style={{ fontSize: 10, color: T.inkMuted, marginRight: -2 }}>↗</span>
