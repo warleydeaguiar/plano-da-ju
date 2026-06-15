@@ -541,6 +541,7 @@ export default function PlanosClient(
   const [cards, setCards]             = useState(initialCards);
   const [revisions, setRevisions]     = useState<RevisionRequest[]>(revisionRequests);
   const [resolving, setResolving]     = useState<string | null>(null);
+  const [revOpen, setRevOpen]         = useState(false); // painel de pedidos de ajuste recolhido por padrão
   const [filterTab, setFilterTab]     = useState<'pending' | 'approved' | 'all'>('pending');
   const [planTab, setPlanTab]         = useState<'cronograma' | 'produtos' | 'dicas'>('cronograma');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(
@@ -846,20 +847,25 @@ export default function PlanosClient(
             {counts.pending} {counts.pending === 1 ? 'incompleto' : 'incompletos'} · {counts.approved} entregues
           </span>
           {revisions.length > 0 && (
-            <span style={{
-              background: 'rgba(190,24,93,0.12)', color: ACCENT,
-              fontSize: 12, fontWeight: 700, padding: '4px 10px', borderRadius: 20,
-            }}>
+            <button
+              onClick={() => setRevOpen(o => !o)}
+              style={{
+                background: revOpen ? ACCENT : 'rgba(190,24,93,0.12)', color: revOpen ? '#fff' : ACCENT,
+                fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 20,
+                border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
+              }}
+            >
               🔧 {revisions.length} {revisions.length === 1 ? 'pedido de ajuste' : 'pedidos de ajuste'}
-            </span>
+              <span style={{ fontSize: 10 }}>{revOpen ? '▲ fechar' : '▾ ver'}</span>
+            </button>
           )}
         </div>
 
-        {/* ── Pedidos de revisão das clientes (fonte: plan_feedback) ───────── */}
-        {revisions.length > 0 && (
+        {/* ── Pedidos de revisão das clientes (recolhível; fonte: plan_feedback) ─ */}
+        {revisions.length > 0 && revOpen && (
           <div style={{
             background: '#FFF1F4', borderBottom: '1px solid #F3D6DE',
-            padding: '14px 32px', flexShrink: 0, maxHeight: 220, overflowY: 'auto',
+            padding: '14px 32px', flexShrink: 0, maxHeight: 300, overflowY: 'auto',
           }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: ACCENT, marginBottom: 10 }}>
               🔧 Pedidos de ajuste enviados pelas clientes

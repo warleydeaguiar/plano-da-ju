@@ -197,13 +197,30 @@ async function excludeAlreadySent(sb: any, sequenceId: string, recipients: Prepa
 }
 
 /**
+ * Mantém só quem AINDA NÃO enviou a foto inicial (profiles.photo_url null).
+ * Usado nas sequências de cobrança de foto (require_no_photo).
+ */
+async function filterNoPhoto(sb: any, recipients: PreparedRecipient[]): Promise<PreparedRecipient[]> {
+  if (recipients.length === 0) return []
+  const emails = recipients.map(r => r.to_email.toLowerCase())
+  const { data } = await sb.from('profiles').select('email, photo_url').in('email', emails)
+  const hasPhoto = new Set(
+    (data ?? []).filter((p: any) => p.photo_url).map((p: any) => (p.email ?? '').toLowerCase()),
+  )
+  return recipients.filter(r => !hasPhoto.has(r.to_email.toLowerCase()))
+}
+
+/**
  * Envia uma sequência. Retorna { sent, errors, skipped, eligible }.
  */
 async function runSequence(sb: any, seq: any, opts: { dryRun?: boolean; toleranceMinutes?: number } = {}) {
   const tolerance = opts.toleranceMinutes ?? 6
   const recipients = await findEligibleRecipients(sb, seq, tolerance)
   const audienceFiltered = await filterByAudience(sb, recipients, seq.audience ?? 'no_purchase')
-  const eligible = await excludeAlreadySent(sb, seq.id, audienceFiltered)
+  const notYetSent = await excludeAlreadySent(sb, seq.id, audienceFiltered)
+  // Sequências de cobrança de foto: só manda pra quem ainda não enviou a foto
+  // (avaliado no MOMENTO do envio — se ela já mandou, não recebe a cobrança).
+  const eligible = seq.require_no_photo ? await filterNoPhoto(sb, notYetSent) : notYetSent
 
   if (opts.dryRun) {
     return {
