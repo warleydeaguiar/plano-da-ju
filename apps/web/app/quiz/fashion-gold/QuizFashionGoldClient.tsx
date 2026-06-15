@@ -502,7 +502,7 @@ function Step6({ onSubmit, name, setName, email, setEmail, loading }: {
             <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0012.04 2zm0 18.15h-.01a8.2 8.2 0 01-4.18-1.15l-.3-.18-3.11.82.83-3.04-.2-.31a8.18 8.18 0 01-1.26-4.38c0-4.54 3.7-8.23 8.24-8.23 2.2 0 4.27.86 5.83 2.42a8.183 8.183 0 012.41 5.83c0 4.54-3.7 8.24-8.25 8.24z" />
           </svg>
         }>
-          Entrar no grupo do WhatsApp
+          Falar com a Ju no WhatsApp
         </CTA>
         <div style={{ textAlign: 'center', fontSize: 10.5, color: T.muted }}>Ao continuar você concorda com os termos e a política de privacidade.</div>
       </div>
@@ -577,7 +577,15 @@ export default function QuizFashionGoldClient() {
 
   const next = () => setStep(s => s + 1)
 
-  // Change 1: redirect directly to WhatsApp group — no intermediate "success" screen
+  // NOVO FUNIL: em vez de jogar direto num grupo, manda a pessoa iniciar uma
+  // conversa no nosso número OFICIAL (Cloud API) — isso abre a janela gratuita
+  // de 24h. A 1ª mensagem já vai pré-preenchida com o nome (dinâmico).
+  const WA_OFICIAL = '553199994001'
+  const waEntrarLink = () => {
+    const msg = `Oi Ju, tudo bem? Meu nome é ${(name || '').trim()} e gostaria de participar dos seus grupos de promoção. Ainda tem vaga?`
+    return `https://wa.me/${WA_OFICIAL}?text=${encodeURIComponent(msg)}`
+  }
+
   const handleSubmit = async () => {
     setLoading(true)
     try {
@@ -602,8 +610,9 @@ export default function QuizFashionGoldClient() {
         window.fbq('track', 'Lead', { content_name: 'Quiz Fashion Gold', content_category: 'fashion-gold', currency: 'BRL' }, { eventID: leadEventId })
       }
       sendServerEvent('Lead', { eventId: leadEventId, email, phone, contentName: 'Quiz Fashion Gold', contentCategory: 'fashion-gold', currency: 'BRL' })
-      // Redirect directly to WhatsApp group
-      window.location.href = data.invite_link ?? '/g/entrar'
+      // NOVO: manda iniciar a conversa no número oficial (janela gratuita 24h)
+      void data
+      window.location.href = waEntrarLink()
     } catch {
       // On network error, still fire pixel + CAPI (mesmo eventID) e redireciona
       const leadEventId = newEventId()
@@ -611,7 +620,7 @@ export default function QuizFashionGoldClient() {
         window.fbq('track', 'Lead', { content_name: 'Quiz Fashion Gold', content_category: 'fashion-gold', currency: 'BRL' }, { eventID: leadEventId })
       }
       sendServerEvent('Lead', { eventId: leadEventId, email, phone, contentName: 'Quiz Fashion Gold', contentCategory: 'fashion-gold', currency: 'BRL' })
-      window.location.href = '/g/entrar'
+      window.location.href = waEntrarLink()
     } finally {
       setLoading(false)
     }

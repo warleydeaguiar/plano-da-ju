@@ -14,6 +14,46 @@ function getServiceClient() {
   )
 }
 
+/**
+ * Envia uma mensagem de texto pelo WhatsApp Cloud API (Graph). Usado pro
+ * follow-up 1:1 quando a pessoa clica pra entrar no grupo. Tolerante a falha
+ * (nunca bloqueia o redirect).
+ */
+async function sendWhatsApp(phoneDigits: string, text: string): Promise<void> {
+  const token = process.env.WHATSAPP_TOKEN
+  const pid = process.env.WHATSAPP_PHONE_NUMBER_ID
+  if (!token || !pid || !phoneDigits) return
+  try {
+    const controller = new AbortController()
+    const t = setTimeout(() => controller.abort(), 6000)
+    await fetch(`https://graph.facebook.com/v21.0/${pid}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messaging_product: 'whatsapp', to: phoneDigits, type: 'text', text: { body: text } }),
+      signal: controller.signal,
+    })
+    clearTimeout(t)
+  } catch { /* follow-up é best-effort */ }
+}
+
+// Resolve o primeiro nome da pessoa: usa ?n= (nome do contato no Chatwoot) ou,
+// na falta, casa o telefone (últimos 8 dígitos) com wg_quiz_leads.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function resolveFirstName(db: any, nameParam: string | null, phoneDigits: string): Promise<string> {
+  const clean = (s: string | null | undefined) => (s ?? '').trim().split(/\s+/)[0] ?? ''
+  if (nameParam && nameParam.trim()) return clean(nameParam)
+  if (phoneDigits.length >= 8) {
+    const last8 = phoneDigits.slice(-8)
+    try {
+      const { data } = await db.from('wg_quiz_leads')
+        .select('name, created_at').ilike('phone', `%${last8}%`)
+        .order('created_at', { ascending: false }).limit(1)
+      if (data?.[0]?.name) return clean(data[0].name)
+    } catch { /* ignore */ }
+  }
+  return ''
+}
+
 export async function GET(req: NextRequest) {
   const db = getServiceClient()
   const url = new URL(req.url)
@@ -21,6 +61,16 @@ export async function GET(req: NextRequest) {
     source:   url.searchParams.get('utm_source')   ?? null,
     medium:   url.searchParams.get('utm_medium')   ?? null,
     campaign: url.searchParams.get('utm_campaign') ?? null,
+  }
+
+  // NOVO FUNIL: ?p=<telefone> (e ?n=<nome>) vindo da auto-resposta do número
+  // oficial. Dispara o follow-up 1:1 ANTES de redirecionar pro grupo real.
+  const phoneDigits = (url.searchParams.get('p') ?? '').replace(/\D/g, '')
+  if (phoneDigits.length >= 10) {
+    const first = await resolveFirstName(db, url.searchParams.get('n'), phoneDigits)
+    const ola = first ? `Fico muito feliz, ${first}, que você entrou no meu grupo! 💚` : 'Fico muito feliz que você entrou no meu grupo! 💚'
+    const msg = `${ola}\n\nEu dou uma atenção especial pra todas que estão nele, então me conta: o que mais te incomoda no seu cabelo hoje?`
+    await sendWhatsApp(phoneDigits, msg)
   }
 
   const WA = 'https://chat.whatsapp.com/'
