@@ -197,17 +197,19 @@ async function excludeAlreadySent(sb: any, sequenceId: string, recipients: Prepa
 }
 
 /**
- * Mantém só quem AINDA NÃO enviou a foto inicial (profiles.photo_url null).
- * Usado nas sequências de cobrança de foto (require_no_photo).
+ * Filtra por foto inicial. mode 'no' = só quem NÃO tem foto (cobrança);
+ * mode 'has' = só quem JÁ tem foto (lembrete de evolução).
  */
-async function filterNoPhoto(sb: any, recipients: PreparedRecipient[]): Promise<PreparedRecipient[]> {
+async function filterByPhoto(sb: any, recipients: PreparedRecipient[], mode: 'no' | 'has'): Promise<PreparedRecipient[]> {
   if (recipients.length === 0) return []
   const emails = recipients.map(r => r.to_email.toLowerCase())
   const { data } = await sb.from('profiles').select('email, photo_url').in('email', emails)
   const hasPhoto = new Set(
     (data ?? []).filter((p: any) => p.photo_url).map((p: any) => (p.email ?? '').toLowerCase()),
   )
-  return recipients.filter(r => !hasPhoto.has(r.to_email.toLowerCase()))
+  return mode === 'has'
+    ? recipients.filter(r => hasPhoto.has(r.to_email.toLowerCase()))
+    : recipients.filter(r => !hasPhoto.has(r.to_email.toLowerCase()))
 }
 
 /**
@@ -218,9 +220,14 @@ async function runSequence(sb: any, seq: any, opts: { dryRun?: boolean; toleranc
   const recipients = await findEligibleRecipients(sb, seq, tolerance)
   const audienceFiltered = await filterByAudience(sb, recipients, seq.audience ?? 'no_purchase')
   const notYetSent = await excludeAlreadySent(sb, seq.id, audienceFiltered)
-  // Sequências de cobrança de foto: só manda pra quem ainda não enviou a foto
-  // (avaliado no MOMENTO do envio — se ela já mandou, não recebe a cobrança).
-  const eligible = seq.require_no_photo ? await filterNoPhoto(sb, notYetSent) : notYetSent
+  // Filtro de foto (avaliado no MOMENTO do envio):
+  //  - require_no_photo: cobrança de foto → só quem AINDA não enviou.
+  //  - require_has_photo: lembrete de evolução → só quem JÁ enviou a inicial.
+  const eligible = seq.require_no_photo
+    ? await filterByPhoto(sb, notYetSent, 'no')
+    : seq.require_has_photo
+      ? await filterByPhoto(sb, notYetSent, 'has')
+      : notYetSent
 
   if (opts.dryRun) {
     return {
