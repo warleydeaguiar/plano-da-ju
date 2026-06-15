@@ -1,6 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
-import { refreshInviteLinks } from '@/lib/evolution-grupos'
+import { refreshInviteLinks, getGroupByInviteCode, getActiveInstance } from '@/lib/evolution-grupos'
+
+/** Valida um convite EXISTENTE via inviteInfo (qualquer instância conectada,
+ * não precisa ser admin). Usado quando a geração de link falha — assim não
+ * condenamos um grupo vivo só porque a instância admin está fora do ar. */
+async function inviteStillValid(inviteLink: string, instance: string): Promise<boolean> {
+  const code = (inviteLink || '').split('/').pop() || ''
+  if (!code) return false
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const info: any = await getGroupByInviteCode(code, instance)
+    return !!(info?.subject || info?.id) && !info?.error
+  } catch {
+    return false
+  }
+}
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -42,21 +57,31 @@ export async function GET(req: NextRequest) {
 
   const jids = list.map(g => g.jid)
   const links = await refreshInviteLinks(jids)
+  // Instância conectada pra VALIDAR links existentes quando não der pra gerar.
+  let activeInstance = ''
+  try { activeInstance = await getActiveInstance() } catch { /* nenhuma aberta */ }
 
   let updated = 0
   let unchanged = 0
   let missing = 0
+  let revalidated = 0
 
   const now = new Date().toISOString()
   for (const g of list) {
     const fresh = links[g.jid]
     if (!fresh) {
-      // Nenhuma instância admin conseguiu gerar o convite → grupo provavelmente
-      // banido/expulso. Marca link_ok=false pra NÃO mandar gente pra link morto.
+      // Não deu pra GERAR o convite (instância admin fora do ar ou banida).
+      // Antes de condenar, VALIDA o link já salvo via inviteInfo — só marca
+      // link_ok=false se o convite existente também estiver morto/revogado.
       missing++
+      let stillOk = false
+      if (activeInstance && (g.invite_link || '').startsWith('https://chat.whatsapp.com/')) {
+        stillOk = await inviteStillValid(g.invite_link, activeInstance)
+        if (stillOk) revalidated++
+      }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (sb.from('wg_groups') as any)
-        .update({ link_ok: false, link_checked_at: now, updated_at: now })
+        .update({ link_ok: stillOk, link_checked_at: now, updated_at: now })
         .eq('id', g.id)
       continue
     }
@@ -79,9 +104,10 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     total: list.length,
-    updated,       // links atualizados (mudaram)
+    updated,       // links regenerados (admin conectado)
     unchanged,     // já estavam corretos
-    missing,       // nenhuma instância conectada conseguiu o link (grupo sem admin conectado)
+    missing,       // não deu pra gerar (admin fora do ar/banido)
+    revalidated,   // dos missing, quantos o link EXISTENTE ainda é válido (mantidos vivos)
     ran_at: new Date().toISOString(),
   })
 }
