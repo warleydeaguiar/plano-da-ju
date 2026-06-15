@@ -67,10 +67,19 @@ export async function GET(req: NextRequest) {
   // oficial. Dispara o follow-up 1:1 ANTES de redirecionar pro grupo real.
   const phoneDigits = (url.searchParams.get('p') ?? '').replace(/\D/g, '')
   if (phoneDigits.length >= 10) {
-    const first = await resolveFirstName(db, url.searchParams.get('n'), phoneDigits)
-    const ola = first ? `Fico muito feliz, ${first}, que você entrou no meu grupo! 💚` : 'Fico muito feliz que você entrou no meu grupo! 💚'
-    const msg = `${ola}\n\nEu dou uma atenção especial pra todas que estão nele, então me conta: o que mais te incomoda no seu cabelo hoje?`
-    await sendWhatsApp(phoneDigits, msg)
+    // DEDUP: o link pode ser acessado mais de uma vez (preview do WhatsApp,
+    // re-toque, prefetch). Reivindicamos o telefone de forma atômica — só quem
+    // INSERIR a linha (1ª vez) envia o follow-up; os demais acessos pulam.
+    const { data: claimed } = await db
+      .from('wg_group_followups' as any)
+      .upsert({ phone: phoneDigits }, { onConflict: 'phone', ignoreDuplicates: true })
+      .select('phone')
+    if (claimed && claimed.length > 0) {
+      const first = await resolveFirstName(db, url.searchParams.get('n'), phoneDigits)
+      const ola = first ? `Fico muito feliz, ${first}, que você entrou no meu grupo! 💚` : 'Fico muito feliz que você entrou no meu grupo! 💚'
+      const msg = `${ola}\n\nEu dou uma atenção especial pra todas que estão nele, então me conta: o que mais te incomoda no seu cabelo hoje?`
+      await sendWhatsApp(phoneDigits, msg)
+    }
   }
 
   const WA = 'https://chat.whatsapp.com/'
