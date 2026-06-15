@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { enrichIdentity, newEventId, sendServerEvent } from '@/lib/tracking-client';
 import { pixelMatchingPayload, pixelPhone } from '@/lib/pixel-pii';
+import { installmentInfo, brlCents, MAX_INSTALLMENTS } from '@/lib/pricing';
 
 // ╔══════════════════════════════════════════════════════════╗
 // ║  V2 — Página de oferta moderna feminina                  ║
@@ -165,11 +166,11 @@ function useOfferCountdown() {
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }
 
-// ─── Cálculo de parcelas SEM JUROS ───────────────────────────
-// Cliente paga R$34,90/ano divididos em até 4x sem juros.
+// ─── Cálculo de parcelas (cartão: até 3x COM juros 2,99% a.m.) ───
+// À vista (1x) e PIX = R$34,90 sem juros. Fonte única em lib/pricing.
 function installPerStr(n: number): string {
-  const perCents = Math.round(3490 / n);
-  return `${n}x de R$${(perCents / 100).toFixed(2).replace('.', ',')}`;
+  const info = installmentInfo(n);
+  return `${info.n}x de ${brlCents(info.perCents)}`;
 }
 
 // ─── Sparkles flutuantes no fundo ────────────────────────────
@@ -397,9 +398,9 @@ function OfferCard({ countdown, name, onBuy }: { countdown: string; name: string
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
               lineHeight: 1.05, letterSpacing: -0.5,
-            }}>{installPerStr(4)}</div>
+            }}>{installPerStr(MAX_INSTALLMENTS)}</div>
             <div style={{ fontSize: 9, color: T.inkSoft, marginTop: 3, fontFamily: fonts.ui }}>
-              sem juros · ou à vista <strong style={{ color: T.ink }}>R$34,90</strong>
+              com juros · ou à vista <strong style={{ color: T.ink }}>R$34,90</strong>
             </div>
           </div>
         </div>
@@ -409,7 +410,7 @@ function OfferCard({ countdown, name, onBuy }: { countdown: string; name: string
           padding: '8px 12px', background: T.cream, borderRadius: 99,
           border: `1px solid ${T.border}`,
         }}>
-          ⚡ PIX à vista · 💳 Cartão em até 4x
+          ⚡ PIX à vista · 💳 Cartão em até 3x
         </div>
         <GreenButton onClick={onBuy} variant="green">Quero meu plano agora →</GreenButton>
       </div>
@@ -1124,10 +1125,10 @@ export default function OfertaClient() {
       marginBottom: 16, fontFamily: fonts.ui,
     };
 
-    // Parcelas SEM JUROS — R$34,90/ano divididos em até 4x
-    const INSTALLMENTS = [1, 2, 3, 4].map(n => ({
+    // Cartão: até 3x. 1x à vista (sem juros), 2x/3x COM juros (2,99% a.m.)
+    const INSTALLMENTS = [1, 2, 3].map(n => ({
       n,
-      label: installPerStr(n) + (n === 1 ? ' (à vista)' : ' sem juros'),
+      label: installPerStr(n) + (n === 1 ? ' (à vista)' : ' com juros'),
     }));
     const installAmt = installPerStr(installments);
 
@@ -1190,8 +1191,8 @@ export default function OfertaClient() {
                         background: `linear-gradient(135deg, ${T.pinkDeep}, ${T.pink})`,
                         WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
                         lineHeight: 1,
-                      }}>{installPerStr(4)}</span>
-                      <span style={{ fontSize: 10, color: T.inkSoft, fontFamily: fonts.ui }}>sem juros</span>
+                      }}>{installPerStr(MAX_INSTALLMENTS)}</span>
+                      <span style={{ fontSize: 10, color: T.inkSoft, fontFamily: fonts.ui }}>com juros</span>
                     </div>
                     <div style={{ fontSize: 10, color: T.inkSoft, marginTop: 2 }}>ou à vista R$34,90</div>
                   </div>
@@ -1307,7 +1308,7 @@ export default function OfertaClient() {
                 <div style={{ flex: 1 }}>
                   <span style={{ fontSize: 14, fontWeight: 700, color: T.ink }}>💳 Cartão de crédito</span>
                   <div style={{ fontSize: 12, color: T.inkSoft, marginTop: 2 }}>
-                    Em até 4x — escolha as parcelas abaixo
+                    Em até 3x — escolha as parcelas abaixo
                   </div>
                 </div>
               </button>
@@ -1460,7 +1461,7 @@ export default function OfertaClient() {
                   </div>
                   {payType === 'card' && installments > 1 && (
                     <div style={{ fontSize: 11, color: T.inkSoft }}>
-                      sem juros · renova a cada 90 dias
+                      com juros · total {brlCents(installmentInfo(installments).totalCents)} · renova a cada 90 dias
                     </div>
                   )}
                   {payType === 'pix' && (

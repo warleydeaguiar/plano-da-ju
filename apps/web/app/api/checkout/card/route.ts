@@ -7,10 +7,9 @@ import { extractFieldsFromQuiz } from '@/lib/quiz-to-profile';
 import { getOrCreateCardPlan } from '@/lib/pagarme/plans';
 import type { PagarMeSubscription } from '@/lib/pagarme/types';
 import { logCheckoutError } from '@/lib/checkout-log';
+import { installmentInfo, MAX_INSTALLMENTS } from '@/lib/pricing';
 
 export const dynamic = 'force-dynamic';
-
-const PRICE_CENTS = 3490;
 
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
@@ -40,9 +39,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Parcelas: 1..4 sem juros (validado server-side)
-    const n = Math.max(1, Math.min(4, parseInt(String(rawInstallments ?? '1'), 10) || 1));
+    // Parcelas: 1..3 (2x/3x COM juros 2,99% a.m.) — validado server-side.
+    const n = Math.max(1, Math.min(MAX_INSTALLMENTS, parseInt(String(rawInstallments ?? '1'), 10) || 1));
     logInstallments = n;
+    // Valor cobrado = total COM juros do parcelamento escolhido (mesmo do plano).
+    const PRICE_CENTS = installmentInfo(n).totalCents;
 
     const cleanCpf   = typeof cpf   === 'string' ? cpf.replace(/\D/g, '')   : '';
     // Phone: prefere o que veio do form, fallback pra quiz_answers (já coletado no quiz)
@@ -88,7 +89,7 @@ export async function POST(req: NextRequest) {
     }
 
     // ── PagarMe v5 Subscription (trimestral/90 dias, renova a cada 3 meses) ──
-    const plan = await getOrCreateCardPlan();
+    const plan = await getOrCreateCardPlan(n);
     const subscription = await pagarme.post<PagarMeSubscription>('/subscriptions', {
       plan_id: plan.id,
       installments: n,
