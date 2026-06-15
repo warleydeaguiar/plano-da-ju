@@ -85,6 +85,7 @@ export async function GET(req: NextRequest) {
       .from('wg_groups' as any)
       .select('id, invite_link, member_count, name')
       .eq('status', 'active')
+      .eq('link_ok', true) // só grupos com convite VÁLIDO (não banido) — nunca link morto
       .like('invite_link', `${WA}%`)
       .order('member_count', { ascending: true })
       .limit(15)

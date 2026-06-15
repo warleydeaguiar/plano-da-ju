@@ -47,13 +47,31 @@ export async function GET(req: NextRequest) {
   let unchanged = 0
   let missing = 0
 
+  const now = new Date().toISOString()
   for (const g of list) {
     const fresh = links[g.jid]
-    if (!fresh) { missing++; continue }
-    if (fresh === g.invite_link) { unchanged++; continue }
+    if (!fresh) {
+      // Nenhuma instância admin conseguiu gerar o convite → grupo provavelmente
+      // banido/expulso. Marca link_ok=false pra NÃO mandar gente pra link morto.
+      missing++
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (sb.from('wg_groups') as any)
+        .update({ link_ok: false, link_checked_at: now, updated_at: now })
+        .eq('id', g.id)
+      continue
+    }
+    // Conseguiu o link → grupo VIVO. Marca link_ok=true e atualiza se mudou.
+    if (fresh === g.invite_link) {
+      unchanged++
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (sb.from('wg_groups') as any)
+        .update({ link_ok: true, link_checked_at: now })
+        .eq('id', g.id)
+      continue
+    }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (sb.from('wg_groups') as any)
-      .update({ invite_link: fresh, updated_at: new Date().toISOString() })
+      .update({ invite_link: fresh, link_ok: true, link_checked_at: now, updated_at: now })
       .eq('id', g.id)
     updated++
   }
