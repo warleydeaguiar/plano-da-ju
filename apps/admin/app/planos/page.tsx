@@ -56,15 +56,25 @@ export default async function PlanosPage() {
     created_at: string;
   }>;
 
-  // 2) hair_plan semana 1 de cada ativa (aprovação + notas)
+  // 2) hair_plan semana 1 de cada ativa (aprovação + notas).
+  // ⚠️ Buscamos em LOTES de 50. Com 200 ids num único .in() a URL passava de
+  // 7,5 mil chars e o nginx/Kong respondia 502 → a query falhava INTEIRA,
+  // planMap ficava vazio e TODAS as clientes apareciam como "incompleto/
+  // travado" (mesmo com plano pronto). Era a causa do "200 travados".
   const userIds = profileList.map(p => p.id);
+  const CHUNK = 50;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: weekOnePlans } = userIds.length > 0
-    ? await (sb.from('hair_plans') as any)
-        .select('user_id,approved_by_juliane,created_at,juliane_notes')
-        .eq('week_number', 1)
-        .in('user_id', userIds)
-    : { data: [] };
+  const weekOnePlans: Array<{ user_id: string; approved_by_juliane: boolean; created_at: string; juliane_notes: string | null }> = [];
+  for (let i = 0; i < userIds.length; i += CHUNK) {
+    const slice = userIds.slice(i, i + CHUNK);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data } = await (sb.from('hair_plans') as any)
+      .select('user_id,approved_by_juliane,created_at,juliane_notes')
+      .eq('week_number', 1)
+      .in('user_id', slice);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (Array.isArray(data)) weekOnePlans.push(...(data as any[]));
+  }
 
   const planMap = new Map(
     (weekOnePlans as Array<{ user_id: string; approved_by_juliane: boolean; created_at: string; juliane_notes: string | null }>)
