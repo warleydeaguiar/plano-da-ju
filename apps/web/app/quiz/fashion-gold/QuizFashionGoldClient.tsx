@@ -586,10 +586,26 @@ export default function QuizFashionGoldClient() {
     return `https://wa.me/${WA_OFICIAL}?text=${encodeURIComponent(msg)}`
   }
 
+  // Dispara o Lead (Pixel + CAPI com MESMO eventID → dedup) e SÓ DEPOIS navega
+  // pra fora (wa.me). O redirect externo imediato abortava a requisição do Pixel
+  // antes dela sair — por isso esperamos o pixel escoar antes de sair da página.
+  // O CAPI já é resiliente (sendBeacon), mas o delay garante o Pixel também.
+  const fireLeadAndRedirect = () => {
+    const leadEventId = newEventId()
+    if (typeof window !== 'undefined' && window.fbq) {
+      window.fbq('track', 'Lead', { content_name: 'Quiz Fashion Gold', content_category: 'fashion-gold', currency: 'BRL' }, { eventID: leadEventId })
+    }
+    sendServerEvent('Lead', { eventId: leadEventId, email, phone, contentName: 'Quiz Fashion Gold', contentCategory: 'fashion-gold', currency: 'BRL' })
+    const dest = waEntrarLink()
+    // mantém o spinner; navega após o pixel ter tempo de sair
+    window.setTimeout(() => { window.location.href = dest }, 700)
+  }
+
   const handleSubmit = async () => {
+    if (loading) return
     setLoading(true)
     try {
-      const res = await fetch('/api/quiz/lead', {
+      await fetch('/api/quiz/lead', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -602,28 +618,13 @@ export default function QuizFashionGoldClient() {
           utm_term: searchParams.get('utm_term'),
         }),
       })
-      const data = await res.json()
-      // Lead com eventID compartilhado Pixel + CAPI → dedup e cobertura no servidor.
-      // Sem `value` (preço fixo no Lead derruba ROAS); só currency.
-      const leadEventId = newEventId()
-      if (typeof window !== 'undefined' && window.fbq) {
-        window.fbq('track', 'Lead', { content_name: 'Quiz Fashion Gold', content_category: 'fashion-gold', currency: 'BRL' }, { eventID: leadEventId })
-      }
-      sendServerEvent('Lead', { eventId: leadEventId, email, phone, contentName: 'Quiz Fashion Gold', contentCategory: 'fashion-gold', currency: 'BRL' })
-      // NOVO: manda iniciar a conversa no número oficial (janela gratuita 24h)
-      void data
-      window.location.href = waEntrarLink()
     } catch {
-      // On network error, still fire pixel + CAPI (mesmo eventID) e redireciona
-      const leadEventId = newEventId()
-      if (typeof window !== 'undefined' && window.fbq) {
-        window.fbq('track', 'Lead', { content_name: 'Quiz Fashion Gold', content_category: 'fashion-gold', currency: 'BRL' }, { eventID: leadEventId })
-      }
-      sendServerEvent('Lead', { eventId: leadEventId, email, phone, contentName: 'Quiz Fashion Gold', contentCategory: 'fashion-gold', currency: 'BRL' })
-      window.location.href = waEntrarLink()
-    } finally {
-      setLoading(false)
+      // erro de rede ao salvar o lead não impede o Lead/redirect
     }
+    // Lead dispara exatamente 1x, com ou sem erro no save acima.
+    fireLeadAndRedirect()
+    // não limpa o loading de propósito: a navegação ocorre em ~700ms e o spinner
+    // evita duplo clique / duplo Lead.
   }
 
   return (
