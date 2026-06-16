@@ -112,8 +112,20 @@ export async function POST(req: NextRequest) {
       metadata: { source: 'plano-da-ju-web', payment_type: 'pix', session_id: session_id ?? '' },
     });
 
-    const charge = order.charges?.[0];
-    const pixData = charge?.last_transaction;
+    let charge = order.charges?.[0];
+    let pixData = charge?.last_transaction;
+
+    // A PagarMe às vezes cria a ordem mas ainda NÃO populou o qr_code na
+    // resposta imediata (transação processando). Em vez de falhar na hora,
+    // buscamos a ordem algumas vezes até o PIX ficar pronto (~até 3s).
+    for (let i = 0; i < 4 && !pixData?.qr_code; i++) {
+      await new Promise(r => setTimeout(r, 700));
+      try {
+        const refreshed = await pagarme.get<PagarMeOrder>(`/orders/${order.id}`);
+        charge = refreshed.charges?.[0];
+        pixData = charge?.last_transaction;
+      } catch { /* tenta de novo no próximo loop */ }
+    }
 
     if (!pixData?.qr_code) {
       throw new Error('QR Code PIX não retornado pelo PagarMe');
@@ -186,9 +198,12 @@ export async function POST(req: NextRequest) {
       session_id: logSession,
       err,
     });
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Erro ao gerar PIX' },
-      { status: 500 },
-    );
+    // Mensagem amigável quando foi instabilidade na geração do PIX (QR não
+    // veio / 5xx da PagarMe) — em vez do erro técnico cru.
+    const raw = err instanceof Error ? err.message : '';
+    const friendly = /qr code|504|502|timeout|gateway/i.test(raw)
+      ? 'Tivemos uma instabilidade ao gerar o PIX agora. Tente de novo em alguns segundos — ou pague no cartão (aprovação na hora). 💛'
+      : (raw || 'Erro ao gerar PIX');
+    return NextResponse.json({ error: friendly }, { status: 500 });
   }
 }
