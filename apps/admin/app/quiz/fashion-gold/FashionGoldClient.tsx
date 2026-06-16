@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useState } from 'react'
 
 const accent = '#BE185D'
 const gold   = '#c9a45c'
@@ -27,14 +28,34 @@ function MiniBarChart({ series }: { series: { label: string; leads: number }[] }
   const max = Math.max(...series.map(d => d.leads), 1)
   const show = series.slice(-30)
   const labelIndexes = new Set([0, Math.floor(show.length / 2), show.length - 1])
+  const [hover, setHover] = useState<number | null>(null)
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 72 }}>
         {show.map((d, i) => {
           const h = Math.max(Math.round((d.leads / max) * 68), d.leads > 0 ? 3 : 0)
+          const active = hover === i
           return (
-            <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
-              <div title={`${d.label}: ${d.leads}`} style={{ width: '100%', height: h, background: gold, borderRadius: '2px 2px 0 0', opacity: 0.85 }} />
+            // A COLUNA INTEIRA (altura cheia) é a área de hover — antes o tooltip
+            // ficava só na barrinha curta, então em dias com poucos/zero leads não
+            // dava pra ver a quantidade. Tooltip próprio acima da barra.
+            <div
+              key={i}
+              onMouseEnter={() => setHover(i)}
+              onMouseLeave={() => setHover(p => (p === i ? null : p))}
+              style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end', position: 'relative', cursor: 'default' }}
+            >
+              {active && (
+                <div style={{
+                  position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)',
+                  marginBottom: 6, whiteSpace: 'nowrap', background: '#2A1E2C', color: '#fff',
+                  fontSize: 11, fontWeight: 600, padding: '4px 8px', borderRadius: 6,
+                  zIndex: 10, pointerEvents: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
+                }}>
+                  {d.label}: {d.leads} {d.leads === 1 ? 'lead' : 'leads'}
+                </div>
+              )}
+              <div style={{ width: '100%', height: h, background: gold, borderRadius: '2px 2px 0 0', opacity: active ? 1 : 0.85 }} />
             </div>
           )
         })}
