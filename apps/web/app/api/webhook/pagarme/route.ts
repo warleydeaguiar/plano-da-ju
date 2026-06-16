@@ -4,6 +4,7 @@ import { sendCapiEvent } from '@/lib/meta/capi';
 import { getTrackingIdentity } from '@/lib/tracking-server';
 import { notifyNewSale } from '@/lib/discord';
 import { logCheckoutError } from '@/lib/checkout-log';
+import { sendWhatsAppTemplate } from '@/lib/whatsapp';
 
 // Eventos do PagarMe que tratamos
 // IMPORTANTE: NÃO ativar perfil em 'subscription.created' — esse evento dispara
@@ -224,6 +225,18 @@ export async function POST(req: NextRequest) {
           paymentMethod: subType === 'annual_card' ? 'card' : 'pix',
           amountCents: data.amount ?? 3490,
         }).catch(err => console.error('[discord notify]', err));
+
+        // Boas-vindas no WhatsApp (número oficial) — template acesso_plano com
+        // botão "Acessar meu plano" → /obrigado (cria senha e entra no plano).
+        // Fire-and-forget; tolerante (só envia depois da Meta aprovar o template).
+        if (phoneE164) {
+          sendWhatsAppTemplate({
+            to: phoneE164,
+            template: process.env.WHATSAPP_WELCOME_TEMPLATE || 'acesso_plano',
+            bodyParams: [fullName[0] || 'tudo bem'],
+          }).then(r => { if (!r.ok) console.error('[wa welcome]', r.error); })
+            .catch(err => console.error('[wa welcome]', err));
+        }
         } // fim if (justActivated)
 
         break;

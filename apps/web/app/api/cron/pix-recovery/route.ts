@@ -21,7 +21,7 @@ export const maxDuration = 60;
  *
  * ?dry=1 → não envia nem marca (só relata o que faria).
  */
-const TEMPLATE = process.env.WHATSAPP_PIX_TEMPLATE || 'pix_recuperacao';
+const TEMPLATE = process.env.WHATSAPP_PIX_TEMPLATE || 'pix_recuperacao_v2';
 const TEMPLATE_LANG = process.env.WHATSAPP_PIX_TEMPLATE_LANG || 'pt_BR';
 const MIN_AGE_MIN = 5;
 const MAX_AGE_MIN = 40;
