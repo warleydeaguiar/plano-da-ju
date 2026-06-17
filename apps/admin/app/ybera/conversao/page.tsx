@@ -2,8 +2,7 @@ import { createAdminClient } from '@/lib/supabase'
 import Sidebar from '../../components/Sidebar'
 import ConversaoClient from './ConversaoClient'
 import {
-  matchOrdersToProfiles, aggregateNonStudents, buildProfileKeySet, isAluno,
-  normEmail, normPhoneKey, topProductsOf,
+  matchOrdersToProfiles, aggregateNonStudents, buildProfileKeySet, isAluno, topProductsOf,
   type MatchOrder, type MatchProfile,
 } from '@/lib/ybera-match'
 import { YBERA_COMMISSION_RATE } from '@/lib/ybera-api'
@@ -12,8 +11,10 @@ export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Conversão Ybera — Admin Plano da Ju' }
 
 const DAY = 86400000
+const MES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+const ymLabel = (ym: string) => { const [y, m] = ym.split('-'); return `${MES[Number(m) - 1]}/${y}` }
+const ym = (iso: string | null) => (iso ? iso.slice(0, 7) : '—')
 
-// Carrega TODOS os pedidos Ybera (paginado — PostgREST limita 1000/req)
 async function loadAllOrders(): Promise<MatchOrder[]> {
   const sb = createAdminClient()
   const out: MatchOrder[] = []
@@ -30,8 +31,58 @@ async function loadAllOrders(): Promise<MatchOrder[]> {
   return out
 }
 
-function ym(iso: string | null): string {
-  return iso ? iso.slice(0, 7) : '—'
+// Bundle de métricas para um conjunto de pedidos (escopo = todo período ou 1 mês)
+function buildBundle(
+  scopeOrders: MatchOrder[],
+  activeProfiles: MatchProfile[],
+  allProfiles: MatchProfile[],
+  studentKeys: ReturnType<typeof buildProfileKeySet>,
+  allKeys: ReturnType<typeof buildProfileKeySet>,
+  includeNonBuyers: boolean,
+) {
+  const activeCount = activeProfiles.length
+  const matches = matchOrdersToProfiles(scopeOrders, activeProfiles)
+  const studentBuyers = matches.filter(m => m.bought)
+  const planoRevenue = studentBuyers.reduce((s, m) => s + m.totalSpent, 0)
+  const planoOrders = studentBuyers.reduce((s, m) => s + m.orders, 0)
+  const studentOrders = scopeOrders.filter(o => isAluno(o, studentKeys))
+
+  const nonStudents = aggregateNonStudents(scopeOrders, allProfiles)
+  const gruposRevenue = nonStudents.reduce((s, c) => s + c.totalSpent, 0)
+  const gruposOrders = nonStudents.reduce((s, c) => s + c.orders, 0)
+  const nonStudentOrders = scopeOrders.filter(o => !isAluno(o, allKeys))
+  const totalRevenue = scopeOrders.reduce((s, o) => s + (o.subtotal ?? 0), 0)
+
+  const rows = matches
+    .filter(m => includeNonBuyers || m.bought)
+    .map(m => ({
+      id: m.profile.id, name: m.profile.full_name ?? '—', email: m.profile.email ?? '',
+      bought: m.bought, orders: m.orders, totalSpent: m.totalSpent,
+      lastPurchase: m.lastPurchase, matchType: m.matchType, products: m.products,
+    }))
+    .sort((a, b) => (Number(b.bought) - Number(a.bought)) || (b.totalSpent - a.totalSpent))
+
+  return {
+    overview: {
+      totalOrders: scopeOrders.length, totalRevenue, commission: totalRevenue * YBERA_COMMISSION_RATE,
+      totalBuyers: studentBuyers.length + nonStudents.length,
+      studentBuyers: studentBuyers.length, nonStudentBuyers: nonStudents.length,
+    },
+    plano: {
+      activeCount, buyers: studentBuyers.length,
+      conversion: activeCount ? studentBuyers.length / activeCount : 0,
+      revenue: planoRevenue, avgTicket: planoOrders ? planoRevenue / planoOrders : 0,
+      avgOrdersPerBuyer: studentBuyers.length ? planoOrders / studentBuyers.length : 0,
+      topProducts: topProductsOf(studentOrders, 8),
+    },
+    grupos: {
+      buyers: nonStudents.length, revenue: gruposRevenue,
+      avgTicket: gruposOrders ? gruposRevenue / gruposOrders : 0,
+      avgOrdersPerBuyer: nonStudents.length ? gruposOrders / nonStudents.length : 0,
+      topProducts: topProductsOf(nonStudentOrders, 8),
+    },
+    studentRows: rows,
+  }
 }
 
 async function getData() {
@@ -40,133 +91,68 @@ async function getData() {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: profRows } = await (sb.from('profiles') as any)
-    .select('id, email, phone, full_name, subscription_status, created_at')
-    .limit(100000)
+    .select('id, email, phone, full_name, subscription_status, created_at').limit(100000)
   const allProfiles = (profRows ?? []) as MatchProfile[]
   const activeProfiles = allProfiles.filter(p => p.subscription_status === 'active')
+  const studentKeys = buildProfileKeySet(activeProfiles)
+  const allKeys = buildProfileKeySet(allProfiles)
 
-  // Leads fashion-gold (atribuição do canal grupos)
+  if (orders.length === 0) {
+    return { hasOrders: false, activeCount: activeProfiles.length, months: [], periods: {}, trend: [], lifetime: null }
+  }
+
+  // Meses presentes (asc) e bundles por mês
+  const monthSet = Array.from(new Set(orders.map(o => ym(o.register_date)).filter(k => k !== '—'))).sort()
+  const ordersByMonth = new Map<string, MatchOrder[]>()
+  for (const o of orders) { const k = ym(o.register_date); if (k === '—') continue; (ordersByMonth.get(k) ?? ordersByMonth.set(k, []).get(k)!).push(o) }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: fgRows } = await (sb.from('wg_quiz_leads') as any)
-    .select('email, phone').eq('quiz_slug', 'fashion-gold').limit(100000)
-  const fgKeys = buildProfileKeySet((fgRows ?? []).map((r: { email: string|null; phone: string|null }) => ({
-    id: '', email: r.email, phone: r.phone, full_name: null, subscription_status: null, created_at: null,
-  })))
+  const periods: Record<string, any> = {
+    all: buildBundle(orders, activeProfiles, allProfiles, studentKeys, allKeys, true),
+  }
+  for (const k of monthSet) {
+    periods[k] = buildBundle(ordersByMonth.get(k) ?? [], activeProfiles, allProfiles, studentKeys, allKeys, false)
+  }
 
-  // ── Plano → Ybera ──
-  const matches = matchOrdersToProfiles(orders, activeProfiles)
-  const studentBuyers = matches.filter(m => m.bought)
-  const activeCount = activeProfiles.length
-  const planoRevenue = studentBuyers.reduce((s, m) => s + m.totalSpent, 0)
-  const planoOrders = studentBuyers.reduce((s, m) => s + m.orders, 0)
-  const repeatStudents = studentBuyers.filter(m => m.orders >= 2).length
-  // tempo até a 1ª compra (aprox.: created_at do profile → 1ª compra Ybera)
+  // Trend (asc) — usa os bundles mensais
+  const trend = monthSet.map(k => ({
+    ym: k, label: ymLabel(k),
+    studentBuyers: periods[k].plano.buyers,
+    studentRevenue: periods[k].plano.revenue,
+    conversion: periods[k].plano.conversion,
+    gruposBuyers: periods[k].grupos.buyers,
+    gruposRevenue: periods[k].grupos.revenue,
+  }))
+
+  // Seletor de meses (desc, mais recente primeiro)
+  const months = [...monthSet].reverse().map(k => ({ key: k, label: ymLabel(k) }))
+
+  // Métricas lifetime (só fazem sentido no "todo período")
+  const matchesAll = matchOrdersToProfiles(orders, activeProfiles)
+  const studentBuyersAll = matchesAll.filter(m => m.bought)
   const ttf: number[] = []
-  for (const m of studentBuyers) {
+  for (const m of studentBuyersAll) {
     if (m.firstPurchase && m.profile.created_at) {
       const d = (new Date(m.firstPurchase).getTime() - new Date(m.profile.created_at).getTime()) / DAY
       if (d >= 0 && d < 730) ttf.push(d)
     }
   }
-  const avgDaysToFirst = ttf.length ? Math.round(ttf.reduce((a, b) => a + b, 0) / ttf.length) : null
-
-  // cohorts por mês de entrada (created_at)
   const cohortMap = new Map<string, { active: number; buyers: number }>()
-  for (const m of matches) {
-    const k = ym(m.profile.created_at)
+  for (const m of matchesAll) {
+    const k = ym(m.profile.created_at); if (k === '—') continue
     const c = cohortMap.get(k) ?? { active: 0, buyers: 0 }
-    c.active += 1; if (m.bought) c.buyers += 1
-    cohortMap.set(k, c)
+    c.active += 1; if (m.bought) c.buyers += 1; cohortMap.set(k, c)
   }
-  const cohorts = [...cohortMap.entries()]
-    .filter(([k]) => k !== '—')
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([ymk, c]) => ({ ym: ymk, active: c.active, buyers: c.buyers, conv: c.active ? c.buyers / c.active : 0 }))
-
-  // produtos comprados por alunas (filtra pedidos das alunas)
-  const studentKeys = buildProfileKeySet(activeProfiles)
-  const studentOrders = orders.filter(o => isAluno(o, studentKeys))
-  const planoTopProducts = topProductsOf(studentOrders, 8)
-
-  // ── Grupos / outros (não-alunas, exclui QUALQUER profile) ──
-  const nonStudents = aggregateNonStudents(orders, allProfiles)
-  const gruposRevenue = nonStudents.reduce((s, c) => s + c.totalSpent, 0)
-  const gruposOrders = nonStudents.reduce((s, c) => s + c.orders, 0)
-  const gruposRepeat = nonStudents.filter(c => c.orders >= 2).length
-  const allKeys = buildProfileKeySet(allProfiles)
-  const nonStudentOrders = orders.filter(o => !isAluno(o, allKeys))
-  const gruposTopProducts = topProductsOf(nonStudentOrders, 8)
-  // distribuição de recorrência
-  const dist = { '1': 0, '2': 0, '3': 0, '4+': 0 }
-  for (const c of nonStudents) {
-    if (c.orders === 1) dist['1']++
-    else if (c.orders === 2) dist['2']++
-    else if (c.orders === 3) dist['3']++
-    else dist['4+']++
+  const nonStudentsAll = aggregateNonStudents(orders, allProfiles)
+  const lifetime = {
+    avgDaysToFirst: ttf.length ? Math.round(ttf.reduce((a, b) => a + b, 0) / ttf.length) : null,
+    repeatRate: studentBuyersAll.length ? studentBuyersAll.filter(m => m.orders >= 2).length / studentBuyersAll.length : 0,
+    cohorts: [...cohortMap.entries()].sort(([a], [b]) => a.localeCompare(b))
+      .map(([k, c]) => ({ ym: k, label: ymLabel(k), active: c.active, buyers: c.buyers, conv: c.active ? c.buyers / c.active : 0 })),
+    gruposRepeatRate: nonStudentsAll.length ? nonStudentsAll.filter(c => c.orders >= 2).length / nonStudentsAll.length : 0,
   }
-  // quantos compradores não-alunas vieram do quiz fashion-gold
-  const fgMatched = nonStudents.filter(c =>
-    (c.email && fgKeys.emails.has(normEmail(c.email))) || (c.phone && fgKeys.phones.has(normPhoneKey(c.phone)))
-  ).length
 
-  // tendência mensal (não-alunas) — últimos 12 meses
-  const monMap = new Map<string, { orders: number; revenue: number }>()
-  for (const o of nonStudentOrders) {
-    const k = ym(o.register_date)
-    const e = monMap.get(k) ?? { orders: 0, revenue: 0 }
-    e.orders += 1; e.revenue += o.subtotal ?? 0
-    monMap.set(k, e)
-  }
-  const gruposMonthly = [...monMap.entries()].filter(([k]) => k !== '—')
-    .sort(([a], [b]) => a.localeCompare(b)).slice(-12)
-    .map(([ymk, v]) => ({ ym: ymk, ...v }))
-
-  // ── Overview ──
-  const totalRevenue = orders.reduce((s, o) => s + (o.subtotal ?? 0), 0)
-  const totalBuyers = studentBuyers.length + nonStudents.length
-  const repeatOverall = studentBuyers.length + nonStudents.length > 0
-    ? (repeatStudents + gruposRepeat) / (studentBuyers.length + nonStudents.length) : 0
-
-  // tabela de alunas (compradoras primeiro, por valor gasto)
-  const studentRows = matches
-    .map(m => ({
-      id: m.profile.id,
-      name: m.profile.full_name ?? '—',
-      email: m.profile.email ?? '',
-      bought: m.bought,
-      orders: m.orders,
-      totalSpent: m.totalSpent,
-      lastPurchase: m.lastPurchase,
-      matchType: m.matchType,
-      products: m.products,
-    }))
-    .sort((a, b) => (Number(b.bought) - Number(a.bought)) || (b.totalSpent - a.totalSpent))
-
-  return {
-    hasOrders: orders.length > 0,
-    overview: {
-      totalOrders: orders.length, totalRevenue, commission: totalRevenue * YBERA_COMMISSION_RATE,
-      totalBuyers, studentBuyers: studentBuyers.length, nonStudentBuyers: nonStudents.length,
-      repeatOverall,
-    },
-    plano: {
-      activeCount, buyers: studentBuyers.length,
-      conversion: activeCount ? studentBuyers.length / activeCount : 0,
-      revenue: planoRevenue,
-      avgTicket: planoOrders ? planoRevenue / planoOrders : 0,
-      avgOrdersPerBuyer: studentBuyers.length ? planoOrders / studentBuyers.length : 0,
-      avgDaysToFirst, repeatRate: studentBuyers.length ? repeatStudents / studentBuyers.length : 0,
-      topProducts: planoTopProducts, cohorts,
-    },
-    grupos: {
-      buyers: nonStudents.length, revenue: gruposRevenue,
-      avgTicket: gruposOrders ? gruposRevenue / gruposOrders : 0,
-      avgOrdersPerBuyer: nonStudents.length ? gruposOrders / nonStudents.length : 0,
-      repeatRate: nonStudents.length ? gruposRepeat / nonStudents.length : 0,
-      dist, topProducts: gruposTopProducts, fgMatched, monthly: gruposMonthly,
-    },
-    studentRows,
-  }
+  return { hasOrders: true, activeCount: activeProfiles.length, months, periods, trend, lifetime }
 }
 
 export default async function ConversaoPage() {
