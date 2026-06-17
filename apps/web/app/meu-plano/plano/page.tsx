@@ -55,6 +55,7 @@ export default function PlanoPage() {
   const [activeWeek, setActiveWeek] = useState(1);
   const [loading, setLoading] = useState(true);
   const [showIg, setShowIg] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     try { setShowIg(localStorage.getItem('ig_followed') !== '1'); } catch { setShowIg(true); }
@@ -69,6 +70,7 @@ export default function PlanoPage() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { router.push('/login'); return; }
     const uid = session.user.id;
+    setUserId(uid);
 
     const [p, pl, pr] = await Promise.all([
       supabase.from('profiles')
@@ -428,8 +430,8 @@ export default function PlanoPage() {
           <>
             <SectionLabel>Produtos recomendados</SectionLabel>
             <div style={{ padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {products.filter(p => p.is_ybera).map(p => <ProductCard key={p.id} product={p} essential />)}
-              {products.filter(p => !p.is_ybera).map(p => <ProductCard key={p.id} product={p} />)}
+              {products.filter(p => p.is_ybera).map(p => <ProductCard key={p.id} product={p} userId={userId} essential />)}
+              {products.filter(p => !p.is_ybera).map(p => <ProductCard key={p.id} product={p} userId={userId} />)}
               {products.length === 0 && (
                 <EmptyState emoji="🛍️" title="Catálogo em breve" description="Os produtos recomendados serão exibidos aqui." />
               )}
@@ -538,8 +540,15 @@ function DiagItem({ label, value, tone }: { label: string; value: string; tone?:
   );
 }
 
-function ProductCard({ product, essential = false }: { product: ProductRow; essential?: boolean }) {
+function ProductCard({ product, userId, essential = false }: { product: ProductRow; userId?: string | null; essential?: boolean }) {
   const Icon = iconForCategory(product.category, product.name);
+  const trackClick = () => {
+    try {
+      const payload = JSON.stringify({ product_id: product.id, product_name: product.name, is_ybera: product.is_ybera, user_id: userId ?? null });
+      if (navigator.sendBeacon) navigator.sendBeacon('/api/meu-plano/product-click', new Blob([payload], { type: 'application/json' }));
+      else fetch('/api/meu-plano/product-click', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload, keepalive: true }).catch(() => {});
+    } catch { /* analytics best-effort */ }
+  };
   return (
     <div style={{
       background: T.surface, borderRadius: 16, padding: 14,
@@ -580,7 +589,7 @@ function ProductCard({ product, essential = false }: { product: ProductRow; esse
         </div>
       </div>
       {product.affiliate_url && (
-        <a href={product.affiliate_url} target="_blank" rel="noopener noreferrer" style={{
+        <a href={product.affiliate_url} target="_blank" rel="noopener noreferrer" onClick={trackClick} style={{
           background: gradient.heroSoft,
           color: '#FFF', fontSize: 12, fontWeight: 700,
           padding: '9px 13px', borderRadius: 11,

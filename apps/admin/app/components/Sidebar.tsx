@@ -23,6 +23,7 @@ const NAV: NavItem[] = [
     icon: SbPlanos, label: 'Revisão de Planos', href: '/planos',
     children: [
       { label: 'Revisar planos', href: '/planos' },
+      { label: 'Aprovação de Planos', href: '/planos/aprovacao' },
       { label: 'Galeria de fotos', href: '/planos/galeria' },
     ],
   },
