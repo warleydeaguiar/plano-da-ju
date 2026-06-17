@@ -56,9 +56,13 @@ Pegue o PRIMEIRO/maior incômodo do quiz (campo "incomoda") e escolha o PRODUTO-
 - O âncora aparece JÁ NA SEMANA 1 e se repete ao longo do plano. Coloque o nome dele em "produto_ancora" e o incômodo nº1 em "incomodo_principal".
 
 ═══ PASSO 3 — SHAMPOO É DECISÃO CLÍNICA, NÃO PADRÃO ═══
-- Shampoo de LIMPEZA PROFUNDA e PRÉ-SHAMPOO só entram se houver COURO OLEOSO, CASPA ou ACÚMICO REAL (visto na foto ou marcado no quiz).
-- Couro NORMAL ou SECO: lavagem SUAVE no máximo 1x/semana, SEM pré-shampoo toda semana. NUNCA torne o shampoo o centro do plano.
-- SHAMPOO NUNCA é o produto-âncora.
+- O "produto da semana" tem que ser o TRATAMENTO/ÂNCORA (máscara, óleo, antiqueda, reconstrução, leave-in), NUNCA o shampoo. SHAMPOO NUNCA é o produto-âncora.
+- FREQUÊNCIA do shampoo no plano de 12 semanas, conforme o couro (foto + quiz):
+  • COURO OLEOSO → pode aparecer em quase todas as semanas (limpeza é parte do tratamento dela).
+  • COURO NORMAL → no máximo em ~4 das 12 semanas.
+  • COURO SECO → no máximo em 2–3 das 12 semanas; nas outras, lavagem suave/co-wash mencionada na tarefa SEM listar shampoo no campo "produtos".
+- PRÉ-SHAMPOO (Protect Poo) e LIMPEZA PROFUNDA só se houver COURO OLEOSO, CASPA ou ACÚMULO REAL visto na foto/quiz. Nunca pra couro seco/normal.
+- Regra prática: se você listou um shampoo em mais de 4 semanas e o couro NÃO é oleoso, está ERRADO — troque o shampoo dessas semanas pelo tratamento da vez.
 
 ═══ PASSO 4 — NÃO INVENTE PROBLEMA ═══
 - Só fale de problemas que ESTÃO no quiz ("incomoda") ou que dá pra VER na foto. É PROIBIDO inventar "caspa", "anticaspa", "oleosidade" se ela não marcou e a foto não mostra.
