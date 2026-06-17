@@ -40,8 +40,35 @@ export async function GET(req: NextRequest) {
     quizAnswers: profile.quiz_answers ?? null,
     photo: { photoUrl: profile.photo_url ?? undefined },
   });
+
+  // save=1 → REGENERA de verdade (sobrescreve o plano) PRESERVANDO a entrega
+  // (não mexe em plan_released_at / plan_status — a cliente já recebeu).
+  const save = req.nextUrl.searchParams.get('save') === '1';
+  if (save) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await savePlanToDb(supabase as any, profile.id, plan);
+    const af = plan.analise_foto ?? {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from('profiles') as any).update({
+      hair_type: plan.tipo_cabelo?.toLowerCase() ?? profile.hair_type,
+      recommended_products: Array.isArray(plan.produtos_indicados) ? plan.produtos_indicados : null,
+    }).eq('id', profile.id);
+    // atualiza os scores da foto na análise mais recente (se existir)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: lastPa } = await (supabase.from('photo_analyses') as any)
+      .select('id').eq('user_id', profile.id).order('analyzed_at', { ascending: false }).limit(1).maybeSingle();
+    if (lastPa?.id) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase.from('photo_analyses') as any).update({
+        frizz_score: af.frizz_score ?? null, brilho_score: af.brilho_score ?? null,
+        hidratacao_score: af.hidratacao_score ?? null, pontas_score: af.pontas_score ?? null,
+      }).eq('id', lastPa.id);
+    }
+  }
+
   // resumo compacto pra inspeção
   return NextResponse.json({
+    saved: save,
     dry: true,
     nome: profile.full_name,
     incomoda: profile.quiz_answers?.incomoda ?? null,
