@@ -60,7 +60,13 @@ const NAV: NavItem[] = [
   { icon: SbSuporte, label: 'Suporte Plano Capilar', href: '/suporte' },
   { icon: SbChat, label: 'Atendimento (Chatwoot)', href: 'https://chat.julianecost.com' },
   { icon: SbProdutos, label: 'Produtos', href: '/produtos' },
-  { icon: SbYbera, label: 'Ybera', href: '/ybera' },
+  {
+    icon: SbYbera, label: 'Ybera', href: '/ybera',
+    children: [
+      { label: 'Visão geral', href: '/ybera' },
+      { label: 'Conversão', href: '/ybera/conversao' },
+    ],
+  },
   { icon: SbExperimentos, label: 'Experimentos A/B', href: '/experimentos' },
   {
     icon: SbCheckout, label: 'Checkout', href: '/checkout',
