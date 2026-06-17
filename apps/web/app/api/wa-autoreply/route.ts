@@ -58,9 +58,12 @@ export async function POST(req: NextRequest) {
   if (phone.length < 10) return NextResponse.json({ ok: true, ignored: 'no_phone' });
 
   const link = `${APP}/g/entrar?p=${phone}${name ? `&n=${encodeURIComponent(name)}` : ''}`;
+  const firstName = name.split(/\s+/)[0] || '';
   const text =
-    'Oiii, tudo bem? Tem algumas vagas disponíveis sim, o último grupo tinha lotado mas eu abri mais vagas 💚\n\n' +
-    `Aqui está o link pra você entrar: ${link}`;
+    `Oiii${firstName ? `, ${firstName}` : ''}! Que bom te ver por aqui 💛 Tem vaga sim!\n\n` +
+    `Entra no nosso grupo de promoções por aqui: ${link}\n\n` +
+    'E me conta uma coisinha, pra eu conseguir te ajudar melhor: o que MAIS te incomoda no seu cabelo hoje? ' +
+    '(queda, frizz, pontas ressecadas, quebra, crescimento, volume…) 💬';
 
   const sent = await sendWhatsApp(phone, text);
   return NextResponse.json({ ok: true, sent });
