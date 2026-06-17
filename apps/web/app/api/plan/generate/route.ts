@@ -13,6 +13,49 @@ export const maxDuration = 300;
  *
  * Gera plano usando Claude Vision com o CATÁLOGO REAL Ybera injetado no prompt.
  */
+/**
+ * GET /api/plan/generate?email=<>&k=<WA_AUTOREPLY_SECRET>&dry=1
+ * TESTE: gera o plano com o prompt atual usando a FOTO já salva da cliente,
+ * retorna o JSON e NÃO salva nada (não toca no plano real). Só pra validação.
+ */
+export async function GET(req: NextRequest) {
+  const k = req.nextUrl.searchParams.get('k');
+  if (!process.env.WA_AUTOREPLY_SECRET || k !== process.env.WA_AUTOREPLY_SECRET) {
+    return NextResponse.json({ error: 'não autorizado' }, { status: 401 });
+  }
+  const email = (req.nextUrl.searchParams.get('email') ?? '').trim().toLowerCase();
+  if (!email) return NextResponse.json({ error: 'email obrigatório' }, { status: 400 });
+
+  const supabase = await createServiceClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: profile } = await (supabase.from('profiles') as any)
+    .select('id, quiz_answers, hair_type, full_name, photo_url')
+    .eq('email', email).maybeSingle();
+  if (!profile) return NextResponse.json({ error: 'profile não encontrado' }, { status: 404 });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const plan = await generatePlanWithClaude(supabase as any, {
+    email,
+    hairType: profile.hair_type ?? null,
+    quizAnswers: profile.quiz_answers ?? null,
+    photo: { photoUrl: profile.photo_url ?? undefined },
+  });
+  // resumo compacto pra inspeção
+  return NextResponse.json({
+    dry: true,
+    nome: profile.full_name,
+    incomoda: profile.quiz_answers?.incomoda ?? null,
+    incomodo_principal: plan.incomodo_principal,
+    produto_ancora: plan.produto_ancora,
+    analise_foto: plan.analise_foto,
+    diagnostico: plan.diagnostico,
+    produtos_indicados: plan.produtos_indicados,
+    semana_1: plan.semanas?.[0],
+    produtos_por_semana: plan.semanas?.map(s => ({ s: s.semana, produtos: s.produtos })),
+    plano_completo: plan,
+  });
+}
+
 export async function POST(req: NextRequest) {
   let emailForLog: string | null = null;
   try {
@@ -89,13 +132,18 @@ export async function POST(req: NextRequest) {
       .select('id', { count: 'exact', head: true })
       .eq('user_id', profile.id);
     if (!existingPhotos) {
+      const af = plan.analise_foto ?? {};
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase.from('photo_analyses') as any).insert({
         user_id: profile.id,
         photo_url: photoUrl,
         avaliacao_texto: plan.diagnostico ?? 'Foto inicial do cabelo',
+        frizz_score: af.frizz_score ?? null,
+        brilho_score: af.brilho_score ?? null,
+        hidratacao_score: af.hidratacao_score ?? null,
+        pontas_score: af.pontas_score ?? null,
         analyzed_at: new Date().toISOString(),
-        raw_response: { source: 'onboarding' },
+        raw_response: { source: 'onboarding', analise_foto: af, incomodo_principal: plan.incomodo_principal, produto_ancora: plan.produto_ancora },
       });
     }
 
