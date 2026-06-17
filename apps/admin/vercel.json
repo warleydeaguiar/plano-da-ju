@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/cleanup-logs",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/ybera-sync",
+      "schedule": "0 9 * * *"
     }
   ]
 }
