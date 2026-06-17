@@ -71,12 +71,51 @@ async function getData() {
   const weekRows = [...weeks.values()].sort((a, b) => a.key.localeCompare(b.key)).slice(-12)
   const monthRows = [...months.values()].sort((a, b) => a.key.localeCompare(b.key)).slice(-12)
 
+  // ── Engajamento: alunas ativas que registram a rotina no app (hair_events) ──
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: actRows } = await (sb.from('profiles') as any)
+    .select('id').eq('subscription_status', 'active').limit(100000)
+  const activeIds = new Set<string>((actRows ?? []).map((r: { id: string }) => r.id))
+  const activeCount = activeIds.size
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: heRows } = await (sb.from('hair_events') as any)
+    .select('user_id, event_type, occurred_at').limit(100000)
+  const events = (heRows ?? []).filter((e: { user_id: string }) => activeIds.has(e.user_id)) as { user_id: string; event_type: string; occurred_at: string }[]
+
+  const engagedSet = new Set<string>()
+  const eng7 = new Set<string>(), eng30 = new Set<string>()
+  const typeMap = new Map<string, number>()
+  for (const e of events) {
+    engagedSet.add(e.user_id)
+    typeMap.set(e.event_type, (typeMap.get(e.event_type) ?? 0) + 1)
+    const age = (now - new Date(e.occurred_at).getTime()) / DAY
+    if (age <= 7) eng7.add(e.user_id)
+    if (age <= 30) eng30.add(e.user_id)
+  }
+  const TYPE_LABEL: Record<string, string> = {
+    wash: 'Lavagem', hydration_mask: 'Hidratação', nutrition_mask: 'Nutrição',
+    reconstruction: 'Reconstrução', oil_treatment: 'Umectação', heat_used: 'Usou calor',
+  }
+  const eventsByType = [...typeMap.entries()]
+    .map(([k, v]) => ({ label: TYPE_LABEL[k] ?? k, n: v }))
+    .sort((a, b) => b.n - a.n)
+
   return {
     avgReviewsPerWeek: totalReviews / weeksSpan,
     avgReviewsPerMonth: totalReviews / monthsSpan,
     overallRating: ratingN ? ratingSum / ratingN : 0,
     totalReviews, totalClicks, yberaClicks,
     weekRows, monthRows, topProducts,
+    engagement: {
+      activeCount,
+      engaged: engagedSet.size,
+      engagementRate: activeCount ? engagedSet.size / activeCount : 0,
+      active7: eng7.size, active30: eng30.size,
+      totalEvents: events.length,
+      avgPerEngaged: engagedSet.size ? events.length / engagedSet.size : 0,
+      eventsByType,
+    },
   }
 }
 
@@ -168,6 +207,41 @@ export default async function AprovacaoPage() {
                   </div>
                   <div style={{ height: 6, background: '#F0EAF0', borderRadius: 3 }}>
                     <div style={{ height: '100%', width: `${(p.n / max) * 100}%`, background: gold, borderRadius: 3 }} />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Engajamento com o plano */}
+        <div style={{ fontSize: 16, fontWeight: 700, color: ink, margin: '30px 0 14px' }}>💪 Engajamento com o plano</div>
+        <div style={{ fontSize: 12, color: gray, margin: '-8px 0 12px', lineHeight: 1.5 }}>
+          Quantas alunas ativas realmente acompanham o plano registrando a rotina (lavagem, hidratação, etc.) no app.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
+          <div style={{ background: `linear-gradient(135deg, ${accent}, #9d1457)`, borderRadius: 14, padding: '20px 24px' }}>
+            <div style={{ fontSize: 11, color: '#ffffffcc', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 }}>Taxa de engajamento</div>
+            <div style={{ fontSize: 30, fontWeight: 800, color: '#fff', lineHeight: 1 }}>{n1(d.engagement.engagementRate * 100)}%</div>
+            <div style={{ fontSize: 12, color: '#ffffffcc', marginTop: 6 }}>{d.engagement.engaged} de {d.engagement.activeCount} alunas ativas registraram a rotina</div>
+          </div>
+          <StatCard label="Ativas nos últimos 7 dias" value={String(d.engagement.active7)} sub="registraram algo na última semana" color={green} />
+          <StatCard label="Ativas nos últimos 30 dias" value={String(d.engagement.active30)} />
+          <StatCard label="Registros de rotina" value={String(d.engagement.totalEvents)} sub={`${n1(d.engagement.avgPerEngaged)} por aluna engajada`} />
+        </div>
+        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: 20, marginTop: 14 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: ink, marginBottom: 12 }}>O que as alunas mais registram</div>
+          {d.engagement.eventsByType.length === 0 && <div style={{ fontSize: 13, color: gray }}>Nenhum registro de rotina ainda.</div>}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+            {d.engagement.eventsByType.map((t, i) => {
+              const max = Math.max(...d.engagement.eventsByType.map(x => x.n), 1)
+              return (
+                <div key={i}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, color: ink, marginBottom: 3 }}>
+                    <span>{t.label}</span><span style={{ color: gray }}>{t.n}</span>
+                  </div>
+                  <div style={{ height: 6, background: '#F0EAF0', borderRadius: 3 }}>
+                    <div style={{ height: '100%', width: `${(t.n / max) * 100}%`, background: accent, borderRadius: 3 }} />
                   </div>
                 </div>
               )
