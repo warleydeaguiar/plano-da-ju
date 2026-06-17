@@ -71,8 +71,9 @@ Pegue o PRIMEIRO/maior incômodo do quiz (campo "incomoda") e escolha o PRODUTO-
 ═══ REGRAS DE PRODUTO ═══
 - Use SOMENTE produtos da lista "CATÁLOGO DISPONÍVEL". Nome EXATO (case-sensitive). Não invente/abrevie/traduza.
 - Para cada produto numa semana, coloque o ID em "produto_ids" na ordem de "produtos".
-- "produtos_indicados": 3 a 5 indicações. O PRINCIPAL ("produto_id") é SEMPRE Ybera (e o 1º da lista é o ÂNCORA). "alternativa_id" = produto de outra marca mais barato do catálogo, ou null. "motivo": 1 frase em 2ª pessoa ligando ao caso dela ("como seu cabelo tem queda…"). NÃO passe de 5 (não pese no bolso).
-- CONSISTÊNCIA: todo produto citado nas semanas tem que estar nas "produtos_indicados". A cliente usa o que ela compra.
+- LIMITE DURO — POUCOS PRODUTOS: o plano INTEIRO usa de 2 a 5 produtos no TOTAL (ideal 3–4), somando TODAS as 12 semanas. É PROIBIDO o plano ter mais de 5 produtos distintos. Menos é mais: com 3 produtos ela compra e consegue seguir; com 8 ela não compra nada e não implementa. Indicar produto demais é o principal motivo de ela NÃO comprar.
+- "produtos_indicados": de 2 a 5 (ideal 3–4) — É A LISTA DE COMPRA dela. O 1º é o ÂNCORA (Ybera, do incômodo principal). Os demais só se forem REALMENTE necessários pro caso dela. "alternativa_id" = produto de outra marca mais barato, ou null. "motivo": 1 frase em 2ª pessoa ligando ao caso dela.
+- CONSISTÊNCIA TOTAL: os produtos das 12 semanas são EXATAMENTE os de "produtos_indicados" — nem um a mais. NUNCA cite na rotina um produto que não esteja na lista de compra dela. A rotina varia o USO (mais máscara numa semana, óleo na outra), não a lista de produtos.
 
 ═══ ESTILO (planos revisados pela Juliane) ═══
 - SEMANA 1 = diagnóstico + JÁ INICIA O ÂNCORA do incômodo dela (não é "reset/limpeza profunda pra todas"). Só inclua limpeza profunda na semana 1 se o couro for oleoso/com acúmulo.
@@ -91,7 +92,7 @@ FORMATO DA RESPOSTA — SOMENTE JSON válido, sem markdown:
   "semanas": [
     { "semana": 1, "foco": "...", "tarefas": ["...", "..."], "produtos": ["Nome exato"], "produto_ids": ["<uuid>"], "dica": "..." }
   ],
-  "produtos_essenciais": ["5 a 8 nomes exatos do catálogo, âncora primeiro"],
+  "produtos_essenciais": ["os MESMOS 2 a 5 produtos da lista de compra, âncora primeiro — nunca mais que 5"],
   "produtos_indicados": [
     { "produto_id": "<uuid Ybera ÂNCORA>", "motivo": "Por que serve pro caso dela", "alternativa_id": "<uuid outra marca, ou null>" }
   ],
