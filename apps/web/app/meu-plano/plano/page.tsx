@@ -35,6 +35,8 @@ interface Profile {
   plan_status: string;
   plan_feedback_rating: number | null;
   plan_revision_due_at: string | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  recommended_products?: any;
 }
 interface ProductRow {
   id: string;
@@ -44,6 +46,7 @@ interface ProductRow {
   affiliate_url: string | null;
   image_url: string | null;
   is_ybera: boolean;
+  motivo?: string | null;   // por que foi indicado pra ELA (personalizado)
 }
 
 export default function PlanoPage() {
@@ -74,7 +77,7 @@ export default function PlanoPage() {
 
     const [p, pl, pr] = await Promise.all([
       supabase.from('profiles')
-        .select('full_name,hair_type,porosity,chemical_history,main_problems,hair_length_cm,quiz_answers,plan_released_at,plan_requested_at,plan_status,plan_feedback_rating,plan_revision_due_at')
+        .select('full_name,hair_type,porosity,chemical_history,main_problems,hair_length_cm,quiz_answers,plan_released_at,plan_requested_at,plan_status,plan_feedback_rating,plan_revision_due_at,recommended_products')
         .eq('id', uid).single(),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase as any).from('hair_plans')
@@ -92,7 +95,30 @@ export default function PlanoPage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setPlans((pl.data as any[]).map(p => ({ ...p, tasks: normalizeTasks(p.tasks) })) as HairPlanRow[]);
     }
-    if (pr.data) setProducts(pr.data as ProductRow[]);
+    // Produtos PERSONALIZADOS dela (recommended_products = produtos_indicados do
+    // plano: âncora Ybera + alternativa + motivo). Se existir, mostra ESTES — não
+    // o catálogo global. Fallback pro catálogo global quando não há indicação.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rec: any[] = Array.isArray((p.data as any)?.recommended_products) ? (p.data as any).recommended_products : [];
+    let personalized: ProductRow[] | null = null;
+    if (rec.length) {
+      const ids = [...new Set(rec.flatMap(r => [r?.produto_id, r?.alternativa_id]).filter(Boolean))];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: recProds } = await (supabase as any).from('products')
+        .select('id,name,brand,category,affiliate_url,image_url,is_ybera').in('id', ids);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const byId = new Map<string, any>((recProds ?? []).map((x: any) => [x.id, x]));
+      const list: ProductRow[] = [];
+      for (const r of rec) {
+        const main = byId.get(r?.produto_id);
+        if (main && !list.find(x => x.id === main.id)) list.push({ ...main, motivo: r?.motivo ?? null });
+        const alt = r?.alternativa_id ? byId.get(r.alternativa_id) : null;
+        if (alt && !list.find(x => x.id === alt.id)) list.push({ ...alt, motivo: null });
+      }
+      if (list.length) personalized = list;
+    }
+    if (personalized) setProducts(personalized);
+    else if (pr.data) setProducts(pr.data as ProductRow[]);
     setLoading(false);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -579,6 +605,11 @@ function ProductCard({ product, userId, essential = false }: { product: ProductR
         }}>
           {product.name}
         </div>
+        {product.motivo && (
+          <div style={{ fontSize: 11.5, color: T.inkSoft, marginTop: 3, lineHeight: 1.35 }}>
+            {product.motivo}
+          </div>
+        )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
           {essential && (
             <span style={{
