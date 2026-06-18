@@ -1,9 +1,10 @@
 import Sidebar from '../components/Sidebar';
 import { getCreativeAnalysis, type CreativePeriod, type CreativeRow } from '../../lib/meta-ads-creatives';
+import { getCapiHealth, type CapiHealth } from '../../lib/capi-health';
 import { T, fonts, shadow, gradient } from '../theme';
 import {
   IconMegaphone, IconMoney, IconBag, IconTarget, IconWarning,
-  IconCursor, IconArrowRight, IconUsers,
+  IconCursor, IconArrowRight, IconUsers, IconBolt,
 } from '../icons';
 
 export const dynamic = 'force-dynamic';
@@ -60,6 +61,7 @@ export default async function AnunciosPage({
   const sort: SortKey = (['spend', 'roas', 'cpp', 'hook', 'purchases'].includes(sp.sort ?? '') ? sp.sort : 'spend') as SortKey;
 
   const data = await getCreativeAnalysis(period);
+  const capi = await getCapiHealth();
   const compras = sortCreatives(data.creatives.filter(c => c.campaign_type === 'compras'), sort);
   const leads   = sortCreatives(data.creatives.filter(c => c.campaign_type === 'leads'), sort);
 
@@ -95,6 +97,9 @@ export default async function AnunciosPage({
             ))}
           </div>
         </div>
+
+        {/* ── Sinal de Compra (Pixel + CAPI) ── */}
+        {!('error' in capi) && <CapiHealthCard h={capi} />}
 
         {data.status === 'not_configured' && (
           <div style={{ ...cardStyle, padding: '16px 20px', display: 'flex', gap: 12, alignItems: 'center', borderLeft: `4px solid ${T.alert}` }}>
@@ -134,6 +139,135 @@ export default async function AnunciosPage({
         />
         <div style={{ height: 12 }} />
       </main>
+    </div>
+  );
+}
+
+// ─── Sinal de Compra (Pixel + CAPI) ─────────────────────────────────
+function CapiHealthCard({ h }: { h: CapiHealth }) {
+  const cfg = {
+    ok:      { color: T.green,  bg: T.greenSoft, label: 'Sinal ativo',  dot: '● ao vivo' },
+    warn:    { color: T.gold,   bg: '#FBF3E2',   label: 'Atenção',      dot: '● atrasado' },
+    down:    { color: T.danger, bg: '#FBE9EC',   label: 'Sem sinal',    dot: '● parado' },
+    unknown: { color: T.inkMuted, bg: T.cream,   label: 'Sem dados',    dot: '○' },
+  }[h.status];
+
+  const lastTxt = h.hoursSinceLastPurchase === null
+    ? 'nenhuma compra registrada ainda'
+    : h.hoursSinceLastPurchase < 1 ? 'há menos de 1h'
+    : h.hoursSinceLastPurchase < 48 ? `há ${h.hoursSinceLastPurchase}h`
+    : `há ${Math.floor(h.hoursSinceLastPurchase / 24)} dias`;
+
+  const total30 = h.sent30d + h.error30d;
+  const successRate = total30 > 0 ? Math.round((h.sent30d / total30) * 100) : null;
+  const maxBar = Math.max(1, ...h.daily14d.map(d => d.purchases));
+  const gradeColor = h.matchGrade === 'Ótima' ? T.green : h.matchGrade === 'Boa' ? T.gold : T.danger;
+
+  const tile = (label: string, value: string, sub: string, color?: string): React.ReactNode => (
+    <div style={{ ...cardStyle, padding: '14px 16px' }}>
+      <div style={{ fontSize: 11, color: T.inkMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</div>
+      <div style={{ fontSize: 22, fontWeight: 700, color: color ?? T.ink, marginTop: 4 }}>{value}</div>
+      <div style={{ fontSize: 11.5, color: T.inkSoft, marginTop: 2 }}>{sub}</div>
+    </div>
+  );
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* Header */}
+      <div style={{ ...cardStyle, padding: '14px 18px', borderLeft: `4px solid ${cfg.color}`, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+        <div style={{ width: 42, height: 42, borderRadius: 12, background: cfg.color + '15', color: cfg.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <IconBolt size={22} />
+        </div>
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: T.ink, display: 'flex', alignItems: 'center', gap: 10 }}>
+            Sinal de Compra · Pixel + CAPI
+            <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 20, background: cfg.bg, color: cfg.color }}>{cfg.dot} {cfg.label}</span>
+          </div>
+          <div style={{ fontSize: 12, color: T.inkSoft, marginTop: 3 }}>
+            Compra server-side enviada à Meta · última {lastTxt}
+          </div>
+        </div>
+      </div>
+
+      {/* Alerta quando sem sinal */}
+      {h.status !== 'ok' && (
+        <div style={{ ...cardStyle, padding: '14px 18px', display: 'flex', gap: 12, alignItems: 'flex-start', borderLeft: `4px solid ${cfg.color}` }}>
+          <IconWarning size={20} color={cfg.color} />
+          <div style={{ fontSize: 12.5, color: T.inkSoft, lineHeight: 1.5 }}>
+            {!h.configured
+              ? 'Nenhum evento de Compra foi enviado pelo servidor ainda (token do CAPI ausente ou nunca disparou). Sem isso, a Meta não otimiza a campanha para quem compra.'
+              : h.status === 'down'
+                ? 'Faz mais de 3 dias sem nenhuma Compra pelo servidor. Pode ser queda de vendas OU o sinal quebrou — verifique vendas reais e o token META_CAPI_ACCESS_TOKEN.'
+                : 'Última Compra pelo servidor há mais de 24h. Se está vendendo normalmente, o sinal pode estar falhando.'}
+          </div>
+        </div>
+      )}
+
+      {/* Stat tiles */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
+        {tile('Compras hoje', intStr(h.purchasesToday), 'enviadas à Meta', h.purchasesToday > 0 ? T.green : T.inkMuted)}
+        {tile('Últimos 7 dias', intStr(h.purchases7d), 'compras server-side')}
+        {tile('Últimos 30 dias', intStr(h.purchases30d), 'compras server-side')}
+        {tile('Taxa de sucesso', successRate !== null ? `${successRate}%` : '—',
+          `${intStr(h.sent30d)} ok · ${intStr(h.error30d)} erro${h.skipped30d ? ` · ${intStr(h.skipped30d)} skip` : ''}`,
+          successRate !== null && successRate < 95 ? T.danger : T.ink)}
+      </div>
+
+      {/* Qualidade da correspondência + gráfico 14d */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        {/* Match quality */}
+        <div style={{ ...cardStyle, padding: '16px 18px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: T.ink }}>Qualidade da correspondência</div>
+            <span style={{ fontSize: 11, color: T.inkMuted }}>proxy da EMQ · Compras 30d</span>
+          </div>
+          {h.matchScore === null ? (
+            <div style={{ fontSize: 12.5, color: T.inkSoft }}>Sem compras enviadas nos últimos 30 dias para medir.</div>
+          ) : (
+            <>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                <span style={{ fontSize: 34, fontWeight: 800, color: gradeColor, fontFamily: fonts.display }}>{h.matchScore}</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: gradeColor }}>{h.matchGrade}</span>
+                <span style={{ fontSize: 12, color: T.inkSoft, marginLeft: 'auto' }}>~{(h.avgFields ?? 0).toFixed(1)} dados/evento</span>
+              </div>
+              <div style={{ height: 8, borderRadius: 99, background: T.cream, marginTop: 10, overflow: 'hidden' }}>
+                <div style={{ width: `${h.matchScore}%`, height: '100%', background: gradeColor, borderRadius: 99 }} />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: '6px 16px', marginTop: 14, fontSize: 12 }}>
+                {[
+                  ['E-mail', h.pctEmail], ['Telefone', h.pctPhone],
+                  ['Clique do anúncio (fbc)', h.pctFbc], ['Cookie Pixel (fbp)', h.pctFbp],
+                ].map(([lab, v]) => (
+                  <div key={lab as string} style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                    <span style={{ color: T.inkSoft }}>{lab as string}</span>
+                    <span style={{ fontWeight: 700, color: (v as number) >= 0.8 ? T.green : (v as number) >= 0.4 ? T.gold : T.danger }}>
+                      {Math.round((v as number) * 100)}%
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Gráfico 14d */}
+        <div style={{ ...cardStyle, padding: '16px 18px' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: T.ink, marginBottom: 14 }}>Compras pelo servidor · 14 dias</div>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 92 }}>
+            {h.daily14d.map((d, i) => (
+              <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                <div style={{ fontSize: 9.5, color: T.inkMuted, fontWeight: 600 }}>{d.purchases || ''}</div>
+                <div style={{
+                  width: '100%', borderRadius: 4,
+                  height: `${Math.max(d.purchases > 0 ? 6 : 2, (d.purchases / maxBar) * 70)}px`,
+                  background: d.purchases > 0 ? T.pink : T.borderSoft,
+                }} />
+                <div style={{ fontSize: 9, color: T.inkMuted }}>{d.day.slice(8)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

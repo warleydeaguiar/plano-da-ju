@@ -3,6 +3,7 @@
 // Docs: https://developers.facebook.com/docs/marketing-api/conversions-api
 
 import crypto from 'crypto';
+import { logCapiEvent } from './capi-log';
 
 const PIXEL_ID = '921783859786853';
 const CAPI_TOKEN = process.env.META_CAPI_ACCESS_TOKEN; // System User token
@@ -41,8 +42,23 @@ export async function sendCapiEvent(opts: {
   customData: CapiCustomData;
   testEventCode?: string;        // só pra teste
 }) {
+  // Quais identificadores fortes vão neste evento (alimenta o índice de correspondência).
+  const match = {
+    event_name: opts.eventName,
+    has_email: !!opts.user.email,
+    has_phone: !!opts.user.phone,
+    has_fbc: !!opts.user.fbc,
+    has_fbp: !!opts.user.fbp,
+    has_ip: !!opts.user.ip,
+    has_ua: !!opts.user.userAgent,
+    has_cpf: !!opts.user.cpf,
+    value: opts.customData?.value,
+    source_url: opts.eventSourceUrl,
+  };
+
   if (!CAPI_TOKEN) {
     console.warn('[CAPI] META_CAPI_ACCESS_TOKEN não configurado — skip');
+    void logCapiEvent({ ...match, status: 'skipped' });
     return { ok: false, skipped: true };
   }
 
@@ -86,11 +102,14 @@ export async function sendCapiEvent(opts: {
     const data = await res.json();
     if (!res.ok) {
       console.error('[CAPI] erro:', data);
+      void logCapiEvent({ ...match, status: 'error', error_msg: JSON.stringify(data?.error ?? data).slice(0, 500) });
       return { ok: false, error: data };
     }
+    void logCapiEvent({ ...match, status: 'sent' });
     return { ok: true, data };
   } catch (err) {
     console.error('[CAPI] exception:', err);
+    void logCapiEvent({ ...match, status: 'error', error_msg: (err instanceof Error ? err.message : String(err)).slice(0, 500) });
     return { ok: false, error: err };
   }
 }
