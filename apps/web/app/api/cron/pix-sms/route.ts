@@ -19,7 +19,6 @@ export const maxDuration = 60;
  */
 const MIN_AGE_MIN = 13;   // alvo ~15 min (cron roda a cada 3 min)
 const MAX_AGE_MIN = 50;
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://planodaju.julianecost.com';
 
 function firstName(full?: string | null): string {
   const n = (full ?? '').trim().split(/\s+/)[0] ?? '';
@@ -34,9 +33,12 @@ function toIntlPhone(raw?: string | null): string {
   return `55${d}`;
 }
 
-// SMS sem acento/emoji (GSM-7, custo menor). Link da página /pix/<id>.
-function smsText(name: string, id: string): string {
-  return `${name}, seu PIX do Plano da Ju ainda nao foi confirmado e esta perto de expirar. Finalize seu acesso aqui: ${APP_URL}/pix/${id}`;
+// SMS sem acento/emoji (GSM-7, custo menor) e SEM link (operadora BR filtra link de
+// remetente nao-oficial; link em SMS tambem converte pouco). Estrategia 360: o SMS NAO
+// fecha a venda — ele AVISA o lead pra ir ver no e-mail e no WhatsApp, onde estao o
+// codigo PIX e a oferta completa.
+function smsText(name: string): string {
+  return `${name}, seu PIX do Plano da Ju ainda nao foi confirmado! Te mandamos tudo no seu WhatsApp e no e-mail - corre ver pra finalizar e garantir seu acesso antes de expirar.`;
 }
 
 export async function GET(req: NextRequest) {
@@ -92,7 +94,7 @@ export async function GET(req: NextRequest) {
 
       if (dry) { result.sent++; result.details.push({ email: p.email, ageMin: Math.round(ageMin), to: phoneIntl, would_send: true }); continue; }
 
-      const sendRes = await sendSms(phoneIntl, smsText(firstName(p.full_name), p.id));
+      const sendRes = await sendSms(phoneIntl, smsText(firstName(p.full_name)));
       if (sendRes.ok) {
         await markSent(sb, p.id);
         result.sent++;
