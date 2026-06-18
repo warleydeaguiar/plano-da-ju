@@ -1,0 +1,99 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createServiceClient } from '@/lib/supabase/server';
+import { resolveAuthUserId } from '@/lib/supabase/auth-resolve';
+import { extractFieldsFromQuiz } from '@/lib/quiz-to-profile';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+/**
+ * POST /api/parceria/ativar
+ * Body: { token, session_id, answers, name?, email?, phone? }
+ *
+ * Ativação por PARCERIA (cortesia). Quem entra pelo link mágico
+ * (/quiz/plano-capilar?parceria=<token>) NÃO paga — vira cliente ATIVA direto,
+ * em troca de UGC (ex.: alunas da Bianca). Cria/atualiza o profile como active,
+ * e manda pro /obrigado (criar senha → enviar foto → plano).
+ *
+ * O token vem do link e bate com PARCERIA_TOKENS (env). Cada token = um parceiro.
+ */
+function resolvePartner(token: string): string | null {
+  if (!token) return null;
+  // Mapa "token:label" separado por vírgula. Ex.: "abc123:bianca,def456:outra"
+  const raw = process.env.PARCERIA_TOKENS || '';
+  for (const pair of raw.split(',')) {
+    const [t, label] = pair.split(':');
+    if (t && t.trim() === token.trim()) return (label || 'parceria').trim();
+  }
+  return null;
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json().catch(() => ({}));
+    const partner = resolvePartner(String(body?.token ?? ''));
+    if (!partner) return NextResponse.json({ ok: false, error: 'token inválido' }, { status: 401 });
+
+    const answers = (body?.answers && typeof body.answers === 'object') ? body.answers : {};
+    const supabase = await createServiceClient();
+
+    // Identidade: prioriza o que veio no corpo; senão busca o lead pelo session_id.
+    let name = String(body?.name ?? '').trim();
+    let email = String(body?.email ?? '').trim().toLowerCase();
+    let phone = String(body?.phone ?? '').replace(/\D/g, '');
+    if ((!email || !phone) && body?.session_id) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: lead } = await (supabase.from('wg_quiz_leads') as any)
+        .select('name, email, phone')
+        .eq('session_id', body.session_id)
+        .order('created_at', { ascending: false })
+        .limit(1).maybeSingle();
+      if (lead) {
+        if (!name) name = String(lead.name ?? '').trim();
+        if (!email) email = String(lead.email ?? '').trim().toLowerCase();
+        if (!phone) phone = String(lead.phone ?? '').replace(/\D/g, '');
+      }
+    }
+    if (!email || !email.includes('@')) {
+      return NextResponse.json({ ok: false, error: 'email não encontrado' }, { status: 400 });
+    }
+
+    const extracted = extractFieldsFromQuiz(answers);
+    const now = new Date().toISOString();
+
+    // Já existe? (não rebaixa quem já é ativa)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: existing } = await (supabase.from('profiles') as any)
+      .select('id, subscription_status').eq('email', email).maybeSingle();
+
+    const userId = existing?.id ?? await resolveAuthUserId(supabase, email);
+
+    const patch = {
+      id: userId,
+      email,
+      full_name: name || null,
+      phone: phone || null,
+      quiz_answers: answers,
+      ...extracted,
+      subscription_status: 'active',
+      subscription_type: 'parceria',
+      partner_label: partner,            // qual parceiro (ex.: bianca)
+      plan_status: 'pending_photo',      // dispara o envio de foto no onboarding
+      plan_requested_at: now,
+      subscription_activated_at: now,
+    };
+
+    if (existing) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase.from('profiles') as any).update(patch).eq('id', userId);
+    } else {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase.from('profiles') as any).upsert(patch);
+    }
+
+    return NextResponse.json({ ok: true, redirect: `/obrigado?email=${encodeURIComponent(email)}` });
+  } catch (err) {
+    console.error('[parceria/ativar]', err);
+    return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : 'erro' }, { status: 500 });
+  }
+}

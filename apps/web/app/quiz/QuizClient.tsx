@@ -1949,6 +1949,20 @@ export default function QuizClient({ experiments = [] }: { experiments?: ActiveE
     trackStepEvent(sessionIdRef.current, stepIndexRef.current, stepIdRef.current, 'answered', getStepVariantLabel(variantMapRef.current, stepIdRef.current))
     if (stepIndex >= total - 1) {
       try { localStorage.setItem('quiz_answers', JSON.stringify(answers)) } catch {}
+      // PARCERIA (cortesia): link mágico /quiz/plano-capilar?parceria=<token> →
+      // vira cliente ATIVA sem pagar (ex.: alunas da Bianca, em troca de UGC) e
+      // segue pro onboarding (criar senha → foto → plano). Token validado no server.
+      try {
+        const parceria = new URLSearchParams(window.location.search).get('parceria')
+        if (parceria) {
+          const rp = await fetch('/api/parceria/ativar', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: parceria, session_id: getOrCreateSessionId(), answers }),
+          })
+          const dp = await rp.json().catch(() => ({}))
+          if (dp?.ok && typeof dp?.redirect === 'string') { router.push(dp.redirect); return }
+        }
+      } catch {}
       // Gift/cortesia? (cliente já logada com assinatura ativa, sem quiz) — salva
       // no profile e pula a oferta indo direto pro app. Endpoint responde
       // {handled: false} para o fluxo normal anônimo.
