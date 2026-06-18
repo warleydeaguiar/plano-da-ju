@@ -12,7 +12,7 @@ export const metadata = { title: 'Funil — Admin Plano da Ju' };
    ────────────────────────────────────────────────────────────────────────── */
 
 type Channel = 'pagina' | 'rastreio' | 'whatsapp' | 'email' | 'sms' | 'ia' | 'sistema';
-type Status = 'ativo' | 'manual' | 'gap';
+type Status = 'ativo' | 'manual' | 'off' | 'gap';
 type Step = { channel: Channel; title: string; detail: string; timing: string; status: Status };
 type Stage = { n: string; title: string; subtitle: string; accent: string; steps: Step[] };
 type Branch = { label: string; color: string; bg: string; stages: Stage[] };
@@ -32,6 +32,7 @@ const CH: Record<Channel, { label: string; color: string; bg: string }> = {
 const ST: Record<Status, { label: string; color: string; bg: string }> = {
   ativo:  { label: 'ativo',           color: T.green,    bg: T.greenSoft },
   manual: { label: 'manual',          color: T.goldDeep, bg: T.goldSoft },
+  off:    { label: 'desligado',       color: '#64748B',  bg: '#EEF1F4' },
   gap:    { label: 'não configurado', color: T.danger,   bg: T.dangerSoft },
 };
 
@@ -56,28 +57,44 @@ const PLANO_CAPILAR: Funnel = {
           { channel: 'rastreio', title: 'Evento Purchase (CAPI)', detail: 'Compra server-side enviada à Meta — religado em 18/06', timing: 'na confirmação', status: 'ativo' },
           { channel: 'sistema',  title: 'Aviso de venda no Discord', detail: 'Notifica a equipe da nova venda', timing: 'na confirmação', status: 'ativo' },
           { channel: 'whatsapp', title: 'WhatsApp “acesso liberado”', detail: 'Template acesso_plano com botão pra criar a senha', timing: 'na confirmação · imediato', status: 'ativo' },
-          { channel: 'email',    title: 'E-mail de boas-vindas / acesso', detail: 'Hoje só sai manualmente pelo painel — NÃO dispara sozinho na compra', timing: 'na confirmação', status: 'manual' },
+          { channel: 'email',    title: 'E-mail “Acesso liberado”', detail: 'Pós-compra 1 — automático ao confirmar (audiência: clientes)', timing: '+5 min após pagar', status: 'ativo' },
         ]},
         { n: '4A', title: 'Plano personalizado', subtitle: 'Foto → IA → revisão → entrega', accent: T.green, steps: [
           { channel: 'ia',      title: 'Foto + geração do plano', detail: 'Lead envia a foto no app → IA (Claude Vision) monta 12 semanas', timing: 'quando entra no app', status: 'ativo' },
+          { channel: 'email',   title: 'E-mail “Faltou sua foto”', detail: 'Foto 1 (D+1) e Foto 2 “última chamada” (D+3) — cobram quem não enviou a foto', timing: 'D+1 e D+3', status: 'ativo' },
           { channel: 'sistema', title: 'Plano aguardando revisão', detail: 'Fica “manual_required” até a Juliane aprovar', timing: 'após gerar', status: 'ativo' },
           { channel: 'email',   title: 'E-mail “Plano pronto”', detail: 'Sai quando a Juliane aprova + cron de entrega (1x por pessoa)', timing: 'após aprovação (até ~24h)', status: 'ativo' },
         ]},
+        { n: '5A', title: 'Onboarding por e-mail', subtitle: 'Régua pós-compra (audiência: clientes)', accent: T.green, steps: [
+          { channel: 'email', title: 'Primeiros passos', detail: 'Pós-compra 2 — “3 coisas pra fazer HOJE no seu plano”', timing: 'D+1 · 9h', status: 'ativo' },
+          { channel: 'email', title: 'Semana 1 — como foi?', detail: 'Pós-compra 3 — check-in da 1ª semana', timing: 'D+7', status: 'ativo' },
+          { channel: 'email', title: 'Evolução mês 1', detail: 'Pede foto de progresso (1 mês)', timing: 'D+30', status: 'ativo' },
+          { channel: 'email', title: 'Evolução mês 2', detail: 'Pede foto de progresso (2 meses)', timing: 'D+60', status: 'ativo' },
+        ]},
       ]},
-      right: { label: '⏳ Não pagou — recuperação', color: T.goldDeep, bg: T.goldSoft, stages: [
-        { n: '3B', title: 'Recuperação de PIX', subtitle: 'Gerou o PIX mas não pagou (1x por pessoa)', accent: T.goldDeep, steps: [
+      right: { label: '⏳ Não pagou — recuperação + nutrição', color: T.goldDeep, bg: T.goldSoft, stages: [
+        { n: '3B', title: 'Recuperação imediata do PIX', subtitle: 'Gerou o PIX mas não pagou (1x por pessoa)', accent: T.goldDeep, steps: [
           { channel: 'whatsapp', title: 'WhatsApp de recuperação', detail: 'Template pix_recuperacao_v2 com o código copia-e-cola', timing: '5–40 min após gerar o PIX', status: 'ativo' },
           { channel: 'sms',      title: 'SMS de recuperação', detail: 'Aviso sem link (Zenvia) → manda ver WhatsApp/e-mail', timing: '~15 min após gerar o PIX', status: 'ativo' },
-          { channel: 'email',    title: 'E-mail de recuperação de PIX', detail: 'Não existe e-mail automático pra quem não pagou', timing: '—', status: 'gap' },
+        ]},
+        { n: '4B', title: 'Régua de e-mail — nutrição', subtitle: 'Quem virou lead e ainda não comprou (NP1→NP7)', accent: T.goldDeep, steps: [
+          { channel: 'email', title: 'NP1 — Diagnóstico (o porquê)', detail: 'Por que o cabelo está com o problema principal', timing: 'D0 · +20 min', status: 'ativo' },
+          { channel: 'email', title: 'NP2 — A causa real', detail: 'Aprofunda a causa do problema', timing: 'D+1', status: 'ativo' },
+          { channel: 'email', title: 'NP3 — Custo de não agir', detail: '“E se daqui a 3 meses estiver igual ou pior?”', timing: 'D+2', status: 'ativo' },
+          { channel: 'email', title: 'NP4 — Prova social + como funciona', detail: 'Casos de cabelo parecido que deu certo', timing: 'D+3', status: 'ativo' },
+          { channel: 'email', title: 'NP5 — “Já tentei de tudo”', detail: 'Quebra a objeção de quem desistiu', timing: 'D+5', status: 'ativo' },
+          { channel: 'email', title: 'NP6 — Oferta com desconto', detail: 'Condição especial pra fechar', timing: 'D+7', status: 'ativo' },
+          { channel: 'email', title: 'NP7 — Última chamada', detail: 'Último e-mail da régua', timing: 'D+10', status: 'ativo' },
+          { channel: 'email', title: '15 min — Diagnóstico pronto', detail: 'Sequência configurada porém DESLIGADA hoje', timing: 'D0 · +15 min', status: 'off' },
+          { channel: 'email', title: '4h — Última hora desconto', detail: 'Sequência configurada porém DESLIGADA hoje', timing: 'D0 · +4h', status: 'off' },
         ]},
       ]},
     },
   ],
   lacunas: [
-    { channel: 'email', title: 'Régua de e-mail por dia (Dia 1, Dia 3, Dia 7…)', detail: 'Não há nenhuma sequência/drip por data. O único e-mail automático é o “Plano pronto”.' },
-    { channel: 'email', title: 'E-mail de boas-vindas automático na compra', detail: 'Hoje é manual — quem compra não recebe e-mail de acesso automaticamente.' },
-    { channel: 'email', title: 'E-mail de recuperação de PIX', detail: 'A recuperação só tem WhatsApp + SMS. Falta o e-mail no mesmo momento (estratégia 360).' },
-    { channel: 'whatsapp', title: 'Onboarding pós-compra (D+1, D+7…)', detail: 'Depois do acesso liberado não há follow-up de engajamento/uso do plano.' },
+    { channel: 'email', title: '2 e-mails desligados na régua de não-compra', detail: '“15 min — Diagnóstico pronto” e “4h — Última hora desconto” estão configurados mas OFF. Vale testar religar (recuperam quem esfria nas primeiras horas).' },
+    { channel: 'whatsapp', title: 'Nutrição pós-compra também no WhatsApp', detail: 'O onboarding (primeiros passos, semana 1, evolução) só vai por e-mail. WhatsApp teria leitura muito maior.' },
+    { channel: 'email', title: 'E-mail de recuperação no momento exato do PIX', detail: 'A régua de não-compra começa +20 min de forma genérica; não há um e-mail “você gerou o PIX e não pagou” casado com o WhatsApp/SMS.' },
   ],
 };
 
@@ -127,7 +144,7 @@ function Chip({ label, color, bg }: { label: string; color: string; bg: string }
 }
 
 function StepRow({ s }: { s: Step }) {
-  const ch = CH[s.channel]; const st = ST[s.status]; const dim = s.status === 'gap';
+  const ch = CH[s.channel]; const st = ST[s.status]; const dim = s.status === 'gap' || s.status === 'off';
   return (
     <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '12px 14px', borderRadius: 12, border: `1px solid ${T.borderSoft}`, background: dim ? 'transparent' : T.surface, borderStyle: dim ? 'dashed' : 'solid', opacity: dim ? 0.85 : 1 }}>
       <div style={{ width: 4, alignSelf: 'stretch', borderRadius: 4, background: ch.color, flexShrink: 0 }} />
