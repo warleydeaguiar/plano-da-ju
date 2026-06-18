@@ -383,6 +383,17 @@ export default async function DashboardPage() {
   const pixStats = await getPixStats();
   const aiCosts = await getAiCosts();
 
+  // Planos gerados HOJE (BR) → custo médio de IA por plano (custo do dia / planos)
+  const _br = new Date(Date.now() - 3 * 3600 * 1000);
+  const _startTodayBR = new Date(Date.UTC(_br.getUTCFullYear(), _br.getUTCMonth(), _br.getUTCDate(), 3, 0, 0)).toISOString();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { count: plansGeneratedToday } = await (sb.from('profiles') as any)
+    .select('id', { count: 'exact', head: true })
+    .gte('plan_requested_at', _startTodayBR);
+  const aiCostPerPlanToday = (aiCosts.ok && plansGeneratedToday && plansGeneratedToday > 0)
+    ? (aiCosts.dailyUsd * aiCosts.rate) / plansGeneratedToday
+    : null;
+
   // ── PLANO: KPIs derivados ────────────────────────────────────────
   const planoSpendToday      = metaAds.plano.today;
   const planoSpendYesterday  = metaAds.plano.yesterday;
@@ -1172,6 +1183,14 @@ export default async function DashboardPage() {
             sub={aiCosts.limitUsd != null
               ? `limite ${aiCosts.limitReset === 'daily' ? 'diário' : aiCosts.limitReset === 'monthly' ? 'mensal' : ''} ${brl(aiCosts.limitUsd * aiCosts.rate)} · resta ${brl((aiCosts.limitRemainingUsd ?? 0) * aiCosts.rate)}`
               : `US$ ${aiCosts.dailyUsd.toFixed(2)}`}
+          />
+          <StatCard
+            icon={IconMoney} label="Custo médio / plano gerado"
+            value={aiCostPerPlanToday != null ? brl(aiCostPerPlanToday) : '—'}
+            accent={T.gold} accentSoft={T.goldSoft}
+            sub={aiCostPerPlanToday != null
+              ? `${(plansGeneratedToday ?? 0).toLocaleString('pt-BR')} planos hoje · custo IA do dia ÷ planos`
+              : `${(plansGeneratedToday ?? 0).toLocaleString('pt-BR')} planos gerados hoje`}
           />
           <StatCard
             icon={IconReceipt} label="IA no mês" value={brl(aiCosts.monthlyUsd * aiCosts.rate)}
