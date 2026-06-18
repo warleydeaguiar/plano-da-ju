@@ -7,7 +7,7 @@ import { T, fonts, gradient } from '../theme';
 import {
   SbDashboard, SbPlanos, SbUsuarias, SbGrupos, SbFollowup, SbAnuncios, SbAnalytics,
   SbEmail, SbQuiz, SbStories, SbSuporte, SbChat, SbProdutos, SbYbera, SbExperimentos,
-  SbCheckout, SbErros, SbConfig, type SidebarIcon,
+  SbCheckout, SbErros, SbConfig, SbFunil, type SidebarIcon,
 } from './sidebar-icons';
 
 type NavItem = {
@@ -19,6 +19,7 @@ type NavItem = {
 
 const NAV: NavItem[] = [
   { icon: SbDashboard, label: 'Dashboard', href: '/' },
+  { icon: SbFunil, label: 'Funil', href: '/funil' },
   {
     icon: SbPlanos, label: 'Revisão de Planos', href: '/planos',
     children: [

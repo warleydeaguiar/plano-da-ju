@@ -175,3 +175,10 @@ export const SbConfig: SidebarIcon = (p) => (
     <path d="M12 2.6v2.6M12 18.8v2.6M2.6 12h2.6M18.8 12h2.6M5.1 5.1l1.85 1.85M17.05 17.05l1.85 1.85M18.9 5.1l-1.85 1.85M6.95 17.05L5.1 18.9" opacity="0.85" />
   </I>
 );
+
+// Funil — mapa visual da jornada do lead
+export const SbFunil: SidebarIcon = (p) => (
+  <I {...p}>
+    <path d="M3.5 5h17l-6.3 7.3v5.4l-4.4 2.3v-7.7z" />
+  </I>
+);
