@@ -71,10 +71,10 @@ export async function POST(req: NextRequest) {
     const patch = {
       id: userId,
       email,
-      full_name: name || null,
-      phone: phone || null,
       quiz_answers: answers,
       ...extracted,
+      full_name: name || null,
+      phone: phone || null,
       subscription_status: 'active',
       subscription_type: 'parceria',
       partner_label: partner,            // qual parceiro (ex.: bianca)
