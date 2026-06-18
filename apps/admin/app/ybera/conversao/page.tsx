@@ -3,6 +3,7 @@ import Sidebar from '../../components/Sidebar'
 import ConversaoClient from './ConversaoClient'
 import {
   matchOrdersToProfiles, aggregateNonStudents, buildProfileKeySet, isAluno, topProductsOf,
+  normEmail, normPhoneKey,
   type MatchOrder, type MatchProfile,
 } from '@/lib/ybera-match'
 import { YBERA_COMMISSION_RATE } from '@/lib/ybera-api'
@@ -152,7 +153,39 @@ async function getData() {
     gruposRepeatRate: nonStudentsAll.length ? nonStudentsAll.filter(c => c.orders >= 2).length / nonStudentsAll.length : 0,
   }
 
-  return { hasOrders: true, activeCount: activeProfiles.length, months, periods, trend, lifetime }
+  // ── GRUPOS (anúncios) → Ybera: conversão por SAFRA (mês de entrada no funil) ──
+  // Entrada no grupo via anúncio = lead do quiz fashion-gold. Dedup por email/telefone
+  // (mantém a 1ª entrada = a safra). Cruza com pedidos Ybera e agrupa por mês.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: fgRows } = await (sb.from('wg_quiz_leads') as any)
+    .select('name, email, phone, created_at').eq('quiz_slug', 'fashion-gold').limit(100000)
+  const leadByKey = new Map<string, MatchProfile>()
+  for (const r of (fgRows ?? []) as { name: string|null; email: string|null; phone: string|null; created_at: string|null }[]) {
+    const pk = normPhoneKey(r.phone)
+    const key = normEmail(r.email) || (pk ? 'tel:' + pk : '')
+    if (!key) continue
+    const ex = leadByKey.get(key)
+    if (!ex || (r.created_at && (!ex.created_at || r.created_at < ex.created_at))) {
+      leadByKey.set(key, { id: key, email: r.email, phone: r.phone, full_name: r.name, subscription_status: null, created_at: r.created_at })
+    }
+  }
+  const leadMatches = matchOrdersToProfiles(orders, [...leadByKey.values()])
+  const gCohort = new Map<string, { leads: number; buyers: number; revenue: number }>()
+  let gLeads = 0, gBuyers = 0, gRevenue = 0
+  for (const m of leadMatches) {
+    const k = ym(m.profile.created_at); if (k === '—') continue
+    const c = gCohort.get(k) ?? { leads: 0, buyers: 0, revenue: 0 }
+    c.leads++; gLeads++
+    if (m.bought) { c.buyers++; c.revenue += m.totalSpent; gBuyers++; gRevenue += m.totalSpent }
+    gCohort.set(k, c)
+  }
+  const gruposSafra = {
+    totalLeads: gLeads, buyers: gBuyers, conversion: gLeads ? gBuyers / gLeads : 0, revenue: gRevenue,
+    cohorts: [...gCohort.entries()].sort(([a], [b]) => a.localeCompare(b))
+      .map(([k, c]) => ({ ym: k, label: ymLabel(k), leads: c.leads, buyers: c.buyers, conv: c.leads ? c.buyers / c.leads : 0, revenue: c.revenue })),
+  }
+
+  return { hasOrders: true, activeCount: activeProfiles.length, months, periods, trend, lifetime, gruposSafra }
 }
 
 export default async function ConversaoPage() {

@@ -23,12 +23,17 @@ type Bundle = {
 }
 type Trend = { ym: string; label: string; studentBuyers: number; studentRevenue: number; conversion: number; gruposBuyers: number; gruposRevenue: number }
 type Lifetime = { avgDaysToFirst: number | null; repeatRate: number; cohorts: { ym: string; label: string; active: number; buyers: number; conv: number }[]; gruposRepeatRate: number }
+type GruposSafra = {
+  totalLeads: number; buyers: number; conversion: number; revenue: number
+  cohorts: { ym: string; label: string; leads: number; buyers: number; conv: number; revenue: number }[]
+}
 type Data = {
   hasOrders: boolean; activeCount: number
   months: { key: string; label: string }[]
   periods: Record<string, Bundle>
   trend: Trend[]
   lifetime: Lifetime | null
+  gruposSafra?: GruposSafra | null
 }
 
 function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
@@ -293,6 +298,37 @@ export default function ConversaoClient({ data }: { data: Data }) {
         {isAll && L && <Stat label="Recompra" value={pct(L.gruposRepeatRate)} sub="clientes com 2+ pedidos" color={green} />}
       </div>
       <div style={{ marginTop: 14 }}><TopProducts items={G.topProducts} /></div>
+
+      {/* ── Safra dos grupos (anúncios) — só no "todo o período" ── */}
+      {isAll && data.gruposSafra && (
+        <>
+          <SectionTitle emoji="📈">Grupos (anúncios) → Ybera · conversão por safra</SectionTitle>
+          <div style={{ fontSize: 12, color: gray, margin: '-8px 0 12px', lineHeight: 1.5 }}>
+            Quem entrou no funil dos grupos pelo anúncio (lead do quiz fashion-gold), por mês de entrada (safra), e quantos depois compraram Ybera. Mesma lógica da safra do plano — acompanhe ela subir com o tempo.
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 14 }}>
+            <Stat label="Leads dos grupos (anúncio)" value={String(data.gruposSafra.totalLeads)} />
+            <Stat label="Compraram Ybera" value={String(data.gruposSafra.buyers)} />
+            <Stat label="Conversão geral" value={pct(data.gruposSafra.conversion)} color={accent} />
+            <Stat label="Receita gerada" value={brl(data.gruposSafra.revenue)} color={green} />
+          </div>
+          <Card>
+            <div style={{ fontSize: 13, fontWeight: 700, color: ink, marginBottom: 12 }}>Conversão por safra (mês de entrada no grupo)</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {data.gruposSafra.cohorts.length === 0 && <div style={{ fontSize: 13, color: gray }}>Sem dados ainda.</div>}
+              {data.gruposSafra.cohorts.slice(-12).map(c => (
+                <div key={c.ym} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 11, color: gray, width: 56 }}>{c.label}</span>
+                  <div style={{ flex: 1, height: 16, background: '#F0EAF0', borderRadius: 4 }}>
+                    <div style={{ height: '100%', width: `${c.conv * 100}%`, background: accent, borderRadius: 4, minWidth: c.buyers ? 2 : 0 }} />
+                  </div>
+                  <span style={{ fontSize: 11, color: ink, width: 120, textAlign: 'right' }}>{pct(c.conv)} ({c.buyers}/{c.leads})</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </>
+      )}
 
       <div style={{ height: 40 }} />
     </div>
