@@ -20,6 +20,15 @@ const ACCOUNT_ID = process.env.META_ADS_QUIZ_ACCOUNT ?? process.env.META_ADS_ACC
 const API_VER    = 'v20.0'
 const BASE       = `https://graph.facebook.com/${API_VER}`
 
+/**
+ * Campanha conta como "grupos de promoção"? Filtramos NO CÓDIGO (case-insensitive,
+ * pega "Grupo" e "Grupos") em vez de depender do filtro `campaign.name CONTAIN` da
+ * API da Meta — que às vezes não retorna nada e zerava o investimento no painel.
+ */
+function isGrupoCampaign(name: string | null | undefined): boolean {
+  return /grupo/i.test(String(name ?? ''))
+}
+
 export type MetaAdsStatus = 'ok' | 'not_configured' | 'error'
 
 export interface MetaCampaignSpend {
@@ -51,13 +60,8 @@ export async function getGrupoAdSpend(
       level:       'campaign',
       fields:      'campaign_id,campaign_name,spend',
       date_preset: datePreset,
-      filtering:   JSON.stringify([{
-        field:    'campaign.name',
-        operator: 'CONTAIN',
-        value:    'Grupo',
-      }]),
       access_token: TOKEN,
-      limit:        '200',
+      limit:        '500',
     })
 
     const res  = await fetch(`${BASE}/${ACCOUNT_ID}/insights?${params}`, {
@@ -76,11 +80,15 @@ export async function getGrupoAdSpend(
     }
 
     const json = await res.json()
-    const data: MetaCampaignSpend[] = (json.data ?? []).map((d: any) => ({
-      campaign_id:   d.campaign_id,
-      campaign_name: d.campaign_name,
-      spend:         parseFloat(d.spend ?? '0'),
-    }))
+    const data: MetaCampaignSpend[] = (json.data ?? [])
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .filter((d: any) => isGrupoCampaign(d.campaign_name))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((d: any) => ({
+        campaign_id:   d.campaign_id,
+        campaign_name: d.campaign_name,
+        spend:         parseFloat(d.spend ?? '0'),
+      }))
 
     const totalSpend = data.reduce((s, c) => s + c.spend, 0)
 
@@ -116,16 +124,19 @@ async function getMonthlySpend(): Promise<Array<{ month: string; spend: number }
 
       const params = new URLSearchParams({
         level:       'campaign',
-        fields:      'spend',
+        fields:      'campaign_name,spend',
         time_range:  JSON.stringify({ since, until }),
-        filtering:   JSON.stringify([{ field: 'campaign.name', operator: 'CONTAIN', value: 'Grupo' }]),
         access_token: TOKEN!,
+        limit:        '500',
       })
 
       return fetch(`${BASE}/${ACCOUNT_ID}/insights?${params}`, { next: { revalidate: 3600 } })
         .then(r => r.json())
         .then(json => {
-          const spend = (json.data ?? []).reduce((s: number, d: any) => s + parseFloat(d.spend ?? '0'), 0)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const spend = (json.data ?? [])
+            .filter((d: any) => isGrupoCampaign(d.campaign_name))
+            .reduce((s: number, d: any) => s + parseFloat(d.spend ?? '0'), 0)
           results.push({ month: label, spend })
         })
         .catch(() => results.push({ month: label, spend: 0 }))

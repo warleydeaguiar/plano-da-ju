@@ -94,13 +94,13 @@ function toDate(d: Date) {
 /**
  * Classifica uma campanha pelo nome.
  * - "plano" no nome → plano capilar
- * - "grupos" no nome → grupos Ybera
+ * - "grupo"/"grupos" no nome → grupos Ybera (singular OU plural)
  * - senão → outros (ignorado nos cards principais)
  */
 function classifyCampaign(name: string): CampaignType {
   const n = (name ?? '').toLowerCase()
   if (n.includes('plano'))  return 'plano'
-  if (n.includes('grupos')) return 'grupos'
+  if (n.includes('grupo'))  return 'grupos'   // pega "Grupo Fashion Gold" e "Grupos ..."
   return 'outros'
 }
 
