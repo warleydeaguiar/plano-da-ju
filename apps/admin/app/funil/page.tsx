@@ -21,7 +21,7 @@ const CH: Record<Channel, { label: string; color: string; bg: string }> = {
   whatsapp: { label: 'WhatsApp',      color: T.green,    bg: T.greenSoft },
   email:    { label: 'E-mail',        color: T.pinkDeep, bg: T.pinkSoft },
   sms:      { label: 'SMS',           color: T.goldDeep, bg: T.goldSoft },
-  ia:       { label: 'IA',            color: T.rose,     bg: T.pinkBlush },
+  ia:       { label: 'IA',            color: '#0F766E',  bg: '#D7F0EC' },
   sistema:  { label: 'Sistema',       color: T.inkMuted, bg: T.cream },
 };
 
