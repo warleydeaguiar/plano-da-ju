@@ -15,27 +15,21 @@ export const dynamic = 'force-dynamic';
  * em troca de UGC (ex.: alunas da Bianca). Cria/atualiza o profile como active,
  * e manda pro /obrigado (criar senha → enviar foto → plano).
  *
- * O token vem do link e bate com PARCERIA_TOKENS (env). Cada token = um parceiro.
+ * O token vem do link e é validado na tabela partner_tokens (token, label, active).
+ * Cada token = um parceiro. Pra adicionar/desativar parceiros, é só mexer na tabela.
  */
-function resolvePartner(token: string): string | null {
-  if (!token) return null;
-  // Mapa "token:label" separado por vírgula. Ex.: "abc123:bianca,def456:outra"
-  const raw = process.env.PARCERIA_TOKENS || '';
-  for (const pair of raw.split(',')) {
-    const [t, label] = pair.split(':');
-    if (t && t.trim() === token.trim()) return (label || 'parceria').trim();
-  }
-  return null;
-}
-
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
-    const partner = resolvePartner(String(body?.token ?? ''));
-    if (!partner) return NextResponse.json({ ok: false, error: 'token inválido' }, { status: 401 });
-
+    const token = String(body?.token ?? '').trim();
     const answers = (body?.answers && typeof body.answers === 'object') ? body.answers : {};
     const supabase = await createServiceClient();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: pt } = await (supabase.from('partner_tokens') as any)
+      .select('label').eq('token', token).eq('active', true).maybeSingle();
+    if (!pt) return NextResponse.json({ ok: false, error: 'token inválido' }, { status: 401 });
+    const partner: string = pt.label || 'parceria';
 
     // Identidade: prioriza o que veio no corpo; senão busca o lead pelo session_id.
     let name = String(body?.name ?? '').trim();
