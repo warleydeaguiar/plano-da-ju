@@ -316,12 +316,16 @@ export default function ObrigadoClient() {
       <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
       <div style={{ maxWidth: 420, margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{ fontSize: 60, marginBottom: 16 }}>🎉</div>
+          <div style={{ fontSize: 60, marginBottom: 16 }}>{params.get('cortesia') === '1' ? '🎁' : '🎉'}</div>
           <h1 style={{ fontSize: 26, fontWeight: 700, color: T.ink, marginBottom: 10, letterSpacing: -0.5, fontFamily: fonts.display }}>
-            Compra confirmada{name ? `, ${name.split(' ')[0]}` : ''}!
+            {params.get('cortesia') === '1'
+              ? `Plano liberado${name ? `, ${name.split(' ')[0]}` : ''}! 💛`
+              : `Compra confirmada${name ? `, ${name.split(' ')[0]}` : ''}!`}
           </h1>
           <p style={{ fontSize: 14, color: T.inkSoft, lineHeight: 1.7 }}>
-            Crie sua senha agora e já entre no seu plano personalizado.
+            {params.get('cortesia') === '1'
+              ? 'Seu Plano da Ju é uma cortesia da parceria — você não paga nada. Crie sua senha e já entre no seu plano. 💛'
+              : 'Crie sua senha agora e já entre no seu plano personalizado.'}
           </p>
         </div>
 

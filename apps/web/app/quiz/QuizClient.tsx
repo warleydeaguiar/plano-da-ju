@@ -1955,9 +1955,15 @@ export default function QuizClient({ experiments = [] }: { experiments?: ActiveE
       try {
         const parceria = new URLSearchParams(window.location.search).get('parceria')
         if (parceria) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const a = answers as any
           const rp = await fetch('/api/parceria/ativar', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token: parceria, session_id: getOrCreateSessionId(), answers }),
+            body: JSON.stringify({
+              token: parceria, session_id: getOrCreateSessionId(), answers,
+              // passa contato direto (não depende do lead) — name/email/phone já estão em answers
+              name: a?.name, email: a?.email, phone: a?.phone,
+            }),
           })
           const dp = await rp.json().catch(() => ({}))
           if (dp?.ok && typeof dp?.redirect === 'string') { router.push(dp.redirect); return }

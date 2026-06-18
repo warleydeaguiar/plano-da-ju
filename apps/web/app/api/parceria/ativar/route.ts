@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
       await (supabase.from('profiles') as any).upsert(patch);
     }
 
-    return NextResponse.json({ ok: true, redirect: `/obrigado?email=${encodeURIComponent(email)}` });
+    return NextResponse.json({ ok: true, redirect: `/obrigado?email=${encodeURIComponent(email)}&cortesia=1` });
   } catch (err) {
     console.error('[parceria/ativar]', err);
     return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : 'erro' }, { status: 500 });
