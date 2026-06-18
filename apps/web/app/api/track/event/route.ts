@@ -30,6 +30,17 @@ function clean(v: unknown, max = 200): string | undefined {
   return t ? t.slice(0, max) : undefined;
 }
 
+// Diagnóstico: confirma se o token do CAPI está disponível em runtime (NUNCA expõe o valor).
+// GET /api/track/event?diag=1&k=<WA_AUTOREPLY_SECRET>
+export async function GET(req: NextRequest) {
+  const k = req.nextUrl.searchParams.get('k');
+  if (k !== process.env.WA_AUTOREPLY_SECRET) {
+    return NextResponse.json({ ok: false }, { status: 401 });
+  }
+  const t = process.env.META_CAPI_ACCESS_TOKEN || '';
+  return NextResponse.json({ capi_token_present: !!t, len: t.length });
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
