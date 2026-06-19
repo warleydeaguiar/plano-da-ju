@@ -126,7 +126,20 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Optional: Claude Vision analysis (only if key configured)
+    // Esta foto vai DISPARAR a geração do plano? (1ª foto do onboarding). Se sim,
+    // NÃO analisamos a imagem aqui — o gerador do plano já faz a análise da foto e
+    // salva os scores (analise_foto). Evita pagar 2x a mesma análise de imagem.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: profile } = await (supabase.from('profiles') as any)
+      .select('email, plan_status, photo_url')
+      .eq('id', user.id)
+      .single();
+    const planKey = process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_API_KEY;
+    const willGeneratePlan =
+      profile?.plan_status === 'pending_photo' && !profile.photo_url && !!profile.email
+      && !!planKey && !planKey.startsWith('X');
+
+    // Análise de visão SÓ pra fotos de PROGRESSO (no onboarding o plano analisa).
     let analysis = {
       brilho_score: null as number | null,
       hidratacao_score: null as number | null,
@@ -137,7 +150,7 @@ export async function POST(req: NextRequest) {
       raw: null as unknown,
     };
 
-    if (process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_API_KEY.startsWith('X')) {
+    if (!willGeneratePlan && process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_API_KEY.startsWith('X')) {
       try {
         const visionRes = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
@@ -194,22 +207,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Insert photo_analyses row
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from('photo_analyses').insert({
-      user_id: user.id,
-      photo_url: photoUrl,
-      analyzed_at: new Date().toISOString(),
-      ...analysis,
-    });
+    // Insert photo_analyses row — só quando NÃO vamos gerar plano agora (progresso).
+    // No onboarding, o /api/plan/generate insere a linha com os scores do plano.
+    if (!willGeneratePlan) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase as any).from('photo_analyses').insert({
+        user_id: user.id,
+        photo_url: photoUrl,
+        analyzed_at: new Date().toISOString(),
+        ...analysis,
+      });
+    }
 
     // Atualiza profile com a foto mais recente (usada por /api/plan/generate)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: profile } = await (supabase.from('profiles') as any)
-      .select('email, plan_status, photo_url')
-      .eq('id', user.id)
-      .single();
-
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase.from('profiles') as any)
       .update({

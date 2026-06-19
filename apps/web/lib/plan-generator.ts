@@ -7,6 +7,7 @@ interface CatalogProduct {
   brand: string | null;
   category: string | null;
   hair_types: string[] | null;
+  is_priority?: boolean | null;   // ⭐ mais vendido / alto impacto (preferir)
 }
 
 interface GeneratedPlan {
@@ -70,6 +71,7 @@ Pegue o PRIMEIRO/maior incômodo do quiz (campo "incomoda") e escolha o PRODUTO-
 
 ═══ REGRAS DE PRODUTO ═══
 - Use SOMENTE produtos da lista "CATÁLOGO DISPONÍVEL". Nome EXATO (case-sensitive). Não invente/abrevie/traduza.
+- PREFIRA OS ⭐ (mais vendidos / maior impacto). O âncora e os complementos devem sair dos ⭐ sempre que servirem ao caso. Produto SEM ⭐ só entra se for inequivocamente o melhor pra ela — nunca como "padrão" ou enchimento. Em especial, NÃO use a "Máscara Mirracura 200g" por padrão (é de baixo giro): para nutrição/pontas, o âncora já é o "Óleo de Mirra Reparador 60ml" + o "Kit Cuidados Profundos" (cronograma).
 - Para cada produto numa semana, coloque o ID em "produto_ids" na ordem de "produtos".
 - LIMITE DURO — POUCOS PRODUTOS: o plano INTEIRO usa de 2 a 5 produtos no TOTAL (ideal 3–4), somando TODAS as 12 semanas. É PROIBIDO o plano ter mais de 5 produtos distintos. Menos é mais: com 3 produtos ela compra e consegue seguir; com 8 ela não compra nada e não implementa. Indicar produto demais é o principal motivo de ela NÃO comprar.
 - "produtos_indicados": de 2 a 5 (ideal 3–4) — É A LISTA DE COMPRA dela. O 1º é o ÂNCORA (Ybera, do incômodo principal). Os demais só se forem REALMENTE necessários pro caso dela. "alternativa_id" = produto de outra marca mais barato, ou null. "motivo": 1 frase em 2ª pessoa ligando ao caso dela.
@@ -108,9 +110,10 @@ function buildCatalogBlock(products: CatalogProduct[]): string {
   const lines = products.map(p => {
     const ht = (p.hair_types ?? []).join(', ') || 'todos';
     const cat = p.category ?? 'sem categoria';
-    return `- id: ${p.id} | nome: ${p.name} | marca: ${p.brand ?? 'Ybera'} | categoria: ${cat} | tipos: ${ht}`;
+    const star = p.is_priority ? '⭐ ' : '';
+    return `- ${star}id: ${p.id} | nome: ${p.name} | marca: ${p.brand ?? 'Ybera'} | categoria: ${cat} | tipos: ${ht}`;
   }).join('\n');
-  return `\n\nCATÁLOGO DISPONÍVEL (use SOMENTE estes produtos):\n${lines}`;
+  return `\n\nCATÁLOGO DISPONÍVEL (use SOMENTE estes produtos). Os marcados com ⭐ são os MAIS VENDIDOS / de MAIOR impacto — prefira-os como âncora e complementos. Produtos SEM ⭐ só quando forem claramente melhores pro caso dela:\n${lines}`;
 }
 
 function buildQuizBlock(quizAnswers: Record<string, unknown> | null): string {
@@ -131,8 +134,9 @@ function buildQuizBlock(quizAnswers: Record<string, unknown> | null): string {
 async function loadCatalog(sb: SupabaseClient, hairType: string | null): Promise<CatalogProduct[]> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data } = await (sb.from('products') as any)
-    .select('id,name,brand,category,hair_types')
+    .select('id,name,brand,category,hair_types,is_priority')
     .eq('active', true)
+    .order('is_priority', { ascending: false })
     .limit(50);
   const all: CatalogProduct[] = (data ?? []) as CatalogProduct[];
   if (!hairType || all.length === 0) return all;
