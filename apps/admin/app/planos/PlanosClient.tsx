@@ -67,6 +67,8 @@ interface PlanCard {
   budget_range: string | null;
   quiz_answers: Record<string, unknown> | null;
   photo_url: string | null;
+  photo_back_url: string | null;
+  photo_root_url: string | null;
   approved: boolean;
   created_at: string;
   juliane_notes: string | null;
@@ -481,23 +483,34 @@ function ClientProfile({ card, expanded, onToggle }: {
               {card.phone && <ProfileRow label="Telefone" value={card.phone} />}
             </ProfileGroup>
 
-            {/* Foto */}
-            {card.photo_url && (
+            {/* Fotos (frente · costas · raiz) */}
+            {(card.photo_url || card.photo_back_url || card.photo_root_url) && (
               <div style={{ marginTop: 12 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#7C6B7E', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 }}>
-                  📸 Foto enviada
+                  📸 Fotos enviadas
                 </div>
-                <a href={card.photo_url} target="_blank" rel="noopener noreferrer">
-                  <img
-                    src={card.photo_url}
-                    alt="Foto do cabelo"
-                    style={{
-                      width: 140, height: 140, objectFit: 'cover',
-                      borderRadius: 10, border: '2px solid #F3EBE1', display: 'block',
-                    }}
-                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                  />
-                </a>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  {[
+                    { url: card.photo_url, label: 'Frente' },
+                    { url: card.photo_back_url, label: 'Costas' },
+                    { url: card.photo_root_url, label: 'Raiz' },
+                  ].filter(ph => !!ph.url).map(ph => (
+                    <div key={ph.label} style={{ textAlign: 'center' }}>
+                      <a href={ph.url!} target="_blank" rel="noopener noreferrer">
+                        <img
+                          src={ph.url!}
+                          alt={`Foto do cabelo — ${ph.label}`}
+                          style={{
+                            width: 120, height: 120, objectFit: 'cover',
+                            borderRadius: 10, border: '2px solid #F3EBE1', display: 'block',
+                          }}
+                          onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                      </a>
+                      <div style={{ fontSize: 11, color: '#7C6B7E', fontWeight: 600, marginTop: 4 }}>{ph.label}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>

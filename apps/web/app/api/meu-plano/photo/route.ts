@@ -41,6 +41,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Foto de costas inválida (máx. 10 MB, precisa ser imagem)' }, { status: 400 });
     }
 
+    // Foto da RAIZ / couro cabeludo (opcional no endpoint, obrigatória no onboarding).
+    // Mostra oleosidade da raiz e o couro — entra na análise junto com frente e costas.
+    const rootFile = form.get('photo_root');
+    const rootF = rootFile && typeof rootFile !== 'string' ? (rootFile as File) : null;
+    if (rootF && (rootF.size > 10 * 1024 * 1024 || !rootF.type.startsWith('image/'))) {
+      return NextResponse.json({ error: 'Foto da raiz inválida (máx. 10 MB, precisa ser imagem)' }, { status: 400 });
+    }
+
     // Vídeo (opcional) — sobe direto pro Storage via URL assinada; aqui só chega
     // a URL pública pra salvar no perfil.
     const videoUrlRaw = form.get('video_url');
@@ -99,6 +107,22 @@ export async function POST(req: NextRequest) {
         photoBackUrl = supabase.storage.from('hair-photos').getPublicUrl(backName).data.publicUrl;
       } else {
         console.error('[photo] back upload error', backErr);
+      }
+    }
+
+    // Upload da foto da RAIZ (opcional) — guardada como complemento.
+    let photoRootUrl: string | null = null;
+    if (rootF) {
+      const rootExt = rootF.type === 'image/png' ? 'png' : rootF.type === 'image/webp' ? 'webp' : 'jpg';
+      const rootName = `${user.id}/${Date.now()}-raiz.${rootExt}`;
+      const rootBuf = new Uint8Array(await rootF.arrayBuffer());
+      const { error: rootErr } = await supabase.storage.from('hair-photos').upload(rootName, rootBuf, {
+        contentType: rootF.type, upsert: false,
+      });
+      if (!rootErr) {
+        photoRootUrl = supabase.storage.from('hair-photos').getPublicUrl(rootName).data.publicUrl;
+      } else {
+        console.error('[photo] root upload error', rootErr);
       }
     }
 
@@ -192,6 +216,7 @@ export async function POST(req: NextRequest) {
         photo_url: photoUrl,
         photo_taken_at: new Date().toISOString(),
         ...(photoBackUrl ? { photo_back_url: photoBackUrl } : {}),
+        ...(photoRootUrl ? { photo_root_url: photoRootUrl } : {}),
         ...(videoUrl ? { video_url: videoUrl } : {}),
         ...(hairLengthCm !== null ? { hair_length_cm: hairLengthCm } : {}),
         ...(weightKg !== null ? { weight_kg: weightKg, water_goal_ml: waterGoalMl } : {}),

@@ -150,6 +150,8 @@ interface GenerateOptions {
   photoMimeType?: string;
   /** URL pública/assinada de uma foto já hospedada — usada quando regenera */
   photoUrl?: string;
+  /** Fotos extras (costas, raiz) por URL — entram na análise junto com a principal */
+  extraPhotoUrls?: string[];
 }
 
 /**
@@ -182,6 +184,14 @@ export async function generatePlanWithClaude(
       type: 'image_url',
       image_url: { url: args.photo.photoUrl },
     });
+  }
+  // Fotos extras (costas, raiz) — a IA analisa o cabelo por inteiro.
+  for (const url of (args.photo.extraPhotoUrls ?? [])) {
+    if (url) content.push({ type: 'image_url', image_url: { url } });
+  }
+  const nFotos = (args.photo.photoBase64 || args.photo.photoUrl ? 1 : 0) + (args.photo.extraPhotoUrls?.filter(Boolean).length ?? 0);
+  if (nFotos > 1) {
+    content.push({ type: 'text', text: `Você recebeu ${nFotos} fotos do MESMO cabelo (geralmente: frente, costas e raiz/couro cabeludo). Analise TODAS juntas — a de costas mostra comprimento e pontas; a da raiz mostra oleosidade e couro cabeludo.` });
   }
   content.push({ type: 'text', text: fullPrompt });
 

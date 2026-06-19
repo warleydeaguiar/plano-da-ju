@@ -79,16 +79,19 @@ export default function OnboardingPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const backInputRef = useRef<HTMLInputElement>(null);
+  const rootInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
   const [firstName, setFirstName] = useState('');
   const [step, setStep] = useState<Step>('photo');
 
-  // Etapa 1: fotos (frente obrigatória + costas obrigatória) + vídeo (opcional)
+  // Etapa 1: 3 fotos (frente + costas + raiz, todas obrigatórias) + vídeo (opcional)
   const [photoFile, setPhotoFile] = useState<File | null>(null);       // frente
   const [photoPreview, setPhotoPreview] = useState('');
   const [backFile, setBackFile] = useState<File | null>(null);          // costas
   const [backPreview, setBackPreview] = useState('');
+  const [rootFile, setRootFile] = useState<File | null>(null);          // raiz / couro cabeludo
+  const [rootPreview, setRootPreview] = useState('');
   const [videoFile, setVideoFile] = useState<File | null>(null);        // vídeo opcional
   const [videoName, setVideoName] = useState('');
   const [submitMsg, setSubmitMsg] = useState('Enviando…');
@@ -131,14 +134,15 @@ export default function OnboardingPage() {
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function handlePhotoPick(which: 'front' | 'back', e: React.ChangeEvent<HTMLInputElement>) {
+  function handlePhotoPick(which: 'front' | 'back' | 'root', e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 20 * 1024 * 1024) { setError('Foto muito grande (máx. 20 MB)'); return; }
     if (!file.type.startsWith('image/')) { setError('Arquivo precisa ser uma imagem'); return; }
     setError('');
     if (which === 'front') { setPhotoFile(file); setPhotoPreview(URL.createObjectURL(file)); }
-    else { setBackFile(file); setBackPreview(URL.createObjectURL(file)); }
+    else if (which === 'back') { setBackFile(file); setBackPreview(URL.createObjectURL(file)); }
+    else { setRootFile(file); setRootPreview(URL.createObjectURL(file)); }
   }
 
   function handleVideoPick(e: React.ChangeEvent<HTMLInputElement>) {
@@ -171,7 +175,7 @@ export default function OnboardingPage() {
 
   // ── Etapa 1 → enviar fotos (+ vídeo opcional) + length ─────
   async function submitPhoto() {
-    if (!photoFile || !backFile || step !== 'photo') return;
+    if (!photoFile || !backFile || !rootFile || step !== 'photo') return;
     setError('');
     setSubmitMsg('Preparando suas fotos…');
     setStep('submitting');
@@ -180,8 +184,8 @@ export default function OnboardingPage() {
       if (!session) { router.replace('/login'); return; }
       const authH = { Authorization: `Bearer ${session.access_token}` };
 
-      // Comprime as duas fotos no navegador (rápido + cabe no limite da Vercel).
-      const [frontC, backC] = await Promise.all([compressImage(photoFile), compressImage(backFile)]);
+      // Comprime as três fotos no navegador (rápido + cabe no limite da Vercel).
+      const [frontC, backC, rootC] = await Promise.all([compressImage(photoFile), compressImage(backFile), compressImage(rootFile)]);
 
       // Vídeo opcional → sobe DIRETO pro Storage via URL assinada (sem limite de corpo).
       let videoUrl = '';
@@ -206,6 +210,7 @@ export default function OnboardingPage() {
       const fd = new FormData();
       fd.append('photo', frontC);
       fd.append('photo_back', backC);
+      fd.append('photo_root', rootC);
       if (videoUrl) fd.append('video_url', videoUrl);
       if (!skipLength && lengthCm) {
         const n = parseFloat(lengthCm.replace(',', '.'));
@@ -479,22 +484,25 @@ export default function OnboardingPage() {
             margin: '0 0 10px', letterSpacing: -0.5,
             fontFamily: fonts.display, lineHeight: 1.15,
           }}>
-            {firstName ? `${firstName}, ` : ''}envie 2 fotos do seu cabelo
+            {firstName ? `${firstName}, ` : ''}envie 3 fotos do seu cabelo
           </h1>
           <p style={{ fontSize: 14, color: T.inkSoft, lineHeight: 1.6, margin: 0, padding: '0 4px' }}>
-            Uma <strong style={{ color: T.ink }}>de frente</strong> e uma <strong style={{ color: T.ink }}>de costas</strong> —
+            Uma <strong style={{ color: T.ink }}>de frente</strong>, uma <strong style={{ color: T.ink }}>de costas</strong> e
+            uma <strong style={{ color: T.ink }}>da raiz</strong> —
             assim a Juliane analisa seu cabelo por inteiro e monta um plano
             <strong style={{ color: T.ink }}> 100% personalizado</strong>. Um vídeo é opcional, mas ajuda muito 💛
           </p>
         </div>
 
-        {/* Fotos: frente + costas (ambas obrigatórias), lado a lado */}
-        <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+        {/* Fotos: frente + costas + raiz (todas obrigatórias), lado a lado */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
           {([
             { key: 'front' as const, emoji: '🙂', title: 'De frente', preview: photoPreview, id: 'onb-photo-front', ref: fileInputRef,
               clear: () => { setPhotoFile(null); setPhotoPreview(''); if (fileInputRef.current) fileInputRef.current.value = ''; } },
             { key: 'back' as const, emoji: '🔄', title: 'De costas', preview: backPreview, id: 'onb-photo-back', ref: backInputRef,
               clear: () => { setBackFile(null); setBackPreview(''); if (backInputRef.current) backInputRef.current.value = ''; } },
+            { key: 'root' as const, emoji: '🌱', title: 'Da raiz', preview: rootPreview, id: 'onb-photo-root', ref: rootInputRef,
+              clear: () => { setRootFile(null); setRootPreview(''); if (rootInputRef.current) rootInputRef.current.value = ''; } },
           ]).map(slot => (
             <div key={slot.key} style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 12.5, fontWeight: 700, color: T.ink, marginBottom: 6, textAlign: 'center', fontFamily: fonts.display }}>
@@ -663,7 +671,7 @@ export default function OnboardingPage() {
         }}>
           <span style={{ fontSize: 18, flexShrink: 0, lineHeight: 1 }}>💡</span>
           <div style={{ fontSize: 12.5, color: T.ink, lineHeight: 1.55 }}>
-            <strong>Dica:</strong> cabeça inteira, boa luz natural e cabelo solto. Sem filtros! A de costas mostra comprimento e pontas.
+            <strong>Dica:</strong> cabeça inteira, boa luz natural e cabelo solto. Sem filtros! A de costas mostra comprimento e pontas; a da raiz mostra o couro cabeludo e a oleosidade.
           </div>
         </div>
 
@@ -675,7 +683,7 @@ export default function OnboardingPage() {
 
         {/* Submit */}
         {(() => {
-          const ready = !!photoFile && !!backFile;
+          const ready = !!photoFile && !!backFile && !!rootFile;
           const disabled = !ready || isSubmittingPhoto;
           return (
             <button
@@ -695,6 +703,7 @@ export default function OnboardingPage() {
               {isSubmittingPhoto ? submitMsg
                 : !photoFile ? 'Envie a foto de frente'
                 : !backFile ? 'Falta a foto de costas'
+                : !rootFile ? 'Falta a foto da raiz'
                 : '✨ Enviar e continuar'}
             </button>
           );

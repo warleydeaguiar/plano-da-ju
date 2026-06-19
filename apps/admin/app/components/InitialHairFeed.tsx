@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { T, fonts, gradient } from '../theme'
 
-type Item = { id: string; name: string | null; photoUrl: string | null; takenAt: string | null }
+type Item = { id: string; name: string | null; photoUrl: string | null; photoBackUrl: string | null; photoRootUrl: string | null; takenAt: string | null }
 type Resp = { items: Item[]; page: number; pageSize: number; total: number; withPhoto: number; hasMore: boolean }
 
 function shortDate(iso: string | null): string {
@@ -73,6 +73,16 @@ export default function InitialHairFeed() {
               ) : (
                 <div style={{ width: '100%', aspectRatio: '3 / 4', background: gradient.gold, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.goldDeep, fontSize: 11, fontWeight: 600, textAlign: 'center', padding: 8 }}>
                   sem foto inicial
+                </div>
+              )}
+              {(it.photoBackUrl || it.photoRootUrl) && (
+                <div style={{ display: 'flex', gap: 4, padding: '6px 6px 0' }}>
+                  {[{ url: it.photoBackUrl, label: 'Costas' }, { url: it.photoRootUrl, label: 'Raiz' }]
+                    .filter(t => !!t.url).map(t => (
+                    <a key={t.label} href={t.url!} target="_blank" rel="noopener noreferrer" title={t.label} style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ width: '100%', aspectRatio: '1 / 1', borderRadius: 6, backgroundImage: `url(${t.url})`, backgroundSize: 'cover', backgroundPosition: 'center', border: `1px solid ${T.borderSoft}` }} />
+                    </a>
+                  ))}
                 </div>
               )}
               <div style={{ padding: '10px', display: 'flex', alignItems: 'center', gap: 8 }}>

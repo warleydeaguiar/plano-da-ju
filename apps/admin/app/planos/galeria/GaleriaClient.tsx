@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { T, fonts, gradient } from '../../theme'
 
-type Item = { id: string; name: string | null; photoUrl: string | null; hairType: string | null; takenAt: string | null }
+type Item = { id: string; name: string | null; photoUrl: string | null; photoBackUrl: string | null; photoRootUrl: string | null; hairType: string | null; takenAt: string | null }
 type Resp = { items: Item[]; page: number; total: number; hasMore: boolean }
 
 function initials(name: string | null): string {
@@ -107,9 +107,20 @@ export default function GaleriaClient() {
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000,
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, cursor: 'zoom-out',
         }}>
-          <div style={{ maxWidth: 480, maxHeight: '92vh', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={zoom.photoUrl!} alt={zoom.name ?? ''} style={{ maxWidth: '100%', maxHeight: '82vh', objectFit: 'contain', borderRadius: 12 }} />
+          <div onClick={e => e.stopPropagation()} style={{ maxWidth: 760, maxHeight: '92vh', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, cursor: 'default' }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap', justifyContent: 'center' }}>
+              {[
+                { url: zoom.photoUrl, label: 'Frente' },
+                { url: zoom.photoBackUrl, label: 'Costas' },
+                { url: zoom.photoRootUrl, label: 'Raiz' },
+              ].filter(ph => !!ph.url).map(ph => (
+                <div key={ph.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={ph.url!} alt={`${zoom.name ?? ''} — ${ph.label}`} style={{ maxWidth: 240, maxHeight: '70vh', objectFit: 'contain', borderRadius: 12 }} />
+                  <div style={{ color: '#fff', fontSize: 12, fontWeight: 600, opacity: 0.85 }}>{ph.label}</div>
+                </div>
+              ))}
+            </div>
             <div style={{ color: '#fff', fontSize: 14, fontWeight: 600 }}>
               {zoom.name ?? 'Cliente'}{zoom.hairType ? ` · ${zoom.hairType}` : ''}{zoom.takenAt ? ` · ${fmtDate(zoom.takenAt)}` : ''}
             </div>

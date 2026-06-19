@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, count } = await (sb.from('profiles') as any)
-      .select('id, full_name, email, photo_url, photo_taken_at, hair_type, subscription_activated_at, created_at', { count: 'exact' })
+      .select('id, full_name, email, photo_url, photo_back_url, photo_root_url, photo_taken_at, hair_type, subscription_activated_at, created_at', { count: 'exact' })
       .not('photo_url', 'is', null)
       .order('photo_taken_at', { ascending: false, nullsFirst: false })
       .order('subscription_activated_at', { ascending: false, nullsFirst: false })
@@ -31,6 +31,8 @@ export async function GET(req: NextRequest) {
       id: p.id,
       name: p.full_name ?? (p.email ? String(p.email).split('@')[0] : null),
       photoUrl: p.photo_url ?? null,
+      photoBackUrl: p.photo_back_url ?? null,
+      photoRootUrl: p.photo_root_url ?? null,
       hairType: p.hair_type ?? null,
       takenAt: p.photo_taken_at ?? p.subscription_activated_at ?? p.created_at ?? null,
     }))

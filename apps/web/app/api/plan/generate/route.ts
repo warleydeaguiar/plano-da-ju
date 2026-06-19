@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
   const supabase = await createServiceClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: profile } = await (supabase.from('profiles') as any)
-    .select('id, quiz_answers, hair_type, full_name, photo_url')
+    .select('id, quiz_answers, hair_type, full_name, photo_url, photo_back_url, photo_root_url')
     .eq('email', email).maybeSingle();
   if (!profile) return NextResponse.json({ error: 'profile não encontrado' }, { status: 404 });
 
@@ -38,7 +38,10 @@ export async function GET(req: NextRequest) {
     email,
     hairType: profile.hair_type ?? null,
     quizAnswers: profile.quiz_answers ?? null,
-    photo: { photoUrl: profile.photo_url ?? undefined },
+    photo: {
+      photoUrl: profile.photo_url ?? undefined,
+      extraPhotoUrls: [profile.photo_back_url, profile.photo_root_url].filter(Boolean),
+    },
   });
 
   // save=1 → REGENERA de verdade (sobrescreve o plano) PRESERVANDO a entrega
@@ -97,7 +100,7 @@ export async function POST(req: NextRequest) {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: profile } = await (supabase.from('profiles') as any)
-      .select('id, quiz_answers, hair_type, full_name')
+      .select('id, quiz_answers, hair_type, full_name, photo_back_url, photo_root_url')
       .eq('email', email)
       .single();
 
@@ -123,7 +126,11 @@ export async function POST(req: NextRequest) {
       email,
       hairType: profile.hair_type ?? null,
       quizAnswers: profile.quiz_answers ?? null,
-      photo: { photoBase64: photo_base64, photoMimeType: photo_mime_type },
+      photo: {
+        photoBase64: photo_base64,
+        photoMimeType: photo_mime_type,
+        extraPhotoUrls: [profile.photo_back_url, profile.photo_root_url].filter(Boolean),
+      },
     });
 
     // Persiste plano + atualiza profile
