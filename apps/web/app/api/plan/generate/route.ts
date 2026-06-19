@@ -33,6 +33,9 @@ export async function GET(req: NextRequest) {
     .eq('email', email).maybeSingle();
   if (!profile) return NextResponse.json({ error: 'profile não encontrado' }, { status: 404 });
 
+  const fotosEnviadas = [profile.photo_url, profile.photo_back_url, profile.photo_root_url].filter(Boolean);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let usage: any = null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const plan = await generatePlanWithClaude(supabase as any, {
     email,
@@ -42,7 +45,7 @@ export async function GET(req: NextRequest) {
       photoUrl: profile.photo_url ?? undefined,
       extraPhotoUrls: [profile.photo_back_url, profile.photo_root_url].filter(Boolean),
     },
-  });
+  }, { onUsage: (u) => { usage = u; } });
 
   // save=1 → REGENERA de verdade (sobrescreve o plano) PRESERVANDO a entrega
   // (não mexe em plan_released_at / plan_status — a cliente já recebeu).
@@ -73,6 +76,8 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     saved: save,
     dry: true,
+    fotos_enviadas_para_ia: fotosEnviadas.length,
+    usage,
     nome: profile.full_name,
     incomoda: profile.quiz_answers?.incomoda ?? null,
     incomodo_principal: plan.incomodo_principal,

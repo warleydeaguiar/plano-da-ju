@@ -51,7 +51,7 @@ Olhe a foto e descreva o que VÊ (não o que imagina): frizz, ressecamento/poros
 Pegue o PRIMEIRO/maior incômodo do quiz (campo "incomoda") e escolha o PRODUTO-ÂNCORA YBERA campeão que resolve aquilo. O plano inteiro gira em torno desse âncora. Mapa (use o nome/id EXATO do catálogo correspondente):
 - QUEDA ou CRESCIMENTO  → âncora ANTIQUEDA: "Combo 100Tímetros Antiqueda Capilar" (+ "100Timetros 90 Cápsulas Softgel" como dupla tópico+oral). É o que resolve queda E o que mais vende.
 - FRIZZ, VOLUME ou QUEBRA → âncora ALISAMENTO/RECONSTRUÇÃO: progressiva/escova da Ybera do catálogo (ex.: "Escova Progressiva 300g" / "Combo Escova Progressiva 300g") e/ou o kit cronograma de reconstrução. Frizz em cabelo já quimicamente tratado: foca em reconstrução + selagem, não em mais lavagem.
-- PONTAS / RESSECAMENTO → âncora NUTRIÇÃO/SELAGEM: "Óleo de Mirra Reparador 60ml" + kit cronograma ("Kit Cuidados Profundos") + "Máscara Mirracura 200g".
+- PONTAS / RESSECAMENTO → âncora NUTRIÇÃO/SELAGEM: "Óleo de Mirra Reparador 60ml" + kit cronograma ("Kit Cuidados Profundos"). Se precisar de uma máscara, escolha a de MAIOR impacto/giro do catálogo pro caso dela — não puxe uma máscara por padrão.
 - Combine quando ela marcar mais de um, mas deixe claro qual é o foco nº 1.
 - O âncora aparece JÁ NA SEMANA 1 e se repete ao longo do plano. Coloque o nome dele em "produto_ancora" e o incômodo nº1 em "incomodo_principal".
 
@@ -77,7 +77,7 @@ Pegue o PRIMEIRO/maior incômodo do quiz (campo "incomoda") e escolha o PRODUTO-
 
 ═══ ESTILO (planos revisados pela Juliane) ═══
 - SEMANA 1 = diagnóstico + JÁ INICIA O ÂNCORA do incômodo dela (não é "reset/limpeza profunda pra todas"). Só inclua limpeza profunda na semana 1 se o couro for oleoso/com acúmulo.
-- TAREFAS COM TÉCNICA: ordem, parte do cabelo (raiz/comprimento/pontas), tempo de pausa, frequência, gesto. Ex.: "Aplique a Máscara Mirracura 200g nos comprimentos e pontas (longe da raiz), 15 min com touca, enxágue com água fria pra selar a cutícula." Evite "use o produto X 20min".
+- TAREFAS COM TÉCNICA: ordem, parte do cabelo (raiz/comprimento/pontas), tempo de pausa, frequência, gesto. Ex.: "Aplique a máscara-âncora nos comprimentos e pontas (longe da raiz), 15 min com touca, enxágue com água fria pra selar a cutícula." (use o produto REAL escolhido pro caso dela, não um exemplo fixo.) Evite "use o produto X 20min".
 - "dica" = educativa, explica o PORQUÊ e ajusta a expectativa.
 - Vocabulário: selar a cutícula, água fria no enxágue, massagem no couro, pontas ainda úmidas, não esfregar a toalha.
 - "mensagem_juliane" SEMPRE termina com (texto fixo): "Os produtos indicados são os que eu uso e confio nos resultados. Mas podem ser substituídos por produtos de outras marcas, desde que cumpram a mesma função."
@@ -166,6 +166,8 @@ export async function generatePlanWithClaude(
     quizAnswers: Record<string, unknown> | null;
     photo: GenerateOptions;
   },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  opts?: { onUsage?: (usage: any) => void },
 ): Promise<GeneratedPlan> {
   const catalog = await loadCatalog(sb, args.hairType ?? null);
 
@@ -247,6 +249,7 @@ export async function generatePlanWithClaude(
     }
 
     const aiResult = await response.json();
+    if (aiResult.usage) { try { opts?.onUsage?.(aiResult.usage); } catch { /* ignore */ } console.log('[plan-usage]', JSON.stringify(aiResult.usage)); }
     const finishReason = aiResult.choices?.[0]?.finish_reason;
     const text = aiResult.choices?.[0]?.message?.content || '';
     // Se a resposta foi cortada por tamanho, o JSON está incompleto — não
