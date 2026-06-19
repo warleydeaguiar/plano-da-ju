@@ -48,6 +48,7 @@ interface ProductRow {
   image_url: string | null;
   is_ybera: boolean;
   motivo?: string | null;   // por que foi indicado pra ELA (personalizado)
+  combos?: Array<{ id: string; name: string; affiliate_url: string | null }>;  // opções de compra em combo
 }
 
 export default function PlanoPage() {
@@ -116,7 +117,22 @@ export default function PlanoPage() {
         const alt = r?.alternativa_id ? byId.get(r.alternativa_id) : null;
         if (alt && !list.find(x => x.id === alt.id)) list.push({ ...alt, motivo: null });
       }
-      if (list.length) personalized = list;
+      // Anexa os COMBOS de cada produto-base (parent_product_id) como opção de compra.
+      if (list.length) {
+        const baseIds = list.map(x => x.id);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: comboRows } = await (supabase as any).from('products')
+          .select('id,name,affiliate_url,parent_product_id').eq('active', true).in('parent_product_id', baseIds);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const byParent = new Map<string, any[]>();
+        for (const c of (comboRows ?? [])) {
+          const arr = byParent.get(c.parent_product_id) ?? [];
+          arr.push({ id: c.id, name: c.name, affiliate_url: c.affiliate_url });
+          byParent.set(c.parent_product_id, arr);
+        }
+        for (const x of list) { const cs = byParent.get(x.id); if (cs?.length) x.combos = cs; }
+        personalized = list;
+      }
     }
     if (personalized) setProducts(personalized);
     else if (pr.data) setProducts(pr.data as ProductRow[]);
@@ -598,11 +614,10 @@ function ProductCard({ product, userId, essential = false }: { product: ProductR
   };
   return (
     <div style={{
-      background: T.surface, borderRadius: 16, padding: 14,
-      display: 'flex', gap: 14, alignItems: 'center',
-      boxShadow: shadow.card,
-      border: `1px solid ${T.borderSoft}`,
+      background: T.surface, borderRadius: 16,
+      boxShadow: shadow.card, border: `1px solid ${T.borderSoft}`, overflow: 'hidden',
     }}>
+    <div style={{ padding: 14, display: 'flex', gap: 14, alignItems: 'center' }}>
       <div style={{
         width: 58, height: 58, borderRadius: 14,
         background: product.is_ybera ? gradient.heroSoft : gradient.gold,
@@ -653,6 +668,22 @@ function ProductCard({ product, userId, essential = false }: { product: ProductR
           <IconBag size={13} stroke={2} /> Ver
         </a>
       )}
+    </div>
+    {product.combos && product.combos.length > 0 && (
+      <div style={{ borderTop: `1px solid ${T.borderSoft}`, background: '#FBF7F2', padding: '9px 14px' }}>
+        <div style={{ fontSize: 10.5, fontWeight: 700, color: T.goldDeep, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 5 }}>
+          📦 Compre em combo e economize
+        </div>
+        {product.combos.map(cb => (
+          <div key={cb.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '3px 0' }}>
+            <span style={{ fontSize: 12.5, color: T.ink, lineHeight: 1.3 }}>{cb.name}</span>
+            {cb.affiliate_url && (
+              <a href={cb.affiliate_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11.5, fontWeight: 700, color: T.pinkDeep, textDecoration: 'none', flexShrink: 0 }}>Ver ↗</a>
+            )}
+          </div>
+        ))}
+      </div>
+    )}
     </div>
   );
 }

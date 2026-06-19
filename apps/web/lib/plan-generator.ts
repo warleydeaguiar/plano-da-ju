@@ -50,7 +50,7 @@ Olhe a foto e descreva o que VÊ (não o que imagina): frizz, ressecamento/poros
 
 ═══ PASSO 2 — O INCÔMODO PRINCIPAL ESCOLHE O PRODUTO-ÂNCORA ═══
 Pegue o PRIMEIRO/maior incômodo do quiz (campo "incomoda") e escolha o PRODUTO-ÂNCORA YBERA campeão que resolve aquilo. O plano inteiro gira em torno desse âncora. Mapa (use o nome/id EXATO do catálogo correspondente):
-- QUEDA ou CRESCIMENTO  → âncora ANTIQUEDA: "Combo 100Tímetros Antiqueda Capilar" (+ "100Timetros 90 Cápsulas Softgel" como dupla tópico+oral). É o que resolve queda E o que mais vende.
+- QUEDA ou CRESCIMENTO  → âncora ANTIQUEDA: "100Timetros 90 Cápsulas Softgel" (linha 100Tímetros) — é o que resolve queda e o que mais vende. (O combo dela é só uma opção de compra, exibida automaticamente — você NÃO indica combo.)
 - FRIZZ, VOLUME ou QUEBRA → âncora ALISAMENTO/RECONSTRUÇÃO: progressiva/escova da Ybera do catálogo (ex.: "Escova Progressiva 300g" / "Combo Escova Progressiva 300g") e/ou o kit cronograma de reconstrução. Frizz em cabelo já quimicamente tratado: foca em reconstrução + selagem, não em mais lavagem.
 - PONTAS / RESSECAMENTO → âncora NUTRIÇÃO/SELAGEM: "Óleo de Mirra Reparador 60ml" + kit cronograma ("Kit Cuidados Profundos"). Se precisar de uma máscara, escolha a de MAIOR impacto/giro do catálogo pro caso dela — não puxe uma máscara por padrão.
 - Combine quando ela marcar mais de um, mas deixe claro qual é o foco nº 1.
@@ -136,6 +136,7 @@ async function loadCatalog(sb: SupabaseClient, hairType: string | null): Promise
   const { data } = await (sb.from('products') as any)
     .select('id,name,brand,category,hair_types,is_priority')
     .eq('active', true)
+    .is('parent_product_id', null)   // combos NÃO entram: são opção de compra do produto-base, exibidas na UI
     .order('is_priority', { ascending: false })
     .limit(50);
   const all: CatalogProduct[] = (data ?? []) as CatalogProduct[];

@@ -113,6 +113,7 @@ interface CatalogProduct {
   image_url?: string | null;
   affiliate_url?: string | null;
   is_priority?: boolean | null;
+  parent_product_id?: string | null;
 }
 
 // ── Filter / tab constants ────────────────────────────────────────────────────
@@ -634,6 +635,19 @@ export default function PlanosClient(
   const productById = useMemo(() => {
     const m = new Map<string, CatalogProduct>();
     for (const p of catalog) m.set(p.id, p);
+    return m;
+  }, [catalog]);
+
+  // Combos por produto-base (parent_product_id) — exibidos como opção de compra do principal
+  const combosByParent = useMemo(() => {
+    const m = new Map<string, CatalogProduct[]>();
+    for (const p of catalog) {
+      if (p.parent_product_id) {
+        const arr = m.get(p.parent_product_id) ?? [];
+        arr.push(p);
+        m.set(p.parent_product_id, arr);
+      }
+    }
     return m;
   }, [catalog]);
 
@@ -1287,6 +1301,21 @@ export default function PlanosClient(
                                     )}
                                   </div>
                                   {r.motivo && <div style={{ fontSize: 12, color: '#7C6B7E', marginTop: 4, lineHeight: 1.45, fontStyle: 'italic' }}>{r.motivo}</div>}
+                                  {(() => {
+                                    const combos = r.produto_id ? (combosByParent.get(r.produto_id) ?? []) : [];
+                                    if (!combos.length) return null;
+                                    return (
+                                      <div style={{ marginTop: 8, background: '#FBF7F2', borderRadius: 8, padding: '8px 10px' }}>
+                                        <div style={{ fontSize: 10.5, fontWeight: 700, color: '#9A7B12', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 }}>📦 Compre em combo e economize</div>
+                                        {combos.map(cb => (
+                                          <div key={cb.id} style={{ fontSize: 12, color: '#2A1E2C', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <span>• {cb.name}</span>
+                                            {cb.affiliate_url && <a href={cb.affiliate_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: ACCENT, textDecoration: 'none' }}>ver ↗</a>}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                               </div>
                             </div>
