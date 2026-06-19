@@ -11,6 +11,7 @@ import {
 import { normalizeTasks } from '../plan-helpers';
 import { PlanoLoading } from '../Loading';
 import PlanFeedback from './PlanFeedback';
+import { DICAS_UNIVERSAIS } from '@/lib/dicas-universais';
 
 type Tab = 'rotina' | 'produtos' | 'dicas';
 
@@ -500,6 +501,26 @@ export default function PlanoPage() {
               {(!currentPlan?.tips || currentPlan.tips.length === 0) && (
                 <EmptyState emoji="💡" title="Dicas em breve" description="Adicionaremos dicas personalizadas para esta semana." />
               )}
+            </div>
+
+            {/* Dicas universais da Ju — valem pra todo dia, pra todas */}
+            <SectionLabel>Dicas da Ju · pra todo dia</SectionLabel>
+            <div style={{ margin: '0 16px 24px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {DICAS_UNIVERSAIS.map((d, i) => (
+                <div key={i} style={{
+                  background: T.surface, borderRadius: 14, padding: '14px 16px',
+                  boxShadow: shadow.card, border: `1px solid ${T.borderSoft}`,
+                }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: T.ink, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 17 }}>{d.emoji}</span> {d.titulo}
+                  </div>
+                  <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    {d.itens.map((it, j) => (
+                      <li key={j} style={{ fontSize: 13, color: T.inkSoft, lineHeight: 1.55 }}>{it}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
             </div>
           </>
         )}
