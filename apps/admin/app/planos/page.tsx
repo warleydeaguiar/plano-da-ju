@@ -26,6 +26,7 @@ interface PlanCardData {
   photo_url: string | null;
   photo_back_url: string | null;
   photo_root_url: string | null;
+  recommended_products: Array<{ produto_id: string; motivo?: string | null; alternativa_id?: string | null }> | null;
 }
 
 export default async function PlanosPage() {
@@ -34,7 +35,7 @@ export default async function PlanosPage() {
   // 1) Todas as assinantes ATIVAS — agora com quiz_answers + campos de perfil
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: profiles } = await (sb.from('profiles') as any)
-    .select('id,full_name,email,phone,hair_type,porosity,main_problems,chemical_history,hair_length_cm,budget_range,quiz_answers,plan_status,photo_url,photo_back_url,photo_root_url,subscription_status,subscription_activated_at,created_at')
+    .select('id,full_name,email,phone,hair_type,porosity,main_problems,chemical_history,hair_length_cm,budget_range,quiz_answers,plan_status,photo_url,photo_back_url,photo_root_url,recommended_products,subscription_status,subscription_activated_at,created_at')
     .eq('subscription_status', 'active')
     .order('subscription_activated_at', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false })
@@ -56,6 +57,7 @@ export default async function PlanosPage() {
     photo_url: string | null;
     photo_back_url: string | null;
     photo_root_url: string | null;
+    recommended_products: Array<{ produto_id: string; motivo?: string | null; alternativa_id?: string | null }> | null;
     subscription_activated_at: string | null;
     created_at: string;
   }>;
@@ -122,6 +124,7 @@ export default async function PlanosPage() {
       photo_url:        p.photo_url ?? null,
       photo_back_url:   p.photo_back_url ?? null,
       photo_root_url:   p.photo_root_url ?? null,
+      recommended_products: Array.isArray(p.recommended_products) ? p.recommended_products : null,
     };
   });
 

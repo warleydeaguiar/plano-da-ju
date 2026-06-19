@@ -69,6 +69,7 @@ interface PlanCard {
   photo_url: string | null;
   photo_back_url: string | null;
   photo_root_url: string | null;
+  recommended_products: Array<{ produto_id: string; motivo?: string | null; alternativa_id?: string | null }> | null;
   approved: boolean;
   created_at: string;
   juliane_notes: string | null;
@@ -109,6 +110,9 @@ interface CatalogProduct {
   name: string;
   brand: string | null;
   category: string | null;
+  image_url?: string | null;
+  affiliate_url?: string | null;
+  is_priority?: boolean | null;
 }
 
 // ── Filter / tab constants ────────────────────────────────────────────────────
@@ -625,6 +629,13 @@ export default function PlanosClient(
     () => cards.find(c => c.user_id === selectedUserId) ?? null,
     [cards, selectedUserId],
   );
+
+  // Mapa id → produto (resolve os produtos indicados sem clicar semana a semana)
+  const productById = useMemo(() => {
+    const m = new Map<string, CatalogProduct>();
+    for (const p of catalog) m.set(p.id, p);
+    return m;
+  }, [catalog]);
 
   const currentWeek = useMemo(
     () => weeks?.find(w => w.week_number === activeWeek) ?? weeks?.[0],
@@ -1238,6 +1249,53 @@ export default function PlanosClient(
                     ))}
                   </div>
                 )}
+
+                {/* Resumo dos produtos indicados (sem precisar abrir semana a semana) */}
+                {(() => {
+                  const recs = selected?.recommended_products ?? [];
+                  if (!recs.length) return null;
+                  return (
+                    <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.06)', overflow: 'hidden', marginBottom: 14 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: '#7C6B7E', textTransform: 'uppercase', letterSpacing: 0.5, padding: '14px 20px 10px', borderBottom: '1px solid #F3EBE1' }}>
+                        🛒 Produtos indicados neste plano ({recs.length})
+                      </div>
+                      <div style={{ padding: '8px 20px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {recs.map((r, i) => {
+                          const main = r.produto_id ? productById.get(r.produto_id) : undefined;
+                          const alt = r.alternativa_id ? productById.get(r.alternativa_id) : undefined;
+                          const mainName = main?.name ?? (r.produto_id ? '(produto fora do catálogo)' : '—');
+                          return (
+                            <div key={i} style={{ borderTop: i ? '1px solid #F7F1EA' : 'none', paddingTop: i ? 10 : 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                {main?.image_url && (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={main.image_url} alt={mainName} style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 8, border: '1px solid #F3EBE1', flexShrink: 0 }} onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                )}
+                                <div style={{ minWidth: 0, flex: 1 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                    <span style={{ fontSize: 10, fontWeight: 700, color: '#1B7F5C', background: '#E3F4EC', padding: '1px 7px', borderRadius: 20 }}>PRINCIPAL</span>
+                                    <span style={{ fontSize: 13.5, fontWeight: 700, color: '#2A1E2C' }}>{mainName}</span>
+                                    {main?.affiliate_url && (
+                                      <a href={main.affiliate_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: ACCENT, textDecoration: 'none' }}>ver ↗</a>
+                                    )}
+                                  </div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+                                    <span style={{ fontSize: 10, fontWeight: 700, color: '#9A7B12', background: '#FBF3E2', padding: '1px 7px', borderRadius: 20 }}>+ BARATO</span>
+                                    <span style={{ fontSize: 12.5, color: alt ? '#2A1E2C' : '#AEAEB2' }}>{alt?.name ?? 'sem alternativa indicada'}</span>
+                                    {alt?.affiliate_url && (
+                                      <a href={alt.affiliate_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: ACCENT, textDecoration: 'none' }}>ver ↗</a>
+                                    )}
+                                  </div>
+                                  {r.motivo && <div style={{ fontSize: 12, color: '#7C6B7E', marginTop: 4, lineHeight: 1.45, fontStyle: 'italic' }}>{r.motivo}</div>}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Plan content card */}
                 <div style={{
