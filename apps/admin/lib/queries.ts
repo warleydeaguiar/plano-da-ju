@@ -256,6 +256,68 @@ export async function getNewPlansByDay(): Promise<Array<{ day: string; count: nu
   return days;
 }
 
+// ── VENDAS / RECEITA FIÉIS (100% Pagar.me) ────────────────────────────────────
+// Fonte única da verdade: checkout_events 'payment_confirmed' (amount_cents = valor
+// REAL cobrado). Dedup por (cliente, dia BR) → colapsa as duplicatas que o webhook
+// grava (order.paid + charge.paid) e usa o MENOR valor do grupo = preço-base/com
+// desconto, SEM os juros da parcela do cartão (que vão pra adquirente, não pra nós).
+// Cortesias/parcerias NÃO entram (não têm pagamento). Respeita descontos dos funis.
+export interface RealSalesBucket { count: number; cents: number }
+export interface RealSales {
+  today: RealSalesBucket;
+  yesterday: RealSalesBucket;
+  month: RealSalesBucket;
+  byDay: Array<{ day: string; count: number; revenueCents: number; isToday: boolean }>;
+}
+
+export async function getRealSales(): Promise<RealSales> {
+  const sb = createAdminClient();
+  const brDay = (ts: string | number | Date) =>
+    new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ts));
+  const todayKey = brDay(Date.now());
+  const yKey = brDay(Date.now() - 86400000);
+  const monthKey = todayKey.slice(0, 7);
+  const monthStartUtc = new Date(`${monthKey}-01T03:00:00.000Z`).getTime(); // BR 00:00
+  const sinceISO = new Date(Math.min(monthStartUtc, Date.now() - 8 * 86400000)).toISOString();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data } = await (sb.from('checkout_events') as any)
+    .select('email, order_id, amount_cents, created_at')
+    .eq('event_type', 'payment_confirmed')
+    .gte('created_at', sinceISO)
+    .limit(50000);
+
+  const sale = new Map<string, { cents: number; day: string }>();
+  for (const r of ((data ?? []) as Array<{ email: string | null; order_id: string | null; amount_cents: number | null; created_at: string }>)) {
+    const day = brDay(r.created_at);
+    const id = String(r.email ?? r.order_id ?? `_${day}_${Math.random()}`).toLowerCase();
+    const key = `${id}|${day}`;
+    const cents = r.amount_cents ?? 0;
+    const cur = sale.get(key);
+    if (!cur) sale.set(key, { cents, day });
+    else if (cents < cur.cents) cur.cents = cents;
+  }
+
+  const buckets: { today: RealSalesBucket; yesterday: RealSalesBucket; month: RealSalesBucket } = {
+    today: { count: 0, cents: 0 }, yesterday: { count: 0, cents: 0 }, month: { count: 0, cents: 0 },
+  };
+  for (const s of sale.values()) {
+    if (s.day.slice(0, 7) === monthKey) { buckets.month.count++; buckets.month.cents += s.cents; }
+    if (s.day === todayKey) { buckets.today.count++; buckets.today.cents += s.cents; }
+    else if (s.day === yKey) { buckets.yesterday.count++; buckets.yesterday.cents += s.cents; }
+  }
+
+  const dayLetters = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  const byDay: RealSales['byDay'] = [];
+  for (let i = 6; i >= 0; i--) {
+    const dKey = brDay(Date.now() - i * 86400000);
+    let count = 0, cents = 0;
+    for (const s of sale.values()) if (s.day === dKey) { count++; cents += s.cents; }
+    byDay.push({ day: i === 0 ? 'Hoje' : dayLetters[new Date(dKey + 'T12:00:00Z').getUTCDay()], count, revenueCents: cents, isToday: i === 0 });
+  }
+  return { ...buckets, byDay };
+}
+
 export interface AdminPlanDetail {
   user: {
     id: string;

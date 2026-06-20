@@ -5,7 +5,7 @@ import {
   getDashboardStats,
   getPendingPlans,
   getRecentCheckIns,
-  getNewPlansByDay,
+  getRealSales,
   getPixStats,
 } from '../lib/queries';
 import { createAdminClient } from '../lib/supabase';
@@ -23,9 +23,6 @@ import {
 export const dynamic = 'force-dynamic';
 
 type IconType = React.ComponentType<{ size?: number; color?: string; style?: React.CSSProperties }>;
-
-// Preço do plano (R$34,90 cartão). Usado pra estimar receita do dia.
-const PLAN_PRICE = 34.90;
 
 function brl(v: number) {
   return `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -166,11 +163,10 @@ function AdGroupDailyChart({ data, color, label }: { data: AdGroupResult['daily'
   );
 }
 
-function RevenueDailyChart({ data, price }: {
-  data: Array<{ day: string; count: number; isToday: boolean }>;
-  price: number;
+function RevenueDailyChart({ data }: {
+  data: Array<{ day: string; count: number; revenueCents: number; isToday: boolean }>;
 }) {
-  const series = data.map(d => ({ ...d, revenue: d.count * price }));
+  const series = data.map(d => ({ ...d, revenue: d.revenueCents / 100 }));
   const maxRev = Math.max(1, ...series.map(d => d.revenue));
   const total = series.reduce((s, d) => s + d.revenue, 0);
   return (
@@ -260,13 +256,10 @@ export default async function DashboardPage() {
     stats,
     plans,
     checkIns,
-    byDay,
+    realSales,
     // Plano — usuárias / receita
     totalUsers,
     activeUsers,
-    activeToday,
-    activeYesterday,
-    activeMonth,
     newLast7,
     // Funil quiz
     quizViewsToday, quizViewsYesterday, quizViewsMonth,
@@ -296,20 +289,13 @@ export default async function DashboardPage() {
     getDashboardStats(),
     getPendingPlans(8),
     getRecentCheckIns(6),
-    getNewPlansByDay(),
+    getRealSales(),
     // Plano
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sb.from('profiles') as any).select('*', { count: 'exact', head: true }),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sb.from('profiles') as any).select('*', { count: 'exact', head: true }).eq('subscription_status', 'active'),
-    // VENDAS — exclui presentes/cortesia (is_gift=true) pra não inflar receita.
-    // Filtro NULL-safe: aceita is_gift=false OU NULL (perfis antigos sem o campo).
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (sb.from('profiles') as any).select('*', { count: 'exact', head: true }).eq('subscription_status', 'active').or('is_gift.is.null,is_gift.eq.false').gte('subscription_activated_at', todayStartBR.toISOString()),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (sb.from('profiles') as any).select('*', { count: 'exact', head: true }).eq('subscription_status', 'active').or('is_gift.is.null,is_gift.eq.false').gte('subscription_activated_at', yesterdayStartBR.toISOString()).lt('subscription_activated_at', todayStartBR.toISOString()),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (sb.from('profiles') as any).select('*', { count: 'exact', head: true }).eq('subscription_status', 'active').or('is_gift.is.null,is_gift.eq.false').gte('subscription_activated_at', monthStartBR.toISOString()),
+    // (vendas/receita do dia/ontem/mês agora vêm de getRealSales — pagamento real Pagar.me)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sb.from('profiles') as any).select('*', { count: 'exact', head: true }).gte('created_at', day7agoBR.toISOString()),
     // Funil
@@ -399,13 +385,16 @@ export default async function DashboardPage() {
   const planoSpendYesterday  = metaAds.plano.yesterday;
   const planoSpendMonth      = metaAds.plano.thisMonth;
 
-  const salesToday      = activeToday.count ?? 0;
-  const salesYesterday  = activeYesterday.count ?? 0;
-  const salesMonth      = activeMonth.count ?? 0;
+  // VENDAS/RECEITA 100% FIÉIS — soma real dos pagamentos (Pagar.me), deduplicada
+  // por cliente/dia, sem cortesias, respeitando descontos. (Antes: ativações × R$34,90,
+  // que inflava com cortesias de parceria e ignorava descontos/PIX×cartão.)
+  const salesToday      = realSales.today.count;
+  const salesYesterday  = realSales.yesterday.count;
+  const salesMonth      = realSales.month.count;
 
-  const revenueToday      = salesToday      * PLAN_PRICE;
-  const revenueYesterday  = salesYesterday  * PLAN_PRICE;
-  const revenueMonth      = salesMonth      * PLAN_PRICE;
+  const revenueToday      = realSales.today.cents / 100;
+  const revenueYesterday  = realSales.yesterday.cents / 100;
+  const revenueMonth      = realSales.month.cents / 100;
 
   const roasToday     = planoSpendToday     > 0 ? revenueToday     / planoSpendToday     : null;
   const roasYesterday = planoSpendYesterday > 0 ? revenueYesterday / planoSpendYesterday : null;
@@ -501,7 +490,7 @@ export default async function DashboardPage() {
     day: '2-digit',
     month: 'long',
   });
-  const maxCount = Math.max(1, ...byDay.map(d => d.count));
+  const maxCount = Math.max(1, ...realSales.byDay.map(d => d.count));
 
   // ── Estilos compartilhados ──────────────────────────────────────
   const card = cardStyle;
@@ -645,7 +634,7 @@ export default async function DashboardPage() {
         <SectionHeader
           icon={IconMegaphone}
           title="Plano Capilar — Anúncios com 'Plano' no nome"
-          subtitle={`Receita = vendas × R$${PLAN_PRICE.toFixed(2)} (preço cartão). Lucro = receita − investimento.`}
+          subtitle={`Receita = soma real dos pagamentos (Pagar.me), já com descontos e sem cortesias. Lucro = receita − investimento.`}
           accent={T.pinkDeep}
         />
 
@@ -709,10 +698,10 @@ export default async function DashboardPage() {
 
         {/* Faturamento por dia (Plano) */}
         <div style={{ ...card, padding: 22 }}>
-          <RevenueDailyChart data={byDay} price={PLAN_PRICE} />
+          <RevenueDailyChart data={realSales.byDay} />
           <div style={{ fontSize: 11, color: T.inkSoft, marginTop: 14, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
             <span style={{ color: T.green, flexShrink: 0, marginTop: 1 }}><IconReceipt size={14} /></span>
-            <span>Faturamento = vendas confirmadas no dia × R${PLAN_PRICE.toFixed(2)}. Baseado em <strong>subscription_activated_at</strong> (pagamento aprovado).</span>
+            <span>Faturamento = <strong>soma real dos pagamentos</strong> confirmados no dia (Pagar.me), sem cortesias e já com descontos.</span>
           </div>
         </div>
 
@@ -1069,7 +1058,7 @@ export default async function DashboardPage() {
         <div style={{ ...card, padding: 22 }}>
           <div style={{ ...sectionTitle, marginBottom: 20 }}>Vendas por dia (últimos 7 dias)</div>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, height: 110 }}>
-            {byDay.map((d, i) => {
+            {realSales.byDay.map((d, i) => {
               const h = d.count > 0 ? Math.max(8, (d.count / maxCount) * 84) : 4;
               return (
                 <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
