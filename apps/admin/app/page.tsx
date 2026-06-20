@@ -9,7 +9,7 @@ import {
   getPixStats,
 } from '../lib/queries';
 import { createAdminClient } from '../lib/supabase';
-import { getQuizAdSpend, type AdGroupResult } from '../lib/meta-ads-quiz';
+import { getQuizAdSpend, META_TAX_RATE, type AdGroupResult } from '../lib/meta-ads-quiz';
 import { getAiCosts } from '../lib/ai-costs';
 import { fetchYberaOrders, salesOnDateBR, salesTotal, YBERA_COMMISSION_RATE } from '../lib/ybera-api';
 import { T, fonts, shadow, gradient, gradientForId } from './theme';
@@ -634,7 +634,7 @@ export default async function DashboardPage() {
         <SectionHeader
           icon={IconMegaphone}
           title="Plano Capilar — Anúncios com 'Plano' no nome"
-          subtitle={`Receita = soma real dos pagamentos (Pagar.me), já com descontos e sem cortesias. Lucro = receita − investimento.`}
+          subtitle={`Receita = soma real dos pagamentos (Pagar.me), já com descontos e sem cortesias. Investimento já inclui o imposto da Meta (${(META_TAX_RATE * 100).toFixed(2).replace('.', ',')}%). Lucro = receita − investimento.`}
           accent={T.pinkDeep}
         />
 
@@ -780,7 +780,7 @@ export default async function DashboardPage() {
         <SectionHeader
           icon={IconChat}
           title="Grupos Ybera — Anúncios com 'Grupos' no nome"
-          subtitle={`Cruzamento: investimento (Meta) × vendas Ybera × comissão (${(YBERA_COMMISSION_RATE * 100).toFixed(0)}%). Comissão é o que recebemos.`}
+          subtitle={`Cruzamento: investimento (Meta, já com imposto ${(META_TAX_RATE * 100).toFixed(2).replace('.', ',')}%) × vendas Ybera × comissão (${(YBERA_COMMISSION_RATE * 100).toFixed(0)}%). Comissão é o que recebemos.`}
           accent={T.blue}
         />
 

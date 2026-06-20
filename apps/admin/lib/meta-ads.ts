@@ -12,6 +12,8 @@
  * Documentação: https://developers.facebook.com/docs/marketing-apis
  */
 
+import { META_TAX_RATE } from './meta-ads-quiz'
+
 // Usa o mesmo token/conta que o resto do sistema (META_ADS_QUIZ_*), com
 // fallback pros nomes antigos. Antes só lia META_ADS_ACCESS_TOKEN (nunca setado)
 // → a página Ybera mostrava "não configurado" mesmo com o Meta funcionando.
@@ -87,7 +89,7 @@ export async function getGrupoAdSpend(
       .map((d: any) => ({
         campaign_id:   d.campaign_id,
         campaign_name: d.campaign_name,
-        spend:         parseFloat(d.spend ?? '0'),
+        spend:         parseFloat(d.spend ?? '0') * (1 + META_TAX_RATE),  // inclui imposto Meta BR
       }))
 
     const totalSpend = data.reduce((s, c) => s + c.spend, 0)
@@ -134,7 +136,7 @@ async function getMonthlySpend(): Promise<Array<{ month: string; spend: number }
         .then(r => r.json())
         .then(json => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const spend = (json.data ?? [])
+          const spend = (1 + META_TAX_RATE) * (json.data ?? [])
             .filter((d: any) => isGrupoCampaign(d.campaign_name))
             .reduce((s: number, d: any) => s + parseFloat(d.spend ?? '0'), 0)
           results.push({ month: label, spend })

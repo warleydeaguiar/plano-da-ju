@@ -8,6 +8,8 @@
  * Reaproveita o token/conta da lib meta-ads-quiz.
  */
 
+import { META_TAX_RATE } from './meta-ads-quiz'
+
 const TOKEN      = process.env.META_ADS_QUIZ_TOKEN
 const ACCOUNT_ID = process.env.META_ADS_QUIZ_ACCOUNT ?? 'act_306090736984417'
 const API_VER    = 'v20.0'
@@ -164,7 +166,7 @@ export async function getCreativeAnalysis(period: CreativePeriod = '30d'): Promi
 
     // Monta as linhas com métricas calculadas
     const partial: Omit<CreativeRow, 'thumbnail_url' | 'instagram_url'>[] = rows.map(r => {
-      const spend       = parseFloat(r.spend ?? '0')
+      const spend       = parseFloat(r.spend ?? '0') * (1 + META_TAX_RATE)  // inclui imposto Meta BR
       const impressions = parseInt(r.impressions ?? '0', 10)
       const link_clicks = parseInt(r.inline_link_clicks ?? '0', 10)
       const cpm         = r.cpm ? parseFloat(r.cpm) : null

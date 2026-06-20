@@ -152,6 +152,13 @@ function sumLandingPageViewsOfType(rows: any[], type: CampaignType): number {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+// Imposto da Meta sobre anúncios no Brasil (CIDE/PIS/COFINS/ISS ≈ 13,68%).
+// O `spend` da API da Meta vem SEM imposto — o custo REAL é spend × (1 + imposto).
+// Aplicado em TODO spend (totais, diário, campanhas) pra refletir em investimento,
+// ROAS, CPA e lucro. Editável por env caso a alíquota mude.
+export const META_TAX_RATE = Number(process.env.META_ADS_TAX_RATE ?? '0.1368');
+const withTax = (n: number) => n * (1 + META_TAX_RATE);
+
 function dailyOfType(rows: any[], type: CampaignType): Array<{ date: string; spend: number; label: string }> {
   const dailyMap: Record<string, number> = {}
   for (const row of rows) {
@@ -165,7 +172,7 @@ function dailyOfType(rows: any[], type: CampaignType): Array<{ date: string; spe
     .map(([date, spend]) => {
       const d = new Date(date + 'T12:00:00')
       return {
-        date, spend,
+        date, spend: withTax(spend),
         label: d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
       }
     })
@@ -191,7 +198,7 @@ function buildGroup(
       campaign_id:   r.campaign_id,
       campaign_name: r.campaign_name,
       type,
-      spend:         parseFloat(r.spend ?? '0'),
+      spend:         withTax(parseFloat(r.spend ?? '0')),
       impressions:   parseInt(r.impressions ?? '0', 10),
       clicks:        parseInt(r.clicks ?? '0', 10),
       link_clicks:   parseInt(r.inline_link_clicks ?? '0', 10),
@@ -204,10 +211,10 @@ function buildGroup(
     .sort((a, b) => b.spend - a.spend)
 
   return {
-    today:     sumSpendOfType(todayRows, type),
-    yesterday: sumSpendOfType(yestRows, type),
-    thisMonth: sumSpendOfType(monthRows, type),
-    lastMonth: sumSpendOfType(lastMonthRows, type),
+    today:     withTax(sumSpendOfType(todayRows, type)),
+    yesterday: withTax(sumSpendOfType(yestRows, type)),
+    thisMonth: withTax(sumSpendOfType(monthRows, type)),
+    lastMonth: withTax(sumSpendOfType(lastMonthRows, type)),
     campaigns,
     daily:     dailyOfType(last7Rows, type),
     funnelToday:     {
