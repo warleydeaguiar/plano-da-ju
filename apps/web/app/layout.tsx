@@ -11,6 +11,10 @@ const META_PIXEL_ID = '921783859786853';
 // Google Analytics 4
 const GA_ID = 'G-F2LEPP0NLT';
 
+// Microsoft Clarity (mapas de calor + gravação de sessão) — SÓ no site (funil +
+// área da cliente). O painel admin é outro app e não recebe.
+const CLARITY_ID = 'xalreib2dm';
+
 export const metadata: Metadata = {
   title: 'Plano da Ju — Diagnóstico Capilar Gratuito',
   description: 'Descubra o plano ideal para recuperar seu cabelo em 90 dias. Diagnóstico personalizado pela especialista Juliane Cost.',
@@ -86,6 +90,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             alt=""
           />
         </noscript>
+
+        {/* Microsoft Clarity */}
+        <Script
+          id="ms-clarity"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function(c,l,a,r,i,t,y){
+                  c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+                  t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+                  y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+              })(window, document, "clarity", "script", "${CLARITY_ID}");
+            `,
+          }}
+        />
       </head>
       <body className="min-h-full bg-[#FFFAF5] text-[#2A1E2C] antialiased">
         <TrackingBootstrap />
