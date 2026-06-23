@@ -28,7 +28,9 @@ interface GeneratedPlan {
   semanas: Array<{
     semana: number;
     foco: string;
-    tarefas: string[];
+    // Tarefas com DIA da semana (1–7). Pode haver VÁRIAS no mesmo dia (ex.: no dia
+    // da lavagem: shampoo + máscara + leave-in + soro juntos). Óleo de mirra = todo dia.
+    tarefas: Array<{ dia: number; titulo: string; descricao?: string }>;
     produtos: string[];      // nomes (compat com schema atual hair_plans.products text[])
     produto_ids?: string[];  // IDs reais do catálogo (novo)
     dica: string;
@@ -73,13 +75,21 @@ Pegue o PRIMEIRO/maior incômodo do quiz (campo "incomoda") e escolha o PRODUTO-
 - Use SOMENTE produtos da lista "CATÁLOGO DISPONÍVEL". Nome EXATO (case-sensitive). Não invente/abrevie/traduza.
 - PREFIRA OS ⭐ (mais vendidos / maior impacto). O âncora e os complementos devem sair dos ⭐ sempre que servirem ao caso. Produto SEM ⭐ só entra se for inequivocamente o melhor pra ela — nunca como "padrão" ou enchimento. Em especial, NÃO use a "Máscara Mirracura 200g" por padrão (é de baixo giro): para nutrição/pontas, o âncora já é o "Óleo de Mirra Reparador 60ml" + o "Kit Cuidados Profundos" (cronograma).
 - Para cada produto numa semana, coloque o ID em "produto_ids" na ordem de "produtos".
-- LIMITE DURO — POUCOS PRODUTOS: o plano INTEIRO usa de 2 a 5 produtos no TOTAL (ideal 3–4), somando TODAS as 12 semanas. É PROIBIDO o plano ter mais de 5 produtos distintos. Menos é mais: com 3 produtos ela compra e consegue seguir; com 8 ela não compra nada e não implementa. Indicar produto demais é o principal motivo de ela NÃO comprar.
-- "produtos_indicados": de 2 a 5 (ideal 3–4) — É A LISTA DE COMPRA dela. O 1º é o ÂNCORA (Ybera, do incômodo principal). Os demais só se forem REALMENTE necessários pro caso dela. "alternativa_id" = produto de outra marca mais barato, ou null. "motivo": 1 frase em 2ª pessoa ligando ao caso dela.
+- LIMITE DURO — POUCOS PRODUTOS: o plano INTEIRO usa de 2 a 6 produtos no TOTAL (ideal 4–5), somando TODAS as 12 semanas. É PROIBIDO o plano ter mais de 6 produtos distintos. Menos é mais: indicar produto demais é o principal motivo de ela NÃO comprar e NÃO conseguir seguir.
+- "produtos_indicados": de 2 a 6 (ideal 4–5) — É A LISTA DE COMPRA dela. O 1º é o ÂNCORA (Ybera, do incômodo principal). Os demais só se forem REALMENTE necessários pro caso dela. "alternativa_id" = produto de outra marca mais barato, ou null. "motivo": 1 frase em 2ª pessoa ligando ao caso dela.
 - CONSISTÊNCIA TOTAL: os produtos das 12 semanas são EXATAMENTE os de "produtos_indicados" — nem um a mais. NUNCA cite na rotina um produto que não esteja na lista de compra dela. A rotina varia o USO (mais máscara numa semana, óleo na outra), não a lista de produtos.
+
+═══ ROTINA POR DIA (cada tarefa tem "dia" 1–7; PODE ter várias no mesmo dia) ═══
+- DIAS DE LAVAGEM = ESPAÇADOS conforme a frequência que ela lavá no quiz (campo de frequência de lavagem). NUNCA em dias seguidos:
+  • 2x/semana → dias 1 e 4   • 3x/semana → dias 1, 3 e 5   • 4x/semana → dias 1, 3, 5 e 7   • diário/oleoso → todos os dias.
+- NO DIA DA LAVAGEM, agrupe TUDO no MESMO "dia" (várias tarefas com o mesmo número de dia, na ordem de uso): Shampoo → Máscara (ou Condicionador) → Leave-in → Soro Vello. Shampoo e condicionador são SEMPRE no mesmo dia — NUNCA em dias diferentes.
+- ÓLEO DE MIRRA = TODO DIA: inclua uma tarefa curta de óleo (ex.: "Óleo de Mirra: 2–3 gotas nas pontas") em CADA um dos 7 dias.
+- Nos dias SEM lavagem: só o óleo (e, se fizer sentido, leave-in/finalizador). Não invente lavagem em dia que não é de lavagem.
+- Resultado esperado por semana: ~7 dias preenchidos, com os dias de lavagem mais "cheios" (rotina completa) e os outros leves (óleo).
 
 ═══ ESTILO (planos revisados pela Juliane) ═══
 - SEMANA 1 = diagnóstico + JÁ INICIA O ÂNCORA do incômodo dela (não é "reset/limpeza profunda pra todas"). Só inclua limpeza profunda na semana 1 se o couro for oleoso/com acúmulo.
-- TAREFAS COM TÉCNICA: ordem, parte do cabelo (raiz/comprimento/pontas), tempo de pausa, frequência, gesto. Ex.: "Aplique a máscara-âncora nos comprimentos e pontas (longe da raiz), 15 min com touca, enxágue com água fria pra selar a cutícula." (use o produto REAL escolhido pro caso dela, não um exemplo fixo.) Evite "use o produto X 20min".
+- TAREFA COM TÉCNICA (campo "descricao"): ordem, parte do cabelo (raiz/comprimento/pontas), tempo de pausa, gesto. Ex.: titulo "Máscara de nutrição", descricao "Nos comprimentos e pontas (longe da raiz), 15 min com touca, enxágue com água fria pra selar a cutícula." O "titulo" é curto (o passo); a "descricao" tem a técnica.
 - "dica" = educativa, explica o PORQUÊ e ajusta a expectativa.
 - Vocabulário: selar a cutícula, água fria no enxágue, massagem no couro, pontas ainda úmidas, não esfregar a toalha.
 - "mensagem_juliane" SEMPRE termina com (texto fixo): "Os produtos indicados são os que eu uso e confio nos resultados. Mas podem ser substituídos por produtos de outras marcas, desde que cumpram a mesma função."
@@ -92,9 +102,9 @@ FORMATO DA RESPOSTA — SOMENTE JSON válido, sem markdown:
   "incomodo_principal": "queda|crescimento|frizz|quebra|pontas|volume|ressecamento",
   "produto_ancora": "Nome exato do produto-âncora Ybera",
   "semanas": [
-    { "semana": 1, "foco": "...", "tarefas": ["...", "..."], "produtos": ["Nome exato"], "produto_ids": ["<uuid>"], "dica": "..." }
+    { "semana": 1, "foco": "...", "tarefas": [ {"dia":1,"titulo":"Shampoo de limpeza","descricao":"massageie o couro 1 min, enxágue"}, {"dia":1,"titulo":"Máscara de nutrição","descricao":"comprimentos e pontas, 15 min com touca"}, {"dia":1,"titulo":"Óleo de Mirra","descricao":"2–3 gotas nas pontas"}, {"dia":2,"titulo":"Óleo de Mirra","descricao":"2–3 gotas nas pontas"} ], "produtos": ["Nome exato"], "produto_ids": ["<uuid>"], "dica": "..." }
   ],
-  "produtos_essenciais": ["os MESMOS 2 a 5 produtos da lista de compra, âncora primeiro — nunca mais que 5"],
+  "produtos_essenciais": ["os MESMOS 2 a 6 produtos da lista de compra, âncora primeiro — nunca mais que 6"],
   "produtos_indicados": [
     { "produto_id": "<uuid Ybera ÂNCORA>", "motivo": "Por que serve pro caso dela", "alternativa_id": "<uuid outra marca, ou null>" }
   ],
@@ -302,7 +312,13 @@ export async function savePlanToDb(
     user_id: userId,
     week_number: s.semana,
     focus: s.foco,
-    tasks: s.tarefas ?? [],
+    // Normaliza pro shape que o app espera ({day,title,description}). Ordena por dia.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    tasks: (Array.isArray(s.tarefas) ? s.tarefas : []).map((t: any, i: number) =>
+      typeof t === 'string'
+        ? { day: i + 1, title: t, description: '' }
+        : { day: Number(t?.dia) || (i + 1), title: String(t?.titulo ?? ''), description: String(t?.descricao ?? '') },
+    ).sort((a, b) => a.day - b.day),
     products: s.produtos ?? [],
     tips: s.dica ? [s.dica] : [],
     juliane_notes: s.semana === 1 ? NOTA_PADRAO : null,

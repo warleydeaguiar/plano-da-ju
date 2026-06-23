@@ -620,12 +620,23 @@ function ProductCard({ product, userId, essential = false }: { product: ProductR
     <div style={{ padding: 14, display: 'flex', gap: 14, alignItems: 'center' }}>
       <div style={{
         width: 58, height: 58, borderRadius: 14,
-        background: product.is_ybera ? gradient.heroSoft : gradient.gold,
+        background: product.image_url ? '#FFF' : (product.is_ybera ? gradient.heroSoft : gradient.gold),
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         color: product.is_ybera ? '#FFF' : T.goldDeep,
-        flexShrink: 0,
+        flexShrink: 0, overflow: 'hidden',
+        border: product.image_url ? `1px solid ${T.borderSoft}` : 'none',
       }}>
-        <Icon size={26} />
+        {product.image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={product.image_url}
+            alt={product.name}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            onError={e => { e.currentTarget.style.display = 'none'; }}
+          />
+        ) : (
+          <Icon size={26} />
+        )}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{

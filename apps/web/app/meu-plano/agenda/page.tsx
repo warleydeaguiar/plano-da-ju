@@ -48,6 +48,8 @@ export default function AgendaPage() {
   const [planReleased, setPlanReleased] = useState<Date | null>(null);
   const [monthOffset, setMonthOffset] = useState(0);
   const [loading, setLoading] = useState(true);
+  // Dia selecionado no calendário (mostra os cuidados daquele dia).
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
   // Quais itens da agenda estão expandidos (mostrando a descrição completa).
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const toggleExpand = (key: string) => setExpanded(prev => {
@@ -195,17 +197,22 @@ export default function AgendaPage() {
             {cal.cells.map((cell, i) => {
               const eventsOnDay = cell.day ? monthEventsByDay.get(cell.day) ?? [] : [];
               const hasEvent = eventsOnDay.length > 0;
+              const isSelected = !!cell.day && selectedDay === cell.day;
               return (
-                <div key={i} style={{
+                <div key={i}
+                  onClick={() => { if (cell.day && hasEvent) setSelectedDay(cell.day); }}
+                  style={{
                   aspectRatio: '1',
                   display: 'flex', flexDirection: 'column',
                   alignItems: 'center', justifyContent: 'center',
                   borderRadius: 10,
-                  background: cell.isToday ? `linear-gradient(135deg, ${T.pinkDeep}, ${T.pink})` : 'transparent',
+                  background: cell.isToday ? `linear-gradient(135deg, ${T.pinkDeep}, ${T.pink})` : isSelected ? T.pinkSoft : 'transparent',
                   color: cell.isToday ? '#FFF' : cell.day ? T.ink : 'transparent',
                   fontSize: 13, fontWeight: cell.isToday ? 700 : 500,
                   fontFamily: fonts.display,
                   position: 'relative',
+                  cursor: hasEvent ? 'pointer' : 'default',
+                  border: isSelected && !cell.isToday ? `1.5px solid ${T.pink}` : '1.5px solid transparent',
                   boxShadow: cell.isToday ? '0 4px 10px rgba(190,24,93,0.30)' : 'none',
                 }}>
                   {cell.day}
@@ -221,6 +228,49 @@ export default function AgendaPage() {
             })}
           </div>
         </div>
+
+        {/* Dia selecionado — cuidados daquele dia */}
+        {selectedDay !== null && (() => {
+          const evs = monthEventsByDay.get(selectedDay) ?? [];
+          return (
+            <div style={{
+              margin: '0 16px 18px', background: T.surface, borderRadius: 16,
+              padding: 16, boxShadow: shadow.card, border: `1px solid ${T.pink}`,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: T.ink, fontFamily: fonts.display }}>
+                  Dia {selectedDay} de {MONTHS[cal.month]}
+                  <span style={{ fontSize: 12, fontWeight: 500, color: T.inkSoft }}> · {evs.length} {evs.length === 1 ? 'cuidado' : 'cuidados'}</span>
+                </div>
+                <button onClick={() => setSelectedDay(null)} aria-label="Fechar" style={{
+                  background: 'none', border: 'none', color: T.inkMuted, fontSize: 20, cursor: 'pointer', lineHeight: 1,
+                }}>×</button>
+              </div>
+              {evs.length === 0 ? (
+                <div style={{ fontSize: 13, color: T.inkSoft, padding: '6px 0' }}>Nenhum cuidado nesse dia. Aproveite pra descansar os fios 💛</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {evs.map((ev, i) => {
+                    const TaskIcon = iconForTask(ev.title);
+                    return (
+                      <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                        <div style={{
+                          width: 34, height: 34, borderRadius: 9, flexShrink: 0,
+                          background: `${ev.meta.color}1A`, color: ev.meta.color,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}><TaskIcon size={18} /></div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13.5, fontWeight: 600, color: T.ink, lineHeight: 1.35 }}>{ev.title}</div>
+                          {ev.description && <div style={{ fontSize: 12, color: T.inkSoft, marginTop: 2, lineHeight: 1.45 }}>{ev.description}</div>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Esta semana */}
         <SectionLabel>Esta semana</SectionLabel>
