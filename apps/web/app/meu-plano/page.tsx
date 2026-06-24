@@ -644,12 +644,15 @@ export default function HojePage() {
           </div>
         )}
 
-        {/* Week strip */}
+        {/* Week strip — clicável: leva pra Agenda (calendário com os cuidados do dia) */}
         <div style={{ padding: '0 16px 16px', display: 'flex', gap: 6 }}>
           {week.map((d, i) => {
             const wasActive = events.some(e => e.occurred_at.split('T')[0] === d.iso);
             return (
-              <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
+              <button key={i} onClick={() => router.push('/meu-plano/agenda')} style={{
+                flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+                background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit',
+              }}>
                 <div style={{
                   fontSize: 10.5, fontWeight: d.isToday ? 700 : 500,
                   color: d.isToday ? T.pinkDeep : T.inkSoft,
@@ -668,7 +671,7 @@ export default function HojePage() {
                   width: 5, height: 5, borderRadius: '50%',
                   background: d.isToday ? T.pink : wasActive ? T.green : T.border,
                 }} />
-              </div>
+              </button>
             );
           })}
         </div>

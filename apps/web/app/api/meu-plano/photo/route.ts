@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
       pontas_score: null as number | null,
       crescimento_estimado_cm: null as number | null,
       avaliacao_texto: null as string | null,
-      raw: null as unknown,
+      raw_response: null as unknown,   // coluna real em photo_analyses é raw_response (não "raw")
     };
 
     if (!willGeneratePlan && process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_API_KEY.startsWith('X')) {
@@ -198,7 +198,7 @@ export async function POST(req: NextRequest) {
               pontas_score:     parsed.pontas_score ?? null,
               crescimento_estimado_cm: parsed.crescimento_estimado_cm ?? null,
               avaliacao_texto:  parsed.avaliacao_texto ?? null,
-              raw: j,
+              raw_response: j,
             };
           }
         }
@@ -211,12 +211,16 @@ export async function POST(req: NextRequest) {
     // No onboarding, o /api/plan/generate insere a linha com os scores do plano.
     if (!willGeneratePlan) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any).from('photo_analyses').insert({
+      const { error: paErr } = await (supabase as any).from('photo_analyses').insert({
         user_id: user.id,
         photo_url: photoUrl,
         analyzed_at: new Date().toISOString(),
         ...analysis,
       });
+      if (paErr) {
+        console.error('[photo] photo_analyses insert error', paErr);
+        return NextResponse.json({ error: 'Falha ao salvar a foto. Tente de novo.' }, { status: 500 });
+      }
     }
 
     // Atualiza profile com a foto mais recente (usada por /api/plan/generate)

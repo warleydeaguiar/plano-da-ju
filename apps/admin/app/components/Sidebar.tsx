@@ -26,6 +26,7 @@ const NAV: NavItem[] = [
       { label: 'Revisar planos', href: '/planos' },
       { label: 'Aprovação de Planos', href: '/planos/aprovacao' },
       { label: 'Galeria de fotos', href: '/planos/galeria' },
+      { label: 'Fotos de progresso', href: '/planos/progresso' },
     ],
   },
   {
