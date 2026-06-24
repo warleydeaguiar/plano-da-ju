@@ -87,6 +87,19 @@ Pegue o PRIMEIRO/maior incômodo do quiz (campo "incomoda") e escolha o PRODUTO-
 - Nos dias SEM lavagem: só o óleo (e, se fizer sentido, leave-in/finalizador). Não invente lavagem em dia que não é de lavagem.
 - Resultado esperado por semana: ~7 dias preenchidos, com os dias de lavagem mais "cheios" (rotina completa) e os outros leves (óleo).
 
+═══ CRONOGRAMA CAPILAR — INTERCALAR AS 3 MÁSCARAS ═══
+Quando o plano indica o KIT CRONOGRAMA (ex.: "Kit Cuidados Profundos") ou as máscaras de tratamento, ele NÃO é uma máscara só — são 3, e você TEM que INTERCALAR uma por dia de lavagem ao longo do calendário:
+- HIDRATAÇÃO = repõe água/maciez/brilho (cabelo ressecado, sem vida).
+- NUTRIÇÃO = repõe óleos/lipídios, controla frizz e ressecamento (cabelo poroso, opaco, frizz).
+- RECONSTRUÇÃO = repõe massa/proteína (cabelo quebradiço, elástico, com química: loiro/descoloração/progressiva). NUNCA em excesso — proteína demais endurece e quebra.
+- UMA máscara POR dia de lavagem, e a rotação AVANÇA ao longo das semanas (não repita a mesma toda lavagem). No "titulo" diga qual é: "Máscara de Hidratação" / "de Nutrição" / "de Reconstrução".
+- A ORDEM/ROTAÇÃO depende do incômodo principal dela:
+  • PONTAS / RESSECAMENTO / porosidade alta → foco Hidratação+Nutrição, pouca reconstrução. Rotação das lavagens: H · N · H · N · H · R (≈1 reconstrução a cada 5–6 lavagens).
+  • QUEBRA / QUÍMICA / cabelo danificado (loiro, progressiva) → foco Reconstrução. Rotação: R · H · N · R · H · N (reconstrução a cada 2–3 lavagens).
+  • FRIZZ / VOLUME → equilíbrio. Rotação: H · N · R · H · N · R.
+  • CABELO SAUDÁVEL / manutenção → H · N · H · R.
+- Se o plano NÃO usa o cronograma (só 1 máscara/óleo), ignore esta seção.
+
 ═══ ESTILO (planos revisados pela Juliane) ═══
 - SEMANA 1 = diagnóstico + JÁ INICIA O ÂNCORA do incômodo dela (não é "reset/limpeza profunda pra todas"). Só inclua limpeza profunda na semana 1 se o couro for oleoso/com acúmulo.
 - TAREFA COM TÉCNICA (campo "descricao"): ordem, parte do cabelo (raiz/comprimento/pontas), tempo de pausa, gesto. Ex.: titulo "Máscara de nutrição", descricao "Nos comprimentos e pontas (longe da raiz), 15 min com touca, enxágue com água fria pra selar a cutícula." O "titulo" é curto (o passo); a "descricao" tem a técnica.
