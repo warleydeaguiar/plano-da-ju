@@ -71,7 +71,28 @@ export default async function YberaPage() {
     fetchCurrentMonthOrders(),
   ])
 
-  const currentYM = new Date().toISOString().slice(0, 7) // '2026-05'
+  const currentYM = new Date().toISOString().slice(0, 7) // '2026-06'
+
+  // A tabela manual (ybera_monthly_data) é preenchida à mão pelo Excel e costuma
+  // ficar 1 mês atrás. Pra página não "parar no mês passado", injetamos o MÊS
+  // ATUAL com os dados AO VIVO (Ybera API + Meta Ads) quando ainda não há linha
+  // manual dele. Assim junho/julho/... aparecem sozinhos, sem digitação.
+  if (!rows.find((r: any) => r.year_month === currentYM)) {
+    const monthsPT = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+    const nowD = new Date()
+    const liveV = liveOrdersResult.orders.reduce((s, o) => s + (o.subtotal ?? 0), 0)
+    rows.unshift({
+      year_month: currentYM,
+      month_name: `${monthsPT[nowD.getMonth()]} ${nowD.getFullYear()}`,
+      vendas: liveV,
+      vendas_afiliadas: liveV,
+      anuncios: adsResult.status === 'ok' ? adsResult.totalSpend : 0,
+      leads: liveLeads || 0,
+      meta: null,
+      custo_por_lead: null,
+    })
+  }
+
   const current   = rows.find((r: any) => r.year_month === currentYM)
   const history   = rows.filter((r: any) => r.year_month !== currentYM)
 
