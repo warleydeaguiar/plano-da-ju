@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { syncYberaRange } from '@/lib/ybera-sync'
+import { syncYberaRange, syncYberaMonthlyAggregates } from '@/lib/ybera-sync'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 120
@@ -23,5 +23,8 @@ export async function GET(req: NextRequest) {
   const fmt = (d: Date) => d.toISOString().slice(0, 10)
 
   const r = await syncYberaRange(fmt(start), fmt(end))
-  return NextResponse.json({ ...r, start: fmt(start), end: fmt(end) })
+  // Depois de atualizar os pedidos crus, recompõe os totais mensais via API
+  // (do mês da integração pra frente; meses do Excel ficam intactos).
+  const agg = await syncYberaMonthlyAggregates()
+  return NextResponse.json({ ...r, monthly: agg, start: fmt(start), end: fmt(end) })
 }
