@@ -9,6 +9,27 @@ import { logCheckoutError } from '@/lib/checkout-log';
 
 const PRICE_CENTS = 3490; // R$34,90
 
+export const runtime = 'nodejs';
+// Headroom pro retry do QR (a PagarMe às vezes demora pra popular o copia-e-cola).
+export const maxDuration = 30;
+
+// Busca a ordem algumas vezes até o PIX (qr_code) ficar pronto. Backoff crescente
+// ~8s no total (PagarMe normalmente popula em <1s, mas às vezes atrasa). Retorna o
+// last_transaction quando o qr_code aparecer, ou o último estado se não vier.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function waitForQrCode(orderId: string, current: any): Promise<any> {
+  let pixData = current;
+  const delays = [500, 700, 900, 1100, 1300, 1600, 2000]; // ~8.1s total
+  for (let i = 0; i < delays.length && !pixData?.qr_code; i++) {
+    await new Promise(r => setTimeout(r, delays[i]));
+    try {
+      const refreshed = await pagarme.get<PagarMeOrder>(`/orders/${orderId}`);
+      pixData = refreshed.charges?.[0]?.last_transaction;
+    } catch { /* tenta de novo no próximo loop */ }
+  }
+  return pixData;
+}
+
 export async function POST(req: NextRequest) {
   // ── Rate limit: máx 5 PIX por IP em 1 min ───────────────────
   const ip = getClientIp(req);
@@ -60,8 +81,10 @@ export async function POST(req: NextRequest) {
         );
         // Reusa se ainda está pendente (não foi pago nem expirou)
         if (reused.status === 'pending' || reused.status === 'waiting_payment') {
-          const charge = reused.charges?.[0];
-          const pixData = charge?.last_transaction;
+          let pixData = reused.charges?.[0]?.last_transaction;
+          // Se a ordem reusada ainda não tem QR, espera ele aparecer (não cria
+          // uma 2ª ordem órfã sem copia-e-cola — era o que travava a cliente).
+          if (!pixData?.qr_code) pixData = await waitForQrCode(reused.id, pixData);
           if (pixData?.qr_code) {
             return NextResponse.json({
               order_id: reused.id,
@@ -112,19 +135,13 @@ export async function POST(req: NextRequest) {
       metadata: { source: 'plano-da-ju-web', payment_type: 'pix', session_id: session_id ?? '' },
     });
 
-    let charge = order.charges?.[0];
-    let pixData = charge?.last_transaction;
+    let pixData = order.charges?.[0]?.last_transaction;
 
     // A PagarMe às vezes cria a ordem mas ainda NÃO populou o qr_code na
-    // resposta imediata (transação processando). Em vez de falhar na hora,
-    // buscamos a ordem algumas vezes até o PIX ficar pronto (~até 3s).
-    for (let i = 0; i < 4 && !pixData?.qr_code; i++) {
-      await new Promise(r => setTimeout(r, 700));
-      try {
-        const refreshed = await pagarme.get<PagarMeOrder>(`/orders/${order.id}`);
-        charge = refreshed.charges?.[0];
-        pixData = charge?.last_transaction;
-      } catch { /* tenta de novo no próximo loop */ }
+    // resposta imediata (transação processando). Buscamos a ordem algumas vezes
+    // (~até 8s) até o PIX ficar pronto antes de desistir.
+    if (!pixData?.qr_code) {
+      pixData = await waitForQrCode(order.id, pixData);
     }
 
     if (!pixData?.qr_code) {
