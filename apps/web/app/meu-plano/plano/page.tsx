@@ -38,6 +38,7 @@ interface Profile {
   plan_revision_due_at: string | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   recommended_products?: any;
+  daily_rituals?: string[] | null;
 }
 interface ProductRow {
   id: string;
@@ -79,7 +80,7 @@ export default function PlanoPage() {
 
     const [p, pl, pr] = await Promise.all([
       supabase.from('profiles')
-        .select('full_name,hair_type,porosity,chemical_history,main_problems,hair_length_cm,quiz_answers,plan_released_at,plan_requested_at,plan_status,plan_feedback_rating,plan_revision_due_at,recommended_products')
+        .select('full_name,hair_type,porosity,chemical_history,main_problems,hair_length_cm,quiz_answers,plan_released_at,plan_requested_at,plan_status,plan_feedback_rating,plan_revision_due_at,recommended_products,daily_rituals')
         .eq('id', uid).single(),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase as any).from('hair_plans')
@@ -346,6 +347,20 @@ export default function PlanoPage() {
                 <DiagItem label="Lavagem ideal"   value={`A cada ${profile?.hair_type?.includes('oleoso') ? '2–3' : profile?.hair_type?.includes('crespo') ? '5–7' : '3–5'} dias`} />
               </div>
             </div>
+
+            {/* Ritual de TODO DIA (óleo etc.) — vale pra todos os dias */}
+            {profile?.daily_rituals && profile.daily_rituals.length > 0 && (
+              <div style={{ margin: '0 16px 16px' }}>
+                <SectionLabel>Todo dia</SectionLabel>
+                <div style={{ background: T.surface, borderRadius: 14, padding: '12px 16px', border: `1px solid ${T.borderSoft}`, boxShadow: shadow.card, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {profile.daily_rituals.map((r, i) => (
+                    <div key={i} style={{ fontSize: 13.5, color: T.ink, display: 'flex', alignItems: 'flex-start', gap: 8, lineHeight: 1.45 }}>
+                      <span style={{ flexShrink: 0 }}>🫗</span><span>{r}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Week selector */}
             <SectionLabel rightLabel={`${plans.length} semanas`}>

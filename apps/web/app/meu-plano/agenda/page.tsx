@@ -46,6 +46,7 @@ export default function AgendaPage() {
   const router = useRouter();
   const [plans, setPlans] = useState<HairPlanRow[]>([]);
   const [planReleased, setPlanReleased] = useState<Date | null>(null);
+  const [dailyRituals, setDailyRituals] = useState<string[]>([]);
   const [monthOffset, setMonthOffset] = useState(0);
   const [loading, setLoading] = useState(true);
   // Dia selecionado no calendário (mostra os cuidados daquele dia).
@@ -71,7 +72,7 @@ export default function AgendaPage() {
     const [pl, p] = await Promise.all([
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase as any).from('hair_plans').select('week_number,focus,tasks').eq('user_id', uid).order('week_number'),
-      supabase.from('profiles').select('plan_released_at').eq('id', uid).single(),
+      supabase.from('profiles').select('plan_released_at, daily_rituals').eq('id', uid).single(),
     ]);
     if (pl.data) {
       // Normaliza tasks pra lidar com formato antigo (array de strings) vs novo (objetos)
@@ -80,6 +81,9 @@ export default function AgendaPage() {
     }
     if (p.data?.plan_released_at) setPlanReleased(new Date(p.data.plan_released_at));
     else if (pl.data && pl.data.length > 0) setPlanReleased(new Date());
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const dr = (p.data as any)?.daily_rituals;
+    if (Array.isArray(dr)) setDailyRituals(dr.filter((x: unknown) => typeof x === 'string'));
     setLoading(false);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -129,6 +133,32 @@ export default function AgendaPage() {
     const day = ev.date.getDate();
     if (!monthEventsByDay.has(day)) monthEventsByDay.set(day, []);
     monthEventsByDay.get(day)!.push(ev);
+  }
+
+  // Rituais de TODO DIA (óleo etc.) — renderizados em CADA dia do período do plano
+  // (só no calendário/detalhe do dia; não entram nas listas "Esta semana").
+  if (planReleased && plans.length > 0 && dailyRituals.length > 0) {
+    const ls = new Date(planReleased.getFullYear(), planReleased.getMonth(), planReleased.getDate());
+    const dow0 = ls.getDay();
+    const w1 = new Date(ls); w1.setDate(ls.getDate() + (dow0 === 1 ? 0 : (8 - dow0) % 7)); w1.setHours(12, 0, 0, 0);
+    const startKey = new Date(w1.getFullYear(), w1.getMonth(), w1.getDate()).getTime();
+    const endD = new Date(w1); endD.setDate(w1.getDate() + plans.length * 7 - 1);
+    const endKey = new Date(endD.getFullYear(), endD.getMonth(), endD.getDate()).getTime();
+    const todayKey2 = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+    const daysInMonth = new Date(cal.year, cal.month + 1, 0).getDate();
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dk = new Date(cal.year, cal.month, d).getTime();
+      if (dk < startKey || dk > endKey) continue;
+      const dt = new Date(cal.year, cal.month, d, 12, 0, 0);
+      if (!monthEventsByDay.has(d)) monthEventsByDay.set(d, []);
+      for (const r of dailyRituals) {
+        monthEventsByDay.get(d)!.push({
+          date: dt, title: r, description: undefined,
+          meta: metaForTask(r),
+          status: dk < todayKey2 ? 'done' : dk === todayKey2 ? 'today' : 'future',
+        });
+      }
+    }
   }
 
   // Normaliza pro INÍCIO do dia: antes `weekFrom` carregava a hora atual, então

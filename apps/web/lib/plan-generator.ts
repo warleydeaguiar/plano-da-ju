@@ -36,6 +36,9 @@ interface GeneratedPlan {
     dica: string;
   }>;
   produtos_essenciais: string[];
+  // Rituais de TODO DIA (ex.: "Óleo de Mirra nas pontas"). Geramos 1x e o app
+  // mostra em todos os dias — evita repetir a mesma tarefa 84x no plano.
+  diarios?: string[];
   // Indicações personalizadas (3 a 5): produto PRINCIPAL Ybera + uma alternativa
   // mais barata de outra marca (2ª opção pra quem quer economizar) + o porquê.
   produtos_indicados?: Array<{ produto_id: string; motivo: string; alternativa_id?: string | null }>;
@@ -83,9 +86,8 @@ Pegue o PRIMEIRO/maior incômodo do quiz (campo "incomoda") e escolha o PRODUTO-
 - DIAS DE LAVAGEM = ESPAÇADOS conforme a frequência que ela lavá no quiz (campo de frequência de lavagem). NUNCA em dias seguidos:
   • 2x/semana → dias 1 e 4   • 3x/semana → dias 1, 3 e 5   • 4x/semana → dias 1, 3, 5 e 7   • diário/oleoso → todos os dias.
 - NO DIA DA LAVAGEM, agrupe TUDO no MESMO "dia" (várias tarefas com o mesmo número de dia, na ordem de uso): Shampoo → Máscara (ou Condicionador) → Leave-in → Soro Vello. Shampoo e condicionador são SEMPRE no mesmo dia — NUNCA em dias diferentes.
-- ÓLEO DE MIRRA = TODO DIA: inclua uma tarefa curta de óleo (ex.: "Óleo de Mirra: 2–3 gotas nas pontas") em CADA um dos 7 dias.
-- Nos dias SEM lavagem: só o óleo (e, se fizer sentido, leave-in/finalizador). Não invente lavagem em dia que não é de lavagem.
-- Resultado esperado por semana: ~7 dias preenchidos, com os dias de lavagem mais "cheios" (rotina completa) e os outros leves (óleo).
+- ITENS DE TODO DIA (óleo de mirra, e qualquer ritual diário) vão no campo "diarios" UMA ÚNICA VEZ (lista curta) — NÃO repita em cada dia das "tarefas". O app já mostra os "diarios" em todos os dias do calendário automaticamente. Ex.: "diarios": ["Óleo de Mirra: 2–3 gotas nas pontas com o cabelo úmido"].
+- As "tarefas" então ficam SÓ com os dias de lavagem (a rotina completa daquele dia). Dias sem lavagem podem ficar sem "tarefas" — o ritual diário cobre eles.
 
 ═══ CRONOGRAMA CAPILAR — INTERCALAR AS 3 MÁSCARAS ═══
 Quando o plano indica o KIT CRONOGRAMA (ex.: "Kit Cuidados Profundos") ou as máscaras de tratamento, ele NÃO é uma máscara só — são 3, e você TEM que INTERCALAR uma por dia de lavagem ao longo do calendário:
@@ -114,8 +116,9 @@ FORMATO DA RESPOSTA — SOMENTE JSON válido, sem markdown:
   "analise_foto": { "frizz_score": 0-100, "brilho_score": 0-100, "hidratacao_score": 0-100, "pontas_score": 0-100, "porosidade_aparente": "baixa|média|alta", "observacoes": "o que dá pra ver na foto" },
   "incomodo_principal": "queda|crescimento|frizz|quebra|pontas|volume|ressecamento",
   "produto_ancora": "Nome exato do produto-âncora Ybera",
+  "diarios": ["Óleo de Mirra: 2–3 gotas nas pontas com o cabelo úmido"],
   "semanas": [
-    { "semana": 1, "foco": "...", "tarefas": [ {"dia":1,"titulo":"Shampoo de limpeza","descricao":"massageie o couro 1 min, enxágue"}, {"dia":1,"titulo":"Máscara de nutrição","descricao":"comprimentos e pontas, 15 min com touca"}, {"dia":1,"titulo":"Óleo de Mirra","descricao":"2–3 gotas nas pontas"}, {"dia":2,"titulo":"Óleo de Mirra","descricao":"2–3 gotas nas pontas"} ], "produtos": ["Nome exato"], "produto_ids": ["<uuid>"], "dica": "..." }
+    { "semana": 1, "foco": "...", "tarefas": [ {"dia":1,"titulo":"Shampoo de limpeza","descricao":"massageie o couro 1 min, enxágue"}, {"dia":1,"titulo":"Máscara de nutrição","descricao":"comprimentos e pontas, 15 min com touca"}, {"dia":1,"titulo":"Leave-in","descricao":"nos comprimentos, sem enxaguar"} ], "produtos": ["Nome exato"], "produto_ids": ["<uuid>"], "dica": "..." }
   ],
   "produtos_essenciais": ["os MESMOS 2 a 6 produtos da lista de compra, âncora primeiro — nunca mais que 6"],
   "produtos_indicados": [
@@ -339,4 +342,10 @@ export async function savePlanToDb(
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (sb.from('hair_plans') as any).insert(rows);
+
+  // Rituais de TODO DIA (óleo etc.) — salvos 1x no perfil; o app renderiza em
+  // todos os dias. Evita repetir a mesma tarefa 84x (corte de custo, sem perder UX).
+  const diarios = Array.isArray(plan.diarios) ? plan.diarios.filter(Boolean) : [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (sb.from('profiles') as any).update({ daily_rituals: diarios.length ? diarios : null }).eq('id', userId);
 }
