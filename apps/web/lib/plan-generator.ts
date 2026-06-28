@@ -236,7 +236,9 @@ export async function generatePlanWithClaude(
   // → "Expected ',' or ']'" — causa nº1 dos planos travados. 16000 cobre as 12
   // semanas com sobra e cabe nos 300s de maxDuration. Tentamos até 2x: se a IA
   // devolver JSON quebrado/truncado, regeramos uma vez antes de desistir.
-  const MAX_TOKENS = 16000;
+  // 22000: planos com 3 incômodos (queda+frizz+pontas) + cronograma ficam mais
+  // longos e truncavam em 16k → 2 retries → 504. Folga maior = completa de 1ª.
+  const MAX_TOKENS = 22000;
 
   async function requestPlan(): Promise<GeneratedPlan> {
     const controller = new AbortController();
