@@ -256,7 +256,7 @@ export default function ProgressoPage() {
             <div style={{ fontSize: 12.5, opacity: 0.88, marginTop: 2 }}>
               {photos.length === 0
                 ? 'Esse é o seu "antes" — daqui 90 dias vai ser emocionante comparar'
-                : 'IA compara com fotos anteriores e analisa a evolução'}
+                : 'A Juliane compara com suas fotos anteriores e acompanha sua evolução'}
             </div>
           </div>
           <IconChevronRight size={22} color="rgba(255,255,255,0.7)" stroke={2.2} />
@@ -429,7 +429,7 @@ export default function ProgressoPage() {
                       position: 'absolute', top: 5, right: 5,
                       background: '#FFF', color: T.pinkDeep,
                       fontSize: 8.5, fontWeight: 800, padding: '2px 6px', borderRadius: 5,
-                    }}>IA ✓</div>
+                    }}>✓ Ju</div>
                   )}
                 </div>
               ))}
