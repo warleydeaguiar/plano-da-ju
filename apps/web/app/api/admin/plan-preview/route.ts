@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userParam);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const q = (sb.from('profiles') as any)
-    .select('id,full_name,hair_type,porosity,chemical_history,main_problems,hair_length_cm,quiz_answers,plan_released_at,plan_requested_at,plan_status,plan_feedback_rating,plan_revision_due_at,recommended_products,daily_rituals');
+    .select('id,full_name,hair_type,porosity,chemical_history,main_problems,hair_length_cm,quiz_answers,plan_released_at,plan_requested_at,plan_status,plan_feedback_rating,plan_revision_due_at,recommended_products,daily_rituals,photo_url,photo_back_url,photo_root_url');
   const { data: profile } = isUuid
     ? await q.eq('id', userParam).maybeSingle()
     : await q.eq('email', userParam.toLowerCase()).maybeSingle();
@@ -81,5 +81,11 @@ export async function GET(req: NextRequest) {
     products = pr ?? [];
   }
 
-  return NextResponse.json({ userId: uid, profile, plans: plans ?? [], products });
+  // Análise do cabelo (foto do onboarding) — texto + scores.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: analysis } = await (sb.from('photo_analyses') as any)
+    .select('avaliacao_texto,frizz_score,brilho_score,hidratacao_score,pontas_score,raw_response')
+    .eq('user_id', uid).order('analyzed_at', { ascending: true }).limit(1).maybeSingle();
+
+  return NextResponse.json({ userId: uid, profile, plans: plans ?? [], products, analysis: analysis ?? null });
 }

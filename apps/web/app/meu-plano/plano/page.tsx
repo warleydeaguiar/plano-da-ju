@@ -39,6 +39,17 @@ interface Profile {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   recommended_products?: any;
   daily_rituals?: string[] | null;
+  photo_url?: string | null;
+  photo_back_url?: string | null;
+  photo_root_url?: string | null;
+}
+interface PhotoAnalysis {
+  avaliacao_texto: string | null;
+  frizz_score: number | null;
+  brilho_score: number | null;
+  hidratacao_score: number | null;
+  pontas_score: number | null;
+  observacoes?: string | null;
 }
 interface ProductRow {
   id: string;
@@ -52,12 +63,43 @@ interface ProductRow {
   combos?: Array<{ id: string; name: string; affiliate_url: string | null }>;  // opções de compra em combo
 }
 
+// Rótulos limpos pra valores crus do quiz (evita underscores tipo "sim_absorve"
+// na tela, que passam impressão de texto gerado por máquina).
+const POROSITY_LABELS: Record<string, string> = {
+  alta: 'Alta', baixa: 'Baixa', media: 'Média', 'média': 'Média',
+  sim_absorve: 'Alta', nao_demora: 'Baixa', nao_sei: 'A definir',
+};
+function pretty(v?: string | null): string {
+  if (!v) return '';
+  return v.split(',').map(s => s.trim().replace(/_/g, ' ')).filter(Boolean)
+    .join(', ').replace(/^./, c => c.toUpperCase());
+}
+function porosityLabel(v?: string | null): string {
+  if (!v) return '—';
+  return POROSITY_LABELS[v.toLowerCase()] ?? pretty(v);
+}
+
+// Normaliza uma linha de photo_analyses (scores + observações do raw_response).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toAnalysis(pa: any): PhotoAnalysis {
+  const af = pa?.raw_response?.analise_foto ?? {};
+  return {
+    avaliacao_texto: pa?.avaliacao_texto ?? null,
+    frizz_score: pa?.frizz_score ?? null,
+    brilho_score: pa?.brilho_score ?? null,
+    hidratacao_score: pa?.hidratacao_score ?? null,
+    pontas_score: pa?.pontas_score ?? null,
+    observacoes: af?.observacoes ?? null,
+  };
+}
+
 export default function PlanoPage() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>('rotina');
   const [profile, setProfile] = useState<Profile | null>(null);
   const [plans, setPlans] = useState<HairPlanRow[]>([]);
   const [products, setProducts] = useState<ProductRow[]>([]);
+  const [analysis, setAnalysis] = useState<PhotoAnalysis | null>(null);
   const [activeWeek, setActiveWeek] = useState(1);
   const [loading, setLoading] = useState(true);
   const [showIg, setShowIg] = useState(false);
@@ -90,6 +132,7 @@ export default function PlanoPage() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (Array.isArray(b.plans)) setPlans((b.plans as any[]).map(p => ({ ...p, tasks: normalizeTasks(p.tasks) })) as HairPlanRow[]);
         if (Array.isArray(b.products)) setProducts(b.products as ProductRow[]);
+        if (b.analysis) setAnalysis(toAnalysis(b.analysis));
       } catch { /* mostra o loading→vazio se falhar */ }
       setLoading(false);
       return;
@@ -102,7 +145,7 @@ export default function PlanoPage() {
 
     const [p, pl, pr] = await Promise.all([
       supabase.from('profiles')
-        .select('full_name,hair_type,porosity,chemical_history,main_problems,hair_length_cm,quiz_answers,plan_released_at,plan_requested_at,plan_status,plan_feedback_rating,plan_revision_due_at,recommended_products,daily_rituals')
+        .select('full_name,hair_type,porosity,chemical_history,main_problems,hair_length_cm,quiz_answers,plan_released_at,plan_requested_at,plan_status,plan_feedback_rating,plan_revision_due_at,recommended_products,daily_rituals,photo_url,photo_back_url,photo_root_url')
         .eq('id', uid).single(),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase as any).from('hair_plans')
@@ -159,6 +202,14 @@ export default function PlanoPage() {
     }
     if (personalized) setProducts(personalized);
     else if (pr.data) setProducts(pr.data as ProductRow[]);
+
+    // Análise do cabelo (foto do onboarding): texto + scores pra mostrar na tela.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: pa } = await (supabase as any).from('photo_analyses')
+      .select('avaliacao_texto,frizz_score,brilho_score,hidratacao_score,pontas_score,raw_response')
+      .eq('user_id', uid).order('analyzed_at', { ascending: true }).limit(1).maybeSingle();
+    if (pa) setAnalysis(toAnalysis(pa));
+
     setLoading(false);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -186,8 +237,8 @@ export default function PlanoPage() {
 
   const chips: { label: string; tone: 'pink' | 'gold' | 'cream' }[] = [];
   if (profile?.hair_type) chips.push({ label: profile.hair_type, tone: 'pink' });
-  if (profile?.porosity) chips.push({ label: `${profile.porosity} porosidade`, tone: 'gold' });
-  const mainProblem = profile?.main_problems?.[0];
+  if (profile?.porosity) chips.push({ label: `${porosityLabel(profile.porosity)} porosidade`, tone: 'gold' });
+  const mainProblem = profile?.main_problems?.[0] ? pretty(profile.main_problems[0]) : undefined;
   if (mainProblem) chips.push({ label: mainProblem, tone: 'cream' });
 
   const releasedDate = profile?.plan_released_at
@@ -232,9 +283,10 @@ export default function PlanoPage() {
             }}>
               Cronograma <em style={{ fontWeight: 700 }}>Capilar</em>
             </h1>
-            {releasedDate && (
-              <div style={{ fontSize: 12.5, opacity: 0.85, marginTop: 4 }}>
-                Criado para você em {releasedDate}
+            {(profile?.full_name || releasedDate) && (
+              <div style={{ fontSize: 13, opacity: 0.92, marginTop: 5, fontWeight: 600 }}>
+                {profile?.full_name ? `Feito para ${profile.full_name.split(' ')[0]}` : 'Feito para você'}
+                {releasedDate ? ` · ${releasedDate}` : ''}
               </div>
             )}
             {aheadOfSchedule && (
@@ -243,7 +295,7 @@ export default function PlanoPage() {
                 background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.28)',
                 borderRadius: 99, padding: '7px 14px', fontSize: 12.5, fontWeight: 700,
               }}>
-                ⚡ Entregue antes do prazo! Prometemos 24h e a Juliane já preparou o seu.
+                ⚡ Ficou pronto antes do prazo — a Juliane caprichou no seu!
               </div>
             )}
             {chips.length > 0 && (
@@ -375,13 +427,57 @@ export default function PlanoPage() {
             }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <DiagItem label="Tipo de cabelo"  value={profile?.hair_type ?? '—'}      tone="pink" />
-                <DiagItem label="Porosidade"      value={profile?.porosity ?? '—'}       tone="gold" />
+                <DiagItem label="Porosidade"      value={porosityLabel(profile?.porosity)} tone="gold" />
                 <DiagItem label="Foco principal"  value={mainProblem ?? 'Manutenção'}    tone="cream" />
-                <DiagItem label="Químicas"        value={profile?.chemical_history ?? 'Nenhuma'} />
+                <DiagItem label="Químicas"        value={pretty(profile?.chemical_history) || 'Nenhuma'} />
                 <DiagItem label="Comprimento"     value={profile?.hair_length_cm ? `${profile.hair_length_cm} cm` : '—'} />
                 <DiagItem label="Lavagem ideal"   value={`A cada ${profile?.hair_type?.includes('oleoso') ? '2–3' : profile?.hair_type?.includes('crespo') ? '5–7' : '3–5'} dias`} />
               </div>
             </div>
+
+            {/* Análise do cabelo — fotos enviadas + leitura da Ju (personalização) */}
+            {(profile?.photo_url || profile?.photo_back_url || profile?.photo_root_url || analysis?.avaliacao_texto || analysis?.observacoes) && (
+              <>
+                <SectionLabel>Análise do seu cabelo</SectionLabel>
+                <div style={{
+                  margin: '0 16px 18px', background: T.surface, borderRadius: 16,
+                  padding: 18, boxShadow: shadow.card, border: `1px solid ${T.borderSoft}`,
+                }}>
+                  {(profile?.photo_url || profile?.photo_back_url || profile?.photo_root_url) && (
+                    <div style={{ display: 'flex', gap: 8, marginBottom: (analysis?.avaliacao_texto || analysis?.observacoes) ? 14 : 0 }}>
+                      {[
+                        { url: profile?.photo_url, label: 'Frente' },
+                        { url: profile?.photo_back_url, label: 'Costas' },
+                        { url: profile?.photo_root_url, label: 'Raiz' },
+                      ].filter(p => !!p.url).map(p => (
+                        <div key={p.label} style={{ flex: 1, textAlign: 'center' }}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={p.url!} alt={p.label} loading="lazy" style={{
+                            width: '100%', aspectRatio: '3/4', objectFit: 'cover',
+                            borderRadius: 12, border: `1px solid ${T.borderSoft}`,
+                          }} />
+                          <div style={{ fontSize: 10.5, color: T.inkMuted, marginTop: 4, fontWeight: 600 }}>{p.label}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {(analysis?.avaliacao_texto || analysis?.observacoes) && (
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                      <div style={{
+                        width: 34, height: 34, borderRadius: '50%', overflow: 'hidden',
+                        border: `2px solid ${T.gold}`, flexShrink: 0, position: 'relative',
+                      }}>
+                        <Image src="/images/ju-depois.png" alt="Juliane" width={34} height={34}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </div>
+                      <div style={{ fontSize: 13.5, color: T.ink, lineHeight: 1.55, fontFamily: fonts.display, fontStyle: 'italic' }}>
+                        &ldquo;{analysis?.avaliacao_texto || analysis?.observacoes}&rdquo;
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
 
             {/* Ritual de TODO DIA (óleo etc.) — vale pra todos os dias */}
             {profile?.daily_rituals && profile.daily_rituals.length > 0 && (
@@ -441,45 +537,58 @@ export default function PlanoPage() {
                   </div>
                 </div>
 
-                {/* 7-day breakdown */}
-                <div style={{
-                  margin: '0 16px 16px', background: T.surface, borderRadius: 16,
-                  overflow: 'hidden', boxShadow: shadow.card,
-                  border: `1px solid ${T.borderSoft}`,
-                }}>
-                  {currentPlan.tasks.map((task, i) => {
-                    const dayName = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'][task.day - 1] ?? `Dia ${task.day}`;
-                    const TaskIcon = iconForTask(task.title);
-                    return (
-                      <div key={i} style={{
-                        padding: '14px 18px',
-                        display: 'flex', alignItems: 'center', gap: 14,
-                        borderBottom: i < currentPlan.tasks.length - 1 ? `1px solid ${T.borderSoft}` : 'none',
-                      }}>
-                        <div style={{
-                          width: 38, height: 38, borderRadius: 11,
-                          background: T.rose, color: T.pinkDeep,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          flexShrink: 0,
-                          border: `1px solid ${T.pinkSoft}`,
+                {/* Rotina por DIA — agrupada: um bloco por dia da semana (não um
+                    card por tarefa). Ex.: "Segunda-feira" com Shampoo + Máscara + Óleo juntos. */}
+                <div style={{ margin: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {(() => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const byDay = new Map<number, any[]>();
+                    for (const t of currentPlan.tasks) {
+                      const arr = byDay.get(t.day) ?? [];
+                      arr.push(t); byDay.set(t.day, arr);
+                    }
+                    const days = [...byDay.keys()].sort((a, b) => a - b);
+                    const DAY_NAMES = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo'];
+                    return days.map(day => {
+                      const tasks = byDay.get(day)!;
+                      const dayName = DAY_NAMES[day - 1] ?? `Dia ${day}`;
+                      return (
+                        <div key={day} style={{
+                          background: T.surface, borderRadius: 16, overflow: 'hidden',
+                          boxShadow: shadow.card, border: `1px solid ${T.borderSoft}`,
                         }}>
-                          <TaskIcon size={20} />
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{
-                            fontSize: 11, color: T.inkSoft,
-                            fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5,
-                          }}>{dayName}</div>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: T.ink, marginTop: 2 }}>
-                            {task.title}
+                          {/* Cabeçalho do dia */}
+                          <div style={{ padding: '11px 18px', background: T.pinkSoft, borderBottom: `1px solid ${T.borderSoft}` }}>
+                            <div style={{ fontSize: 12.5, fontWeight: 800, color: T.pinkDeep, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+                              {dayName}
+                            </div>
                           </div>
-                          <div style={{ fontSize: 12.5, color: T.inkSoft, marginTop: 2, lineHeight: 1.45 }}>
-                            {task.description}
-                          </div>
+                          {/* Tarefas do dia */}
+                          {tasks.map((task, i) => {
+                            const TaskIcon = iconForTask(task.title);
+                            return (
+                              <div key={i} style={{
+                                padding: '13px 18px', display: 'flex', alignItems: 'flex-start', gap: 14,
+                                borderBottom: i < tasks.length - 1 ? `1px solid ${T.borderSoft}` : 'none',
+                              }}>
+                                <div style={{
+                                  width: 38, height: 38, borderRadius: 11, background: T.rose, color: T.pinkDeep,
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                                  border: `1px solid ${T.pinkSoft}`,
+                                }}>
+                                  <TaskIcon size={20} />
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontSize: 14, fontWeight: 700, color: T.ink }}>{task.title}</div>
+                                  <div style={{ fontSize: 12.5, color: T.inkSoft, marginTop: 2, lineHeight: 1.45 }}>{task.description}</div>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    });
+                  })()}
                 </div>
 
                 {/* Juliane's note */}
