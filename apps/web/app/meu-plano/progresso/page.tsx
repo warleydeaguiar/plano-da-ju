@@ -363,48 +363,8 @@ export default function ProgressoPage() {
           </>
         )}
 
-        {/* AI analysis (dark) */}
-        {latest && (
-          <>
-            <SectionLabel>Análise da IA</SectionLabel>
-            <div style={{
-              margin: '0 16px 18px', background: T.ink, borderRadius: 18, padding: 20,
-              boxShadow: shadow.raised,
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                <div style={{
-                  width: 36, height: 36, borderRadius: 10,
-                  background: gradient.gold, color: T.goldDeep,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <IconSparkles size={18} />
-                </div>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#FFF', fontFamily: fonts.display }}>
-                    Última análise · {new Date(latest.analyzed_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-                  </div>
-                  <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.55)', marginTop: 2 }}>
-                    Baseada na foto enviada
-                  </div>
-                </div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                <AIScore label="Brilho"     score={latest.brilho_score} />
-                <AIScore label="Hidratação" score={latest.hidratacao_score} />
-                <AIScore label="Pontas"     score={latest.pontas_score} />
-                <AIScore label="Frizz"      score={latest.frizz_score} inverse />
-              </div>
-              {latest.avaliacao_texto && (
-                <div style={{
-                  marginTop: 16, fontSize: 13, color: 'rgba(255,255,255,0.85)', lineHeight: 1.6,
-                  fontFamily: fonts.display, fontStyle: 'italic',
-                }}>
-                  {latest.avaliacao_texto}
-                </div>
-              )}
-            </div>
-          </>
-        )}
+        {/* Análise da IA REMOVIDA da Progresso — a análise das fotos agora fica
+            só na aba Plano, logo abaixo das fotos enviadas (decisão do produto). */}
 
         {/* Streak */}
         <SectionLabel>Consistência</SectionLabel>
