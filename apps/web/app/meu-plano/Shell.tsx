@@ -33,6 +33,11 @@ export default function MeuPlanoShell({ children }: { children: React.ReactNode 
 
   useEffect(() => {
     (async () => {
+      // Modo PREVIEW do admin (?preview_user=&k=): não exige login nem foto —
+      // a própria página carrega os dados via API service-role (read-only).
+      const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+      if (params.get('preview_user') && params.get('k')) { setReady(true); return; }
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { router.push('/login'); return; }
 
