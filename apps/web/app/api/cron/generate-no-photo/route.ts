@@ -34,6 +34,23 @@ export async function GET(req: NextRequest) {
   if (!authed) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   const dry = req.nextUrl.searchParams.get('dry') === '1';
+
+  // Prioridade é o cliente pagante AO VIVO. Este backlog só roda se o saldo do
+  // OpenRouter estiver confortável — nunca queima os últimos dólares (que um
+  // plano em tempo real pode precisar). Guarda: saldo mínimo de US$ MIN_BALANCE.
+  const MIN_BALANCE = 4;
+  const orKey = process.env.OPENROUTER_API_KEY;
+  if (!dry && orKey) {
+    try {
+      const cr = await fetch('https://openrouter.ai/api/v1/credits', { headers: { Authorization: `Bearer ${orKey}` } });
+      const cj = await cr.json();
+      const bal = (cj?.data?.total_credits ?? 0) - (cj?.data?.total_usage ?? 0);
+      if (bal < MIN_BALANCE) {
+        return NextResponse.json({ ok: true, skipped: 'saldo OpenRouter baixo — protegendo clientes ao vivo', balance: Math.round(bal * 100) / 100 });
+      }
+    } catch { /* se a checagem falhar, segue — o loop já para no 403/402 */ }
+  }
+
   const sb = await createServiceClient();
   const cutoff = new Date(Date.now() - MIN_AGE_HOURS * 3600_000).toISOString();
 
