@@ -43,14 +43,6 @@ interface Profile {
   photo_back_url?: string | null;
   photo_root_url?: string | null;
 }
-interface PhotoAnalysis {
-  avaliacao_texto: string | null;
-  frizz_score: number | null;
-  brilho_score: number | null;
-  hidratacao_score: number | null;
-  pontas_score: number | null;
-  observacoes?: string | null;
-}
 interface ProductRow {
   id: string;
   name: string;
@@ -79,18 +71,19 @@ function porosityLabel(v?: string | null): string {
   return POROSITY_LABELS[v.toLowerCase()] ?? pretty(v);
 }
 
-// Normaliza uma linha de photo_analyses (scores + observações do raw_response).
+// Junta TODOS os textos da nossa análise das fotos (avaliação + observações),
+// sem repetir, pra mostrar tudo junto embaixo das fotos.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function toAnalysis(pa: any): PhotoAnalysis {
-  const af = pa?.raw_response?.analise_foto ?? {};
-  return {
-    avaliacao_texto: pa?.avaliacao_texto ?? null,
-    frizz_score: pa?.frizz_score ?? null,
-    brilho_score: pa?.brilho_score ?? null,
-    hidratacao_score: pa?.hidratacao_score ?? null,
-    pontas_score: pa?.pontas_score ?? null,
-    observacoes: af?.observacoes ?? null,
-  };
+function collectAnalysisTexts(rows: any[]): string[] {
+  const out: string[] = [];
+  for (const r of rows ?? []) {
+    const candidates = [r?.avaliacao_texto, r?.raw_response?.analise_foto?.observacoes];
+    for (const c of candidates) {
+      const t = typeof c === 'string' ? c.trim() : '';
+      if (t && !out.includes(t)) out.push(t);
+    }
+  }
+  return out;
 }
 
 export default function PlanoPage() {
@@ -99,7 +92,7 @@ export default function PlanoPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [plans, setPlans] = useState<HairPlanRow[]>([]);
   const [products, setProducts] = useState<ProductRow[]>([]);
-  const [analysis, setAnalysis] = useState<PhotoAnalysis | null>(null);
+  const [analysisTexts, setAnalysisTexts] = useState<string[]>([]);
   const [activeWeek, setActiveWeek] = useState(1);
   const [loading, setLoading] = useState(true);
   const [showIg, setShowIg] = useState(false);
@@ -132,7 +125,7 @@ export default function PlanoPage() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (Array.isArray(b.plans)) setPlans((b.plans as any[]).map(p => ({ ...p, tasks: normalizeTasks(p.tasks) })) as HairPlanRow[]);
         if (Array.isArray(b.products)) setProducts(b.products as ProductRow[]);
-        if (b.analysis) setAnalysis(toAnalysis(b.analysis));
+        if (Array.isArray(b.analysisTexts)) setAnalysisTexts(b.analysisTexts as string[]);
       } catch { /* mostra o loading→vazio se falhar */ }
       setLoading(false);
       return;
@@ -203,12 +196,13 @@ export default function PlanoPage() {
     if (personalized) setProducts(personalized);
     else if (pr.data) setProducts(pr.data as ProductRow[]);
 
-    // Análise do cabelo (foto do onboarding): texto + scores pra mostrar na tela.
+    // Análise do cabelo (fotos enviadas): junta todos os textos pra mostrar
+    // embaixo das fotos. Pega as análises mais antigas (as das fotos iniciais).
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: pa } = await (supabase as any).from('photo_analyses')
-      .select('avaliacao_texto,frizz_score,brilho_score,hidratacao_score,pontas_score,raw_response')
-      .eq('user_id', uid).order('analyzed_at', { ascending: true }).limit(1).maybeSingle();
-    if (pa) setAnalysis(toAnalysis(pa));
+    const { data: paRows } = await (supabase as any).from('photo_analyses')
+      .select('avaliacao_texto,raw_response')
+      .eq('user_id', uid).order('analyzed_at', { ascending: true }).limit(6);
+    setAnalysisTexts(collectAnalysisTexts(paRows ?? []));
 
     setLoading(false);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -435,8 +429,8 @@ export default function PlanoPage() {
               </div>
             </div>
 
-            {/* Análise do cabelo — fotos enviadas + leitura da Ju (personalização) */}
-            {(profile?.photo_url || profile?.photo_back_url || profile?.photo_root_url || analysis?.avaliacao_texto || analysis?.observacoes) && (
+            {/* Análise do cabelo — fotos enviadas + TODA a nossa análise (junto) */}
+            {(profile?.photo_url || profile?.photo_back_url || profile?.photo_root_url || analysisTexts.length > 0) && (
               <>
                 <SectionLabel>Análise do seu cabelo</SectionLabel>
                 <div style={{
@@ -444,7 +438,7 @@ export default function PlanoPage() {
                   padding: 18, boxShadow: shadow.card, border: `1px solid ${T.borderSoft}`,
                 }}>
                   {(profile?.photo_url || profile?.photo_back_url || profile?.photo_root_url) && (
-                    <div style={{ display: 'flex', gap: 8, marginBottom: (analysis?.avaliacao_texto || analysis?.observacoes) ? 14 : 0 }}>
+                    <div style={{ display: 'flex', gap: 8, marginBottom: analysisTexts.length > 0 ? 14 : 0 }}>
                       {[
                         { url: profile?.photo_url, label: 'Frente' },
                         { url: profile?.photo_back_url, label: 'Costas' },
@@ -461,7 +455,8 @@ export default function PlanoPage() {
                       ))}
                     </div>
                   )}
-                  {(analysis?.avaliacao_texto || analysis?.observacoes) && (
+                  {/* Toda a nossa análise dessas fotos, logo abaixo delas */}
+                  {analysisTexts.length > 0 && (
                     <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                       <div style={{
                         width: 34, height: 34, borderRadius: '50%', overflow: 'hidden',
@@ -470,8 +465,12 @@ export default function PlanoPage() {
                         <Image src="/images/ju-depois.png" alt="Juliane" width={34} height={34}
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       </div>
-                      <div style={{ fontSize: 13.5, color: T.ink, lineHeight: 1.55, fontFamily: fonts.display, fontStyle: 'italic' }}>
-                        &ldquo;{analysis?.avaliacao_texto || analysis?.observacoes}&rdquo;
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {analysisTexts.map((t, i) => (
+                          <div key={i} style={{ fontSize: 13.5, color: T.ink, lineHeight: 1.55, fontFamily: fonts.display, fontStyle: 'italic' }}>
+                            &ldquo;{t}&rdquo;
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}

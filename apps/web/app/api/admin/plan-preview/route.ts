@@ -81,11 +81,18 @@ export async function GET(req: NextRequest) {
     products = pr ?? [];
   }
 
-  // Análise do cabelo (foto do onboarding) — texto + scores.
+  // Análise do cabelo (fotos enviadas) — junta todos os textos, sem repetir.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: analysis } = await (sb.from('photo_analyses') as any)
-    .select('avaliacao_texto,frizz_score,brilho_score,hidratacao_score,pontas_score,raw_response')
-    .eq('user_id', uid).order('analyzed_at', { ascending: true }).limit(1).maybeSingle();
+  const { data: paRows } = await (sb.from('photo_analyses') as any)
+    .select('avaliacao_texto,raw_response')
+    .eq('user_id', uid).order('analyzed_at', { ascending: true }).limit(6);
+  const analysisTexts: string[] = [];
+  for (const r of paRows ?? []) {
+    for (const c of [r?.avaliacao_texto, r?.raw_response?.analise_foto?.observacoes]) {
+      const t = typeof c === 'string' ? c.trim() : '';
+      if (t && !analysisTexts.includes(t)) analysisTexts.push(t);
+    }
+  }
 
-  return NextResponse.json({ userId: uid, profile, plans: plans ?? [], products, analysis: analysis ?? null });
+  return NextResponse.json({ userId: uid, profile, plans: plans ?? [], products, analysisTexts });
 }
