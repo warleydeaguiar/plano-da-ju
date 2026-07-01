@@ -62,6 +62,7 @@ export default function PlanoPage() {
   const [loading, setLoading] = useState(true);
   const [showIg, setShowIg] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [isPreview, setIsPreview] = useState(false);
 
   useEffect(() => {
     try { setShowIg(localStorage.getItem('ig_followed') !== '1'); } catch { setShowIg(true); }
@@ -73,6 +74,27 @@ export default function PlanoPage() {
   );
 
   const load = useCallback(async () => {
+    // ── Modo PREVIEW (admin): ?preview_user=<id|email>&k=<segredo> — carrega o
+    // plano de OUTRA cliente via API service-role e mostra a tela EXATA dela.
+    const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+    const previewUser = params.get('preview_user');
+    const previewToken = params.get('k');
+    if (previewUser && previewToken) {
+      setIsPreview(true);
+      try {
+        const res = await fetch(`/api/admin/plan-preview?user=${encodeURIComponent(previewUser)}&k=${encodeURIComponent(previewToken)}`);
+        if (!res.ok) { setLoading(false); return; }
+        const b = await res.json();
+        setUserId(b.userId ?? null);
+        if (b.profile) setProfile(b.profile as Profile);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if (Array.isArray(b.plans)) setPlans((b.plans as any[]).map(p => ({ ...p, tasks: normalizeTasks(p.tasks) })) as HairPlanRow[]);
+        if (Array.isArray(b.products)) setProducts(b.products as ProductRow[]);
+      } catch { /* mostra o loading→vazio se falhar */ }
+      setLoading(false);
+      return;
+    }
+
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { router.push('/login'); return; }
     const uid = session.user.id;
@@ -148,7 +170,8 @@ export default function PlanoPage() {
   // O plano é liberado em plan_released_at (~30 min após gerar). Até lá, mostra a
   // contagem "fica pronto em até 24h" (prometemos 24h, entregamos em ~30 min).
   const releasedAtMs = profile?.plan_released_at ? new Date(profile.plan_released_at).getTime() : null;
-  const delivered = !!releasedAtMs && Date.now() >= releasedAtMs;
+  // No preview o admin vê o plano SEMPRE (ignora a contagem de liberação).
+  const delivered = isPreview || (!!releasedAtMs && Date.now() >= releasedAtMs);
   if (!delivered) {
     return <PreparingState profile={profile} />;
   }
@@ -170,6 +193,15 @@ export default function PlanoPage() {
 
   return (
     <div>
+      {isPreview && (
+        <div style={{
+          position: 'sticky', top: 0, zIndex: 50, background: '#2A1E2C', color: '#fff',
+          fontSize: 12.5, fontWeight: 600, textAlign: 'center', padding: '8px 12px',
+          fontFamily: 'Plus Jakarta Sans, system-ui, sans-serif',
+        }}>
+          👁 Pré-visualização — visão do cliente{profile?.full_name ? ` · ${profile.full_name}` : ''} (somente leitura)
+        </div>
+      )}
       <div style={{ maxWidth: 480, margin: '0 auto' }}>
 
         {/* Hero with warm gradient */}

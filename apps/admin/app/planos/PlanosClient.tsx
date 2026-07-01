@@ -1093,6 +1093,26 @@ export default function PlanosClient(
 
                   {/* Action buttons */}
                   <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                    {/* Ver como o cliente — abre a tela REAL do app dela (read-only) */}
+                    <button
+                      onClick={async () => {
+                        try {
+                          const r = await fetch(`/api/preview-link?user=${selectedUserId}`);
+                          const d = await r.json();
+                          if (d.url) window.open(d.url, '_blank', 'noopener');
+                          else alert(d.error || 'Erro ao gerar o link de preview');
+                        } catch { alert('Erro ao abrir a pré-visualização'); }
+                      }}
+                      title="Ver a tela exata que a cliente vê (somente leitura)"
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                        fontSize: 13, fontWeight: 600, padding: '9px 16px', borderRadius: 9,
+                        background: '#2A1E2C', border: '1.5px solid #2A1E2C', color: '#fff',
+                        cursor: 'pointer', transition: 'all 0.15s',
+                      }}
+                    >
+                      👁 Ver como cliente
+                    </button>
                     {/* WhatsApp */}
                     {selected.phone ? (
                       <a
