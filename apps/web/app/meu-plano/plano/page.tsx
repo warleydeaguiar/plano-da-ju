@@ -170,8 +170,11 @@ export default function PlanoPage() {
   // O plano é liberado em plan_released_at (~30 min após gerar). Até lá, mostra a
   // contagem "fica pronto em até 24h" (prometemos 24h, entregamos em ~30 min).
   const releasedAtMs = profile?.plan_released_at ? new Date(profile.plan_released_at).getTime() : null;
-  // No preview o admin vê o plano SEMPRE (ignora a contagem de liberação).
-  const delivered = isPreview || (!!releasedAtMs && Date.now() >= releasedAtMs);
+  // "Entregue" EXIGE que o plano exista de fato (semanas geradas). Sem plano →
+  // tela de preparação (nada de Revisado/avaliação/produtos/dicas). No preview o
+  // admin vê o plano sem esperar a liberação de 30min — mas só se ele existir.
+  const hasPlan = plans.length > 0;
+  const delivered = hasPlan && (isPreview || (!!releasedAtMs && Date.now() >= releasedAtMs));
   if (!delivered) {
     return <PreparingState profile={profile} />;
   }
@@ -762,10 +765,12 @@ function EmptyState({ emoji, title, description }: { emoji: string; title: strin
 // ── Preparando: contagem regressiva até a entrega (auto, sem aprovação) ────
 function PreparingState({ profile }: { profile: Profile | null }) {
   const firstName = profile?.full_name?.split(' ')[0] ?? '';
-  // Prometemos ATÉ 24h — a contagem mira o pedido + 24h. (Na prática libera em ~30 min.)
+  // Falta a FOTO? (não enviou ainda) — é o passo que trava o plano.
+  const awaitingPhoto = profile?.plan_status === 'pending_photo';
   const requestedMs = profile?.plan_requested_at ? new Date(profile.plan_requested_at).getTime() : null;
   const releasedMs  = profile?.plan_released_at  ? new Date(profile.plan_released_at).getTime()  : null;
-  const deadlineMs  = requestedMs ? requestedMs + 24 * 3600_000 : null;
+  // Depois que a foto chega, o plano fica pronto em até 2 HORAS.
+  const deadlineMs  = requestedMs ? requestedMs + 2 * 3600_000 : null;
 
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -807,123 +812,143 @@ function PreparingState({ profile }: { profile: Profile | null }) {
               margin: '8px 0 6px',
               fontFamily: fonts.display,
             }}>
-              Em preparação
+              {awaitingPhoto ? 'Falta 1 passo' : 'Em preparação'}
             </h1>
             <div style={{ fontSize: 13, opacity: 0.92, marginTop: 4, lineHeight: 1.5 }}>
-              {firstName ? `${firstName}, a` : 'A'} Juliane está analisando suas respostas agora.
+              {awaitingPhoto
+                ? `${firstName ? firstName + ', envie' : 'Envie'} as fotos do seu cabelo pra Juliane montar o seu plano.`
+                : `${firstName ? firstName + ', a' : 'A'} Juliane está montando o seu plano agora.`}
             </div>
           </div>
         </div>
 
-        {/* Card overlapping hero — status + steps */}
-        <div style={{
-          margin: '-34px 16px 18px',
-          background: T.surface, borderRadius: 20,
-          padding: '20px 18px',
-          boxShadow: shadow.raised,
-          position: 'relative', zIndex: 2,
-          border: `1px solid ${T.borderSoft}`,
-        }}>
-          {/* Ju avatar + status */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
-            <div style={{
-              width: 52, height: 52, borderRadius: '50%',
-              overflow: 'hidden',
-              border: `2.5px solid ${T.gold}`,
-              boxShadow: '0 4px 12px rgba(190,24,93,0.18)',
-              position: 'relative', flexShrink: 0,
-            }}>
-              <Image
-                src="/images/ju-depois.png"
-                alt="Juliane Cost"
-                width={52} height={52}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{
-                fontSize: 15.5, fontWeight: 700, color: T.ink,
-                fontFamily: fonts.display,
-              }}>
-                Juliane Cost
-              </div>
-              <div style={{
-                fontSize: 12, color: T.pinkDeep, marginTop: 2,
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                fontWeight: 600,
-              }}>
-                <span style={{
-                  width: 7, height: 7, borderRadius: '50%',
-                  background: T.pink, display: 'inline-block',
-                  animation: 'pulse 1.6s ease-in-out infinite',
-                }} />
-                trabalhando no seu plano…
-              </div>
-            </div>
-          </div>
-
-          {/* Steps */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <PrepStep
-              done
-              title="Foto recebida"
-              description="A Juliane já recebeu sua foto e suas respostas do quiz."
-            />
-            <PrepStep
-              active
-              title="Lendo suas respostas e analisando o cabelo"
-              description="Cruzando seu tipo de cabelo, química, problemas e a foto enviada."
-            />
-            <PrepStep
-              title="Montando seu cronograma personalizado"
-              description="Lavagens, hidratações, reconstruções e produtos pra você."
-            />
-            <PrepStep
-              title="Plano liberado no app"
-              description="Você vai receber um e-mail e o cronograma aparece aqui na hora."
-            />
-          </div>
-        </div>
-
-        {/* Contagem regressiva — entrega em até 24h */}
-        <div style={{
-          margin: '0 16px 18px',
-          background: gradient.warm,
-          border: `1px solid ${T.gold}55`,
-          borderRadius: 16, padding: '18px 16px', textAlign: 'center',
-        }}>
-          <div style={{ fontSize: 12.5, color: T.ink, fontWeight: 600, marginBottom: 8 }}>
-            ⏳ Seu plano fica pronto em até <strong>24 horas</strong>
-          </div>
-          {remainingMs != null && (
-            <div style={{
-              display: 'inline-flex', gap: 6, alignItems: 'center',
-              fontFamily: fonts.display, fontWeight: 800, color: T.pinkDeep, fontSize: 30,
-              letterSpacing: 1,
-            }}>
-              <span>{pad(hh!)}</span><span style={{ opacity: 0.4 }}>:</span>
-              <span>{pad(mm!)}</span><span style={{ opacity: 0.4 }}>:</span>
-              <span>{pad(ss!)}</span>
-            </div>
-          )}
-          <div style={{ fontSize: 12, color: T.inkSoft, marginTop: 8, lineHeight: 1.5 }}>
-            Mas relaxa — quase sempre entregamos <strong>muito antes</strong> 💛
-            Continue usando o app enquanto isso: registre lavagens, hidratações e veja as dicas.
-          </div>
-        </div>
-
-        {/* CTA explorar app enquanto espera */}
-        <div style={{ padding: '0 16px 30px' }}>
-          <a href="/meu-plano" style={{
-            display: 'block', width: '100%',
-            background: T.surface, color: T.pinkDeep,
-            border: `1.5px solid ${T.pink}`,
-            borderRadius: 14, padding: 14, textAlign: 'center',
-            fontSize: 14, fontWeight: 700, textDecoration: 'none',
-            fontFamily: fonts.ui,
+        {awaitingPhoto ? (
+          /* ── MODO: falta a foto ─────────────────────────────────── */
+          <div style={{
+            margin: '-34px 16px 18px',
+            background: T.surface, borderRadius: 20,
+            padding: '22px 18px',
+            boxShadow: shadow.raised,
+            position: 'relative', zIndex: 2,
+            border: `1px solid ${T.borderSoft}`,
           }}>
-            Explorar o app
-          </a>
+            <div style={{ fontSize: 16, fontWeight: 700, color: T.ink, fontFamily: fonts.display, marginBottom: 6 }}>
+              📸 Envie 3 fotos do seu cabelo
+            </div>
+            <div style={{ fontSize: 13, color: T.inkSoft, lineHeight: 1.55, marginBottom: 16 }}>
+              A Juliane precisa <strong>ver o seu cabelo</strong> pra montar um plano ainda mais assertivo pra você.
+              Ainda <strong>não recebemos as suas fotos</strong> — é o único passo que falta! 💛
+            </div>
+            {/* 3 slots pendentes */}
+            <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
+              {['Frente', 'Costas', 'Raiz'].map(lbl => (
+                <div key={lbl} style={{
+                  flex: 1, textAlign: 'center',
+                  border: `1.5px dashed ${T.pink}66`, borderRadius: 14,
+                  padding: '14px 6px', background: T.pinkSoft,
+                }}>
+                  <div style={{ fontSize: 22 }}>⏳</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: T.pinkDeep, marginTop: 4 }}>{lbl}</div>
+                  <div style={{ fontSize: 10, color: T.inkMuted, marginTop: 2 }}>pendente</div>
+                </div>
+              ))}
+            </div>
+            <a href="/meu-plano/onboarding" style={{
+              display: 'block', width: '100%',
+              background: gradient.hero, color: '#fff',
+              borderRadius: 14, padding: 15, textAlign: 'center',
+              fontSize: 15, fontWeight: 700, textDecoration: 'none',
+              fontFamily: fonts.ui, boxShadow: '0 6px 16px rgba(190,24,93,0.28)',
+            }}>
+              📸 Enviar minhas fotos agora
+            </a>
+          </div>
+        ) : (
+          /* ── MODO: foto recebida, preparando (cronômetro 2h) ────── */
+          <>
+            <div style={{
+              margin: '-34px 16px 18px',
+              background: T.surface, borderRadius: 20,
+              padding: '20px 18px',
+              boxShadow: shadow.raised,
+              position: 'relative', zIndex: 2,
+              border: `1px solid ${T.borderSoft}`,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
+                <div style={{
+                  width: 52, height: 52, borderRadius: '50%', overflow: 'hidden',
+                  border: `2.5px solid ${T.gold}`, boxShadow: '0 4px 12px rgba(190,24,93,0.18)',
+                  position: 'relative', flexShrink: 0,
+                }}>
+                  <Image src="/images/ju-depois.png" alt="Juliane Cost" width={52} height={52}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 15.5, fontWeight: 700, color: T.ink, fontFamily: fonts.display }}>
+                    Juliane Cost
+                  </div>
+                  <div style={{ fontSize: 12, color: T.pinkDeep, marginTop: 2, display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: T.pink, display: 'inline-block', animation: 'pulse 1.6s ease-in-out infinite' }} />
+                    trabalhando no seu plano…
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <PrepStep done title="Fotos recebidas" description="A Juliane já recebeu suas fotos e as respostas do quiz." />
+                <PrepStep active title="Analisando o seu cabelo" description="Cruzando seu tipo de cabelo, química, problemas e as fotos enviadas." />
+                <PrepStep title="Montando seu cronograma personalizado" description="Lavagens, hidratações, reconstruções e produtos pra você." />
+                <PrepStep title="Plano liberado no app" description="Você recebe um e-mail e o cronograma aparece aqui na hora." />
+              </div>
+            </div>
+
+            {/* Cronômetro — pronto em até 2 horas */}
+            <div style={{
+              margin: '0 16px 18px',
+              background: gradient.warm,
+              border: `1px solid ${T.gold}55`,
+              borderRadius: 16, padding: '18px 16px', textAlign: 'center',
+            }}>
+              <div style={{ fontSize: 12.5, color: T.ink, fontWeight: 600, marginBottom: 8 }}>
+                ⏳ Seu plano fica pronto em até <strong>2 horas</strong>
+              </div>
+              {remainingMs != null && (
+                <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontFamily: fonts.display, fontWeight: 800, color: T.pinkDeep, fontSize: 30, letterSpacing: 1 }}>
+                  <span>{pad(hh!)}</span><span style={{ opacity: 0.4 }}>:</span>
+                  <span>{pad(mm!)}</span><span style={{ opacity: 0.4 }}>:</span>
+                  <span>{pad(ss!)}</span>
+                </div>
+              )}
+              <div style={{ fontSize: 12, color: T.inkSoft, marginTop: 8, lineHeight: 1.5 }}>
+                Quase sempre entregamos <strong>muito antes</strong> 💛
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Enquanto espera: FOCO em entrar no grupo VIP de promoções */}
+        <div style={{ padding: '0 16px 30px' }}>
+          <div style={{
+            background: T.surface, border: `1px solid ${T.borderSoft}`,
+            borderRadius: 16, padding: '18px', boxShadow: shadow.card,
+          }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: T.ink, fontFamily: fonts.display, marginBottom: 6 }}>
+              💚 Enquanto seu plano não fica pronto…
+            </div>
+            <div style={{ fontSize: 13, color: T.inkSoft, lineHeight: 1.55, marginBottom: 14 }}>
+              Entra no nosso <strong>grupo VIP de promoções</strong> no WhatsApp — as ofertas com desconto
+              nos produtos que a Ju usa saem <strong>primeiro por lá</strong>. Não fica de fora!
+            </div>
+            <a href="/g/entrar" target="_blank" rel="noopener noreferrer" style={{
+              display: 'block', width: '100%',
+              background: '#25D366', color: '#fff',
+              borderRadius: 14, padding: 15, textAlign: 'center',
+              fontSize: 15, fontWeight: 700, textDecoration: 'none',
+              fontFamily: fonts.ui, boxShadow: '0 6px 16px rgba(37,211,102,0.28)',
+            }}>
+              Entrar no grupo VIP de promoções
+            </a>
+          </div>
         </div>
 
         <style>{`@keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.85); } }`}</style>

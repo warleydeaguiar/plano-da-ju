@@ -8,7 +8,7 @@ const BLUE = '#2F80ED';
 const BLUE_SOFT = '#E3F0FD';
 const GRAY = '#D8DEE6';
 const DEFAULT_GOAL = 2000;
-const DEFAULT_CUPS = 8;
+const DEFAULT_CUPS = 4; // padrão: copos de 500ml (2000 / 4)
 
 function localDay(d: Date) {
   const x = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
