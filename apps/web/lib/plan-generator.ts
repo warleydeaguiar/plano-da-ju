@@ -226,6 +226,9 @@ export async function generatePlanWithClaude(
   if (nFotos > 1) {
     content.push({ type: 'text', text: `Você recebeu ${nFotos} fotos do MESMO cabelo (geralmente: frente, costas e raiz/couro cabeludo). Analise TODAS juntas — a de costas mostra comprimento e pontas; a da raiz mostra oleosidade e couro cabeludo.` });
   }
+  if (nFotos === 0) {
+    content.push({ type: 'text', text: 'SEM FOTO: a cliente NÃO enviou foto do cabelo. Baseie TODO o plano no questionário. Em "analise_foto" NÃO invente o que veria numa foto — preencha os scores com uma estimativa conservadora a partir das respostas dela e coloque em "observacoes": "Plano montado com base no seu questionário — a foto não foi enviada." A "mensagem_juliane" deve COMEÇAR dizendo com carinho que, como a foto não chegou, a Ju montou o plano pelas respostas do questionário, e convidar a enviar a foto depois pra ela ajustar os detalhes.' });
+  }
   content.push({ type: 'text', text: fullPrompt });
 
   const apiKey = process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_API_KEY;

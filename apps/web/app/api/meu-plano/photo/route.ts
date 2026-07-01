@@ -131,12 +131,15 @@ export async function POST(req: NextRequest) {
     // salva os scores (analise_foto). Evita pagar 2x a mesma análise de imagem.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: profile } = await (supabase.from('profiles') as any)
-      .select('email, plan_status, photo_url')
+      .select('email, plan_status, photo_url, plan_without_photo')
       .eq('id', user.id)
       .single();
     const planKey = process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_API_KEY;
+    // Dispara geração se: (a) 1ª foto do onboarding (pending_photo), OU (b) o plano
+    // foi feito SEM foto (fallback 48h) e agora ela enviou → refaz COM a foto.
     const willGeneratePlan =
-      profile?.plan_status === 'pending_photo' && !profile.photo_url && !!profile.email
+      (profile?.plan_status === 'pending_photo' || !!profile?.plan_without_photo)
+      && !profile?.photo_url && !!profile?.email
       && !!planKey && !planKey.startsWith('X');
 
     // Análise de visão SÓ pra fotos de PROGRESSO (no onboarding o plano analisa).
@@ -240,15 +243,16 @@ export async function POST(req: NextRequest) {
     // Se é a 1ª foto E o plano ainda está pendente, dispara geração
     // Falha graciosamente — não bloqueia a response (cliente vê foto OK; plano vem depois)
     let planTriggered = false;
-    if (profile?.plan_status === 'pending_photo' && !profile.photo_url && profile.email) {
+    if ((profile?.plan_status === 'pending_photo' || profile?.plan_without_photo) && !profile.photo_url && profile.email) {
       try {
         const apiKey = process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_API_KEY;
         const hasRealKey = !!apiKey && !apiKey.startsWith('X');
         if (hasRealKey) {
-          // Atualiza status pra "processing" antes de chamar IA
+          // Atualiza status pra "processing" antes de chamar IA. Zera o flag de
+          // "sem foto" — agora vamos refazer o plano COM a foto que ela enviou.
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await (supabase.from('profiles') as any)
-            .update({ plan_status: 'processing', plan_requested_at: new Date().toISOString() })
+            .update({ plan_status: 'processing', plan_requested_at: new Date().toISOString(), plan_without_photo: false })
             .eq('id', user.id);
 
           // Dispara plan/generate (~30s). Antes era `void fetch` — em serverless
