@@ -7,6 +7,7 @@ import { extractFieldsFromQuiz } from '@/lib/quiz-to-profile';
 import { getOrCreateCardPlan } from '@/lib/pagarme/plans';
 import type { PagarMeSubscription } from '@/lib/pagarme/types';
 import { logCheckoutError } from '@/lib/checkout-log';
+import { normalizeEmail, isValidEmailFormat } from '@/lib/normalize-email';
 import { installmentInfo, MAX_INSTALLMENTS } from '@/lib/pricing';
 
 export const dynamic = 'force-dynamic';
@@ -24,17 +25,29 @@ export async function POST(req: NextRequest) {
   let logInstallments = 1;
 
   try {
+    const body = await req.json();
+    // Corrige typos óbvios do e-mail (vírgula, gmail.con, .co.br…) ANTES de usar,
+    // em vez de bloquear a compra. Só rejeita se ficar impossível de consertar.
+    if (body && typeof body.email === 'string') body.email = normalizeEmail(body.email).email;
     const {
       name, email, cpf, phone,
       card_token, quiz_answers, session_id, billing_address,
       installments: rawInstallments,
-    } = await req.json();
+    } = body;
     logEmail = email ?? null;
     logSession = typeof session_id === 'string' ? session_id : null;
 
     if (!name || !email || !card_token) {
       return NextResponse.json(
         { error: 'Nome, e-mail e token do cartão são obrigatórios' },
+        { status: 400 },
+      );
+    }
+
+    // Fallback: se mesmo após a autocorreção o formato continua impossível.
+    if (!isValidEmailFormat(email)) {
+      return NextResponse.json(
+        { error: 'E-mail inválido. Confira se digitou certo (ex.: nome@email.com).' },
         { status: 400 },
       );
     }

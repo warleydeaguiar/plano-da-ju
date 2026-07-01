@@ -6,6 +6,7 @@ import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { extractFieldsFromQuiz } from '@/lib/quiz-to-profile';
 import type { PagarMeOrder } from '@/lib/pagarme/types';
 import { logCheckoutError } from '@/lib/checkout-log';
+import { normalizeEmail, isValidEmailFormat } from '@/lib/normalize-email';
 
 const PRICE_CENTS = 3490; // R$34,90
 
@@ -45,12 +46,23 @@ export async function POST(req: NextRequest) {
   let logSession: string | null = null;
 
   try {
-    const { name, email, cpf, phone, quiz_answers, session_id } = await req.json();
+    const body = await req.json();
+    // Corrige typos óbvios do e-mail (vírgula, gmail.con, .co.br…) em vez de bloquear.
+    if (body && typeof body.email === 'string') body.email = normalizeEmail(body.email).email;
+    const { name, email, cpf, phone, quiz_answers, session_id } = body;
     logEmail = email ?? null;
     logSession = typeof session_id === 'string' ? session_id : null;
 
     if (!name || !email) {
       return NextResponse.json({ error: 'Nome e e-mail são obrigatórios' }, { status: 400 });
+    }
+
+    // Fallback: se mesmo após a autocorreção o formato continua impossível.
+    if (!isValidEmailFormat(email)) {
+      return NextResponse.json(
+        { error: 'E-mail inválido. Confira se digitou certo (ex.: nome@email.com).' },
+        { status: 400 },
+      );
     }
 
     const cleanCpf = (cpf ?? '').replace(/\D/g, '');
