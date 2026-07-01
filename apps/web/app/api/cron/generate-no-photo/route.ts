@@ -69,8 +69,11 @@ export async function GET(req: NextRequest) {
         quizAnswers: p.quiz_answers ?? null,
         photo: {}, // SEM foto — o gerador monta pelo questionário e avisa a cliente
       });
+      // Nota da Ju que a cliente VÊ no app (juliane_notes da semana 1): avisa que
+      // o plano saiu pelo questionário e convida a enviar a foto pra ajustar.
+      const NOTA_SEM_FOTO = 'Como ainda não recebi a foto do seu cabelo, montei este plano com base nas suas respostas do questionário. 💛 Quando puder, envie sua foto aqui no app que eu ajusto os detalhes pra deixar ainda mais certeiro pra você!';
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await savePlanToDb(sb as any, p.id, plan);
+      await savePlanToDb(sb as any, p.id, plan, { extraNote: NOTA_SEM_FOTO });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (sb.from('profiles') as any).update({
         hair_type: plan.tipo_cabelo?.toLowerCase() ?? p.hair_type,

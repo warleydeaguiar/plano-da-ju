@@ -322,13 +322,16 @@ export async function savePlanToDb(
   sb: SupabaseClient,
   userId: string,
   plan: GeneratedPlan,
+  opts?: { extraNote?: string },
 ): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (sb.from('hair_plans') as any).delete().eq('user_id', userId);
 
   // Nota padrão da Juliane (mesma dos planos revisados manualmente) — já vem
-  // preenchida na semana 1 pra não precisar adicionar à mão na aprovação.
+  // preenchida na semana 1 pra não precisar adicionar à mão na aprovação. Se vier
+  // uma nota extra (ex.: plano feito sem foto), ela aparece ANTES da padrão.
   const NOTA_PADRAO = 'Os produtos indicados são os que eu uso e confio nos resultados. Mas podem ser substituídos por produtos de outras marcas, desde que cumpram a mesma função.';
+  const NOTA_SEMANA1 = opts?.extraNote ? `${opts.extraNote}\n\n${NOTA_PADRAO}` : NOTA_PADRAO;
   const rows = plan.semanas.map(s => ({
     user_id: userId,
     week_number: s.semana,
@@ -342,7 +345,7 @@ export async function savePlanToDb(
     ).sort((a, b) => a.day - b.day),
     products: s.produtos ?? [],
     tips: s.dica ? [s.dica] : [],
-    juliane_notes: s.semana === 1 ? NOTA_PADRAO : null,
+    juliane_notes: s.semana === 1 ? NOTA_SEMANA1 : null,
   }));
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
