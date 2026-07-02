@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
 
   try {
     for (;;) {
-      const url = `https://api.pagar.me/core/v5/payables?payment_date_since=${start}&payment_date_until=${end}&page=${page}&size=${size}`
+      const url = `https://api.pagar.me/core/v5/payables?created_since=${start}T00:00:00Z&created_until=${end}T23:59:59Z&page=${page}&size=${size}`
       const res = await fetch(url, { headers: { Authorization: auth, 'Content-Type': 'application/json' } })
       if (!res.ok) return NextResponse.json({ error: `Pagar.me ${res.status}: ${(await res.text()).slice(0, 200)}` }, { status: 502 })
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
