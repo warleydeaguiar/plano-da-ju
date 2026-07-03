@@ -51,6 +51,7 @@ interface ProductRow {
   affiliate_url: string | null;
   image_url: string | null;
   is_ybera: boolean;
+  video_url?: string | null;   // vídeo da Juliane sobre o produto (YouTube Short)
   motivo?: string | null;   // por que foi indicado pra ELA (personalizado)
   combos?: Array<{ id: string; name: string; affiliate_url: string | null }>;  // opções de compra em combo
 }
@@ -146,7 +147,7 @@ export default function PlanoPage() {
         .eq('user_id', uid).order('week_number'),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase as any).from('products')
-        .select('id,name,brand,category,affiliate_url,image_url,is_ybera')
+        .select('id,name,brand,category,affiliate_url,image_url,is_ybera,video_url')
         .eq('active', true).limit(8),
     ]);
     if (p.data)  setProfile(p.data as Profile);
@@ -166,7 +167,7 @@ export default function PlanoPage() {
       const ids = [...new Set(rec.flatMap(r => [r?.produto_id, r?.alternativa_id]).filter(Boolean))];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: recProds } = await (supabase as any).from('products')
-        .select('id,name,brand,category,affiliate_url,image_url,is_ybera').in('id', ids);
+        .select('id,name,brand,category,affiliate_url,image_url,is_ybera,video_url').in('id', ids);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const byId = new Map<string, any>((recProds ?? []).map((x: any) => [x.id, x]));
       const list: ProductRow[] = [];
@@ -761,8 +762,17 @@ function DiagItem({ label, value, tone }: { label: string; value: string; tone?:
   );
 }
 
+// Extrai o ID do vídeo de um link do YouTube (shorts / watch / youtu.be / embed).
+function ytId(url?: string | null): string | null {
+  if (!url) return null;
+  const m = String(url).match(/(?:shorts\/|watch\?v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{6,})/);
+  return m ? m[1] : null;
+}
+
 function ProductCard({ product, userId, essential = false }: { product: ProductRow; userId?: string | null; essential?: boolean }) {
   const Icon = iconForCategory(product.category, product.name);
+  const [playing, setPlaying] = useState(false);
+  const videoId = ytId(product.video_url);
   const trackClick = () => {
     try {
       const payload = JSON.stringify({ product_id: product.id, product_name: product.name, is_ybera: product.is_ybera, user_id: userId ?? null });
@@ -838,6 +848,40 @@ function ProductCard({ product, userId, essential = false }: { product: ProductR
         </a>
       )}
     </div>
+    {videoId && (
+      <div style={{ borderTop: `1px solid ${T.borderSoft}`, background: '#FFF6F9', padding: '11px 14px' }}>
+        {!playing ? (
+          <button onClick={() => setPlaying(true)} style={{
+            width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+            background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left',
+          }}>
+            <div style={{ position: 'relative', width: 60, height: 60, borderRadius: 12, overflow: 'hidden', flexShrink: 0, background: '#000' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }} />
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'rgba(255,255,255,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.pinkDeep, fontSize: 12, paddingLeft: 2 }}>▶</div>
+              </div>
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: T.pinkDeep }}>🎬 A Juliane explica esse produto</div>
+              <div style={{ fontSize: 11.5, color: T.inkSoft, marginTop: 2 }}>Toque para assistir o vídeo dela</div>
+            </div>
+          </button>
+        ) : (
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <div style={{ width: 230, maxWidth: '100%', aspectRatio: '9 / 16', borderRadius: 14, overflow: 'hidden', background: '#000' }}>
+              <iframe
+                src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&playsinline=1`}
+                title="Vídeo da Juliane"
+                allow="autoplay; encrypted-media; picture-in-picture"
+                allowFullScreen
+                style={{ width: '100%', height: '100%', border: 0 }}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    )}
     {product.combos && product.combos.length > 0 && (
       <div style={{ borderTop: `1px solid ${T.borderSoft}`, background: '#FBF7F2', padding: '9px 14px' }}>
         <div style={{ fontSize: 10.5, fontWeight: 700, color: T.goldDeep, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 5 }}>
