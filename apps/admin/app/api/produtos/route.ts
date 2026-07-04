@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
       category: body.category || null,
       affiliate_url: body.affiliate_url?.trim() || null,
       image_url: body.image_url?.trim() || null,
+      video_url: body.video_url?.trim() || null,
       hair_types: body.hair_types ?? [],
       is_ybera: Boolean(body.is_ybera),
       active: body.active !== false,
@@ -78,6 +79,7 @@ export async function PATCH(req: NextRequest) {
     if ('category' in rest)      payload.category     = rest.category || null
     if ('affiliate_url' in rest) payload.affiliate_url = rest.affiliate_url?.trim() || null
     if ('image_url' in rest)     payload.image_url    = rest.image_url?.trim() || null
+    if ('video_url' in rest)     payload.video_url    = rest.video_url?.trim() || null
     if ('hair_types' in rest)    payload.hair_types   = rest.hair_types ?? []
     if ('is_ybera' in rest)      payload.is_ybera     = Boolean(rest.is_ybera)
     if ('active' in rest)        payload.active       = Boolean(rest.active)

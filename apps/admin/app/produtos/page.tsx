@@ -12,6 +12,7 @@ interface ProductRow {
   category: string | null
   affiliate_url: string | null
   image_url: string | null
+  video_url: string | null
   hair_types: string[] | null
   is_ybera: boolean
   active: boolean

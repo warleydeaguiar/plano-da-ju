@@ -17,6 +17,7 @@ interface ProductRow {
   category: string | null
   affiliate_url: string | null
   image_url: string | null
+  video_url: string | null
   hair_types: string[] | null
   is_ybera: boolean
   active: boolean
@@ -30,6 +31,7 @@ type FormData = {
   category: string
   affiliate_url: string
   image_url: string
+  video_url: string
   hair_types: string[]
   is_ybera: boolean
   active: boolean
@@ -43,6 +45,7 @@ const EMPTY_FORM: FormData = {
   category: '',
   affiliate_url: '',
   image_url: '',
+  video_url: '',
   hair_types: [],
   is_ybera: false,
   active: true,
@@ -93,6 +96,7 @@ function productToForm(p: ProductRow): FormData {
     category: p.category ?? '',
     affiliate_url: p.affiliate_url ?? '',
     image_url: p.image_url ?? '',
+    video_url: p.video_url ?? '',
     hair_types: p.hair_types ?? [],
     is_ybera: p.is_ybera,
     active: p.active,
@@ -218,6 +222,20 @@ function Modal({
               onChange={e => setForm({ ...form, image_url: e.target.value })}
               placeholder="https://…"
             />
+          </div>
+
+          {/* Video URL — Short da Juliane sobre o produto */}
+          <div>
+            <label style={labelStyle}>🎬 Vídeo da Juliane (YouTube)</label>
+            <input
+              style={inputStyle}
+              value={form.video_url}
+              onChange={e => setForm({ ...form, video_url: e.target.value })}
+              placeholder="https://www.youtube.com/shorts/…"
+            />
+            <div style={{ fontSize: 11, color: gray, marginTop: 4 }}>
+              Aparece embaixo do produto no plano da cliente (miniatura → toca o Short). Cole o link do Short ou do vídeo.
+            </div>
           </div>
 
           {/* Affiliate URL */}
@@ -654,6 +672,7 @@ export default function ProdutosClient({ initialProducts }: { initialProducts: P
         category: form.category || null,
         affiliate_url: form.affiliate_url.trim() || null,
         image_url: form.image_url.trim() || null,
+        video_url: form.video_url.trim() || null,
         hair_types: form.hair_types,
         is_ybera: form.is_ybera,
         active: form.active,
