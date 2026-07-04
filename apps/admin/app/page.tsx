@@ -380,6 +380,23 @@ export default async function DashboardPage() {
     ? (aiCosts.dailyUsd * aiCosts.rate) / plansGeneratedToday
     : null;
 
+  // ── SMS (Zenvia) — recuperação de PIX ────────────────────────────
+  // Volume vem do nosso log (profiles.pix_sms_sent_at, 1 SMS por cliente). Custo
+  // estimado por SMS ajustável em ZENVIA_SMS_COST_BRL (padrão R$0,08/segmento).
+  const SMS_COST_BRL = Number(process.env.ZENVIA_SMS_COST_BRL ?? '0.08');
+  const _startMonthBR = new Date(Date.UTC(_br.getUTCFullYear(), _br.getUTCMonth(), 1, 3, 0, 0)).toISOString();
+  const [smsTodayR, smsMonthR, smsTotalR] = await Promise.all([
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sb.from('profiles') as any).select('id', { count: 'exact', head: true }).gte('pix_sms_sent_at', _startTodayBR),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sb.from('profiles') as any).select('id', { count: 'exact', head: true }).gte('pix_sms_sent_at', _startMonthBR),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sb.from('profiles') as any).select('id', { count: 'exact', head: true }).not('pix_sms_sent_at', 'is', null),
+  ]);
+  const smsToday = smsTodayR.count ?? 0;
+  const smsMonth = smsMonthR.count ?? 0;
+  const smsTotal = smsTotalR.count ?? 0;
+
   // ── PLANO: KPIs derivados ────────────────────────────────────────
   const planoSpendToday      = metaAds.plano.today;
   const planoSpendYesterday  = metaAds.plano.yesterday;
@@ -1196,6 +1213,37 @@ export default async function DashboardPage() {
             accent={T.green} accentSoft={T.greenSoft}
             valueColor={aiCosts.balanceUsd != null && aiCosts.balanceUsd < 5 ? T.danger : T.green}
             sub={aiCosts.balanceUsd != null ? `US$ ${aiCosts.balanceUsd.toFixed(2)} disponível` : 'indisponível'}
+          />
+        </div>
+
+        {/* ════════════════════════════════════════════════════════ */}
+        {/* SMS (Zenvia) — recuperação de PIX                          */}
+        {/* ════════════════════════════════════════════════════════ */}
+        <SectionHeader
+          icon={IconChart}
+          title="SMS (Zenvia) — recuperação de PIX"
+          subtitle={`Aviso por SMS pra quem gerou PIX e não pagou · custo estimado ${brl(SMS_COST_BRL)}/SMS`}
+          accent={T.blue}
+        />
+        <div className="dash-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
+          <StatCard
+            icon={IconChart} label="SMS hoje" value={smsToday.toLocaleString('pt-BR')}
+            accent={T.blue} accentSoft={T.blueSoft} valueColor={T.blue}
+            sub={`${brl(smsToday * SMS_COST_BRL)} estimado`}
+          />
+          <StatCard
+            icon={IconReceipt} label="SMS no mês" value={smsMonth.toLocaleString('pt-BR')}
+            accent={T.pink} accentSoft={T.pinkSoft}
+            sub={`${brl(smsMonth * SMS_COST_BRL)} estimado`}
+          />
+          <StatCard
+            icon={IconMoney} label="Custo SMS no mês" value={brl(smsMonth * SMS_COST_BRL)}
+            accent={T.gold} accentSoft={T.goldSoft}
+            sub={`${smsMonth.toLocaleString('pt-BR')} SMS × ${brl(SMS_COST_BRL)}`}
+          />
+          <StatCard
+            icon={IconChart} label="SMS total (histórico)" value={smsTotal.toLocaleString('pt-BR')}
+            sub={`${brl(smsTotal * SMS_COST_BRL)} estimado`}
           />
         </div>
       </main>
