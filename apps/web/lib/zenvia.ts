@@ -25,6 +25,12 @@ export async function sendSms(toIntl: string, text: string): Promise<SmsResult> 
   if (!toIntl || toIntl.replace(/\D/g, '').length < 12) {
     return { ok: false, error: 'bad_phone' };
   }
+  // Remove acento SEMPRE (mesmo de nome interpolado). Acento força UCS-2 (70
+  // chars/segmento em vez de 160) e DOBRA o custo do SMS. Mantém GSM-7.
+  // NFD separa a letra do acento (combining marks U+0300–U+036F); a gente descarta os acentos.
+  const gsmText = Array.from(String(text).normalize('NFD'))
+    .filter(ch => { const c = ch.charCodeAt(0); return c < 0x0300 || c > 0x036f; })
+    .join('');
   try {
     const res = await fetch('https://api.zenvia.com/v2/channels/sms/messages', {
       method: 'POST',
@@ -32,7 +38,7 @@ export async function sendSms(toIntl: string, text: string): Promise<SmsResult> 
       body: JSON.stringify({
         from: ZENVIA_FROM,
         to: toIntl.replace(/\D/g, ''),
-        contents: [{ type: 'text', text }],
+        contents: [{ type: 'text', text: gsmText }],
       }),
     });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
