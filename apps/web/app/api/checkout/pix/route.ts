@@ -1,5 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { pagarme } from '@/lib/pagarme/client';
+import { sendEmail } from '@/lib/ses-mailer';
+import { sendSms } from '@/lib/zenvia';
 import { createServiceClient } from '@/lib/supabase/server';
 import { resolveAuthUserId } from '@/lib/supabase/auth-resolve';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
@@ -29,6 +31,44 @@ async function waitForQrCode(orderId: string, current: any): Promise<any> {
     } catch { /* tenta de novo no próximo loop */ }
   }
   return pixData;
+}
+
+function firstNameOf(full?: string | null): string {
+  const n = (full ?? '').trim().split(/\s+/)[0] ?? '';
+  return n ? n.charAt(0).toUpperCase() + n.slice(1).toLowerCase() : 'Oi';
+}
+
+// Telefone BR → internacional (55 + DDD + número). '' se inválido.
+function toIntlPhone(raw?: string | null): string {
+  const d = String(raw ?? '').replace(/\D/g, '');
+  if (!d || d.length < 10) return '';
+  return d.startsWith('55') && d.length >= 12 ? d : `55${d}`;
+}
+
+// E-mail transacional com o PIX copia-e-cola (a cliente paga de qualquer lugar).
+function pixEmailHtml(first: string, code: string, qrImg?: string): string {
+  return `
+  <div style="background:#FFFAF5;padding:32px 0;font-family:'Plus Jakarta Sans',Helvetica,Arial,sans-serif">
+    <div style="max-width:460px;margin:0 auto;background:#fff;border-radius:18px;overflow:hidden;border:1px solid #F0E0E4">
+      <div style="background:linear-gradient(135deg,#FB7185,#BE185D);padding:26px 32px">
+        <div style="color:#fff;font-size:22px;font-weight:700;font-family:Georgia,serif">Plano da <em>Ju</em></div>
+      </div>
+      <div style="padding:26px 32px;color:#3D2B2E">
+        <p style="font-size:16px;margin:0 0 12px">Oi, ${first}! 💛</p>
+        <p style="font-size:14px;line-height:1.6;color:#7A6A6D;margin:0 0 18px">
+          Seu PIX do <strong>Plano da Ju</strong> foi gerado. É só pagar com o código abaixo
+          que a Juliane já começa a montar o seu plano capilar personalizado. <strong>O PIX expira em 1 hora.</strong>
+        </p>
+        ${qrImg ? `<div style="text-align:center;margin:0 0 18px"><img src="${qrImg}" alt="QR Code PIX" width="180" height="180" style="border-radius:12px"/></div>` : ''}
+        <div style="font-size:11px;font-weight:700;color:#BE185D;text-transform:uppercase;letter-spacing:.5px;margin:0 0 6px">PIX copia e cola</div>
+        <div style="font-family:monospace;font-size:12.5px;line-height:1.5;color:#3D2B2E;background:#FFF6F9;border:1px dashed #F0C0CE;border-radius:10px;padding:12px;word-break:break-all">${code}</div>
+        <p style="font-size:12.5px;line-height:1.6;color:#7A6A6D;margin:18px 0 0">
+          Abra o app do seu banco, escolha <strong>PIX &gt; Copia e Cola</strong>, cole esse código e confirme.
+          Assim que o pagamento cair, seu acesso é liberado automaticamente.
+        </p>
+      </div>
+    </div>
+  </div>`;
 }
 
 export async function POST(req: NextRequest) {
@@ -183,6 +223,8 @@ export async function POST(req: NextRequest) {
         plan_status: 'pending_photo',
         pagarme_pix_order_id: order.id,
         checkout_session_id: session_id ?? null,
+        pix_sms_count: 1,   // toque imediato (email+SMS abaixo); cron faz 24h/72h
+        pix_sms_last_at: new Date().toISOString(),
       });
     } else {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -195,6 +237,8 @@ export async function POST(req: NextRequest) {
           quiz_session_id: typeof session_id === 'string' ? session_id : null,
           pagarme_pix_order_id: order.id,
           checkout_session_id: session_id ?? null,
+          pix_sms_count: 1,
+          pix_sms_last_at: new Date().toISOString(),
         })
         .eq('email', email);
     }
@@ -210,6 +254,28 @@ export async function POST(req: NextRequest) {
         order_id: order.id,
       });
     }
+
+    // ⚡ Toque imediato: e-mail com o copia-e-cola (paga de qualquer lugar depois)
+    // + SMS de aviso. Roda DEPOIS da resposta (after) pra não atrasar o checkout.
+    const _first = firstNameOf(name);
+    const _code = pixData.qr_code as string;
+    const _qrImg = pixData.qr_code_url as string | undefined;
+    const _phoneIntl = toIntlPhone(profilePhone);
+    after(async () => {
+      try {
+        await sendEmail({
+          to: email,
+          toName: name,
+          subject: 'Seu PIX do Plano da Ju — código para pagar 💛',
+          html: pixEmailHtml(_first, _code, _qrImg),
+        });
+      } catch (e) { console.error('[pix immediate email]', e); }
+      try {
+        if (_phoneIntl) {
+          await sendSms(_phoneIntl, `${_first}, seu PIX do Plano da Ju foi gerado! O codigo esta no seu e-mail e no WhatsApp. Finalize o pagamento pra Juliane comecar seu plano capilar.`);
+        }
+      } catch (e) { console.error('[pix immediate sms]', e); }
+    });
 
     return NextResponse.json({
       order_id: order.id,

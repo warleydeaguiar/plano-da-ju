@@ -10,15 +10,17 @@ export const maxDuration = 60;
 /**
  * GET /api/cron/pix-sms?k=<WA_AUTOREPLY_SECRET>   (ou Bearer CRON_SECRET)
  *
- * Recuperação de PIX por SMS (Zenvia). Canal paralelo ao WhatsApp: pega quem
- * gerou um PIX e ainda NÃO pagou e, por volta de ~15 min após a geração, manda
- * UM SMS com o link da página /pix/<id> (onde está o copia-e-cola).
- *
- * Janela: MIN_AGE_MIN..MAX_AGE_MIN. Dispara no máximo 1x por pessoa
- * (coluna profiles.pix_sms_sent_at). ?dry=1 → só relata o que faria.
+ * FOLLOW-UPS de recuperação de PIX por SMS (Zenvia), pra quem gerou PIX e NÃO pagou.
+ * O toque 1 (imediato, e-mail+SMS) sai na própria rota de geração do PIX e já marca
+ * pix_sms_count=1. Este cron faz os toques seguintes:
+ *   • toque 2 — ~24h após o toque anterior
+ *   • toque 3 — ~48h após o toque 2 (última chamada, ~72h da geração)
+ * Para quando a pessoa paga (subscription_status deixa de ser 'pending'). Só age em
+ * quem tem pix_sms_count >= 1 (fluxo novo) — PIX antigos não entram. ?dry=1 = simula.
  */
-const MIN_AGE_MIN = 13;   // alvo ~15 min (cron roda a cada 3 min)
-const MAX_AGE_MIN = 50;
+const TOUCH2_AFTER_H = 24;   // horas desde o toque 1 (imediato)
+const TOUCH3_AFTER_H = 48;   // horas desde o toque 2
+const MAX_TOUCHES = 3;
 
 function firstName(full?: string | null): string {
   const n = (full ?? '').trim().split(/\s+/)[0] ?? '';
@@ -28,17 +30,18 @@ function firstName(full?: string | null): string {
 
 function toIntlPhone(raw?: string | null): string {
   const d = String(raw ?? '').replace(/\D/g, '');
-  if (!d) return '';
+  if (!d || d.length < 10) return '';
   if (d.startsWith('55') && d.length >= 12) return d;
   return `55${d}`;
 }
 
-// SMS sem acento/emoji (GSM-7, custo menor) e SEM link (operadora BR filtra link de
-// remetente nao-oficial; link em SMS tambem converte pouco). Estrategia 360: o SMS NAO
-// fecha a venda — ele AVISA o lead pra ir ver no e-mail e no WhatsApp, onde estao o
-// codigo PIX e a oferta completa.
-function smsText(name: string): string {
-  return `${name}, seu PIX do Plano da Ju ainda nao foi confirmado! Te mandamos tudo no seu WhatsApp e no e-mail - corre ver pra finalizar e garantir seu acesso antes de expirar.`;
+// SMS sem acento/emoji (GSM-7, custo menor) e SEM link. Estrategia 360: leva pro
+// WhatsApp/e-mail, onde estao o codigo PIX e a oferta. Mensagem por toque.
+function smsText(name: string, touch: number): string {
+  if (touch === 2) {
+    return `${name}, seu plano capilar da Juliane ainda ta te esperando! Ainda da tempo de garantir. Chama a gente no WhatsApp que a gente finaliza com voce.`;
+  }
+  return `${name}, ultima chamada! A Juliane preparou seu plano personalizado. Responde nosso WhatsApp hoje que a gente destrava seu acesso.`;
 }
 
 export async function GET(req: NextRequest) {
@@ -55,54 +58,54 @@ export async function GET(req: NextRequest) {
   const dry = req.nextUrl.searchParams.get('dry') === '1';
   const sb = await createServiceClient();
 
-  const sinceIso = new Date(Date.now() - (MAX_AGE_MIN + 10) * 60_000).toISOString();
+  // Candidatos: não pagaram (pending), têm PIX + telefone, já receberam o toque 1
+  // (pix_sms_count >= 1, fluxo novo) e ainda não esgotaram os toques.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: cands, error } = await (sb.from('profiles') as any)
-    .select('id, email, full_name, phone, pagarme_pix_order_id, subscription_status, updated_at')
+    .select('id, email, full_name, phone, pagarme_pix_order_id, subscription_status, pix_sms_count, pix_sms_last_at')
     .eq('subscription_status', 'pending')
     .not('pagarme_pix_order_id', 'is', null)
     .not('phone', 'is', null)
-    .is('pix_sms_sent_at', null)
-    .gt('updated_at', sinceIso)
+    .gte('pix_sms_count', 1)
+    .lt('pix_sms_count', MAX_TOUCHES)
     .limit(200);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const now = Date.now();
-  const result = { scanned: cands?.length ?? 0, sent: 0, skipped_paid: 0, skipped_window: 0, expired: 0, failed: 0, details: [] as unknown[] };
+  const result = { scanned: cands?.length ?? 0, sent: 0, skipped_paid: 0, skipped_window: 0, failed: 0, details: [] as unknown[] };
 
   for (const p of cands ?? []) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const order: any = await pagarme.get(`/orders/${p.pagarme_pix_order_id}`);
-      const status = order?.status;
+      const count = Number(p.pix_sms_count) || 0;
+      const lastAt = p.pix_sms_last_at ? new Date(p.pix_sms_last_at).getTime() : 0;
+      const hoursSince = (now - lastAt) / 3_600_000;
+      const nextTouch = count + 1;                                   // 2 ou 3
+      const dueAfter = nextTouch === 2 ? TOUCH2_AFTER_H : TOUCH3_AFTER_H;
+      if (hoursSince < dueAfter) { result.skipped_window++; continue; }
 
-      if (status === 'paid') { result.skipped_paid++; continue; }
-      if (status && status !== 'pending' && status !== 'waiting_payment') {
-        if (!dry) await markSent(sb, p.id);
-        result.expired++; continue;
-      }
-
-      const createdAt = order?.created_at ? new Date(order.created_at).getTime() : now;
-      const ageMin = (now - createdAt) / 60_000;
-
-      if (ageMin < MIN_AGE_MIN) { result.skipped_window++; continue; }
-      if (ageMin > MAX_AGE_MIN) { if (!dry) await markSent(sb, p.id); result.expired++; continue; }
+      // Confirma que NÃO pagou (o subscription_status='pending' já filtra, mas o
+      // pedido é a fonte de verdade — se pagou fora do fluxo, encerra a sequência).
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const order: any = await pagarme.get(`/orders/${p.pagarme_pix_order_id}`);
+        if (order?.status === 'paid') { if (!dry) await setCount(sb, p.id, MAX_TOUCHES); result.skipped_paid++; continue; }
+      } catch { /* consulta falhou → segue pelo subscription_status */ }
 
       const phoneIntl = toIntlPhone(p.phone);
       if (phoneIntl.length < 12) { result.failed++; result.details.push({ email: p.email, err: 'bad_phone' }); continue; }
 
-      if (dry) { result.sent++; result.details.push({ email: p.email, ageMin: Math.round(ageMin), to: phoneIntl, would_send: true }); continue; }
+      if (dry) { result.sent++; result.details.push({ email: p.email, touch: nextTouch, hoursSince: Math.round(hoursSince), would_send: true }); continue; }
 
-      const sendRes = await sendSms(phoneIntl, smsText(firstName(p.full_name)));
+      const sendRes = await sendSms(phoneIntl, smsText(firstName(p.full_name), nextTouch));
       if (sendRes.ok) {
-        await markSent(sb, p.id);
+        await setCount(sb, p.id, nextTouch);
         result.sent++;
       } else if (sendRes.skipped) {
         result.failed++;
         result.details.push({ email: p.email, err: 'zenvia_token_missing' });
       } else {
-        // NÃO marca → tenta de novo no próximo ciclo
+        // NÃO incrementa → tenta de novo no próximo ciclo
         result.failed++;
         result.details.push({ email: p.email, err: sendRes.error });
       }
@@ -116,6 +119,6 @@ export async function GET(req: NextRequest) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function markSent(sb: any, id: string) {
-  await sb.from('profiles').update({ pix_sms_sent_at: new Date().toISOString() }).eq('id', id);
+async function setCount(sb: any, id: string, count: number) {
+  await sb.from('profiles').update({ pix_sms_count: count, pix_sms_last_at: new Date().toISOString() }).eq('id', id);
 }
