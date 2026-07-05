@@ -106,6 +106,17 @@ export default function AgendaPage() {
 
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Abre num dia específico quando vem da home (?d=YYYY-MM-DD): seleciona o mês + o dia.
+  useEffect(() => {
+    const dStr = new URLSearchParams(window.location.search).get('d');
+    if (dStr && /^\d{4}-\d{2}-\d{2}$/.test(dStr)) {
+      const [y, m, day] = dStr.split('-').map(Number);
+      const now = new Date();
+      setMonthOffset((y - now.getFullYear()) * 12 + (m - 1 - now.getMonth()));
+      setSelectedDay(day);
+    }
+  }, []);
+
   if (loading) return <PlanoLoading label="Carregando sua agenda…" />;
 
   const cal = buildCalendar(monthOffset);

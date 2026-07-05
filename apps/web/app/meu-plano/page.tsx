@@ -132,13 +132,13 @@ const EVENT_TYPES = [
   { type: 'photo',           Icon: IconCamera,   label: 'Foto de progresso', sub: 'Evolução'     },
 ];
 
-// Build last 7 days week strip
-function buildWeek() {
+// Semana (seg→dom) deslocada por `weekOffset` (0 = semana atual, -1 = anterior, +1 = próxima)
+function buildWeek(weekOffset = 0) {
   const today = new Date();
   const dow = today.getDay();
   const monday = new Date(today);
   const offsetToMonday = dow === 0 ? -6 : 1 - dow;
-  monday.setDate(today.getDate() + offsetToMonday);
+  monday.setDate(today.getDate() + offsetToMonday + weekOffset * 7);
   const days = [];
   for (let i = 0; i < 7; i++) {
     const d = new Date(monday);
@@ -221,6 +221,8 @@ export default function HojePage() {
   const [hairState, setHairState] = useState<HairState | null>(null);
   const [events, setEvents]     = useState<HairEvent[]>([]);
   const [streak, setStreak]     = useState(0);
+  const [weekOffset, setWeekOffset] = useState(0);   // navegação de semanas no calendário
+  const touchStartX = useRef<number | null>(null);   // swipe pra trocar de semana
   const [checkedInToday, setCheckedInToday] = useState(false);
   const [loading, setLoading]   = useState(true);
   const [loggingEvt, setLoggingEvt] = useState<string | null>(null);
@@ -463,7 +465,17 @@ export default function HojePage() {
   const washDays  = daysAgo(hairState?.last_wash_at ?? null);
   const hour      = new Date().getHours();
   const greeting  = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
-  const week      = buildWeek();
+  const week      = buildWeek(weekOffset);
+  const MESES_ABR = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  const weekLabel = weekOffset === 0
+    ? 'Esta semana'
+    : `${week[0].num} a ${week[6].num} de ${MESES_ABR[Number(week[6].iso.slice(5, 7)) - 1]}`;
+  // Tocar num dia abre a Agenda já naquele dia (preserva o modo preview).
+  const goToDay = (iso: string) => {
+    const pv = previewCtx();
+    const url = `/meu-plano/agenda?d=${iso}`;
+    router.push(pv ? `${url}&preview_user=${encodeURIComponent(pv.user)}&k=${encodeURIComponent(pv.k)}` : url);
+  };
   const tipIndex  = new Date().getDate() % TIPS.length;
   const tip       = TIPS[tipIndex];
   const rec       = getRecommendation(hairState, profile, plans[0]);
@@ -668,36 +680,70 @@ export default function HojePage() {
           </div>
         )}
 
-        {/* Week strip — clicável: leva pra Agenda (calendário com os cuidados do dia) */}
-        <div style={{ padding: '0 16px 16px', display: 'flex', gap: 6 }}>
-          {week.map((d, i) => {
-            const wasActive = events.some(e => e.occurred_at.split('T')[0] === d.iso);
-            return (
-              <button key={i} onClick={() => router.push('/meu-plano/agenda')} style={{
-                flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
-                background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit',
-              }}>
-                <div style={{
-                  fontSize: 10.5, fontWeight: d.isToday ? 700 : 500,
-                  color: d.isToday ? T.pinkDeep : T.inkSoft,
-                  textTransform: 'uppercase', letterSpacing: 0.4,
-                }}>{d.label}</div>
-                <div style={{
-                  width: 34, height: 34, borderRadius: '50%',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 14, fontWeight: 600,
-                  background: d.isToday ? gradient.heroSoft : wasActive ? T.greenSoft : 'transparent',
-                  color: d.isToday ? '#FFF' : wasActive ? T.green : T.inkSoft,
-                  boxShadow: d.isToday ? '0 3px 10px rgba(190,24,93,0.32)' : 'none',
-                  fontFamily: fonts.display,
-                }}>{d.num}</div>
-                <div style={{
-                  width: 5, height: 5, borderRadius: '50%',
-                  background: d.isToday ? T.pink : wasActive ? T.green : T.border,
-                }} />
-              </button>
-            );
-          })}
+        {/* Calendário da semana — navegável (setas + arrastar) e clicável (abre a Agenda no dia) */}
+        <div style={{ padding: '0 16px 16px' }}>
+          {/* Navegação de semana */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <button onClick={() => setWeekOffset(w => w - 1)} aria-label="Semana anterior" style={{
+              width: 30, height: 30, borderRadius: '50%', border: `1px solid ${T.border}`, background: T.surface,
+              color: T.pinkDeep, fontSize: 17, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>‹</button>
+            <div style={{ fontSize: 11.5, fontWeight: 700, color: weekOffset === 0 ? T.pinkDeep : T.inkSoft, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+              {weekLabel}
+            </div>
+            <button onClick={() => setWeekOffset(w => w + 1)} aria-label="Próxima semana" style={{
+              width: 30, height: 30, borderRadius: '50%', border: `1px solid ${T.border}`, background: T.surface,
+              color: T.pinkDeep, fontSize: 17, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>›</button>
+          </div>
+          {/* Dias (swipe horizontal troca a semana) */}
+          <div
+            onTouchStart={e => { touchStartX.current = e.touches[0]?.clientX ?? null; }}
+            onTouchEnd={e => {
+              const start = touchStartX.current;
+              touchStartX.current = null;
+              if (start == null) return;
+              const dx = (e.changedTouches[0]?.clientX ?? start) - start;
+              if (Math.abs(dx) > 40) setWeekOffset(w => w + (dx < 0 ? 1 : -1));
+            }}
+            style={{ display: 'flex', gap: 6, touchAction: 'pan-y' }}
+          >
+            {week.map((d, i) => {
+              const wasActive = events.some(e => e.occurred_at.split('T')[0] === d.iso);
+              return (
+                <button key={i} onClick={() => goToDay(d.iso)} style={{
+                  flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+                  background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', fontFamily: 'inherit',
+                }}>
+                  <div style={{
+                    fontSize: 10.5, fontWeight: d.isToday ? 700 : 500,
+                    color: d.isToday ? T.pinkDeep : T.inkSoft,
+                    textTransform: 'uppercase', letterSpacing: 0.4,
+                  }}>{d.label}</div>
+                  <div style={{
+                    width: 34, height: 34, borderRadius: '50%',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 14, fontWeight: 600,
+                    background: d.isToday ? gradient.heroSoft : wasActive ? T.greenSoft : 'transparent',
+                    color: d.isToday ? '#FFF' : wasActive ? T.green : T.inkSoft,
+                    boxShadow: d.isToday ? '0 3px 10px rgba(190,24,93,0.32)' : 'none',
+                    fontFamily: fonts.display,
+                  }}>{d.num}</div>
+                  <div style={{
+                    width: 5, height: 5, borderRadius: '50%',
+                    background: d.isToday ? T.pink : wasActive ? T.green : T.border,
+                  }} />
+                </button>
+              );
+            })}
+          </div>
+          {weekOffset !== 0 && (
+            <div style={{ textAlign: 'center', marginTop: 8 }}>
+              <button onClick={() => setWeekOffset(0)} style={{
+                background: 'none', border: 'none', color: T.pinkDeep, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+              }}>Voltar pra hoje</button>
+            </div>
+          )}
         </div>
 
         {/* Plan banner */}
