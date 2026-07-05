@@ -8,6 +8,7 @@ interface CatalogProduct {
   category: string | null;
   hair_types: string[] | null;
   is_priority?: boolean | null;   // ⭐ mais vendido / alto impacto (preferir)
+  is_ybera?: boolean | null;      // marca da casa (principal é sempre Ybera)
 }
 
 interface GeneratedPlan {
@@ -80,6 +81,8 @@ Pegue o PRIMEIRO/maior incômodo do quiz (campo "incomoda") e escolha o PRODUTO-
 - Para cada produto numa semana, coloque o ID em "produto_ids" na ordem de "produtos".
 - LIMITE DURO — POUCOS PRODUTOS: o plano INTEIRO usa de 2 a 6 produtos no TOTAL (ideal 4–5), somando TODAS as 12 semanas. É PROIBIDO o plano ter mais de 6 produtos distintos. Menos é mais: indicar produto demais é o principal motivo de ela NÃO comprar e NÃO conseguir seguir.
 - "produtos_indicados": de 2 a 6 (ideal 4–5) — É A LISTA DE COMPRA dela. O 1º é o ÂNCORA (Ybera, do incômodo principal). Os demais só se forem REALMENTE necessários pro caso dela. "alternativa_id" = produto de outra marca mais barato, ou null. "motivo": 1 frase em 2ª pessoa ligando ao caso dela.
+- REGRA DA MARCA (DURA): TODO "produto_id" (o PRINCIPAL de cada item) é OBRIGATORIAMENTE um produto YBERA (marca Ybera ou Ybera Fashion Gold, is_ybera=true). NUNCA coloque marca de fora (Wella, L'Oréal, etc.) como principal — o principal é SEMPRE Ybera. Outras marcas SÓ podem aparecer em "alternativa_id" (a 2ª opção mais barata pra economizar). Se não houver alternativa de OUTRA marca que caiba, use null — NUNCA use outro produto Ybera como alternativa.
+- SHAMPOO — NO MÁXIMO 1: a lista inteira tem NO MÁXIMO um item de shampoo/limpeza. NUNCA indique dois shampoos diferentes. O shampoo que entrar NÃO leva um segundo shampoo como "alternativa_id" (use null ou uma alternativa de categoria diferente só se fizer sentido) — dois shampoos na lista é ERRADO.
 - CONSISTÊNCIA TOTAL: os produtos das 12 semanas são EXATAMENTE os de "produtos_indicados" — nem um a mais. NUNCA cite na rotina um produto que não esteja na lista de compra dela. A rotina varia o USO (mais máscara numa semana, óleo na outra), não a lista de produtos.
 
 ═══ ROTINA POR DIA (cada tarefa tem "dia" 1–7; PODE ter várias no mesmo dia) ═══
@@ -160,7 +163,7 @@ function buildQuizBlock(quizAnswers: Record<string, unknown> | null): string {
 async function loadCatalog(sb: SupabaseClient, hairType: string | null): Promise<CatalogProduct[]> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data } = await (sb.from('products') as any)
-    .select('id,name,brand,category,hair_types,is_priority')
+    .select('id,name,brand,category,hair_types,is_priority,is_ybera')
     .eq('active', true)
     .is('parent_product_id', null)   // combos NÃO entram: são opção de compra do produto-base, exibidas na UI
     .order('is_priority', { ascending: false })
@@ -189,6 +192,45 @@ interface GenerateOptions {
  * Chama Claude com a foto + quiz + catálogo real e retorna o plano estruturado.
  * Não persiste nada — o caller decide o que fazer.
  */
+// Trava (não confia só no prompt) as regras de indicação:
+//  1) PRINCIPAL é SEMPRE Ybera — se o principal não for Ybera mas a alternativa for,
+//     troca; nunca deixa marca de fora como principal.
+//  2) ALTERNATIVA nunca é Ybera (alternativa = 2ª opção de OUTRA marca) → zera.
+//  3) NO MÁXIMO 1 shampoo/limpeza na lista (nem como alternativa).
+function enforceProductRules(plan: GeneratedPlan, catalog: CatalogProduct[]): void {
+  const list = Array.isArray(plan.produtos_indicados) ? plan.produtos_indicados : [];
+  if (!list.length) return;
+  const byId = new Map(catalog.map(p => [p.id, p]));
+  const isYbera = (id?: string | null) => {
+    if (!id) return false;
+    const p = byId.get(id);
+    return p ? (p.is_ybera === true || /ybera|fashion\s*gold/i.test(p.brand ?? '')) : false;
+  };
+  const SHAMPOO_CATS = new Set(['limpeza', 'pre_shampoo']);
+  const isShampoo = (id?: string | null) => (id ? SHAMPOO_CATS.has(byId.get(id)?.category ?? '') : false);
+
+  let shampooSeen = false;
+  const out: NonNullable<GeneratedPlan['produtos_indicados']> = [];
+  for (const item of list) {
+    let principal = item?.produto_id;
+    let alt: string | null | undefined = item?.alternativa_id ?? null;
+    if (!principal) continue;
+
+    // 1) principal sempre Ybera (troca com a alternativa se ela for a Ybera)
+    if (!isYbera(principal) && isYbera(alt)) { const t = principal; principal = alt as string; alt = t; }
+    // 2) alternativa nunca é Ybera (é outra marca, mais barata)
+    if (isYbera(alt)) alt = null;
+    // 3) no máximo 1 shampoo na lista; e alternativa do shampoo não é outro shampoo
+    if (isShampoo(principal)) {
+      if (shampooSeen) continue;      // pula shampoo extra
+      shampooSeen = true;
+      if (isShampoo(alt)) alt = null;
+    }
+    out.push({ produto_id: principal, motivo: item?.motivo ?? '', alternativa_id: alt ?? null });
+  }
+  plan.produtos_indicados = out;
+}
+
 export async function generatePlanWithClaude(
   sb: SupabaseClient,
   args: {
@@ -299,6 +341,7 @@ export async function generatePlanWithClaude(
     if (!Array.isArray(plan.semanas) || plan.semanas.length === 0) {
       throw new Error('Plano sem semanas válidas');
     }
+    enforceProductRules(plan, catalog);
     return plan;
   }
 
