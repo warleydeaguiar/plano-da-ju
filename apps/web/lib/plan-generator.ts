@@ -260,32 +260,34 @@ export async function generatePlanWithClaude(
 
   const fullPrompt = BASE_PROMPT + buildCatalogBlock(catalog) + buildQuizBlock(args.quizAnswers);
 
-  // Monta o content da mensagem — se tem base64, usa data URL; se tem URL, usa direto.
+  const hadPhoto = !!(args.photo.photoBase64 || args.photo.photoUrl || (args.photo.extraPhotoUrls?.some(Boolean)));
+
+  // Monta o content da mensagem. dropPhoto=true ignora as fotos (fallback quando a
+  // foto está quebrada/vazia ou a IA se recusa a analisá-la → gera só pelo quiz).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const content: any[] = [];
-  if (args.photo.photoBase64) {
-    content.push({
-      type: 'image_url',
-      image_url: { url: `data:${args.photo.photoMimeType || 'image/jpeg'};base64,${args.photo.photoBase64}` },
-    });
-  } else if (args.photo.photoUrl) {
-    content.push({
-      type: 'image_url',
-      image_url: { url: args.photo.photoUrl },
-    });
+  function buildContent(dropPhoto: boolean): any[] {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const content: any[] = [];
+    if (!dropPhoto) {
+      if (args.photo.photoBase64) {
+        content.push({ type: 'image_url', image_url: { url: `data:${args.photo.photoMimeType || 'image/jpeg'};base64,${args.photo.photoBase64}` } });
+      } else if (args.photo.photoUrl) {
+        content.push({ type: 'image_url', image_url: { url: args.photo.photoUrl } });
+      }
+      for (const url of (args.photo.extraPhotoUrls ?? [])) {
+        if (url) content.push({ type: 'image_url', image_url: { url } });
+      }
+    }
+    const nFotos = content.filter(c => c.type === 'image_url').length;
+    if (nFotos > 1) {
+      content.push({ type: 'text', text: `Você recebeu ${nFotos} fotos do MESMO cabelo (geralmente: frente, costas e raiz/couro cabeludo). Analise TODAS juntas — a de costas mostra comprimento e pontas; a da raiz mostra oleosidade e couro cabeludo.` });
+    }
+    if (nFotos === 0) {
+      content.push({ type: 'text', text: 'SEM FOTO: a cliente NÃO enviou foto do cabelo. Baseie TODO o plano no questionário. Em "analise_foto" NÃO invente o que veria numa foto — preencha os scores com uma estimativa conservadora a partir das respostas dela e coloque em "observacoes": "Plano montado com base no seu questionário — a foto não foi enviada." A "mensagem_juliane" deve COMEÇAR dizendo com carinho que, como a foto não chegou, a Ju montou o plano pelas respostas do questionário, e convidar a enviar a foto depois pra ela ajustar os detalhes.' });
+    }
+    content.push({ type: 'text', text: fullPrompt });
+    return content;
   }
-  // Fotos extras (costas, raiz) — a IA analisa o cabelo por inteiro.
-  for (const url of (args.photo.extraPhotoUrls ?? [])) {
-    if (url) content.push({ type: 'image_url', image_url: { url } });
-  }
-  const nFotos = (args.photo.photoBase64 || args.photo.photoUrl ? 1 : 0) + (args.photo.extraPhotoUrls?.filter(Boolean).length ?? 0);
-  if (nFotos > 1) {
-    content.push({ type: 'text', text: `Você recebeu ${nFotos} fotos do MESMO cabelo (geralmente: frente, costas e raiz/couro cabeludo). Analise TODAS juntas — a de costas mostra comprimento e pontas; a da raiz mostra oleosidade e couro cabeludo.` });
-  }
-  if (nFotos === 0) {
-    content.push({ type: 'text', text: 'SEM FOTO: a cliente NÃO enviou foto do cabelo. Baseie TODO o plano no questionário. Em "analise_foto" NÃO invente o que veria numa foto — preencha os scores com uma estimativa conservadora a partir das respostas dela e coloque em "observacoes": "Plano montado com base no seu questionário — a foto não foi enviada." A "mensagem_juliane" deve COMEÇAR dizendo com carinho que, como a foto não chegou, a Ju montou o plano pelas respostas do questionário, e convidar a enviar a foto depois pra ela ajustar os detalhes.' });
-  }
-  content.push({ type: 'text', text: fullPrompt });
 
   const apiKey = process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('OPENROUTER_API_KEY não configurado');
@@ -299,7 +301,7 @@ export async function generatePlanWithClaude(
   // longos e truncavam em 16k → 2 retries → 504. Folga maior = completa de 1ª.
   const MAX_TOKENS = 22000;
 
-  async function requestPlan(): Promise<GeneratedPlan> {
+  async function requestPlan(dropPhoto: boolean): Promise<GeneratedPlan> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 240_000);
     let response: Response;
@@ -315,7 +317,7 @@ export async function generatePlanWithClaude(
         body: JSON.stringify({
           model: 'anthropic/claude-sonnet-4-6',
           max_tokens: MAX_TOKENS,
-          messages: [{ role: 'user', content }],
+          messages: [{ role: 'user', content: buildContent(dropPhoto) }],
         }),
         signal: controller.signal,
       });
@@ -361,8 +363,12 @@ export async function generatePlanWithClaude(
 
   let lastErr: unknown;
   for (let attempt = 1; attempt <= 2; attempt++) {
+    // 2ª tentativa: se a cliente TINHA foto, tenta SEM ela — cobre foto vazia/
+    // corrompida (0 bytes) ou recusa da IA em analisar a imagem, que travava o
+    // plano em "JSON não encontrado". Sem foto, gera pelo quiz e não trava.
+    const dropPhoto = attempt === 2 && hadPhoto;
     try {
-      return await requestPlan();
+      return await requestPlan(dropPhoto);
     } catch (e) {
       lastErr = e;
       // Erro de crédito (402) não se resolve repetindo — propaga na hora.
