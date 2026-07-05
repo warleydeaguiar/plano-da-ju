@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import { T, fonts } from './theme';
+import { previewCtx } from './preview';
 
 const BLUE = '#2F80ED';
 const BLUE_SOFT = '#E3F0FD';
@@ -65,6 +66,15 @@ export default function WaterTracker() {
   );
 
   const load = useCallback(async () => {
+    // Modo preview (admin "ver como cliente"): sem sessão. Mostra a interface
+    // com o padrão e deixa clicar (visual, sem salvar — é somente leitura).
+    if (previewCtx()) {
+      setGoal(DEFAULT_GOAL);
+      setCupMl(Math.max(100, Math.round(DEFAULT_GOAL / DEFAULT_CUPS / 50) * 50));
+      setMl(0);
+      setLoading(false);
+      return;
+    }
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { setLoading(false); return; }
     setToken(session.access_token);
@@ -90,7 +100,10 @@ export default function WaterTracker() {
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function addWater(amount: number) {
-    if (busy || !token || amount === 0) return;
+    if (busy || amount === 0) return;
+    // Preview: só atualiza a visual (não salva no banco da cliente).
+    if (previewCtx()) { setMl(m => Math.max(0, m + amount)); return; }
+    if (!token) return;
     setBusy(true);
     setMl(m => Math.max(0, m + amount));
     try {
