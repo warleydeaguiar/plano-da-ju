@@ -12,6 +12,7 @@ import { normalizeTasks } from '../plan-helpers';
 import { PlanoLoading } from '../Loading';
 import PlanFeedback from './PlanFeedback';
 import { DICAS_UNIVERSAIS } from '@/lib/dicas-universais';
+import GroupInvite from '../GroupInvite';
 
 // Meta de seguidores da Ju no Instagram (prova social — atualizar quando mudar)
 const IG_FOLLOWERS = 54421;
@@ -803,6 +804,13 @@ export default function PlanoPage() {
                 <EmptyState emoji="🛍️" title="Catálogo em breve" description="Os produtos recomendados serão exibidos aqui." />
               )}
             </div>
+
+            {/* Convite pro grupo VIP de promoções (mesmo da página de Promoções) */}
+            <SectionLabel>Compre com desconto</SectionLabel>
+            <div style={{ padding: '0 16px 18px' }}>
+              <GroupInvite />
+            </div>
+
             {currentPlan?.products && currentPlan.products.length > 0 && (
               <>
                 <SectionLabel>Para esta semana</SectionLabel>
