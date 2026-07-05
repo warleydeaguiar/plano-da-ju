@@ -13,6 +13,10 @@ import { PlanoLoading } from '../Loading';
 import PlanFeedback from './PlanFeedback';
 import { DICAS_UNIVERSAIS } from '@/lib/dicas-universais';
 
+// Meta de seguidores da Ju no Instagram (prova social — atualizar quando mudar)
+const IG_FOLLOWERS = 54421;
+const IG_GOAL = 100000;
+
 type Tab = 'rotina' | 'produtos' | 'dicas';
 
 interface HairPlanRow {
@@ -404,22 +408,26 @@ export default function PlanoPage() {
                     {profile.carta_ju.trim()}
                   </div>
 
-                  {/* CTA — seguir a Juliane no Instagram (no fim da carta) */}
+                  {/* CTA — seguir a Juliane no Instagram (no fim da carta) + meta */}
                   <a
                     href="https://instagram.com/julianecost"
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
                       marginTop: 16, textDecoration: 'none',
                       background: 'linear-gradient(105deg, #F58529 0%, #DD2A7B 55%, #8134AF 100%)',
-                      color: '#fff', fontWeight: 700, fontSize: 13.5,
-                      borderRadius: 13, padding: '12px 14px',
+                      color: '#fff', borderRadius: 13, padding: '11px 14px',
                       boxShadow: '0 6px 16px rgba(221,42,123,0.28)',
                     }}
                   >
-                    <IconInstagram size={17} />
-                    Seguir a Juliane no Instagram
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 13.5 }}>
+                      <IconInstagram size={17} />
+                      Seguir a Juliane no Instagram
+                    </span>
+                    <span style={{ fontSize: 11.5, fontWeight: 600, color: 'rgba(255,255,255,0.95)' }}>
+                      {IG_FOLLOWERS.toLocaleString('pt-BR')} seguidores · ajude a Ju a chegar em {Math.round(IG_GOAL / 1000)} mil 💗
+                    </span>
                   </a>
                 </>
               )}

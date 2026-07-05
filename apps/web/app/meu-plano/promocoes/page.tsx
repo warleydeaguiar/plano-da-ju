@@ -6,7 +6,7 @@ import { createBrowserClient } from '@supabase/ssr';
 import { T, fonts, shadow, gradient } from '../theme';
 import { IconBag, IconSparkles, IconWhatsApp } from '../icons';
 import { PlanoLoading } from '../Loading';
-import { previewCtx } from '../preview';
+import { previewCtx, fetchPreviewBundle } from '../preview';
 
 interface Promotion {
   id: string;
@@ -30,6 +30,9 @@ interface Recommendation {
 }
 
 const GROUP_URL = 'https://planodaju.julianecost.com/g/entrar';
+// Prova social / meta dos grupos (atualizar quando mudar)
+const GROUP_MEMBERS = 23673;
+const GROUP_GOAL = 25000;
 
 function endsLabel(iso: string | null): string | null {
   if (!iso) return null;
@@ -55,9 +58,31 @@ export default function PromocoesPage() {
   );
 
   const load = useCallback(async () => {
-    // Preview (admin): renderiza a tela sem sessão (dados de oferta são user-specific
-    // e dependem de token, então aqui só mostramos o layout).
-    if (previewCtx()) { setLoading(false); return; }
+    // Preview (admin): monta as recomendações personalizadas a partir do bundle.
+    const pv = previewCtx();
+    if (pv) {
+      const b = await fetchPreviewBundle(pv);
+      if (b) {
+        const rec: Array<{ produto_id?: string; alternativa_id?: string; motivo?: string }> =
+          Array.isArray(b.profile?.recommended_products) ? b.profile.recommended_products : [];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const byId = new Map<string, any>(((b.products ?? []) as any[]).map(p => [p.id, p]));
+        const recs = rec.map(r => {
+          const main = r.produto_id ? byId.get(r.produto_id) : null;
+          if (!main) return null;
+          const alt = r.alternativa_id ? byId.get(r.alternativa_id) : null;
+          return {
+            id: main.id, name: main.name, brand: main.brand, category: main.category,
+            image_url: main.image_url, affiliate_url: main.affiliate_url, reason: r.motivo ?? null,
+            alternative: alt ? { id: alt.id, name: alt.name, brand: alt.brand, affiliate_url: alt.affiliate_url } : null,
+            combos: main.combos ?? null,
+          } as Recommendation;
+        }).filter(Boolean) as Recommendation[];
+        setRecommendations(recs);
+      }
+      setLoading(false);
+      return;
+    }
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { router.push('/login'); return; }
     try {
@@ -100,25 +125,44 @@ export default function PromocoesPage() {
             target="_blank"
             rel="noopener noreferrer"
             style={{
-              display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none',
+              display: 'flex', flexDirection: 'column', gap: 11, textDecoration: 'none',
               background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)',
               borderRadius: 16, padding: '14px 16px',
               boxShadow: '0 6px 16px rgba(18,140,126,0.28)',
             }}
           >
-            <div style={{
-              width: 42, height: 42, borderRadius: '50%', background: '#fff',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            }}><IconWhatsApp size={28} color="#25D366" /></div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ color: '#fff', fontWeight: 700, fontSize: 15, fontFamily: fonts.ui }}>
-                Grupo VIP de promoções
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{
+                width: 42, height: 42, borderRadius: '50%', background: '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              }}><IconWhatsApp size={28} color="#25D366" /></div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ color: '#fff', fontWeight: 700, fontSize: 15, fontFamily: fonts.ui }}>
+                  Grupo VIP de promoções
+                </div>
+                <div style={{ color: 'rgba(255,255,255,0.92)', fontSize: 12.5, marginTop: 2, lineHeight: 1.35 }}>
+                  Descontos exclusivos no WhatsApp — você recebe primeiro 💚
+                </div>
               </div>
-              <div style={{ color: 'rgba(255,255,255,0.92)', fontSize: 12.5, marginTop: 2, lineHeight: 1.35 }}>
-                Descontos exclusivos no WhatsApp — você recebe primeiro 💚
+              <div style={{ color: '#fff', fontSize: 20, fontWeight: 700, flexShrink: 0 }}>→</div>
+            </div>
+            {/* Prova social + meta — faz a pessoa querer entrar pra ajudar a bater */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
+                <span style={{ color: '#fff', fontSize: 12, fontWeight: 700 }}>
+                  {GROUP_MEMBERS.toLocaleString('pt-BR')} pessoas no grupo
+                </span>
+                <span style={{ color: 'rgba(255,255,255,0.92)', fontSize: 11.5, fontWeight: 600 }}>
+                  meta {Math.round(GROUP_GOAL / 1000)} mil
+                </span>
+              </div>
+              <div style={{ height: 7, borderRadius: 99, background: 'rgba(255,255,255,0.28)', overflow: 'hidden' }}>
+                <div style={{ width: `${Math.min(100, (GROUP_MEMBERS / GROUP_GOAL) * 100)}%`, height: '100%', borderRadius: 99, background: '#fff' }} />
+              </div>
+              <div style={{ color: 'rgba(255,255,255,0.96)', fontSize: 11.5, marginTop: 6, lineHeight: 1.4 }}>
+                Falta pouco pra bater a meta — entra e faz parte! 💚
               </div>
             </div>
-            <div style={{ color: '#fff', fontSize: 20, fontWeight: 700, flexShrink: 0 }}>→</div>
           </a>
         </div>
 
