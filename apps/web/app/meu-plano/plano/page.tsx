@@ -98,12 +98,20 @@ export default function PlanoPage() {
   const [activeWeek, setActiveWeek] = useState(1);
   const [loading, setLoading] = useState(true);
   const [showIg, setShowIg] = useState(false);
+  const [cartaOpen, setCartaOpen] = useState(true);   // carta da Ju pode minimizar
   const [userId, setUserId] = useState<string | null>(null);
   const [isPreview, setIsPreview] = useState(false);
 
   useEffect(() => {
     try { setShowIg(localStorage.getItem('ig_followed') !== '1'); } catch { setShowIg(true); }
+    try { setCartaOpen(localStorage.getItem('carta_ju_collapsed') !== '1'); } catch { /* mantém aberta */ }
   }, []);
+
+  const toggleCarta = () => setCartaOpen(v => {
+    const nv = !v;
+    try { localStorage.setItem('carta_ju_collapsed', nv ? '0' : '1'); } catch { /* ok */ }
+    return nv;
+  });
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -365,26 +373,56 @@ export default function PlanoPage() {
           <div style={{ margin: '0 16px 18px' }}>
             <div style={{
               background: 'linear-gradient(160deg, #FFF3F6 0%, #FFFBF7 100%)',
-              borderRadius: 18, padding: '18px 18px 20px',
+              borderRadius: 18, padding: cartaOpen ? '16px 18px 20px' : '14px 18px',
               border: `1px solid ${T.pinkBlush ?? '#F3D6DE'}`,
               boxShadow: shadow.card,
             }}>
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12,
+              {/* Header clicável — minimiza/expande */}
+              <button onClick={toggleCarta} style={{
+                width: '100%', background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'inherit',
+                marginBottom: cartaOpen ? 12 : 0,
               }}>
                 <span style={{ fontSize: 18 }}>💌</span>
                 <span style={{
+                  flex: 1, textAlign: 'left',
                   fontSize: 13, fontWeight: 800, color: T.pinkDeep,
                   textTransform: 'uppercase', letterSpacing: 0.8,
                 }}>Mensagem da Ju para você</span>
-              </div>
-              <div style={{
-                whiteSpace: 'pre-line',
-                fontSize: 14.5, lineHeight: 1.65, color: T.ink,
-                fontFamily: fonts.display, letterSpacing: -0.1,
-              }}>
-                {profile.carta_ju.trim()}
-              </div>
+                <span style={{ fontSize: 12, color: T.pinkDeep, fontWeight: 700 }}>
+                  {cartaOpen ? 'ocultar ▾' : 'ver ▸'}
+                </span>
+              </button>
+
+              {cartaOpen && (
+                <>
+                  <div style={{
+                    whiteSpace: 'pre-line',
+                    fontSize: 14.5, lineHeight: 1.65, color: T.ink,
+                    fontFamily: fonts.display, letterSpacing: -0.1,
+                  }}>
+                    {profile.carta_ju.trim()}
+                  </div>
+
+                  {/* CTA — seguir a Juliane no Instagram (no fim da carta) */}
+                  <a
+                    href="https://instagram.com/julianecost"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                      marginTop: 16, textDecoration: 'none',
+                      background: 'linear-gradient(105deg, #F58529 0%, #DD2A7B 55%, #8134AF 100%)',
+                      color: '#fff', fontWeight: 700, fontSize: 13.5,
+                      borderRadius: 13, padding: '12px 14px',
+                      boxShadow: '0 6px 16px rgba(221,42,123,0.28)',
+                    }}
+                  >
+                    <IconInstagram size={17} />
+                    Seguir a Juliane no Instagram
+                  </a>
+                </>
+              )}
             </div>
           </div>
         )}

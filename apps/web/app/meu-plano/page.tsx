@@ -945,25 +945,31 @@ export default function HojePage() {
         <TodayTasks />
         <WaterTracker />
 
-        {/* Quick log — recolhido atrás de um "+" (eram muitos botões na home) */}
-        <button
-          onClick={() => setShowActions(s => !s)}
-          style={{
-            width: '100%', background: 'transparent', border: 'none', cursor: 'pointer',
-            padding: '4px 20px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          }}
-        >
-          <span style={{ fontSize: 11, fontWeight: 700, color: T.inkSoft, textTransform: 'uppercase', letterSpacing: 1.2 }}>
-            Registrar ação
-          </span>
-          <span style={{
-            width: 30, height: 30, borderRadius: '50%',
-            background: showActions ? T.pinkSoft : gradient.heroSoft,
-            color: showActions ? T.pinkDeep : '#fff',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 20, fontWeight: 700, lineHeight: 1, transition: 'all 0.18s',
-          }}>{showActions ? '×' : '+'}</span>
-        </button>
+        {/* Registrar ação — botão de DESTAQUE (antes era um "+" escondido) */}
+        <div style={{ padding: '4px 16px 10px' }}>
+          <button
+            onClick={() => setShowActions(s => !s)}
+            style={{
+              width: '100%', cursor: 'pointer', fontFamily: 'inherit',
+              background: showActions ? T.surface : gradient.hero,
+              color: showActions ? T.pinkDeep : '#fff',
+              border: showActions ? `1.5px solid ${T.pink}` : 'none',
+              borderRadius: 14, padding: '14px 16px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9,
+              fontSize: 14.5, fontWeight: 700, letterSpacing: 0.2,
+              boxShadow: showActions ? 'none' : '0 6px 18px rgba(190,24,93,0.30)',
+              transition: 'all 0.18s',
+            }}
+          >
+            <span style={{
+              width: 24, height: 24, borderRadius: '50%',
+              background: showActions ? T.pinkSoft : 'rgba(255,255,255,0.22)',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 18, fontWeight: 700, lineHeight: 1, flexShrink: 0,
+            }}>{showActions ? '×' : '+'}</span>
+            {showActions ? 'Fechar' : 'Registrar um cuidado de hoje'}
+          </button>
+        </div>
         {/* input escondido — disparado pelo botão "Foto de progresso" */}
         {/* sem `capture` — `capture="user"` forçava a câmera frontal e bloqueava
             escolher da galeria; pra foto de cabelo a cliente quer as duas opções */}
