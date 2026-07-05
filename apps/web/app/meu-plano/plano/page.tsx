@@ -713,10 +713,15 @@ export default function PlanoPage() {
                             const TaskIcon = iconForTask(task.title);
                             const imgUrl = taskImageUrl(task.title, task.description, products);
                             return (
-                              <div key={i} style={{
-                                padding: '13px 18px', display: 'flex', alignItems: 'flex-start', gap: 14,
-                                borderBottom: i < tasks.length - 1 ? `1px solid ${T.borderSoft}` : 'none',
-                              }}>
+                              <div
+                                key={i}
+                                onClick={imgUrl ? () => { setTab('produtos'); window.scrollTo({ top: 0, behavior: 'smooth' }); } : undefined}
+                                style={{
+                                  padding: '13px 18px', display: 'flex', alignItems: 'flex-start', gap: 14,
+                                  borderBottom: i < tasks.length - 1 ? `1px solid ${T.borderSoft}` : 'none',
+                                  cursor: imgUrl ? 'pointer' : 'default',
+                                }}
+                              >
                                 {/* Foto do produto (ícone fica atrás como fallback se a imagem falhar) */}
                                 <div style={{
                                   position: 'relative', width: 44, height: 44, borderRadius: 12, flexShrink: 0,
@@ -736,6 +741,11 @@ export default function PlanoPage() {
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   <div style={{ fontSize: 14, fontWeight: 700, color: T.ink }}>{task.title}</div>
                                   <div style={{ fontSize: 12.5, color: T.inkSoft, marginTop: 2, lineHeight: 1.45 }}>{task.description}</div>
+                                  {imgUrl && (
+                                    <div style={{ fontSize: 11.5, fontWeight: 700, color: T.pinkDeep, marginTop: 5, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                                      <IconBag size={12} stroke={2} /> Ver produto pra comprar ›
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             );
