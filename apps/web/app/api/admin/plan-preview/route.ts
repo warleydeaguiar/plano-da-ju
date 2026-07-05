@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userParam);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const q = (sb.from('profiles') as any)
-    .select('id,full_name,hair_type,porosity,chemical_history,main_problems,hair_length_cm,quiz_answers,plan_released_at,plan_requested_at,plan_status,plan_feedback_rating,plan_revision_due_at,recommended_products,daily_rituals,photo_url,photo_back_url,photo_root_url,subscription_status,avatar_url');
+    .select('id,full_name,hair_type,porosity,chemical_history,main_problems,hair_length_cm,quiz_answers,plan_released_at,plan_requested_at,plan_status,plan_feedback_rating,plan_revision_due_at,recommended_products,daily_rituals,carta_ju,photo_url,photo_back_url,photo_root_url,subscription_status,avatar_url');
   const { data: profile } = isUuid
     ? await q.eq('id', userParam).maybeSingle()
     : await q.eq('email', userParam.toLowerCase()).maybeSingle();

@@ -39,6 +39,7 @@ interface Profile {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   recommended_products?: any;
   daily_rituals?: string[] | null;
+  carta_ju?: string | null;
   photo_url?: string | null;
   photo_back_url?: string | null;
   photo_root_url?: string | null;
@@ -139,7 +140,7 @@ export default function PlanoPage() {
 
     const [p, pl, pr] = await Promise.all([
       supabase.from('profiles')
-        .select('full_name,hair_type,porosity,chemical_history,main_problems,hair_length_cm,quiz_answers,plan_released_at,plan_requested_at,plan_status,plan_feedback_rating,plan_revision_due_at,recommended_products,daily_rituals,photo_url,photo_back_url,photo_root_url')
+        .select('full_name,hair_type,porosity,chemical_history,main_problems,hair_length_cm,quiz_answers,plan_released_at,plan_requested_at,plan_status,plan_feedback_rating,plan_revision_due_at,recommended_products,daily_rituals,carta_ju,photo_url,photo_back_url,photo_root_url')
         .eq('id', uid).single(),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase as any).from('hair_plans')
@@ -358,6 +359,35 @@ export default function PlanoPage() {
             Revisado
           </div>
         </div>
+
+        {/* 💌 Mensagem da Ju para você — carta pessoal no TOPO do plano */}
+        {profile?.carta_ju && profile.carta_ju.trim() && (
+          <div style={{ margin: '0 16px 18px' }}>
+            <div style={{
+              background: 'linear-gradient(160deg, #FFF3F6 0%, #FFFBF7 100%)',
+              borderRadius: 18, padding: '18px 18px 20px',
+              border: `1px solid ${T.pinkBlush ?? '#F3D6DE'}`,
+              boxShadow: shadow.card,
+            }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12,
+              }}>
+                <span style={{ fontSize: 18 }}>💌</span>
+                <span style={{
+                  fontSize: 13, fontWeight: 800, color: T.pinkDeep,
+                  textTransform: 'uppercase', letterSpacing: 0.8,
+                }}>Mensagem da Ju para você</span>
+              </div>
+              <div style={{
+                whiteSpace: 'pre-line',
+                fontSize: 14.5, lineHeight: 1.65, color: T.ink,
+                fontFamily: fonts.display, letterSpacing: -0.1,
+              }}>
+                {profile.carta_ju.trim()}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Banner — seguir a Juliane no Instagram (some ao clicar) */}
         {showIg && (

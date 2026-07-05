@@ -43,6 +43,9 @@ interface GeneratedPlan {
   // Indicações personalizadas (3 a 5): produto PRINCIPAL Ybera + uma alternativa
   // mais barata de outra marca (2ª opção pra quem quer economizar) + o porquê.
   produtos_indicados?: Array<{ produto_id: string; motivo: string; alternativa_id?: string | null }>;
+  // Carta pessoal da Ju no TOPO do plano ("Mensagem da Ju para você"): abre o
+  // coração, tira a culpa, dá esperança + urgência e ancora os produtos escolhidos.
+  carta_ju?: string;
   mensagem_juliane: string;
 }
 
@@ -112,8 +115,19 @@ Quando o plano indica o KIT CRONOGRAMA (ex.: "Kit Cuidados Profundos") ou as má
 - Vocabulário: selar a cutícula, água fria no enxágue, massagem no couro, pontas ainda úmidas, não esfregar a toalha.
 - "mensagem_juliane" SEMPRE termina com (texto fixo): "Os produtos indicados são os que eu uso e confio nos resultados. Mas podem ser substituídos por produtos de outras marcas, desde que cumpram a mesma função."
 
+═══ "carta_ju" — MENSAGEM DA JU PARA VOCÊ (vai no TOPO do plano; é a copy mais importante) ═══
+Escreva uma carta pessoal, calorosa e emocional, em 1ª pessoa (a Juliane falando com a cliente pelo primeiro nome). NUNCA diga que foi feita por IA — é a Juliane mesmo. Siga EXATAMENTE esta estrutura e tom (personalize o conteúdo com o caso REAL dela — foto + quiz):
+1) Abertura: "Oi {primeiro nome}, tudo bem?"
+2) "Analisei bem o seu caso, vi todas as suas fotos e li suas respostas no meu questionário."
+3) O PORQUÊ (personalizado, sem culpar): "Seu cabelo está do jeito que está porque [explique de forma acolhedora a causa real ligada ao que ela marcou/mostrou — ex.: química + secador sem proteção ressecaram as pontas; falta de constância na hidratação; etc.]."
+4) TIRA A CULPA + ESPERANÇA: "Mas não se preocupe, o problema não é você — é que você não sabia o que ia funcionar ESPECIFICAMENTE pro seu cabelo. Agora eu escolhi a dedo pra você." Conte, em 1–2 frases, que a Ju também passou por isso (cabelo curto, com frizz, sem hidratação e com queda) e se sentia mal — criando identificação com o incômodo DELA.
+5) URGÊNCIA GENTIL: quanto antes começar, mais rápido o cabelo recupera; e que dá pra chegar na melhor versão do cabelo dela SEM gastar rios de dinheiro em salão, seguindo a ordem certa dos produtos que ela vai ver logo abaixo.
+6) Fechamento: convide a ver os produtos indicados e começar o tratamento. Termine com "Beijos da Ju 💛".
+Tamanho: 5 a 8 frases no total, quebrada em parágrafos curtos (use \\n entre eles). Acolhedora, nunca técnica, nunca robótica. É a carta que faz ela ACREDITAR que aquilo é tudo que ela precisa.
+
 FORMATO DA RESPOSTA — SOMENTE JSON válido, sem markdown:
 {
+  "carta_ju": "Oi {nome}, tudo bem?\\n\\nAnalisei bem o seu caso... (siga a estrutura da MENSAGEM DA JU acima; termine com 'Beijos da Ju 💛')",
   "diagnostico": "2–3 frases ligando o que VÊ na foto ao que ela marcou no quiz, e qual é o foco nº1",
   "tipo_cabelo": "Crespo|Cacheado|Ondulado|Liso",
   "analise_foto": { "frizz_score": 0-100, "brilho_score": 0-100, "hidratacao_score": 0-100, "pontas_score": 0-100, "porosidade_aparente": "baixa|média|alta", "observacoes": "o que dá pra ver na foto" },
@@ -397,6 +411,7 @@ export async function savePlanToDb(
   // Rituais de TODO DIA (óleo etc.) — salvos 1x no perfil; o app renderiza em
   // todos os dias. Evita repetir a mesma tarefa 84x (corte de custo, sem perder UX).
   const diarios = Array.isArray(plan.diarios) ? plan.diarios.filter(Boolean) : [];
+  const cartaJu = typeof plan.carta_ju === 'string' && plan.carta_ju.trim() ? plan.carta_ju.trim() : null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (sb.from('profiles') as any).update({ daily_rituals: diarios.length ? diarios : null }).eq('id', userId);
+  await (sb.from('profiles') as any).update({ daily_rituals: diarios.length ? diarios : null, carta_ju: cartaJu }).eq('id', userId);
 }
