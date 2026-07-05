@@ -22,9 +22,9 @@ const IG_GOAL = 100000;
 // (galeria do kit na Ybera — CONFERIR a cor de cada uma no preview)
 const KIT_MASK_BASE = 'https://lojaybera.fbitsstatic.net/img/p/kit-cuidados-profundos-ybera-fashion-gold-151333';
 const KIT_MASK_IMAGES: Record<'hidratacao' | 'nutricao' | 'reconstrucao', string> = {
-  hidratacao:   `${KIT_MASK_BASE}/337920-2.jpg?w=200&h=200`,  // azul · Cutícula
-  nutricao:     `${KIT_MASK_BASE}/337920-3.jpg?w=200&h=200`,  // laranja · Córtex
-  reconstrucao: `${KIT_MASK_BASE}/337920-4.jpg?w=200&h=200`,  // rosa · Médula
+  hidratacao:   `${KIT_MASK_BASE}/337920-3.jpg?w=200&h=200`,  // azul · Cutícula (conferido)
+  nutricao:     `${KIT_MASK_BASE}/337920-5.jpg?w=200&h=200`,  // laranja · Córtex (conferido)
+  reconstrucao: `${KIT_MASK_BASE}/337920-4.jpg?w=200&h=200`,  // rosa · Médula (conferido)
 };
 
 const noAccent = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
