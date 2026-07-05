@@ -7,6 +7,7 @@ import { createBrowserClient } from '@supabase/ssr';
 import { T, fonts } from './theme';
 import { IconHome, IconCalendar, IconList, IconChart, IconSparkles } from './icons';
 import InstallPrompt from './InstallPrompt';
+import { previewCtx, previewHref } from './preview';
 
 const TABS = [
   { href: '/meu-plano',           Icon: IconHome,     label: 'Início'    },
@@ -25,6 +26,7 @@ export default function MeuPlanoShell({ children }: { children: React.ReactNode 
   const router = useRouter();
   const pathname = usePathname();
   const [ready, setReady] = useState(false);
+  const pv = previewCtx();  // modo "ver como cliente" (admin) — preserva na navegação
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -109,7 +111,7 @@ export default function MeuPlanoShell({ children }: { children: React.ReactNode 
               return (
                 <Link
                   key={tab.href}
-                  href={tab.href}
+                  href={previewHref(tab.href, pv)}
                   style={{
                     flex: 1, padding: '10px 0 6px',
                     textDecoration: 'none', cursor: 'pointer',

@@ -7,6 +7,7 @@ import { T, fonts, shadow } from '../theme';
 import { IconChevronLeft, IconChevronRight, iconForTask } from '../icons';
 import { PlanoLoading } from '../Loading';
 import { normalizeTasks } from '../plan-helpers';
+import { previewCtx, fetchPreviewBundle } from '../preview';
 
 interface HairPlanRow {
   week_number: number;
@@ -65,6 +66,22 @@ export default function AgendaPage() {
   );
 
   const load = useCallback(async () => {
+    // Modo preview (admin): carrega a cliente-alvo via bundle, sem sessão.
+    const pv = previewCtx();
+    if (pv) {
+      const b = await fetchPreviewBundle(pv);
+      if (b) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setPlans(((b.plans ?? []) as any[]).map(p => ({ ...p, tasks: normalizeTasks(p.tasks) })) as HairPlanRow[]);
+        if (b.profile?.plan_released_at) setPlanReleased(new Date(b.profile.plan_released_at));
+        else if ((b.plans ?? []).length > 0) setPlanReleased(new Date());
+        const dr = b.profile?.daily_rituals;
+        if (Array.isArray(dr)) setDailyRituals(dr.filter((x: unknown) => typeof x === 'string'));
+      }
+      setLoading(false);
+      return;
+    }
+
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { router.push('/login'); return; }
     const uid = session.user.id;

@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userParam);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const q = (sb.from('profiles') as any)
-    .select('id,full_name,hair_type,porosity,chemical_history,main_problems,hair_length_cm,quiz_answers,plan_released_at,plan_requested_at,plan_status,plan_feedback_rating,plan_revision_due_at,recommended_products,daily_rituals,photo_url,photo_back_url,photo_root_url');
+    .select('id,full_name,hair_type,porosity,chemical_history,main_problems,hair_length_cm,quiz_answers,plan_released_at,plan_requested_at,plan_status,plan_feedback_rating,plan_revision_due_at,recommended_products,daily_rituals,photo_url,photo_back_url,photo_root_url,subscription_status,avatar_url');
   const { data: profile } = isUuid
     ? await q.eq('id', userParam).maybeSingle()
     : await q.eq('email', userParam.toLowerCase()).maybeSingle();
@@ -94,5 +94,28 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ userId: uid, profile, plans: plans ?? [], products, analysisTexts });
+  // Dados das outras telas (home/progresso/agenda) pra o preview funcionar no app todo.
+  const [evRes, stateRes, ciRes, phRes] = await Promise.all([
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sb.from('hair_events') as any).select('event_type,occurred_at,quantity').eq('user_id', uid).order('occurred_at', { ascending: false }).limit(180),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sb.from('hair_state') as any).select('*').eq('user_id', uid).maybeSingle(),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sb.from('check_ins') as any).select('id').eq('user_id', uid),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sb.from('photo_analyses') as any).select('*').eq('user_id', uid).order('analyzed_at', { ascending: false }).limit(30),
+  ]);
+
+  return NextResponse.json({
+    userId: uid,
+    profile,
+    plans: plans ?? [],
+    products,
+    analysisTexts,
+    hairEvents: evRes.data ?? [],
+    hairState: stateRes.data ?? null,
+    checkIns: ciRes.data ?? [],
+    photoAnalyses: phRes.data ?? [],
+    photoCount: (phRes.data ?? []).length,
+  });
 }

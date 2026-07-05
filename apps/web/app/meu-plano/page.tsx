@@ -15,6 +15,7 @@ import {
 } from './icons';
 import StoriesPlayer, { type Story } from './StoriesPlayer';
 import { normalizeTasks } from './plan-helpers';
+import { previewCtx, fetchPreviewBundle } from './preview';
 
 // ── types ────────────────────────────────────────────────
 interface HairState {
@@ -251,6 +252,29 @@ export default function HojePage() {
   const load = useCallback(async () => {
    setLoadErr(false);
    try {
+    // Modo preview (admin "ver como cliente"): carrega a cliente-alvo via bundle.
+    const pv = previewCtx();
+    if (pv) {
+      const b = await fetchPreviewBundle(pv);
+      if (b) {
+        if (b.profile) setProfile(b.profile as Profile);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if (b.plans) setPlans((b.plans as any[]).map(p => ({ ...p, tasks: normalizeTasks(p.tasks) })) as HairPlanRow[]);
+        if (b.hairState) setHairState(b.hairState as HairState);
+        if (Array.isArray(b.hairEvents)) {
+          setEvents(b.hairEvents as HairEvent[]);
+          const localDayKey = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+          const days = new Set((b.hairEvents as HairEvent[]).map(e => localDayKey(new Date(e.occurred_at))));
+          let s = 0; const cur = new Date();
+          if (!days.has(localDayKey(cur))) cur.setDate(cur.getDate() - 1);
+          while (days.has(localDayKey(cur))) { s++; cur.setDate(cur.getDate() - 1); }
+          setStreak(s);
+        }
+        setPhotoCount(b.photoCount ?? 0);
+      }
+      return; // finally cuida do setLoading(false)
+    }
+
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { router.push('/login'); return; }
     setAccessToken(session.access_token);

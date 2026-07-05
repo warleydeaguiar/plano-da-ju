@@ -6,6 +6,7 @@ import { createBrowserClient } from '@supabase/ssr';
 import { T, fonts, shadow, gradient } from '../theme';
 import { PlanoLoading } from '../Loading';
 import { IconCamera, IconChevronRight, IconFlame, IconRuler, IconSparkles, IconDrop } from '../icons';
+import { previewCtx, fetchPreviewBundle } from '../preview';
 
 interface PhotoAnalysis {
   id: string;
@@ -42,6 +43,18 @@ export default function ProgressoPage() {
   );
 
   const load = useCallback(async () => {
+    const pv = previewCtx();
+    if (pv) {
+      const b = await fetchPreviewBundle(pv);
+      if (b) {
+        setPhotos((b.photoAnalyses ?? []) as PhotoAnalysis[]);
+        setEvents((b.hairEvents ?? []) as HairEvent[]);
+        if (b.profile) setProfile(b.profile as Profile);
+      }
+      setLoading(false);
+      return;
+    }
+
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { router.push('/login'); return; }
     const uid = session.user.id;

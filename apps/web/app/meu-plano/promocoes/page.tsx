@@ -6,6 +6,7 @@ import { createBrowserClient } from '@supabase/ssr';
 import { T, fonts, shadow, gradient } from '../theme';
 import { IconBag, IconSparkles, IconWhatsApp } from '../icons';
 import { PlanoLoading } from '../Loading';
+import { previewCtx } from '../preview';
 
 interface Promotion {
   id: string;
@@ -54,6 +55,9 @@ export default function PromocoesPage() {
   );
 
   const load = useCallback(async () => {
+    // Preview (admin): renderiza a tela sem sessão (dados de oferta são user-specific
+    // e dependem de token, então aqui só mostramos o layout).
+    if (previewCtx()) { setLoading(false); return; }
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { router.push('/login'); return; }
     try {
