@@ -437,27 +437,67 @@ export default function PlanoPage() {
                     {profile.carta_ju.trim()}
                   </div>
 
-                  {/* CTA — seguir a Juliane no Instagram (no fim da carta) + meta */}
-                  <a
-                    href="https://instagram.com/julianecost"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-                      marginTop: 16, textDecoration: 'none',
-                      background: 'linear-gradient(105deg, #F58529 0%, #DD2A7B 55%, #8134AF 100%)',
-                      color: '#fff', borderRadius: 13, padding: '11px 14px',
-                      boxShadow: '0 6px 16px rgba(221,42,123,0.28)',
-                    }}
-                  >
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 13.5 }}>
-                      <IconInstagram size={17} />
-                      Seguir a Juliane no Instagram
-                    </span>
-                    <span style={{ fontSize: 11.5, fontWeight: 600, color: 'rgba(255,255,255,0.95)' }}>
-                      {IG_FOLLOWERS.toLocaleString('pt-BR')} seguidores · ajude a Ju a chegar em {Math.round(IG_GOAL / 1000)} mil 💗
-                    </span>
-                  </a>
+                  {/* CTA gameficado — seguir a Juliane no Instagram + progresso da meta */}
+                  {(() => {
+                    const pct = Math.min(100, Math.round((IG_FOLLOWERS / IG_GOAL) * 100));
+                    const faltam = Math.max(0, IG_GOAL - IG_FOLLOWERS);
+                    return (
+                      <a
+                        href="https://instagram.com/julianecost"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'block', marginTop: 16, textDecoration: 'none', color: '#fff',
+                          background: 'linear-gradient(115deg, #FEDA77 0%, #F58529 28%, #DD2A7B 66%, #8134AF 100%)',
+                          borderRadius: 18, padding: '15px 16px 14px',
+                          boxShadow: '0 10px 24px rgba(221,42,123,0.34)',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                          <div style={{
+                            width: 36, height: 36, borderRadius: '50%', background: '#fff', flexShrink: 0,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                          }}><IconInstagram size={20} color="#DD2A7B" /></div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 800, fontSize: 14.5, lineHeight: 1.15 }}>Seguir a Juliane</div>
+                            <div style={{ fontSize: 11.5, opacity: 0.92 }}>@julianecost</div>
+                          </div>
+                          <div style={{
+                            background: 'rgba(255,255,255,0.24)', borderRadius: 10, padding: '5px 10px',
+                            fontSize: 13, fontWeight: 800, flexShrink: 0,
+                          }}>{pct}%</div>
+                        </div>
+
+                        {/* barra de progresso rumo à meta */}
+                        <div style={{ position: 'relative', height: 11, borderRadius: 99, background: 'rgba(255,255,255,0.28)', overflow: 'hidden' }}>
+                          <div style={{
+                            width: `${pct}%`, height: '100%', borderRadius: 99,
+                            background: 'linear-gradient(90deg, #fff 0%, #FFF3D6 100%)',
+                            boxShadow: '0 0 10px rgba(255,255,255,0.75)',
+                          }} />
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 8 }}>
+                          <span style={{ fontSize: 12.5, fontWeight: 800 }}>
+                            {IG_FOLLOWERS.toLocaleString('pt-BR')}
+                            <span style={{ fontWeight: 600, opacity: 0.9 }}> / {Math.round(IG_GOAL / 1000)} mil</span>
+                          </span>
+                          <span style={{ fontSize: 11.5, fontWeight: 600, opacity: 0.95 }}>
+                            faltam {faltam.toLocaleString('pt-BR')} 💗
+                          </span>
+                        </div>
+
+                        <div style={{
+                          marginTop: 11, textAlign: 'center',
+                          background: 'rgba(255,255,255,0.18)', borderRadius: 11, padding: '9px',
+                          fontSize: 13, fontWeight: 800,
+                        }}>
+                          ✨ Toque e seja mais uma pra bater a meta!
+                        </div>
+                      </a>
+                    );
+                  })()}
                 </>
               )}
             </div>
