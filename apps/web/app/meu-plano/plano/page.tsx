@@ -17,6 +17,35 @@ import { DICAS_UNIVERSAIS } from '@/lib/dicas-universais';
 const IG_FOLLOWERS = 54421;
 const IG_GOAL = 100000;
 
+// Imagens específicas das 3 máscaras do Kit Cuidados Profundos (cronograma).
+// O kit é 1 produto só no catálogo, então cada máscara aponta pra sua foto aqui.
+// (galeria do kit na Ybera — CONFERIR a cor de cada uma no preview)
+const KIT_MASK_BASE = 'https://lojaybera.fbitsstatic.net/img/p/kit-cuidados-profundos-ybera-fashion-gold-151333';
+const KIT_MASK_IMAGES: Record<'hidratacao' | 'nutricao' | 'reconstrucao', string> = {
+  hidratacao:   `${KIT_MASK_BASE}/337920-2.jpg?w=200&h=200`,  // azul · Cutícula
+  nutricao:     `${KIT_MASK_BASE}/337920-3.jpg?w=200&h=200`,  // laranja · Córtex
+  reconstrucao: `${KIT_MASK_BASE}/337920-4.jpg?w=200&h=200`,  // rosa · Médula
+};
+
+const noAccent = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+// Foto do produto pra uma tarefa (senão null → cai no ícone).
+function taskImageUrl(title: string, description: string | undefined, products: ProductRow[]): string | null {
+  const t = noAccent(`${title} ${description ?? ''}`);
+  if (t.includes('mascara')) {
+    if (t.includes('hidrata')) return KIT_MASK_IMAGES.hidratacao;
+    if (t.includes('nutri')) return KIT_MASK_IMAGES.nutricao;
+    if (t.includes('reconstr')) return KIT_MASK_IMAGES.reconstrucao;
+  }
+  const find = (kw: string) => products.find(p => noAccent(p.name ?? '').includes(kw))?.image_url ?? null;
+  if (t.includes('shampoo')) return find('shampoo');
+  if (t.includes('oleo') || t.includes('mirra')) return find('mirra');
+  if (t.includes('100t') || t.includes('softgel') || t.includes('antiqueda') || t.includes('capsula')) return find('100t') || find('timetros');
+  if (t.includes('leave')) return find('leave');
+  if (t.includes('cronograma') || t.includes('cuidados profundos') || t.includes('kit')) return find('kit cuidados') || find('cuidados profundos');
+  return null;
+}
+
 type Tab = 'rotina' | 'produtos' | 'dicas';
 
 interface HairPlanRow {
@@ -642,17 +671,27 @@ export default function PlanoPage() {
                           {/* Tarefas do dia */}
                           {tasks.map((task, i) => {
                             const TaskIcon = iconForTask(task.title);
+                            const imgUrl = taskImageUrl(task.title, task.description, products);
                             return (
                               <div key={i} style={{
                                 padding: '13px 18px', display: 'flex', alignItems: 'flex-start', gap: 14,
                                 borderBottom: i < tasks.length - 1 ? `1px solid ${T.borderSoft}` : 'none',
                               }}>
+                                {/* Foto do produto (ícone fica atrás como fallback se a imagem falhar) */}
                                 <div style={{
-                                  width: 38, height: 38, borderRadius: 11, background: T.rose, color: T.pinkDeep,
-                                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                                  border: `1px solid ${T.pinkSoft}`,
+                                  position: 'relative', width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+                                  background: '#FFF', border: `1px solid ${T.pinkSoft}`, overflow: 'hidden',
                                 }}>
-                                  <TaskIcon size={20} />
+                                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: T.rose, color: T.pinkDeep }}>
+                                    <TaskIcon size={20} />
+                                  </div>
+                                  {imgUrl && (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={imgUrl} alt="" loading="lazy"
+                                      onError={e => { e.currentTarget.style.display = 'none'; }}
+                                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', background: '#fff' }}
+                                    />
+                                  )}
                                 </div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   <div style={{ fontSize: 14, fontWeight: 700, color: T.ink }}>{task.title}</div>
