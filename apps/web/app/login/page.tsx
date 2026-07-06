@@ -18,6 +18,21 @@ function LoginInner() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [magicMsg, setMagicMsg] = useState('');
+  const [magicBusy, setMagicBusy] = useState(false);
+
+  async function sendMagicLink() {
+    if (!email || !email.includes('@')) { setError('Coloque seu e-mail acima pra receber o link.'); return; }
+    setError(''); setMagicBusy(true);
+    try {
+      await fetch('/api/auth/magic-link', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+    } catch { /* resposta é sempre genérica */ }
+    setMagicMsg('Pronto! Se houver conta com esse e-mail, enviamos um link de acesso. Confira sua caixa de entrada 💛');
+    setMagicBusy(false);
+  }
 
   useEffect(() => {
     const q = searchParams.get('email');
@@ -84,6 +99,18 @@ function LoginInner() {
                 {loading ? 'Entrando…' : 'Entrar no meu plano'}
               </button>
             </form>
+
+            {/* Entrar sem senha — magic link no e-mail (self-service) */}
+            <button type="button" onClick={sendMagicLink} disabled={magicBusy} style={{
+              width: '100%', marginTop: 12, background: '#fff', border: `1.5px solid ${T.pink}`,
+              borderRadius: 14, padding: 14, fontSize: 14.5, fontWeight: 700, color: T.pinkDeep,
+              cursor: magicBusy ? 'default' : 'pointer', fontFamily: ui,
+            }}>
+              {magicBusy ? 'Enviando…' : '✨ Entrar sem senha — receber link no e-mail'}
+            </button>
+            {magicMsg && (
+              <p style={{ fontSize: 13, color: '#0F7A4A', margin: '10px 0 0', padding: '10px 14px', background: '#ECFDF3', borderRadius: 10, lineHeight: 1.5 }}>{magicMsg}</p>
+            )}
 
             <div style={{ textAlign: 'center', marginTop: 16 }}>
               <a href="/esqueci-senha" style={{ color: T.inkSoft, fontSize: 13, textDecoration: 'none', borderBottom: `1px solid ${T.border}`, paddingBottom: 1 }}>

@@ -1113,6 +1113,31 @@ export default function PlanosClient(
                     >
                       👁 Ver como cliente
                     </button>
+                    {/* Gerar link de acesso (magic link) — copia pra mandar no Chatwoot/WhatsApp */}
+                    <button
+                      onClick={async () => {
+                        try {
+                          const r = await fetch(`/api/magic-link?user=${selectedUserId}`);
+                          const d = await r.json();
+                          if (!d.link) { alert(d.error || 'Erro ao gerar o link de acesso'); return; }
+                          try {
+                            await navigator.clipboard.writeText(d.link);
+                            alert('🔗 Link de acesso copiado!\n\nÉ só colar na conversa com a cliente. Ele entra sem senha e vale por ~1h.');
+                          } catch {
+                            window.prompt('Copie o link de acesso da cliente:', d.link);
+                          }
+                        } catch { alert('Erro ao gerar o link de acesso'); }
+                      }}
+                      title="Gera um link de acesso sem senha pra mandar pra cliente (Chatwoot/WhatsApp)"
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                        fontSize: 13, fontWeight: 600, padding: '9px 16px', borderRadius: 9,
+                        background: '#fff', border: '1.5px solid #BE185D', color: '#BE185D',
+                        cursor: 'pointer', transition: 'all 0.15s',
+                      }}
+                    >
+                      🔗 Link de acesso
+                    </button>
                     {/* WhatsApp */}
                     {selected.phone ? (
                       <a
