@@ -25,7 +25,10 @@ function resetEmailHtml(name: string, link: string): string {
         <a href="${link}" style="display:block;text-align:center;background:linear-gradient(135deg,#FB7185,#BE185D);color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:15px;border-radius:14px">
           Redefinir minha senha
         </a>
-        <p style="font-size:12px;line-height:1.6;color:#A89AA0;margin:22px 0 0">
+        <p style="font-size:13px;line-height:1.6;color:#7A6A6D;margin:20px 0 0;background:#FFF6F9;border-radius:10px;padding:12px 14px">
+          💛 <strong>Responda este e-mail com um "oi"</strong> — a Juliane adora saber de você, e isso garante que nossos e-mails cheguem sempre na sua caixa de entrada (e não no spam).
+        </p>
+        <p style="font-size:12px;line-height:1.6;color:#A89AA0;margin:16px 0 0">
           Se você não pediu isso, é só ignorar este e-mail — sua senha continua a mesma.
         </p>
       </div>
