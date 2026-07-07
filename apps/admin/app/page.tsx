@@ -380,22 +380,24 @@ export default async function DashboardPage() {
     ? (aiCosts.dailyUsd * aiCosts.rate) / plansGeneratedToday
     : null;
 
-  // ── SMS (Zenvia) — recuperação de PIX ────────────────────────────
-  // Volume vem do nosso log (profiles.pix_sms_sent_at, 1 SMS por cliente). Custo
-  // estimado por SMS ajustável em ZENVIA_SMS_COST_BRL (padrão R$0,08/segmento).
+  // ── SMS (Zenvia) — recuperação de PIX + aviso de plano pronto ────────
+  // Contamos as colunas ATUAIS: pix_sms_last_at (fluxo de PIX: imediato + 24h/72h)
+  // e plan_sms_sent_at (SMS de "plano pronto"). Custo estimado por SMS ajustável.
   const SMS_COST_BRL = Number(process.env.ZENVIA_SMS_COST_BRL ?? '0.08');
   const _startMonthBR = new Date(Date.UTC(_br.getUTCFullYear(), _br.getUTCMonth(), 1, 3, 0, 0)).toISOString();
-  const [smsTodayR, smsMonthR, smsTotalR] = await Promise.all([
+  const cnt = (col: string, gte?: string) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (sb.from('profiles') as any).select('id', { count: 'exact', head: true }).gte('pix_sms_sent_at', _startTodayBR),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (sb.from('profiles') as any).select('id', { count: 'exact', head: true }).gte('pix_sms_sent_at', _startMonthBR),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (sb.from('profiles') as any).select('id', { count: 'exact', head: true }).not('pix_sms_sent_at', 'is', null),
+    let q = (sb.from('profiles') as any).select('id', { count: 'exact', head: true });
+    q = gte ? q.gte(col, gte) : q.not(col, 'is', null);
+    return q;
+  };
+  const [pixToday, pixMonth, pixTotal, planToday, planMonth, planTotal] = await Promise.all([
+    cnt('pix_sms_last_at', _startTodayBR), cnt('pix_sms_last_at', _startMonthBR), cnt('pix_sms_last_at'),
+    cnt('plan_sms_sent_at', _startTodayBR), cnt('plan_sms_sent_at', _startMonthBR), cnt('plan_sms_sent_at'),
   ]);
-  const smsToday = smsTodayR.count ?? 0;
-  const smsMonth = smsMonthR.count ?? 0;
-  const smsTotal = smsTotalR.count ?? 0;
+  const smsToday = (pixToday.count ?? 0) + (planToday.count ?? 0);
+  const smsMonth = (pixMonth.count ?? 0) + (planMonth.count ?? 0);
+  const smsTotal = (pixTotal.count ?? 0) + (planTotal.count ?? 0);
 
   // ── PLANO: KPIs derivados ────────────────────────────────────────
   const planoSpendToday      = metaAds.plano.today;
