@@ -21,6 +21,12 @@ const NAV: NavItem[] = [
   { icon: SbDashboard, label: 'Dashboard', href: '/' },
   { icon: SbFunil, label: 'Funil', href: '/funil' },
   {
+    icon: SbAnalytics, label: 'Relatórios', href: '/relatorios/lucro',
+    children: [
+      { label: 'Lucro', href: '/relatorios/lucro' },
+    ],
+  },
+  {
     icon: SbPlanos, label: 'Revisão de Planos', href: '/planos',
     children: [
       { label: 'Revisar planos', href: '/planos' },
