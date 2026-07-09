@@ -535,7 +535,7 @@ export default async function DashboardPage() {
   const funnelRows: Array<{
     icon: IconType; label: string; today: number; yest: number; month: number;
     convToday: string | null; convYest: string | null; convMonth: string | null;
-    source: 'meta' | 'quiz' | 'sale'; highlight: boolean;
+    source: 'meta' | 'quiz' | 'sale' | 'conv'; highlight: boolean;
   }> = [
     { icon: IconCursor, label: 'Cliques no link (Meta)', today: adClicksToday, yest: adClicksYest, month: adClicksMonth,
       convToday: null, convYest: null, convMonth: null, source: 'meta', highlight: false },
@@ -557,6 +557,12 @@ export default async function DashboardPage() {
     { icon: IconCheckCircle, label: 'Comprou', today: salesToday, yest: salesYesterday, month: salesMonth,
       convToday: pct(salesToday, cToday), convYest: pct(salesYesterday, cYest), convMonth: pct(salesMonth, cMonth),
       source: 'sale', highlight: true },
+    // Conversão geral = quem comprou ÷ cliques no link do Meta (o funil inteiro).
+    { icon: IconTarget, label: 'Conversão geral (compra ÷ clique)',
+      today: adClicksToday > 0 ? (salesToday / adClicksToday) * 100 : NaN,
+      yest:  adClicksYest  > 0 ? (salesYesterday / adClicksYest) * 100 : NaN,
+      month: adClicksMonth > 0 ? (salesMonth / adClicksMonth) * 100 : NaN,
+      convToday: null, convYest: null, convMonth: null, source: 'conv', highlight: false },
   ];
 
   const funnelTh: React.CSSProperties = {
@@ -745,11 +751,15 @@ export default async function DashboardPage() {
                 const RowIcon = row.icon;
                 const isMeta = row.source === 'meta';
                 const isSale = row.source === 'sale';
-                const valueColor = isMeta ? T.blue : isSale ? T.green : T.pinkDeep;
+                const isConv = row.source === 'conv';
+                const valueColor = isConv ? T.goldDeep : isMeta ? T.blue : isSale ? T.green : T.pinkDeep;
+                // Linha de conversão geral mostra % (não contagem).
+                const fmt = (v: number) => isConv ? (Number.isFinite(v) ? `${v.toFixed(1).replace('.', ',')}%` : '—') : v.toLocaleString('pt-BR');
                 return (
                   <tr key={i} style={{
                     borderBottom: `1px solid ${T.borderSoft}`,
-                    background: row.highlight ? T.pinkSoft : 'transparent',
+                    borderTop: isConv ? `2px solid ${T.border}` : undefined,
+                    background: isConv ? T.goldSoft : row.highlight ? T.pinkSoft : 'transparent',
                   }}>
                     <td style={{ padding: '12px 20px', fontSize: 13, color: T.ink, fontWeight: 600 }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
@@ -765,19 +775,19 @@ export default async function DashboardPage() {
                       )}
                     </td>
                     <td style={{ padding: '12px 20px', textAlign: 'right', fontSize: 14, fontWeight: 700, color: valueColor }}>
-                      {row.today.toLocaleString('pt-BR')}
+                      {fmt(row.today)}
                     </td>
                     <td style={{ padding: '12px 20px', textAlign: 'right', fontSize: 12, color: row.convToday === null || row.convToday === '—' ? T.inkMuted : T.green, fontWeight: 600 }}>
                       {row.convToday ?? '—'}
                     </td>
-                    <td style={{ padding: '12px 20px', textAlign: 'right', fontSize: 14, fontWeight: 700, color: T.ink }}>
-                      {row.yest.toLocaleString('pt-BR')}
+                    <td style={{ padding: '12px 20px', textAlign: 'right', fontSize: 14, fontWeight: 700, color: isConv ? valueColor : T.ink }}>
+                      {fmt(row.yest)}
                     </td>
                     <td style={{ padding: '12px 20px', textAlign: 'right', fontSize: 12, color: row.convYest === null || row.convYest === '—' ? T.inkMuted : T.green, fontWeight: 600 }}>
                       {row.convYest ?? '—'}
                     </td>
-                    <td style={{ padding: '12px 20px', textAlign: 'right', fontSize: 13, color: T.ink, fontWeight: 600 }}>
-                      {row.month.toLocaleString('pt-BR')}
+                    <td style={{ padding: '12px 20px', textAlign: 'right', fontSize: 13, color: isConv ? valueColor : T.ink, fontWeight: isConv ? 700 : 600 }}>
+                      {fmt(row.month)}
                     </td>
                     <td style={{ padding: '12px 20px', textAlign: 'right', fontSize: 12, color: row.convMonth === null || row.convMonth === '—' ? T.inkMuted : T.green, fontWeight: 600 }}>
                       {row.convMonth ?? '—'}
