@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase'
+import { getPlanoClicksDaily } from '@/lib/meta-ads-quiz'
 
 export const dynamic = 'force-dynamic'
 
@@ -51,6 +52,7 @@ const OPT_LABEL: Record<string, Record<string,string>> = {
 }
 
 const FUNNEL_STAGES = [
+  { key:'clicks',             label:'Cliques (anúncios)', color:T.blue },
   { key:'sessions',           label:'Visitou o quiz',   color:T.inkSoft },
   { key:'engaged',            label:'Interagiu',        color:T.blue },
   { key:'lead',               label:'Lead capturado',   color:T.amber },
@@ -102,6 +104,10 @@ async function fetchData() {
     answersWithMeta,
     leadsDetailed,
     leadsHourly,
+    funnelNowR,
+    funnelPrevR,
+    dailyR,
+    metaClicksByDay,
   ] = await Promise.all([
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sb.from('wg_quiz_views') as any).select('session_id, created_at').eq('quiz_slug', slug).gte('created_at', since30).not('session_id', 'is', null),
@@ -131,6 +137,16 @@ async function fetchData() {
     (sb.from('wg_quiz_leads') as any).select('id, name, email, utm_source, created_at').eq('quiz_slug', slug).gte('created_at', since30).order('created_at', { ascending: false }).limit(20),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sb.from('wg_quiz_leads') as any).select('created_at').eq('quiz_slug', slug).gte('created_at', since30),
+    // Funil EXATO (RPC — sem cap de 1000) período atual e anterior
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sb as any).rpc('plano_funnel', { p_since: since30, p_until: new Date(now).toISOString() }),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sb as any).rpc('plano_funnel', { p_since: since60, p_until: since30 }),
+    // Série diária exata (30 dias)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sb as any).rpc('plano_daily', { p_days: 30 }),
+    // Cliques do Meta (campanhas do plano) por dia — pro topo do funil + conversão
+    getPlanoClicksDaily(isoDateBR(now - 29 * 86400_000), isoDateBR(now)),
   ])
 
   // ── KPI base (period) ────────────────────────────────────────────────
@@ -165,20 +181,32 @@ async function fetchData() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const r of (checkoutEventsPrev.data ?? []) as any[]) cePrev[r.event_type] = (cePrev[r.event_type] ?? 0) + 1
 
+  // Funil EXATO vindo das RPCs (sem cap de 1000). Cliques do Meta no topo.
+  const metaClicksTotal = Object.values((metaClicksByDay ?? {}) as Record<string, number>).reduce((s, n) => s + (n || 0), 0)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const fN = ((funnelNowR as any)?.data ?? {}) as Record<string, number>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const fP = ((funnelPrevR as any)?.data ?? {}) as Record<string, number>
   const funnelCounts: Record<string, number> = {
-    sessions, engaged, lead,
-    offer_viewed:       ce30['offer_viewed']       ?? 0,
-    checkout_initiated: ce30['checkout_initiated'] ?? 0,
-    purchased,
+    clicks:             metaClicksTotal,
+    sessions:           fN.sessions ?? 0,
+    engaged:            fN.engaged ?? 0,
+    lead:               fN.lead ?? 0,
+    offer_viewed:       fN.offer_viewed ?? 0,
+    checkout_initiated: fN.checkout_initiated ?? 0,
+    purchased:          fN.purchased ?? 0,
   }
   const funnelPrev: Record<string, number> = {
-    sessions:           sessionsPrev,
-    engaged:            engagedPrev,
-    lead:               leadPrev,
-    offer_viewed:       cePrev['offer_viewed']       ?? 0,
-    checkout_initiated: cePrev['checkout_initiated'] ?? 0,
-    purchased:          purchasedPrev,
+    clicks:             0, // sem histórico de cliques do período anterior
+    sessions:           fP.sessions ?? 0,
+    engaged:            fP.engaged ?? 0,
+    lead:               fP.lead ?? 0,
+    offer_viewed:       fP.offer_viewed ?? 0,
+    checkout_initiated: fP.checkout_initiated ?? 0,
+    purchased:          fP.purchased ?? 0,
   }
+  // Silencia variáveis antigas (agora vêm das RPCs) sem quebrar o resto do arquivo.
+  void sessions; void engaged; void lead; void purchased; void sessionsPrev; void engagedPrev; void leadPrev; void purchasedPrev; void ce30; void cePrev;
 
   // ── Sparkline series (14 dias) por KPI ──────────────────────────────
   const days14 = Array.from({ length: 14 }, (_, i) => isoDateBR(now - (13 - i) * 86400_000))
@@ -210,34 +238,24 @@ async function fetchData() {
   const spLead     = bucket14(leadsRows.filter((r) => new Date(r.created_at).getTime() >= now - 14 * 86400_000), 'created_at')
   const spPurchased = bucket14(profilesActiveRows.filter((r) => new Date(r.subscription_activated_at).getTime() >= now - 14 * 86400_000), 'subscription_activated_at')
 
-  // ── Daily trend (30 dias) — visitas, engaged, leads ────────────────
-  const days30 = Array.from({ length: 30 }, (_, i) => isoDateBR(now - (29 - i) * 86400_000))
-  const dailyMaps: Record<'sessions'|'engaged'|'lead', Record<string, Set<string> | number>> = {
-    sessions: {}, engaged: {}, lead: {},
-  }
-  days30.forEach(d => {
-    dailyMaps.sessions[d] = new Set<string>()
-    dailyMaps.engaged[d]  = new Set<string>()
-    dailyMaps.lead[d]     = 0
+  // ── Daily trend (30 dias) — da RPC (exata) + cliques do Meta + conversão ──
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const dailyRows = (((dailyR as any)?.data ?? []) as any[])
+  const clicksMap = (metaClicksByDay ?? {}) as Record<string, number>
+  const dailySeries = dailyRows.map((r) => {
+    const date = String(r.dia)
+    const clicks = clicksMap[date] ?? 0
+    const sales = Number(r.sales) || 0
+    return {
+      date,
+      sessions: Number(r.sessions) || 0,
+      engaged:  Number(r.engaged) || 0,
+      lead:     Number(r.leads) || 0,
+      clicks,
+      sales,
+      conversao: clicks > 0 ? (sales / clicks) * 100 : 0,
+    }
   })
-  for (const r of v30rows) {
-    const k = isoDateBR(new Date(r.created_at).getTime())
-    if (k in dailyMaps.sessions) (dailyMaps.sessions[k] as Set<string>).add(r.session_id)
-  }
-  for (const r of s0rows) {
-    const k = isoDateBR(new Date(r.created_at).getTime())
-    if (k in dailyMaps.engaged) (dailyMaps.engaged[k] as Set<string>).add(r.session_id)
-  }
-  for (const r of leadsRows) {
-    const k = isoDateBR(new Date(r.created_at).getTime())
-    if (k in dailyMaps.lead) (dailyMaps.lead[k] as number)++
-  }
-  const dailySeries = days30.map(d => ({
-    date: d,
-    sessions: (dailyMaps.sessions[d] as Set<string>).size,
-    engaged:  (dailyMaps.engaged[d] as Set<string>).size,
-    lead:     dailyMaps.lead[d] as number,
-  }))
 
   // ── Drop-off por pergunta ───────────────────────────────────────────
   const qSessions = new Map<string, Set<string>>()
@@ -350,15 +368,18 @@ export default async function Painel2Page() {
     }
   })
 
-  // Daily series chart
-  const dailyMaxValue = Math.max(...dailySeries.flatMap(d => [d.sessions, d.engaged, d.lead]), 1)
+  // Daily series chart — cada linha é auto-normalizada (escalas muito diferentes)
+  const dailyMaxValue = Math.max(...dailySeries.flatMap(d => [d.sessions, d.engaged, d.lead, d.clicks]), 1)
   const chartW = 720, chartH = 180
-  const dailyPath = (key: 'sessions' | 'engaged' | 'lead') => sparkPath(dailySeries.map(d => d[key]), chartW, chartH)
+  const dailyPath = (key: 'sessions' | 'engaged' | 'lead' | 'clicks' | 'sales') => sparkPath(dailySeries.map(d => d[key]), chartW, chartH)
+  const convPath = sparkPath(dailySeries.map(d => d.conversao), chartW, chartH)
 
   // Period sums (for legend)
   const sumSessions = dailySeries.reduce((s, d) => s + d.sessions, 0)
   const sumEngaged = dailySeries.reduce((s, d) => s + d.engaged, 0)
   const sumLead = dailySeries.reduce((s, d) => s + d.lead, 0)
+  const sumClicks = dailySeries.reduce((s, d) => s + d.clicks, 0)
+  const sumSales = dailySeries.reduce((s, d) => s + d.sales, 0)
 
   const overallConv = pctText(funnelCounts.purchased, funnelCounts.sessions)
   const conv30 = pctText(funnelCounts.purchased, funnelPrev.purchased + funnelCounts.purchased)
@@ -423,10 +444,12 @@ export default async function Painel2Page() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
             <div>
               <div style={sectionTitle}>Tendência diária (30 dias)</div>
-              <div style={{ display: 'flex', gap: 18, marginTop: 8 }}>
+              <div style={{ display: 'flex', gap: 16, marginTop: 8, flexWrap: 'wrap' }}>
+                <Legend color={T.purple}  label="Cliques" total={sumClicks} />
                 <Legend color={T.inkSoft} label="Visitas" total={sumSessions} />
                 <Legend color={T.blue}    label="Interagiu" total={sumEngaged} />
                 <Legend color={T.amber}   label="Leads" total={sumLead} />
+                <Legend color={T.green}   label={`Conversão (cliques→vendas) ${sumClicks > 0 ? ((sumSales / sumClicks) * 100).toFixed(1) + '%' : '—'}`} total={sumSales} />
               </div>
             </div>
           </div>
@@ -436,9 +459,11 @@ export default async function Painel2Page() {
               <line key={p} x1="0" x2={chartW} y1={chartH * p} y2={chartH * p} stroke={T.borderSoft} strokeWidth="1" />
             ))}
             {/* lines */}
+            <path d={dailyPath('clicks')}   fill="none" stroke={T.purple}  strokeWidth="1.6" opacity="0.85" />
             <path d={dailyPath('sessions')} fill="none" stroke={T.inkSoft} strokeWidth="1.6" />
             <path d={dailyPath('engaged')}  fill="none" stroke={T.blue}    strokeWidth="1.6" />
             <path d={dailyPath('lead')}     fill="none" stroke={T.amber}   strokeWidth="1.8" />
+            <path d={convPath}              fill="none" stroke={T.green}   strokeWidth="2.2" strokeDasharray="5 3" />
             {/* axis labels */}
             <text x="0" y={chartH + 12} fontSize="9" fill={T.inkMuted}>{dailySeries[0]?.date.slice(5)}</text>
             <text x={chartW / 2 - 12} y={chartH + 12} fontSize="9" fill={T.inkMuted}>{dailySeries[Math.floor(dailySeries.length / 2)]?.date.slice(5)}</text>
