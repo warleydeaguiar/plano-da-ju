@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase'
 import { getPlanoClicksDaily } from '@/lib/meta-ads-quiz'
+import TrendChart from './TrendChart'
 
 export const dynamic = 'force-dynamic'
 
@@ -108,6 +109,7 @@ async function fetchData() {
     funnelPrevR,
     dailyR,
     metaClicksByDay,
+    dropoffR,
   ] = await Promise.all([
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sb.from('wg_quiz_views') as any).select('session_id, created_at').eq('quiz_slug', slug).gte('created_at', since30).not('session_id', 'is', null),
@@ -147,6 +149,9 @@ async function fetchData() {
     (sb as any).rpc('plano_daily', { p_days: 30 }),
     // Cliques do Meta (campanhas do plano) por dia — pro topo do funil + conversão
     getPlanoClicksDaily(isoDateBR(now - 29 * 86400_000), isoDateBR(now)),
+    // Drop-off exato por pergunta (RPC — sem cap), últimos 30 dias
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sb as any).rpc('plano_dropoff', { p_since: since30 }),
   ])
 
   // ── KPI base (period) ────────────────────────────────────────────────
@@ -257,14 +262,14 @@ async function fetchData() {
     }
   })
 
-  // ── Drop-off por pergunta ───────────────────────────────────────────
-  const qSessions = new Map<string, Set<string>>()
+  // ── Drop-off por pergunta (RPC exata — sem cap de 1000) ─────────────
+  const qCount = new Map<string, number>()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const r of (answersBySession.data ?? []) as any[]) {
-    if (!r.session_id || !Q_LABELS[r.question_id]) continue
-    if (!qSessions.has(r.question_id)) qSessions.set(r.question_id, new Set())
-    qSessions.get(r.question_id)!.add(r.session_id)
+  for (const r of (((dropoffR as any)?.data ?? []) as any[])) {
+    qCount.set(r.question_id, Number(r.sessions) || 0)
   }
+  const qSessions = { get: (q: string) => ({ size: qCount.get(q) ?? 0 }) } // shim p/ manter o resto do código
+  void answersBySession
   const top = Math.max(...Q_ORDER.map(q => qSessions.get(q)?.size ?? 0), 1)
   const dropoff = Q_ORDER.map((q, i) => {
     const n = qSessions.get(q)?.size ?? 0
@@ -368,18 +373,7 @@ export default async function Painel2Page() {
     }
   })
 
-  // Daily series chart — cada linha é auto-normalizada (escalas muito diferentes)
-  const dailyMaxValue = Math.max(...dailySeries.flatMap(d => [d.sessions, d.engaged, d.lead, d.clicks]), 1)
-  const chartW = 720, chartH = 180
-  const dailyPath = (key: 'sessions' | 'engaged' | 'lead' | 'clicks' | 'sales') => sparkPath(dailySeries.map(d => d[key]), chartW, chartH)
-  const convPath = sparkPath(dailySeries.map(d => d.conversao), chartW, chartH)
-
-  // Period sums (for legend)
-  const sumSessions = dailySeries.reduce((s, d) => s + d.sessions, 0)
-  const sumEngaged = dailySeries.reduce((s, d) => s + d.engaged, 0)
-  const sumLead = dailySeries.reduce((s, d) => s + d.lead, 0)
-  const sumClicks = dailySeries.reduce((s, d) => s + d.clicks, 0)
-  const sumSales = dailySeries.reduce((s, d) => s + d.sales, 0)
+  // (o gráfico de tendência agora é o componente interativo <TrendChart>)
 
   const overallConv = pctText(funnelCounts.purchased, funnelCounts.sessions)
   const conv30 = pctText(funnelCounts.purchased, funnelPrev.purchased + funnelCounts.purchased)
@@ -439,38 +433,15 @@ export default async function Painel2Page() {
           </div>
         </div>
 
-        {/* Big trend chart */}
+        {/* Big trend chart — interativo (clique numa métrica pra isolar + valores exatos) */}
         <div style={{ ...card(), padding: 22, marginBottom: 16 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
-            <div>
-              <div style={sectionTitle}>Tendência diária (30 dias)</div>
-              <div style={{ display: 'flex', gap: 16, marginTop: 8, flexWrap: 'wrap' }}>
-                <Legend color={T.purple}  label="Cliques" total={sumClicks} />
-                <Legend color={T.inkSoft} label="Visitas" total={sumSessions} />
-                <Legend color={T.blue}    label="Interagiu" total={sumEngaged} />
-                <Legend color={T.amber}   label="Leads" total={sumLead} />
-                <Legend color={T.green}   label={`Conversão (cliques→vendas) ${sumClicks > 0 ? ((sumSales / sumClicks) * 100).toFixed(1) + '%' : '—'}`} total={sumSales} />
-              </div>
+          <div style={{ marginBottom: 6 }}>
+            <div style={sectionTitle}>Tendência diária (30 dias)</div>
+            <div style={{ fontSize: 11.5, color: T.inkMuted, marginTop: 3 }}>
+              Clique numa métrica pra ver só ela (com o eixo real) · passe o mouse pra ver o valor exato de cada dia.
             </div>
           </div>
-          <svg viewBox={`0 0 ${chartW} ${chartH + 14}`} preserveAspectRatio="none" style={{ width: '100%', height: 220, display: 'block' }}>
-            {/* grid */}
-            {[0.25, 0.5, 0.75].map(p => (
-              <line key={p} x1="0" x2={chartW} y1={chartH * p} y2={chartH * p} stroke={T.borderSoft} strokeWidth="1" />
-            ))}
-            {/* lines */}
-            <path d={dailyPath('clicks')}   fill="none" stroke={T.purple}  strokeWidth="1.6" opacity="0.85" />
-            <path d={dailyPath('sessions')} fill="none" stroke={T.inkSoft} strokeWidth="1.6" />
-            <path d={dailyPath('engaged')}  fill="none" stroke={T.blue}    strokeWidth="1.6" />
-            <path d={dailyPath('lead')}     fill="none" stroke={T.amber}   strokeWidth="1.8" />
-            <path d={convPath}              fill="none" stroke={T.green}   strokeWidth="2.2" strokeDasharray="5 3" />
-            {/* axis labels */}
-            <text x="0" y={chartH + 12} fontSize="9" fill={T.inkMuted}>{dailySeries[0]?.date.slice(5)}</text>
-            <text x={chartW / 2 - 12} y={chartH + 12} fontSize="9" fill={T.inkMuted}>{dailySeries[Math.floor(dailySeries.length / 2)]?.date.slice(5)}</text>
-            <text x={chartW - 30} y={chartH + 12} fontSize="9" fill={T.inkMuted}>{dailySeries[dailySeries.length - 1]?.date.slice(5)}</text>
-            {/* max */}
-            <text x="2" y="10" fontSize="9" fill={T.inkMuted}>{dailyMaxValue}</text>
-          </svg>
+          <TrendChart days={dailySeries} />
         </div>
 
         {/* Funnel + comparativo */}
