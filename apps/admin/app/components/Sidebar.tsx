@@ -24,6 +24,7 @@ const NAV: NavItem[] = [
     icon: SbAnalytics, label: 'Relatórios', href: '/relatorios/lucro',
     children: [
       { label: 'Lucro', href: '/relatorios/lucro' },
+      { label: 'Conversão', href: '/relatorios/conversao' },
     ],
   },
   {

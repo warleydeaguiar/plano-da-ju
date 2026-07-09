@@ -116,6 +116,33 @@ async function fetchInsights(params: Record<string, string>, revalidate = 1800):
   return json.data ?? []
 }
 
+/**
+ * Cliques no link (inline_link_clicks) das campanhas do PLANO, por dia, no
+ * intervalo [since, until] (YYYY-MM-DD). Usado no gráfico de conversão.
+ * Retorna { 'YYYY-MM-DD': cliques }. Vazio se a Meta não estiver configurada.
+ */
+export async function getPlanoClicksDaily(since: string, until: string): Promise<Record<string, number>> {
+  if (!TOKEN) return {}
+  try {
+    const rows = await fetchInsights({
+      level: 'campaign',
+      fields: 'campaign_name,inline_link_clicks',
+      time_range: JSON.stringify({ since, until }),
+      time_increment: '1',
+    }, 1800)
+    const byDay: Record<string, number> = {}
+    for (const r of rows) {
+      if (classifyCampaign(r.campaign_name) !== 'plano') continue
+      const d: string = r.date_start ?? ''
+      if (!d) continue
+      byDay[d] = (byDay[d] ?? 0) + parseInt(r.inline_link_clicks ?? '0', 10)
+    }
+    return byDay
+  } catch {
+    return {}
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function sumSpendOfType(rows: any[], type: CampaignType): number {
   return rows.reduce((s, r) => {
