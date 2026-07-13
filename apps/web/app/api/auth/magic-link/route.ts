@@ -14,18 +14,22 @@ function magicEmailHtml(name: string, link: string): string {
   return `
   <div style="background:#FFFAF5;padding:32px 0;font-family:'Plus Jakarta Sans',Helvetica,Arial,sans-serif">
     <div style="max-width:440px;margin:0 auto;background:#fff;border-radius:18px;overflow:hidden;border:1px solid #F0E0E4">
-      <div style="background:linear-gradient(135deg,#FB7185,#BE185D);padding:28px 32px">
-        <div style="color:#fff;font-size:22px;font-weight:700;font-family:Georgia,serif">Plano da <em>Ju</em></div>
+      <div style="background-color:#BE185D;background-image:linear-gradient(135deg,#FB7185,#BE185D);padding:28px 32px">
+        <div style="color:#ffffff;font-size:22px;font-weight:700;font-family:Georgia,serif">Plano da <em>Ju</em></div>
       </div>
       <div style="padding:28px 32px;color:#3D2B2E">
         <p style="font-size:16px;margin:0 0 14px">Oi${first ? ', ' + first : ''}! 💛</p>
         <p style="font-size:14px;line-height:1.6;color:#7A6A6D;margin:0 0 22px">
           Toque no botão abaixo pra entrar no seu plano capilar <strong>sem precisar de senha</strong>.
-          Este link é só seu e vale por 1 hora.
+          Este link é só seu e pessoal.
         </p>
-        <a href="${link}" style="display:block;text-align:center;background:linear-gradient(135deg,#FB7185,#BE185D);color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:15px;border-radius:14px">
-          Entrar no meu plano
-        </a>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:4px 0"><tr>
+          <td align="center" bgcolor="#BE185D" style="border-radius:14px;background-color:#BE185D;background-image:linear-gradient(135deg,#FB7185,#BE185D)">
+            <a href="${link}" style="display:block;color:#ffffff;text-decoration:none;font-weight:700;font-size:16px;line-height:1.2;padding:16px 22px;border-radius:14px;font-family:'Plus Jakarta Sans',Helvetica,Arial,sans-serif">
+              Entrar no meu plano →
+            </a>
+          </td>
+        </tr></table>
         <p style="font-size:13px;line-height:1.6;color:#7A6A6D;margin:20px 0 0;background:#FFF6F9;border-radius:10px;padding:12px 14px">
           💛 <strong>Responda este e-mail com um "oi"</strong> — a Juliane adora saber de você, e isso ajuda nossos e-mails a chegarem sempre na sua caixa de entrada.
         </p>

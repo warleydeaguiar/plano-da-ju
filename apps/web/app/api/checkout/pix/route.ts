@@ -50,8 +50,8 @@ function pixEmailHtml(first: string, code: string, qrImg?: string): string {
   return `
   <div style="background:#FFFAF5;padding:32px 0;font-family:'Plus Jakarta Sans',Helvetica,Arial,sans-serif">
     <div style="max-width:460px;margin:0 auto;background:#fff;border-radius:18px;overflow:hidden;border:1px solid #F0E0E4">
-      <div style="background:linear-gradient(135deg,#FB7185,#BE185D);padding:26px 32px">
-        <div style="color:#fff;font-size:22px;font-weight:700;font-family:Georgia,serif">Plano da <em>Ju</em></div>
+      <div style="background-color:#BE185D;background-image:linear-gradient(135deg,#FB7185,#BE185D);padding:26px 32px">
+        <div style="color:#ffffff;font-size:22px;font-weight:700;font-family:Georgia,serif">Plano da <em>Ju</em></div>
       </div>
       <div style="padding:26px 32px;color:#3D2B2E">
         <p style="font-size:16px;margin:0 0 12px">Oi, ${first}! 💛</p>
