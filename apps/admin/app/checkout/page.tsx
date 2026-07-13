@@ -10,16 +10,31 @@ const red    = '#FF453A'
 const orange = '#D97706'
 const gray   = '#7C6B7E'
 
-// Etapas em ordem do funil
-const FUNNEL_STEPS: { key: string; label: string; icon: string }[] = [
-  { key: 'offer_viewed',       label: 'Viu a oferta',           icon: '👀' },
-  { key: 'checkout_initiated', label: 'Clicou em comprar',      icon: '🛒' },
-  { key: 'pix_generated',      label: 'Gerou PIX',              icon: '📱' },
-  { key: 'card_submitted',     label: 'Enviou cartão',          icon: '💳' },
-  { key: 'payment_confirmed',  label: 'Pagou ✓',                icon: '✅' },
-  { key: 'password_set',       label: 'Criou senha',            icon: '🔐' },
-  { key: 'photo_uploaded',     label: 'Enviou foto',            icon: '📸' },
+// Funil de checkout — 4 passos SEQUENCIAIS reais.
+// (pix_generated e card_submitted são ramos paralelos → juntados em "Iniciou pagamento";
+//  password_set / envio de foto são onboarding pós-compra, não fazem parte do funil de conversão.)
+const FUNNEL_STEPS: { key: 'viewed' | 'initiated' | 'pay_started' | 'paid'; label: string; icon: string }[] = [
+  { key: 'viewed',      label: 'Viu a oferta',       icon: '👀' },
+  { key: 'initiated',   label: 'Clicou em comprar',  icon: '🛒' },
+  { key: 'pay_started', label: 'Iniciou pagamento',  icon: '💳' },
+  { key: 'paid',        label: 'Pagou',              icon: '✅' },
 ]
+
+// Rótulos/ícones dos eventos crus (lista "Últimos eventos")
+const EVENT_META: Record<string, { label: string; icon: string }> = {
+  offer_viewed:       { label: 'Viu a oferta',      icon: '👀' },
+  checkout_initiated: { label: 'Clicou em comprar', icon: '🛒' },
+  pix_generated:      { label: 'Gerou PIX',         icon: '📱' },
+  card_submitted:     { label: 'Enviou cartão',     icon: '💳' },
+  payment_confirmed:  { label: 'Pagou ✓',           icon: '✅' },
+  password_set:       { label: 'Criou senha',       icon: '🔐' },
+  checkout_error:     { label: 'Erro no checkout',  icon: '⚠️' },
+}
+
+type FunnelData = {
+  viewed: number; initiated: number; pay_started: number; pix_started: number; card_started: number
+  paid: number; paid_pix: number; paid_card: number; revenue: number; errors: number; password_set: number
+}
 
 function StatCard({ label, value, sub, color }: {
   label: string; value: string | number; sub?: string; color?: string
@@ -33,13 +48,6 @@ function StatCard({ label, value, sub, color }: {
   )
 }
 
-interface FunnelRow {
-  step: typeof FUNNEL_STEPS[number]
-  count: number
-  pctOfTop: number
-  pctOfPrev: number
-}
-
 export default async function CheckoutFunnelPage({
   searchParams,
 }: {
@@ -48,8 +56,7 @@ export default async function CheckoutFunnelPage({
   const params = await searchParams
   const days = parseInt(params.days ?? '7', 10)
 
-  // Janela: dias INTEIROS em Brasília (UTC-3), não sliding window 24h.
-  // days=1 → desde meia-noite de hoje em BR (NÃO 'últimas 24h' que pegava ontem)
+  // Janela: dias INTEIROS em Brasília (UTC-3). days=1 → desde meia-noite de hoje em BR.
   const now = new Date()
   const brasiliaOffsetMs = 3 * 60 * 60 * 1000
   const brasiliaNow = new Date(now.getTime() - brasiliaOffsetMs)
@@ -63,69 +70,42 @@ export default async function CheckoutFunnelPage({
 
   const sb = createAdminClient()
 
-  // Eventos do período
+  // Agregados via RPC em SQL (count distinct de sessão por passo) — sem o teto de 1000 linhas.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: events } = await (sb as any)
-    .from('checkout_events')
-    .select('event_type, session_id, email, payment_type, amount_cents, order_id, created_at')
-    .gte('created_at', since)
-    .order('created_at', { ascending: false })
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const allEvents: any[] = events ?? []
-
-  // Conta SESSIONS únicas por step (não eventos). Set já deduplica.
-  const sessionsByStep = new Map<string, Set<string>>()
-  FUNNEL_STEPS.forEach(s => sessionsByStep.set(s.key, new Set()))
-  for (const e of allEvents) {
-    if (sessionsByStep.has(e.event_type) && e.session_id) {
-      sessionsByStep.get(e.event_type)!.add(e.session_id)
-    }
+  const { data: rpcData } = await (sb as any).rpc('checkout_funnel', { p_since: since })
+  const f: FunnelData = rpcData ?? {
+    viewed: 0, initiated: 0, pay_started: 0, pix_started: 0, card_started: 0,
+    paid: 0, paid_pix: 0, paid_card: 0, revenue: 0, errors: 0, password_set: 0,
   }
 
-  const topCount = sessionsByStep.get('offer_viewed')?.size ?? 0
-  const funnel: FunnelRow[] = FUNNEL_STEPS.map((step, i) => {
-    const count = sessionsByStep.get(step.key)?.size ?? 0
-    const prevCount = i === 0 ? count : (sessionsByStep.get(FUNNEL_STEPS[i - 1].key)?.size ?? 0)
+  const counts: Record<string, number> = {
+    viewed: f.viewed, initiated: f.initiated, pay_started: f.pay_started, paid: f.paid,
+  }
+  const topCount = f.viewed
+  const funnel = FUNNEL_STEPS.map((step, i) => {
+    const count = counts[step.key] ?? 0
+    const prevCount = i === 0 ? count : (counts[FUNNEL_STEPS[i - 1].key] ?? 0)
     return {
-      step,
-      count,
+      step, count,
       pctOfTop: topCount > 0 ? (count / topCount) * 100 : 0,
       pctOfPrev: prevCount > 0 ? (count / prevCount) * 100 : 0,
     }
   })
 
-  // ── Vendas reais: dedup por session_id ────────────────────────
-  // Webhook PagarMe dispara em 'order.paid' E 'charge.paid' — grava 2 events
-  // por venda real (ch_xxx + or_xxx). Aqui colapsamos por session_id pra
-  // contar 1 vez só.
-  const paidBySession = new Map<string, { amount_cents: number; payment_type: string }>()
-  for (const e of allEvents) {
-    if (e.event_type !== 'payment_confirmed' || !e.session_id) continue
-    // Primeiro evento ganha — events seguintes pra mesma session são duplicatas
-    if (!paidBySession.has(e.session_id)) {
-      paidBySession.set(e.session_id, {
-        amount_cents: e.amount_cents ?? 3490,
-        payment_type: e.payment_type ?? 'pix',
-      })
-    }
-  }
-
-  const paidCount = paidBySession.size
-  const failedCount = allEvents.filter(e => e.event_type === 'payment_failed').length
+  const paidCount = f.paid
   const conversionRate = topCount > 0 ? (paidCount / topCount) * 100 : 0
-  const totalRevenue = Array.from(paidBySession.values())
-    .reduce((acc, p) => acc + p.amount_cents, 0) / 100
+  const totalRevenue = f.revenue
 
-  // Quebra por método (já deduplicado)
-  const paymentBreakdown = { pix: 0, card: 0 }
-  for (const p of paidBySession.values()) {
-    if (p.payment_type === 'pix')  paymentBreakdown.pix++
-    if (p.payment_type === 'card') paymentBreakdown.card++
-  }
-
-  // Lista de eventos recentes (top 50)
-  const recent = allEvents.slice(0, 50)
+  // Últimos eventos: query própria, limitada (não afeta os agregados).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: recentData } = await (sb as any)
+    .from('checkout_events')
+    .select('event_type, email, payment_type, created_at')
+    .gte('created_at', since)
+    .order('created_at', { ascending: false })
+    .limit(50)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recent: any[] = recentData ?? []
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#F5F2F4', fontFamily: '-apple-system, "Inter", system-ui, sans-serif' }}>
@@ -152,17 +132,20 @@ export default async function CheckoutFunnelPage({
         </div>
 
         {/* Stats cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
-          <StatCard label="Visualizações" value={topCount} sub="Quem chegou na oferta" />
-          <StatCard label="Compras" value={paidCount} sub={`R$ ${totalRevenue.toFixed(2)}`} color={green} />
-          <StatCard label="Taxa Lead→Venda" value={`${conversionRate.toFixed(1)}%`} color={paidCount > 0 ? green : red} />
-          <StatCard label="Pagamentos recusados" value={failedCount} color={failedCount > 0 ? red : gray} sub="Cartão negado" />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 8 }}>
+          <StatCard label="Visualizações" value={topCount.toLocaleString('pt-BR')} sub="Quem chegou na oferta" />
+          <StatCard label="Compras" value={paidCount.toLocaleString('pt-BR')} sub={`R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} color={green} />
+          <StatCard label="Conversão (visita→compra)" value={`${conversionRate.toFixed(1)}%`} color={paidCount > 0 ? green : red} />
+          <StatCard label="Erros no checkout" value={f.errors.toLocaleString('pt-BR')} color={f.errors > 0 ? orange : gray} sub="Sessões com falha" />
         </div>
+        <p style={{ fontSize: 11, color: gray, marginBottom: 24 }}>
+          “Compras” = checkouts pagos (fluxo de pagamento). Ativações grátis/UGC não entram aqui.
+        </p>
 
         {/* Funil */}
         <div style={{ background: '#fff', borderRadius: 14, padding: '24px 28px', border: '1px solid rgba(0,0,0,0.06)', marginBottom: 24 }}>
           <h2 style={{ fontSize: 18, fontWeight: 800, color: '#2A1E2C', marginBottom: 4 }}>Funil completo</h2>
-          <p style={{ fontSize: 12, color: gray, marginBottom: 20 }}>% relativa ao passo anterior e à etapa inicial</p>
+          <p style={{ fontSize: 12, color: gray, marginBottom: 20 }}>% do total à esquerda · % em relação ao passo anterior à direita</p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {funnel.map((row, i) => {
@@ -182,7 +165,7 @@ export default async function CheckoutFunnelPage({
                       display: 'flex', alignItems: 'center', paddingLeft: 12,
                       color: '#fff', fontSize: 12, fontWeight: 700,
                     }}>
-                      {row.count}
+                      {row.count.toLocaleString('pt-BR')}
                     </div>
                   </div>
                   <div style={{ width: 80, textAlign: 'right', fontSize: 12, color: gray }}>
@@ -198,6 +181,10 @@ export default async function CheckoutFunnelPage({
               )
             })}
           </div>
+          <p style={{ fontSize: 11, color: gray, marginTop: 16 }}>
+            “Iniciou pagamento” = gerou PIX ({f.pix_started.toLocaleString('pt-BR')}) ou enviou cartão ({f.card_started.toLocaleString('pt-BR')}).
+            O evento de cartão é sub-registrado, então esse passo tende a subestimar quem pagou no cartão.
+          </p>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
@@ -208,11 +195,11 @@ export default async function CheckoutFunnelPage({
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
                   <span>📱 PIX</span>
-                  <span style={{ fontWeight: 700 }}>{paymentBreakdown.pix}</span>
+                  <span style={{ fontWeight: 700 }}>{f.paid_pix.toLocaleString('pt-BR')} · {paidCount > 0 ? Math.round((f.paid_pix / paidCount) * 100) : 0}%</span>
                 </div>
                 <div style={{ height: 8, background: 'rgba(0,0,0,0.05)', borderRadius: 99 }}>
                   <div style={{
-                    width: `${paidCount > 0 ? (paymentBreakdown.pix / paidCount) * 100 : 0}%`,
+                    width: `${paidCount > 0 ? (f.paid_pix / paidCount) * 100 : 0}%`,
                     height: '100%', background: accent, borderRadius: 99,
                   }} />
                 </div>
@@ -220,11 +207,11 @@ export default async function CheckoutFunnelPage({
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
                   <span>💳 Cartão</span>
-                  <span style={{ fontWeight: 700 }}>{paymentBreakdown.card}</span>
+                  <span style={{ fontWeight: 700 }}>{f.paid_card.toLocaleString('pt-BR')} · {paidCount > 0 ? Math.round((f.paid_card / paidCount) * 100) : 0}%</span>
                 </div>
                 <div style={{ height: 8, background: 'rgba(0,0,0,0.05)', borderRadius: 99 }}>
                   <div style={{
-                    width: `${paidCount > 0 ? (paymentBreakdown.card / paidCount) * 100 : 0}%`,
+                    width: `${paidCount > 0 ? (f.paid_card / paidCount) * 100 : 0}%`,
                     height: '100%', background: orange, borderRadius: 99,
                   }} />
                 </div>
@@ -236,7 +223,6 @@ export default async function CheckoutFunnelPage({
           <div style={{ background: '#fff', borderRadius: 14, padding: '20px 24px', border: '1px solid rgba(0,0,0,0.06)' }}>
             <h3 style={{ fontSize: 14, fontWeight: 800, color: '#2A1E2C', marginBottom: 16 }}>Maior gargalo</h3>
             {(() => {
-              // Encontra a maior queda
               let biggestDrop = { from: '', to: '', dropPct: 0, lost: 0 }
               for (let i = 1; i < funnel.length; i++) {
                 const prev = funnel[i - 1]
@@ -264,7 +250,7 @@ export default async function CheckoutFunnelPage({
                     -{biggestDrop.dropPct.toFixed(0)}%
                   </div>
                   <p style={{ fontSize: 12, color: gray, marginTop: 6 }}>
-                    {biggestDrop.lost} pessoas perdidas
+                    {biggestDrop.lost.toLocaleString('pt-BR')} pessoas perdidas
                   </p>
                 </>
               )
@@ -280,7 +266,7 @@ export default async function CheckoutFunnelPage({
               <p style={{ fontSize: 13, color: gray, textAlign: 'center', padding: 20 }}>Nenhum evento no período</p>
             )}
             {recent.map((e, i) => {
-              const step = FUNNEL_STEPS.find(s => s.key === e.event_type)
+              const meta = EVENT_META[e.event_type]
               return (
                 <div key={i} style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -288,8 +274,8 @@ export default async function CheckoutFunnelPage({
                   background: i % 2 === 0 ? 'rgba(0,0,0,0.02)' : 'transparent',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 14 }}>{step?.icon ?? '•'}</span>
-                    <span style={{ color: '#2A1E2C', fontWeight: 600 }}>{step?.label ?? e.event_type}</span>
+                    <span style={{ fontSize: 14 }}>{meta?.icon ?? '•'}</span>
+                    <span style={{ color: '#2A1E2C', fontWeight: 600 }}>{meta?.label ?? e.event_type}</span>
                     {e.email && <span style={{ color: gray }}>· {e.email}</span>}
                     {e.payment_type && <span style={{ color: gray, fontSize: 11, background: 'rgba(0,0,0,0.05)', padding: '2px 6px', borderRadius: 4 }}>{e.payment_type}</span>}
                   </div>
