@@ -28,6 +28,7 @@ interface PlanCardData {
   photo_root_url: string | null;
   recommended_products: Array<{ produto_id: string; motivo?: string | null; alternativa_id?: string | null }> | null;
   is_gift: boolean;
+  subscription_type: string | null;
 }
 
 export default async function PlanosPage({
@@ -41,14 +42,14 @@ export default async function PlanosPage({
   // 1) Todas as assinantes ATIVAS — agora com quiz_answers + campos de perfil
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let profilesQuery = (sb.from('profiles') as any)
-    .select('id,full_name,email,phone,hair_type,porosity,main_problems,chemical_history,hair_length_cm,budget_range,quiz_answers,plan_status,photo_url,photo_back_url,photo_root_url,recommended_products,subscription_status,subscription_activated_at,created_at,is_gift')
+    .select('id,full_name,email,phone,hair_type,porosity,main_problems,chemical_history,hair_length_cm,budget_range,quiz_answers,plan_status,photo_url,photo_back_url,photo_root_url,recommended_products,subscription_status,subscription_activated_at,created_at,is_gift,subscription_type')
     .eq('subscription_status', 'active');
-  // Filtro UGC/presentes: server-side (pega toda a base, não só as 200 recentes)
-  if (giftMode) profilesQuery = profilesQuery.eq('is_gift', true);
+  // Filtro UGC/grátis: server-side. UGC = parceria (Bianca) OU presente (is_gift).
+  if (giftMode) profilesQuery = profilesQuery.or('is_gift.eq.true,subscription_type.eq.parceria');
   const { data: profiles } = await profilesQuery
     .order('subscription_activated_at', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false })
-    .limit(giftMode ? 1000 : 200);
+    .limit(3000); // carrega todas as ativas p/ a busca por nome achar qualquer plano
 
   const profileList = (profiles ?? []) as Array<{
     id: string;
@@ -70,6 +71,7 @@ export default async function PlanosPage({
     subscription_activated_at: string | null;
     created_at: string;
     is_gift: boolean | null;
+    subscription_type: string | null;
   }>;
 
   // 2) hair_plan semana 1 de cada ativa (aprovação + notas).
@@ -136,6 +138,7 @@ export default async function PlanosPage({
       photo_root_url:   p.photo_root_url ?? null,
       recommended_products: Array.isArray(p.recommended_products) ? p.recommended_products : null,
       is_gift:          !!p.is_gift,
+      subscription_type: p.subscription_type ?? null,
     };
   });
 

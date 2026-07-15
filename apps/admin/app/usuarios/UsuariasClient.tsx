@@ -183,7 +183,7 @@ export default function UsuariasClient({
             <div style={{ fontSize: 22, fontWeight: 700, color: '#2A1E2C' }}>Usuárias</div>
             <div style={{ fontSize: 13, color: gray, marginTop: 3 }}>
               {giftMode
-                ? `${total.toLocaleString('pt-BR')} UGC / presentes 🎁 (plano gratuito)`
+                ? `${total.toLocaleString('pt-BR')} UGC / grátis 🎁 (parceria + presentes)`
                 : initialQuery
                 ? `${total.toLocaleString('pt-BR')} resultado${total === 1 ? '' : 's'} para "${initialQuery}"`
                 : status !== 'all'
@@ -224,7 +224,7 @@ export default function UsuariasClient({
             background: giftMode ? purple : '#fff',
             color: giftMode ? '#fff' : purple,
             boxShadow: giftMode ? 'none' : `0 0 0 1px ${purple}40`,
-          }}>🎁 UGC / Presentes{giftMode ? ` (${total})` : ''}</button>
+          }}>🎁 UGC / grátis{giftMode ? ` (${total})` : ''}</button>
         </div>
 
         {/* Search */}

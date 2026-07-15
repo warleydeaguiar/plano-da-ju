@@ -22,8 +22,8 @@ function weekStartKey(iso: string): string {
 const weekLabel = (k: string) => { const [, m, d] = k.split('-'); return `${d}/${m}` }
 const monthLabel = (k: string) => { const [y, m] = k.split('-'); return `${MES[Number(m) - 1]}/${y}` }
 
-type Bucket = { key: string; reviews: number; ratingSum: number; ratingN: number; clicks: number }
-function emptyBucket(key: string): Bucket { return { key, reviews: 0, ratingSum: 0, ratingN: 0, clicks: 0 } }
+type Bucket = { key: string; reviews: number; ratingSum: number; ratingN: number; clicks: number; gerados: number }
+function emptyBucket(key: string): Bucket { return { key, reviews: 0, ratingSum: 0, ratingN: 0, clicks: 0, gerados: 0 } }
 
 async function getData() {
   const sb = createAdminClient()
@@ -51,6 +51,29 @@ async function getData() {
     bump(weeks, weekStartKey(c.created_at), b => { b.clicks++ })
     bump(months, c.created_at.slice(0, 7), b => { b.clicks++ })
   }
+
+  // ── Contexto: planos gerados (data de entrega) e vendidos (pagamentos reais) ──
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: genRows } = await (sb.from('profiles') as any)
+    .select('plan_released_at').not('plan_released_at', 'is', null).limit(100000)
+  const generated = (genRows ?? []) as { plan_released_at: string }[]
+  for (const g of generated) {
+    if (!g.plan_released_at) continue
+    bump(weeks, weekStartKey(g.plan_released_at), b => { b.gerados++ })
+    bump(months, g.plan_released_at.slice(0, 7), b => { b.gerados++ })
+  }
+  const totalGerados = generated.length
+
+  // Vendidos = pagamentos reais (dedup por cliente/dia; webhook grava 2 eventos/venda)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: payRows } = await (sb.from('checkout_events') as any)
+    .select('email, order_id, created_at').eq('event_type', 'payment_confirmed').limit(100000)
+  const seenPay = new Set<string>()
+  for (const p of (payRows ?? []) as { email: string | null; order_id: string | null; created_at: string }[]) {
+    const k = `${String(p.email ?? p.order_id ?? Math.random()).toLowerCase()}_${String(p.created_at).slice(0, 10)}`
+    if (!seenPay.has(k)) seenPay.add(k)
+  }
+  const totalVendidos = seenPay.size
 
   const now = Date.now()
   const span = isFinite(firstTs) ? Math.max(now - firstTs, DAY) : DAY
@@ -106,6 +129,8 @@ async function getData() {
     avgReviewsPerMonth: totalReviews / monthsSpan,
     overallRating: ratingN ? ratingSum / ratingN : 0,
     totalReviews, totalClicks, yberaClicks,
+    totalGerados, totalVendidos,
+    pctAvaliacao: totalGerados ? (totalReviews / totalGerados) * 100 : 0,
     weekRows, monthRows, topProducts,
     engagement: {
       activeCount,
@@ -143,23 +168,31 @@ function PeriodTable({ title, rows, kind }: { title: string; rows: Bucket[]; kin
         <thead>
           <tr style={{ textAlign: 'left', color: gray, background: '#FAF6FA' }}>
             <th style={{ padding: '9px 20px', fontWeight: 600 }}>{kind === 'week' ? 'Semana' : 'Mês'}</th>
+            <th style={{ padding: '9px 8px', fontWeight: 600, textAlign: 'right' }}>Planos gerados</th>
             <th style={{ padding: '9px 8px', fontWeight: 600, textAlign: 'right' }}>Avaliações</th>
+            <th style={{ padding: '9px 8px', fontWeight: 600, textAlign: 'right' }}>% avaliação</th>
             <th style={{ padding: '9px 8px', fontWeight: 600, textAlign: 'right' }}>Nota média</th>
             <th style={{ padding: '9px 20px', fontWeight: 600, textAlign: 'right' }}>Cliques produtos</th>
           </tr>
         </thead>
         <tbody>
-          {rows.length === 0 && <tr><td colSpan={4} style={{ padding: 20, textAlign: 'center', color: gray }}>Sem dados ainda.</td></tr>}
-          {[...rows].reverse().map(b => (
+          {rows.length === 0 && <tr><td colSpan={6} style={{ padding: 20, textAlign: 'center', color: gray }}>Sem dados ainda.</td></tr>}
+          {[...rows].reverse().map(b => {
+            const pct = b.gerados > 0 ? (b.reviews / b.gerados) * 100 : null
+            return (
             <tr key={b.key} style={{ borderTop: '1px solid #F3EEF3' }}>
               <td style={{ padding: '9px 20px', color: ink, fontWeight: 600 }}>{label(b.key)}</td>
+              <td style={{ padding: '9px 8px', textAlign: 'right', color: ink }}>{b.gerados}</td>
               <td style={{ padding: '9px 8px', textAlign: 'right', color: ink }}>{b.reviews}</td>
+              <td style={{ padding: '9px 8px', textAlign: 'right', color: pct !== null ? accent : gray, fontWeight: 700 }}>
+                {pct !== null ? `${n1(pct)}%` : '—'}
+              </td>
               <td style={{ padding: '9px 8px', textAlign: 'right', color: b.ratingN ? accent : gray, fontWeight: 700 }}>
                 {b.ratingN ? `${n1(b.ratingSum / b.ratingN)} ${stars(b.ratingSum / b.ratingN)}` : '—'}
               </td>
               <td style={{ padding: '9px 20px', textAlign: 'right', color: ink }}>{b.clicks}</td>
             </tr>
-          ))}
+          )})}
         </tbody>
       </table>
     </div>
@@ -179,10 +212,13 @@ export default async function AprovacaoPage() {
 
         {/* KPIs */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
-          <StatCard label="Média de avaliações / semana" value={n1(d.avgReviewsPerWeek)} sub={`${d.totalReviews} avaliações no total`} />
-          <StatCard label="Média de avaliações / mês" value={n1(d.avgReviewsPerMonth)} />
+          <StatCard label="Planos vendidos" value={d.totalVendidos.toLocaleString('pt-BR')} sub="pagamentos confirmados (total)" color={green} />
+          <StatCard label="Planos gerados" value={d.totalGerados.toLocaleString('pt-BR')} sub="planos entregues (total)" />
+          <StatCard label="% que avaliou" value={`${n1(d.pctAvaliacao)}%`} sub={`${d.totalReviews} avaliações ÷ ${d.totalGerados} gerados`} color={accent} />
           <StatCard label="Nota média geral" value={`${n1(d.overallRating)} ${stars(d.overallRating)}`} color={accent} />
-          <StatCard label="Cliques em produtos" value={String(d.totalClicks)} sub={`${d.yberaClicks} em produtos Ybera`} color={green} />
+          <StatCard label="Avaliações / semana" value={n1(d.avgReviewsPerWeek)} sub={`${d.totalReviews} no total`} />
+          <StatCard label="Avaliações / mês" value={n1(d.avgReviewsPerMonth)} />
+          <StatCard label="Cliques em produtos" value={d.totalClicks.toLocaleString('pt-BR')} sub={`${d.yberaClicks} em produtos Ybera`} color={green} />
         </div>
 
         {/* Por semana / por mês */}

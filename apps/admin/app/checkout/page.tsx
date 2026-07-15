@@ -187,6 +187,36 @@ export default async function CheckoutFunnelPage({
           </p>
         </div>
 
+        {/* Conversão por método (pagos ÷ gerados) */}
+        {(() => {
+          const pixConv  = f.pix_started  > 0 ? (f.paid_pix  / f.pix_started)  * 100 : null
+          const cardConv = f.card_started > 0 ? (f.paid_card / f.card_started) * 100 : null
+          const cardUnreliable = cardConv !== null && cardConv > 100
+          return (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
+              <div style={{ background: '#fff', borderRadius: 14, padding: '20px 24px', border: '1px solid rgba(0,0,0,0.06)' }}>
+                <div style={{ fontSize: 11, color: gray, fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 }}>📱 Conversão PIX</div>
+                <div style={{ fontSize: 28, fontWeight: 800, color: pixConv !== null ? green : gray, lineHeight: 1 }}>
+                  {pixConv !== null ? `${pixConv.toFixed(1)}%` : '—'}
+                </div>
+                <div style={{ fontSize: 12, color: gray, marginTop: 6 }}>
+                  {f.paid_pix.toLocaleString('pt-BR')} pagos ÷ {f.pix_started.toLocaleString('pt-BR')} gerados
+                </div>
+              </div>
+              <div style={{ background: '#fff', borderRadius: 14, padding: '20px 24px', border: '1px solid rgba(0,0,0,0.06)' }}>
+                <div style={{ fontSize: 11, color: gray, fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 }}>💳 Conversão Cartão</div>
+                <div style={{ fontSize: 28, fontWeight: 800, color: cardUnreliable ? orange : (cardConv !== null ? green : gray), lineHeight: 1 }}>
+                  {cardConv !== null && !cardUnreliable ? `${cardConv.toFixed(1)}%` : '—'}
+                </div>
+                <div style={{ fontSize: 12, color: gray, marginTop: 6 }}>
+                  {f.paid_card.toLocaleString('pt-BR')} pagos ÷ {f.card_started.toLocaleString('pt-BR')} gerados
+                  {cardUnreliable && <span style={{ color: orange }}> · ⚠️ evento de cartão sub-registrado (a base “gerados” está incompleta)</span>}
+                </div>
+              </div>
+            </div>
+          )
+        })()}
+
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
           {/* Quebra por método */}
           <div style={{ background: '#fff', borderRadius: 14, padding: '20px 24px', border: '1px solid rgba(0,0,0,0.06)' }}>

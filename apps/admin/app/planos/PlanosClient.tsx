@@ -79,6 +79,7 @@ interface PlanCard {
   has_plan?: boolean;
   has_photo?: boolean;
   is_gift?: boolean;
+  subscription_type?: string | null;
 }
 
 interface PlanWeek {
@@ -564,6 +565,7 @@ export default function PlanosClient(
   const [resolving, setResolving]     = useState<string | null>(null);
   const [revOpen, setRevOpen]         = useState(false); // painel de pedidos de ajuste recolhido por padrão
   const [filterTab, setFilterTab]     = useState<'pending' | 'approved' | 'all'>('pending');
+  const [search, setSearch]           = useState('');
   const [planTab, setPlanTab]         = useState<'cronograma' | 'produtos' | 'dicas'>('cronograma');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(
     initialCards.find(c => !c.approved)?.user_id ?? initialCards[0]?.user_id ?? null,
@@ -618,10 +620,16 @@ export default function PlanosClient(
   // gerando / travado) — esses sim precisam de atenção.
   const isDelivered = useCallback((c: PlanCard) => c.stage === 'approved', []);
   const filtered = useMemo(() => {
-    if (filterTab === 'pending')  return cards.filter(c => !isDelivered(c));
-    if (filterTab === 'approved') return cards.filter(c =>  isDelivered(c));
-    return cards;
-  }, [cards, filterTab, isDelivered]);
+    let list = filterTab === 'pending' ? cards.filter(c => !isDelivered(c))
+      : filterTab === 'approved' ? cards.filter(c => isDelivered(c))
+      : cards;
+    const q = search.trim().toLowerCase();
+    if (q) list = list.filter(c =>
+      (c.full_name ?? '').toLowerCase().includes(q) ||
+      (c.email ?? '').toLowerCase().includes(q) ||
+      (c.phone ?? '').replace(/\D/g, '').includes(q.replace(/\D/g, '')));
+    return list;
+  }, [cards, filterTab, isDelivered, search]);
 
   const counts = useMemo(() => ({
     pending:  cards.filter(c => !isDelivered(c)).length,
@@ -1010,6 +1018,23 @@ export default function PlanosClient(
               </button>
             </div>
 
+            {/* Busca por nome/email/telefone */}
+            <div style={{ padding: '10px 12px', borderBottom: '1px solid #EDE0D2', flexShrink: 0 }}>
+              <div style={{ position: 'relative' }}>
+                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: '#AEAEB2' }}>🔍</span>
+                <input
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Buscar plano por nome, email ou telefone…"
+                  style={{
+                    width: '100%', padding: '8px 12px 8px 30px', borderRadius: 9,
+                    border: '1px solid #E0E0E8', fontSize: 13, outline: 'none', boxSizing: 'border-box',
+                    background: '#fff', fontFamily: 'inherit',
+                  }}
+                />
+              </div>
+            </div>
+
             {/* Cards */}
             <div style={{ overflowY: 'auto', flex: 1 }}>
               {filtered.length === 0 ? (
@@ -1044,8 +1069,25 @@ export default function PlanosClient(
                         {initials(p.full_name)}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13.5, fontWeight: 600, color: '#2A1E2C', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {p.full_name}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <div style={{ fontSize: 13.5, fontWeight: 600, color: '#2A1E2C', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {p.full_name}
+                          </div>
+                          {(() => {
+                            const isUgc = p.subscription_type === 'parceria'
+                            const isGift = !!p.is_gift && !isUgc
+                            const b = isUgc
+                              ? { t: 'UGC', c: '#7C3AED', bg: '#F3EEFF' }
+                              : isGift
+                              ? { t: '🎁 Presente', c: '#B8860B', bg: '#FBF3E0' }
+                              : { t: 'Cliente', c: '#16A34A', bg: '#E9F9EF' }
+                            return (
+                              <span style={{
+                                fontSize: 9.5, fontWeight: 700, padding: '1px 6px', borderRadius: 5,
+                                color: b.c, background: b.bg, flexShrink: 0, whiteSpace: 'nowrap',
+                              }}>{b.t}</span>
+                            )
+                          })()}
                         </div>
                         <div style={{ fontSize: 11.5, color: '#7C6B7E', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {[

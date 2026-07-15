@@ -27,7 +27,8 @@ export default async function UsuariasPage({
   // pra podermos contar cada status dentro do mesmo escopo.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const applyScope = (query: any) => {
-    if (giftMode) query = query.eq('is_gift', true)
+    // "UGC / grátis" = parceria (UGC da Bianca) OU presente marcado à mão (is_gift).
+    if (giftMode) query = query.or('is_gift.eq.true,subscription_type.eq.parceria')
     if (sub) query = query.eq('subscription_type', sub)
     if (term.length >= 2) {
       const digits = term.replace(/\D/g, '')

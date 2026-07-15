@@ -251,6 +251,17 @@ export default async function DashboardPage() {
   const day7agoBR        = new Date(todayStartBR.getTime() -  7 * 86400_000);
   const day30agoBR       = new Date(todayStartBR.getTime() - 30 * 86400_000);
 
+  // Planos travados na geração (processing há >15min, com foto, sem plano pronto).
+  // Sinal de que a IA parou — quase sempre OpenRouter sem crédito. Alerta no topo.
+  const stuck15 = new Date(now.getTime() - 15 * 60_000).toISOString();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { count: stuckPlansCount } = await (sb.from('profiles') as any)
+    .select('id', { count: 'exact', head: true })
+    .eq('plan_status', 'processing')
+    .not('photo_url', 'is', null)
+    .lt('plan_requested_at', stuck15);
+  const stuckPlans = stuckPlansCount ?? 0;
+
   const [
     // Dashboard operacional (queries.ts)
     stats,
@@ -652,6 +663,28 @@ export default async function DashboardPage() {
             )}
           </div>
         </div>
+
+        {/* Alerta: planos travados na geração (quase sempre OpenRouter sem crédito) */}
+        {stuckPlans > 0 && (
+          <a href="https://openrouter.ai/settings/credits" target="_blank" rel="noopener noreferrer" style={{
+            display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none',
+            background: '#FFF4E5', border: '1px solid #F0C36D', borderRadius: 14,
+            padding: '16px 20px', color: '#7A5B10',
+          }}>
+            <span style={{ fontSize: 26 }}>⚠️</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 14.5, fontWeight: 700, color: '#8A5A00' }}>
+                {stuckPlans} {stuckPlans === 1 ? 'plano travado' : 'planos travados'} na geração pela IA
+              </div>
+              <div style={{ fontSize: 12.5, marginTop: 3, lineHeight: 1.5 }}>
+                Quase sempre é <strong>falta de crédito no OpenRouter</strong>. Toque aqui para adicionar crédito
+                em <strong>openrouter.ai/settings/credits</strong>. Assim que houver saldo, o sistema regenera esses
+                planos <strong>sozinho</strong> (a cada 10 min) — você não precisa avisar.
+              </div>
+            </div>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#8A5A00', whiteSpace: 'nowrap' }}>Adicionar crédito →</span>
+          </a>
+        )}
 
         {/* ════════════════════════════════════════════════════════ */}
         {/* SEÇÃO 1: PLANO CAPILAR                                    */}
