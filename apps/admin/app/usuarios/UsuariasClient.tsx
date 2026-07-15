@@ -106,11 +106,10 @@ function isoForDateInput(iso: string | null) {
   return new Date(iso).toISOString().slice(0, 10)
 }
 
-export default function UsuariasClient({ initialUsers, initialQuery = '' }: { initialUsers: User[]; initialQuery?: string }) {
+export default function UsuariasClient({ initialUsers, initialQuery = '', giftMode = false }: { initialUsers: User[]; initialQuery?: string; giftMode?: boolean }) {
   const router = useRouter()
   const [search, setSearch] = useState(initialQuery)
   const [statusFilter, setStatus] = useState<string>('all')
-  const [giftFilter, setGiftFilter] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -136,7 +135,6 @@ export default function UsuariasClient({ initialUsers, initialQuery = '' }: { in
   const filtered = useMemo(() => {
     let list = initialUsers
     if (statusFilter !== 'all') list = list.filter(u => u.subscription_status === statusFilter)
-    if (giftFilter) list = list.filter(u => u.is_gift)
     if (search.trim()) {
       const q = search.toLowerCase().replace(/\D/g, '')
       const qText = search.toLowerCase()
@@ -147,7 +145,7 @@ export default function UsuariasClient({ initialUsers, initialQuery = '' }: { in
       )
     }
     return list
-  }, [initialUsers, search, statusFilter, giftFilter])
+  }, [initialUsers, search, statusFilter])
 
   const counts = useMemo(() => ({
     all:       initialUsers.length,
@@ -172,7 +170,9 @@ export default function UsuariasClient({ initialUsers, initialQuery = '' }: { in
           <div>
             <div style={{ fontSize: 22, fontWeight: 700, color: '#2A1E2C' }}>Usuárias</div>
             <div style={{ fontSize: 13, color: gray, marginTop: 3 }}>
-              {initialQuery
+              {giftMode
+                ? `${initialUsers.length} UGC / presentes 🎁 (plano gratuito)`
+                : initialQuery
                 ? `${initialUsers.length} resultado${initialUsers.length === 1 ? '' : 's'} para "${initialQuery}"`
                 : `${initialUsers.length} mais recentes${counts.gifts > 0 ? ` · ${counts.gifts} presentes 🎁` : ''}`}
             </div>
@@ -202,15 +202,14 @@ export default function UsuariasClient({ initialUsers, initialQuery = '' }: { in
               boxShadow: statusFilter === key ? 'none' : '0 1px 3px rgba(0,0,0,0.08)',
             }}>{label}</button>
           ))}
-          {counts.gifts > 0 && (
-            <button onClick={() => setGiftFilter(g => !g)} style={{
-              padding: '6px 14px', borderRadius: 20, fontSize: 13, fontWeight: 500,
-              border: 'none', cursor: 'pointer',
-              background: giftFilter ? purple : '#fff',
-              color: giftFilter ? '#fff' : purple,
-              boxShadow: giftFilter ? 'none' : `0 0 0 1px ${purple}40`,
-            }}>🎁 Presentes ({counts.gifts})</button>
-          )}
+          {/* UGC/Presentes: filtro SERVER-SIDE (pega toda a base, não só as carregadas) */}
+          <button onClick={() => router.push(giftMode ? '/usuarios' : '/usuarios?gift=1')} style={{
+            padding: '6px 14px', borderRadius: 20, fontSize: 13, fontWeight: 500,
+            border: 'none', cursor: 'pointer',
+            background: giftMode ? purple : '#fff',
+            color: giftMode ? '#fff' : purple,
+            boxShadow: giftMode ? 'none' : `0 0 0 1px ${purple}40`,
+          }}>🎁 UGC / Presentes{giftMode ? ` (${initialUsers.length})` : ''}</button>
         </div>
 
         {/* Search */}

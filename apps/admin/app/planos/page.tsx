@@ -27,19 +27,28 @@ interface PlanCardData {
   photo_back_url: string | null;
   photo_root_url: string | null;
   recommended_products: Array<{ produto_id: string; motivo?: string | null; alternativa_id?: string | null }> | null;
+  is_gift: boolean;
 }
 
-export default async function PlanosPage() {
+export default async function PlanosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ gift?: string }>;
+}) {
   const sb = createAdminClient();
+  const giftMode = (await searchParams).gift === '1';
 
   // 1) Todas as assinantes ATIVAS — agora com quiz_answers + campos de perfil
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: profiles } = await (sb.from('profiles') as any)
-    .select('id,full_name,email,phone,hair_type,porosity,main_problems,chemical_history,hair_length_cm,budget_range,quiz_answers,plan_status,photo_url,photo_back_url,photo_root_url,recommended_products,subscription_status,subscription_activated_at,created_at')
-    .eq('subscription_status', 'active')
+  let profilesQuery = (sb.from('profiles') as any)
+    .select('id,full_name,email,phone,hair_type,porosity,main_problems,chemical_history,hair_length_cm,budget_range,quiz_answers,plan_status,photo_url,photo_back_url,photo_root_url,recommended_products,subscription_status,subscription_activated_at,created_at,is_gift')
+    .eq('subscription_status', 'active');
+  // Filtro UGC/presentes: server-side (pega toda a base, não só as 200 recentes)
+  if (giftMode) profilesQuery = profilesQuery.eq('is_gift', true);
+  const { data: profiles } = await profilesQuery
     .order('subscription_activated_at', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false })
-    .limit(200);
+    .limit(giftMode ? 1000 : 200);
 
   const profileList = (profiles ?? []) as Array<{
     id: string;
@@ -60,6 +69,7 @@ export default async function PlanosPage() {
     recommended_products: Array<{ produto_id: string; motivo?: string | null; alternativa_id?: string | null }> | null;
     subscription_activated_at: string | null;
     created_at: string;
+    is_gift: boolean | null;
   }>;
 
   // 2) hair_plan semana 1 de cada ativa (aprovação + notas).
@@ -125,6 +135,7 @@ export default async function PlanosPage() {
       photo_back_url:   p.photo_back_url ?? null,
       photo_root_url:   p.photo_root_url ?? null,
       recommended_products: Array.isArray(p.recommended_products) ? p.recommended_products : null,
+      is_gift:          !!p.is_gift,
     };
   });
 
@@ -171,5 +182,5 @@ export default async function PlanosPage() {
     };
   });
 
-  return <PlanosClient initialCards={cards} revisionRequests={revisionRequests} />;
+  return <PlanosClient initialCards={cards} revisionRequests={revisionRequests} giftMode={giftMode} />;
 }

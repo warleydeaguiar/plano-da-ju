@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Sidebar from '../components/Sidebar';
 
 const ACCENT = '#BE185D';
@@ -77,6 +78,7 @@ interface PlanCard {
   plan_status?: string;
   has_plan?: boolean;
   has_photo?: boolean;
+  is_gift?: boolean;
 }
 
 interface PlanWeek {
@@ -553,9 +555,10 @@ export interface RevisionRequest {
 }
 
 export default function PlanosClient(
-  { initialCards, revisionRequests = [] }:
-  { initialCards: PlanCard[]; revisionRequests?: RevisionRequest[] },
+  { initialCards, revisionRequests = [], giftMode = false }:
+  { initialCards: PlanCard[]; revisionRequests?: RevisionRequest[]; giftMode?: boolean },
 ) {
+  const router = useRouter();
   const [cards, setCards]             = useState(initialCards);
   const [revisions, setRevisions]     = useState<RevisionRequest[]>(revisionRequests);
   const [resolving, setResolving]     = useState<string | null>(null);
@@ -983,7 +986,7 @@ export default function PlanosClient(
             display: 'flex', flexDirection: 'column', overflow: 'hidden',
           }}>
             {/* Filter tabs */}
-            <div style={{ display: 'flex', borderBottom: '1px solid #EDE0D2', padding: '0 16px', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #EDE0D2', padding: '0 16px', flexShrink: 0 }}>
               {FILTER_TABS.map(t => (
                 <button key={t.key} onClick={() => setFilterTab(t.key)} style={{
                   fontSize: 12.5,
@@ -997,6 +1000,14 @@ export default function PlanosClient(
                   {t.label} ({counts[t.key]})
                 </button>
               ))}
+              {/* UGC/Presentes: filtro server-side (acha as grátis que não estão no topo) */}
+              <button onClick={() => router.push(giftMode ? '/planos' : '/planos?gift=1')} style={{
+                marginLeft: 'auto', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                border: 'none', borderRadius: 20, padding: '5px 12px', whiteSpace: 'nowrap',
+                background: giftMode ? '#7C3AED' : '#F3EEFF', color: giftMode ? '#fff' : '#7C3AED',
+              }}>
+                🎁 UGC / Presentes{giftMode ? ` (${cards.length})` : ''}
+              </button>
             </div>
 
             {/* Cards */}
