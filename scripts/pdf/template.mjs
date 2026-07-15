@@ -76,16 +76,19 @@ export function buildHtml(data) {
       const combos = (p.combos || []).map(c => `<a class="combo" href="${esc(c.url)}">📦 ${esc(c.name)} — comprar</a>`).join('')
       const combosBox = combos ? `<div class="combos"><div class="combos-h">Compre em combo e economize</div>${combos}</div>` : ''
       const buy = pr.url ? `<a class="buy" href="${esc(pr.url)}">Comprar ${esc(pr.name)} →</a>` : ''
+      const video = pr.videoUrl ? `<a class="vid" href="${esc(pr.videoUrl)}">
+        <span class="vid-thumb">${pr.videoThumb ? `<img src="${pr.videoThumb}"/>` : ''}<span class="vid-play">▶</span></span>
+        <span class="vid-txt"><b>🎬 A Juliane explica este produto</b><small>Toque para assistir no YouTube</small></span></a>` : ''
       return `<div class="prod">
         <div class="prod-top"><div class="prod-img">${img}</div>
           <div><div class="prod-brand">${esc(pr.brand || 'Ybera')}</div>
           <div class="prod-name">${esc(pr.name)}</div>
           <div class="prod-why">${esc(p.motivo)}</div></div></div>
-        ${alt}${combosBox}${buy}</div>`
+        ${video}${alt}${combosBox}${buy}</div>`
     }).join('')
     return `
     <section class="sheet pad break-before">
-      <div class="ju-divider"><img src="${ju.prodDivider}"/><div class="ju-divider-txt">Os produtos que <b>eu uso e confio</b> — escolhidos a dedo pro seu cabelo</div></div>
+      <div class="ju-divider"><img src="${ju.prodDivider}" style="object-position:center 30%"/><div class="ju-divider-txt">Os produtos que <b>eu uso e confio</b> — escolhidos a dedo pro seu cabelo</div></div>
       <div class="label">Produtos indicados pra você</div>
       ${cards}
     </section>`
@@ -115,7 +118,7 @@ export function buildHtml(data) {
   const cronograma = () => {
     const intro = `
     <section class="sheet pad break-before">
-      <div class="ju-divider"><img src="${ju.cronoDivider}"/><div class="ju-divider-txt">Seu cronograma de <b>12 semanas</b> — uma por vez, sem pressa 💛</div></div>
+      <div class="ju-divider"><img src="${ju.cronoDivider}" style="object-position:center 44%"/><div class="ju-divider-txt">Seu cronograma de <b>12 semanas</b> — uma por vez, sem pressa 💛</div></div>
     </section>`
     const weeks = (data.semanas || []).map(w => {
       const byDay = {}
@@ -236,7 +239,7 @@ img { display:block; max-width:100%; }
 .sv { width:26px; text-align:right; font-size:12.5px; font-weight:800; color:#BE185D; }
 .poro { font-size:12.5px; color:#7A6A6D; margin-top:10px; padding-top:10px; border-top:1px solid #F6E7EC; }
 .ju-divider { border-radius:18px; overflow:hidden; position:relative; margin-bottom:20px; }
-.ju-divider img { width:100%; height:220px; object-fit:cover; }
+.ju-divider img { width:100%; height:235px; object-fit:cover; object-position:center 30%; }
 .ju-divider-txt { position:absolute; left:0; right:0; bottom:0; padding:16px; background:linear-gradient(180deg,transparent,rgba(61,20,44,.8)); color:#fff; font-family:'Fraunces',Georgia,serif; font-size:16px; line-height:1.45; }
 .prod { background:#fff; border:1px solid #F3D6DE; border-radius:16px; padding:15px; margin-bottom:13px; page-break-inside:avoid; }
 .prod-top { display:flex; gap:13px; }
@@ -251,6 +254,12 @@ img { display:block; max-width:100%; }
 .combos-h { font-size:10px; font-weight:800; color:#B8860B; text-transform:uppercase; margin-bottom:4px; }
 .combo { display:block; font-size:12px; color:#BE185D; text-decoration:none; padding:2px 0; }
 .buy { display:block; text-align:center; margin-top:12px; background:linear-gradient(135deg,#FB7185,#BE185D); color:#fff; text-decoration:none; font-weight:800; font-size:13.5px; padding:12px; border-radius:12px; }
+.vid { display:flex; align-items:center; gap:11px; margin-top:11px; background:#FFF3F6; border:1px solid #F3D6DE; border-radius:12px; padding:9px 11px; text-decoration:none; }
+.vid-thumb { position:relative; width:54px; height:54px; border-radius:10px; overflow:hidden; flex-shrink:0; background:#000; display:block; }
+.vid-thumb img { width:100%; height:100%; object-fit:cover; opacity:.9; }
+.vid-play { position:absolute; inset:0; margin:auto; width:22px; height:22px; border-radius:50%; background:rgba(255,255,255,.92); color:#BE185D; font-size:10px; display:flex; align-items:center; justify-content:center; padding-left:2px; }
+.vid-txt b { display:block; font-size:12.5px; font-weight:800; color:#BE185D; }
+.vid-txt small { font-size:11px; color:#7A6A6D; }
 .cta-card { background:linear-gradient(160deg,#FFF3F6,#fff); border:1px solid #F3D6DE; border-radius:18px; padding:22px; }
 .cta-h { font-family:'Fraunces',Georgia,serif; font-size:20px; margin-bottom:8px; }
 .cta-card > p { font-size:13.5px; line-height:1.6; color:#5c4a4e; }

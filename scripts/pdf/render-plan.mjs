@@ -90,10 +90,21 @@ async function buildData(plan, fresh, produtos, baseISO) {
   const fotoDefs = [['Frente', plan.foto_frente], ['Costas', plan.foto_costas], ['Raiz', plan.foto_raiz]].filter(f => f[1])
   const fotosCliente = await Promise.all(fotoDefs.map(async ([label, url]) => ({ label, src: await optimize(url, 850) })))
 
-  const produtosOut = await Promise.all((produtos || []).map(async p => ({
-    ...p,
-    principal: p.principal ? { ...p.principal, image: await optimize(p.principal.image, 240) } : p.principal,
-  })))
+  const ytId = (u) => { const m = String(u || '').match(/(?:shorts\/|watch\?v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{6,})/); return m ? m[1] : null }
+  const produtosOut = await Promise.all((produtos || []).map(async p => {
+    if (!p.principal) return p
+    const vid = ytId(p.principal.video)
+    return {
+      ...p,
+      principal: {
+        ...p.principal,
+        image: await optimize(p.principal.image, 240),
+        // link do vídeo da Juliane + thumbnail do YouTube (embutida otimizada)
+        videoUrl: p.principal.video || null,
+        videoThumb: vid ? await optimize(`https://img.youtube.com/vi/${vid}/hqdefault.jpg`, 240) : null,
+      },
+    }
+  }))
 
   return {
     nome: plan.nome,
