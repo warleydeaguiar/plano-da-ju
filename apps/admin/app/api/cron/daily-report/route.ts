@@ -48,6 +48,8 @@ async function sendToDiscord(payload: unknown): Promise<{ ok: boolean; error?: s
 }
 
 export async function GET(_req: NextRequest) {
+  // ?dry=1 → calcula e devolve os números SEM enviar pro Discord (pra testar).
+  const dry = new URL(_req.url).searchParams.get('dry') === '1'
   // Calcula "ontem" em horário de Brasília (UTC-3)
   const now = new Date()
   const brasiliaOffsetMs = 3 * 60 * 60 * 1000
@@ -65,18 +67,21 @@ export async function GET(_req: NextRequest) {
 
   // Buscas em paralelo
   const [
-    activeYestRes,
+    paysYestRes,
     groupJoinsYestRes,
     metaAds,
     yberaOrdersRes,
   ] = await Promise.all([
-    // Vendas Plano ontem (subscription_activated_at em ontem BR)
+    // Vendas Plano ontem = PAGAMENTOS REAIS (checkout_events), NÃO ativações de
+    // profiles. Ativação inclui parceria/UGC grátis, que não são venda paga e
+    // inflavam receita/lucro. Usa o valor real pago (não assume R$34,90).
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (sb.from('profiles') as any)
-      .select('*', { count: 'exact', head: true })
-      .eq('subscription_status', 'active')
-      .gte('subscription_activated_at', yesterdayStartBR.toISOString())
-      .lt('subscription_activated_at', todayStartBR.toISOString()),
+    (sb.from('checkout_events') as any)
+      .select('email, order_id, amount_cents, created_at')
+      .eq('event_type', 'payment_confirmed')
+      .gte('created_at', yesterdayStartBR.toISOString())
+      .lt('created_at', todayStartBR.toISOString())
+      .limit(5000),
     // Cadastros nos grupos ontem
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sb.from('wg_member_events') as any)
@@ -91,8 +96,18 @@ export async function GET(_req: NextRequest) {
   ])
 
   // ── Plano da Ju ─────────────────────────────────────────────
-  const salesYest      = activeYestRes.count ?? 0
-  const revenueYest    = salesYest * PLAN_PRICE
+  // Dedup por cliente/dia (webhook grava order.paid + charge.paid = 2 eventos/venda).
+  const seenPay = new Set<string>()
+  let salesYest = 0
+  let revenueYest = 0
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const r of ((paysYestRes.data ?? []) as any[])) {
+    const key = `${String(r.email ?? r.order_id ?? Math.random()).toLowerCase()}_${String(r.created_at).slice(0, 10)}`
+    if (seenPay.has(key)) continue
+    seenPay.add(key)
+    salesYest += 1
+    revenueYest += Number(r.amount_cents ?? PLAN_PRICE * 100) / 100
+  }
   const planoSpendYest = metaAds.plano.yesterday
   const planoProfitYest = revenueYest - planoSpendYest
   const planoRoasYest   = planoSpendYest > 0 ? revenueYest / planoSpendYest : null
@@ -147,10 +162,11 @@ export async function GET(_req: NextRequest) {
     color: profitColor(planoProfitYest + gruposProfitYest),
   }
 
-  const result = await sendToDiscord(payload)
+  const result = dry ? { ok: true, error: 'dry-run (não enviado)' } : await sendToDiscord(payload)
 
   return NextResponse.json({
     ok: result.ok,
+    dry,
     sent_at: new Date().toISOString(),
     error: result.error,
     yesterday: yesterdayBR,
