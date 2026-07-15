@@ -106,56 +106,68 @@ function isoForDateInput(iso: string | null) {
   return new Date(iso).toISOString().slice(0, 10)
 }
 
-export default function UsuariasClient({ initialUsers, initialQuery = '', giftMode = false }: { initialUsers: User[]; initialQuery?: string; giftMode?: boolean }) {
+interface StatusCounts { all: number; active: number; pending: number; cancelled: number; refunded: number; expired: number }
+
+export default function UsuariasClient({
+  initialUsers, initialQuery = '', giftMode = false, sub = '',
+  status = 'all', statusCounts, total = 0, page = 1, pageSize = 100, pageCount = 1,
+}: {
+  initialUsers: User[]; initialQuery?: string; giftMode?: boolean; sub?: string
+  status?: string; statusCounts: StatusCounts; total?: number; page?: number; pageSize?: number; pageCount?: number
+}) {
   const router = useRouter()
   const [search, setSearch] = useState(initialQuery)
-  const [statusFilter, setStatus] = useState<string>('all')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [isPending, startTransition] = useTransition()
 
-  // Busca server-side: a lista carrega só as 200 mais recentes, então buscamos
-  // no banco inteiro (debounce de 400ms) atualizando ?q= na URL. O filtro local
-  // abaixo ainda refina instantaneamente o conjunto retornado.
+  // Monta a URL preservando os filtros atuais; `overrides` com undefined removem a chave.
+  const buildUrl = (overrides: Record<string, string | undefined>) => {
+    const cur: Record<string, string | undefined> = {
+      q: initialQuery || undefined,
+      gift: giftMode ? '1' : undefined,
+      sub: sub || undefined,
+      status: status !== 'all' ? status : undefined,
+      page: page > 1 ? String(page) : undefined,
+      ...overrides,
+    }
+    const p = new URLSearchParams()
+    for (const [k, v] of Object.entries(cur)) if (v) p.set(k, v)
+    const qs = p.toString()
+    return qs ? `/usuarios?${qs}` : '/usuarios'
+  }
+  const go = (overrides: Record<string, string | undefined>) =>
+    startTransition(() => router.push(buildUrl(overrides)))
+
+  // Busca server-side no banco inteiro (debounce 400ms) — reseta pra página 1,
+  // preserva status/gift. O filtro local abaixo refina instantaneamente a página.
   const lastPushed = useRef(initialQuery)
   useEffect(() => {
     const t = search.trim()
     if (t === lastPushed.current) return
     const id = setTimeout(() => {
       lastPushed.current = t
-      startTransition(() => {
-        router.push(t.length >= 2 ? `/usuarios?q=${encodeURIComponent(t)}` : '/usuarios')
-      })
+      go({ q: t.length >= 2 ? t : undefined, page: undefined })
     }, 400)
     return () => clearTimeout(id)
-  }, [search, router])
+  }, [search]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const selected = useMemo(() => initialUsers.find(u => u.id === selectedId) ?? null, [initialUsers, selectedId])
 
+  // O servidor já filtrou por status/gift/busca; aqui só refinamos a página atual
+  // enquanto a pessoa digita (feedback instantâneo antes do debounce).
   const filtered = useMemo(() => {
-    let list = initialUsers
-    if (statusFilter !== 'all') list = list.filter(u => u.subscription_status === statusFilter)
-    if (search.trim()) {
-      const q = search.toLowerCase().replace(/\D/g, '')
-      const qText = search.toLowerCase()
-      list = list.filter(u =>
-        (u.full_name ?? '').toLowerCase().includes(qText) ||
-        u.email.toLowerCase().includes(qText) ||
-        (q && u.phone?.replace(/\D/g, '').includes(q))
-      )
-    }
-    return list
-  }, [initialUsers, search, statusFilter])
+    if (!search.trim()) return initialUsers
+    const q = search.toLowerCase().replace(/\D/g, '')
+    const qText = search.toLowerCase()
+    return initialUsers.filter(u =>
+      (u.full_name ?? '').toLowerCase().includes(qText) ||
+      u.email.toLowerCase().includes(qText) ||
+      (q && u.phone?.replace(/\D/g, '').includes(q))
+    )
+  }, [initialUsers, search])
 
-  const counts = useMemo(() => ({
-    all:       initialUsers.length,
-    active:    initialUsers.filter(u => u.subscription_status === 'active').length,
-    pending:   initialUsers.filter(u => u.subscription_status === 'pending').length,
-    cancelled: initialUsers.filter(u => u.subscription_status === 'cancelled').length,
-    refunded:  initialUsers.filter(u => u.subscription_status === 'refunded').length,
-    expired:   initialUsers.filter(u => u.subscription_status === 'expired').length,
-    gifts:     initialUsers.filter(u => u.is_gift).length,
-  }), [initialUsers])
+  const counts = { ...statusCounts, gifts: 0 }
 
   function refresh() {
     setSelectedId(null)
@@ -171,10 +183,13 @@ export default function UsuariasClient({ initialUsers, initialQuery = '', giftMo
             <div style={{ fontSize: 22, fontWeight: 700, color: '#2A1E2C' }}>Usuárias</div>
             <div style={{ fontSize: 13, color: gray, marginTop: 3 }}>
               {giftMode
-                ? `${initialUsers.length} UGC / presentes 🎁 (plano gratuito)`
+                ? `${total.toLocaleString('pt-BR')} UGC / presentes 🎁 (plano gratuito)`
                 : initialQuery
-                ? `${initialUsers.length} resultado${initialUsers.length === 1 ? '' : 's'} para "${initialQuery}"`
-                : `${initialUsers.length} mais recentes${counts.gifts > 0 ? ` · ${counts.gifts} presentes 🎁` : ''}`}
+                ? `${total.toLocaleString('pt-BR')} resultado${total === 1 ? '' : 's'} para "${initialQuery}"`
+                : status !== 'all'
+                ? `${total.toLocaleString('pt-BR')} ${status === 'active' ? 'ativas' : status === 'pending' ? 'pendentes' : status}`
+                : `${total.toLocaleString('pt-BR')} usuárias no total`}
+              {pageCount > 1 && ` · página ${page} de ${pageCount}`}
             </div>
           </div>
           <button onClick={() => setShowCreate(true)} style={{
@@ -194,22 +209,22 @@ export default function UsuariasClient({ initialUsers, initialQuery = '', giftMo
             { key: 'refunded',  label: `Reembolso (${counts.refunded})` },
             { key: 'expired',   label: `Expiradas (${counts.expired})` },
           ] as const).map(({ key, label }) => (
-            <button key={key} onClick={() => setStatus(key)} style={{
+            <button key={key} onClick={() => go({ status: key === 'all' ? undefined : key, page: undefined })} style={{
               padding: '6px 14px', borderRadius: 20, fontSize: 13, fontWeight: 500,
               border: 'none', cursor: 'pointer',
-              background: statusFilter === key ? accent : '#fff',
-              color: statusFilter === key ? '#fff' : '#2A1E2C',
-              boxShadow: statusFilter === key ? 'none' : '0 1px 3px rgba(0,0,0,0.08)',
+              background: status === key ? accent : '#fff',
+              color: status === key ? '#fff' : '#2A1E2C',
+              boxShadow: status === key ? 'none' : '0 1px 3px rgba(0,0,0,0.08)',
             }}>{label}</button>
           ))}
           {/* UGC/Presentes: filtro SERVER-SIDE (pega toda a base, não só as carregadas) */}
-          <button onClick={() => router.push(giftMode ? '/usuarios' : '/usuarios?gift=1')} style={{
+          <button onClick={() => go({ gift: giftMode ? undefined : '1', status: undefined, page: undefined })} style={{
             padding: '6px 14px', borderRadius: 20, fontSize: 13, fontWeight: 500,
             border: 'none', cursor: 'pointer',
             background: giftMode ? purple : '#fff',
             color: giftMode ? '#fff' : purple,
             boxShadow: giftMode ? 'none' : `0 0 0 1px ${purple}40`,
-          }}>🎁 UGC / Presentes{giftMode ? ` (${initialUsers.length})` : ''}</button>
+          }}>🎁 UGC / Presentes{giftMode ? ` (${total})` : ''}</button>
         </div>
 
         {/* Search */}
@@ -306,6 +321,36 @@ export default function UsuariasClient({ initialUsers, initialQuery = '', giftMo
             </table>
           )}
         </div>
+
+        {/* Paginação */}
+        {pageCount > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, marginTop: 16, marginBottom: 8 }}>
+            <button
+              disabled={page <= 1 || isPending}
+              onClick={() => go({ page: page - 1 <= 1 ? undefined : String(page - 1) })}
+              style={{
+                padding: '8px 16px', borderRadius: 10, fontSize: 13, fontWeight: 600,
+                border: '1px solid #E0E0E8', background: page <= 1 ? '#F5F2F4' : '#fff',
+                color: page <= 1 ? '#B8AEB4' : '#2A1E2C', cursor: page <= 1 ? 'default' : 'pointer',
+              }}
+            >← Anterior</button>
+            <span style={{ fontSize: 13, color: gray }}>
+              Página <strong style={{ color: '#2A1E2C' }}>{page}</strong> de {pageCount}
+              <span style={{ marginLeft: 8, color: '#B8AEB4' }}>
+                ({((page - 1) * pageSize + 1).toLocaleString('pt-BR')}–{Math.min(page * pageSize, total).toLocaleString('pt-BR')} de {total.toLocaleString('pt-BR')})
+              </span>
+            </span>
+            <button
+              disabled={page >= pageCount || isPending}
+              onClick={() => go({ page: String(page + 1) })}
+              style={{
+                padding: '8px 16px', borderRadius: 10, fontSize: 13, fontWeight: 600,
+                border: '1px solid #E0E0E8', background: page >= pageCount ? '#F5F2F4' : '#fff',
+                color: page >= pageCount ? '#B8AEB4' : '#2A1E2C', cursor: page >= pageCount ? 'default' : 'pointer',
+              }}
+            >Próxima →</button>
+          </div>
+        )}
       </div>
 
       {/* Side panel */}
