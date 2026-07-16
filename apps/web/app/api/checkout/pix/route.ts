@@ -14,7 +14,7 @@ const PRICE_CENTS = 3490; // R$34,90
 
 export const runtime = 'nodejs';
 // Headroom pro retry do QR (a PagarMe às vezes demora pra popular o copia-e-cola).
-export const maxDuration = 30;
+export const maxDuration = 45;
 
 // Busca a ordem algumas vezes até o PIX (qr_code) ficar pronto. Backoff crescente
 // ~8s no total (PagarMe normalmente popula em <1s, mas às vezes atrasa). Retorna o
@@ -22,7 +22,10 @@ export const maxDuration = 30;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function waitForQrCode(orderId: string, current: any): Promise<any> {
   let pixData = current;
-  const delays = [500, 700, 900, 1100, 1300, 1600, 2000]; // ~8.1s total
+  // A PagarMe às vezes leva >8s pra popular o qr_code (instabilidade). Estende
+  // até ~16s — só espera mais QUANDO o QR não está pronto (o loop sai assim que
+  // aparece); no caso normal (rápido) não muda nada. Reduz o erro "QR não retornado".
+  const delays = [500, 700, 900, 1100, 1300, 1600, 2000, 2500, 2500, 3000]; // ~16.1s total
   for (let i = 0; i < delays.length && !pixData?.qr_code; i++) {
     await new Promise(r => setTimeout(r, delays[i]));
     try {
