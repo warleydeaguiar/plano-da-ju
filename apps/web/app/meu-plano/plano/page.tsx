@@ -439,34 +439,43 @@ export default function PlanoPage() {
                   </div>
 
                   {/* CTA gameficado — seguir a Juliane no Instagram + progresso da meta */}
-                  {(() => {
+                  {showIg && (() => {
                     const pct = Math.min(100, Math.round((IG_FOLLOWERS / IG_GOAL) * 100));
                     const faltam = Math.max(0, IG_GOAL - IG_FOLLOWERS);
+                    const hideIg = () => { try { localStorage.setItem('ig_followed', '1'); } catch { /* ok */ } setShowIg(false); };
                     return (
+                      <div style={{ position: 'relative', marginTop: 16 }}>
+                      <button onClick={hideIg} aria-label="Fechar" style={{
+                        position: 'absolute', top: 9, right: 9, zIndex: 2,
+                        width: 25, height: 25, borderRadius: '50%', border: 'none', cursor: 'pointer',
+                        background: 'rgba(0,0,0,0.22)', color: '#fff', fontSize: 12, fontWeight: 700,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+                      }}>✕</button>
                       <a
                         href="https://instagram.com/julianecost"
                         target="_blank"
                         rel="noopener noreferrer"
+                        onClick={hideIg}
                         style={{
-                          display: 'block', marginTop: 16, textDecoration: 'none', color: '#fff',
+                          display: 'block', textDecoration: 'none', color: '#fff',
                           background: 'linear-gradient(115deg, #FEDA77 0%, #F58529 28%, #DD2A7B 66%, #8134AF 100%)',
                           borderRadius: 18, padding: '15px 16px 14px',
                           boxShadow: '0 10px 24px rgba(221,42,123,0.34)',
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                          <div style={{
-                            width: 36, height: 36, borderRadius: '50%', background: '#fff', flexShrink: 0,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                          }}><IconInstagram size={20} color="#DD2A7B" /></div>
+                          <div style={{ position: 'relative', width: 38, height: 38, flexShrink: 0 }}>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src="/images/ju-foto.jpg" alt="Juliane" style={{ width: 38, height: 38, borderRadius: '50%', objectFit: 'cover', border: '2px solid #fff', boxShadow: '0 2px 8px rgba(0,0,0,0.18)' }} />
+                            <div style={{ position: 'absolute', right: -3, bottom: -3, width: 17, height: 17, borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.2)' }}><IconInstagram size={11} color="#DD2A7B" /></div>
+                          </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontWeight: 800, fontSize: 14.5, lineHeight: 1.15 }}>Seguir a Juliane</div>
                             <div style={{ fontSize: 11.5, opacity: 0.92 }}>@julianecost</div>
                           </div>
                           <div style={{
                             background: 'rgba(255,255,255,0.24)', borderRadius: 10, padding: '5px 10px',
-                            fontSize: 13, fontWeight: 800, flexShrink: 0,
+                            fontSize: 13, fontWeight: 800, flexShrink: 0, marginRight: 22,
                           }}>{pct}%</div>
                         </div>
 
@@ -497,6 +506,7 @@ export default function PlanoPage() {
                           ✨ Toque e seja mais uma pra bater a meta!
                         </div>
                       </a>
+                      </div>
                     );
                   })()}
                 </>
@@ -505,37 +515,8 @@ export default function PlanoPage() {
           </div>
         )}
 
-        {/* Banner — seguir a Juliane no Instagram (some ao clicar) */}
-        {showIg && (
-          <div style={{ margin: '0 16px 18px' }}>
-            <a
-              href="https://instagram.com/julianecost"
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => { try { localStorage.setItem('ig_followed', '1'); } catch {} setShowIg(false); }}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none',
-                background: 'linear-gradient(105deg, #F58529 0%, #DD2A7B 50%, #8134AF 100%)',
-                borderRadius: 16, padding: '13px 15px',
-                boxShadow: '0 6px 16px rgba(221,42,123,0.28)',
-              }}
-            >
-              <div style={{
-                width: 42, height: 42, borderRadius: '50%', background: '#fff',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-              }}><IconInstagram size={26} color="#DD2A7B" /></div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ color: '#fff', fontWeight: 700, fontSize: 14.5, fontFamily: fonts.ui }}>
-                  Siga a Juliane no Instagram
-                </div>
-                <div style={{ color: 'rgba(255,255,255,0.92)', fontSize: 12.5, marginTop: 2 }}>
-                  Dicas, bastidores e novidades · @julianecost
-                </div>
-              </div>
-              <div style={{ color: '#fff', fontSize: 20, fontWeight: 700, flexShrink: 0 }}>→</div>
-            </a>
-          </div>
-        )}
+        {/* (Banner de IG simples removido — o card gamificado acima já cobre o "seguir",
+            com foto da Ju, botão de fechar e some ao seguir.) */}
 
         {/* Sub-tabs */}
         <div style={{

@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
     const ids = [...new Set(rec.flatMap(r => [r?.produto_id, r?.alternativa_id]).filter(Boolean))];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: recProds } = await (sb.from('products') as any)
-      .select('id,name,brand,category,affiliate_url,image_url,is_ybera').in('id', ids);
+      .select('id,name,brand,category,affiliate_url,image_url,is_ybera,video_url').in('id', ids);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const byId = new Map<string, any>((recProds ?? []).map((x: any) => [x.id, x]));
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
   } else {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: pr } = await (sb.from('products') as any)
-      .select('id,name,brand,category,affiliate_url,image_url,is_ybera').eq('active', true).limit(8);
+      .select('id,name,brand,category,affiliate_url,image_url,is_ybera,video_url').eq('active', true).limit(8);
     products = pr ?? [];
   }
 
