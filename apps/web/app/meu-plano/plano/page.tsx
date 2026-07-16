@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { createBrowserClient } from '@supabase/ssr';
@@ -135,6 +135,14 @@ export default function PlanoPage() {
   const [cartaOpen, setCartaOpen] = useState(true);   // carta da Ju pode minimizar
   const [userId, setUserId] = useState<string | null>(null);
   const [isPreview, setIsPreview] = useState(false);
+
+  // Troca de aba SEMPRE rola até a barra de abas (não pro topo/carta) — senão dá
+  // a impressão de que clicar num produto "volta pra mensagem da Ju".
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const goTab = (t: Tab) => {
+    setTab(t);
+    requestAnimationFrame(() => tabsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  };
 
   useEffect(() => {
     try { setShowIg(localStorage.getItem('ig_followed') !== '1'); } catch { setShowIg(true); }
@@ -519,13 +527,13 @@ export default function PlanoPage() {
             com foto da Ju, botão de fechar e some ao seguir.) */}
 
         {/* Sub-tabs */}
-        <div style={{
-          margin: '0 16px 18px', display: 'flex',
+        <div ref={tabsRef} style={{
+          margin: '0 16px 18px', display: 'flex', scrollMarginTop: 12,
           background: T.surface, borderRadius: 14, padding: 4,
           boxShadow: shadow.card, border: `1px solid ${T.borderSoft}`,
         }}>
           {(['rotina','produtos','dicas'] as Tab[]).map(t => (
-            <button key={t} onClick={() => setTab(t)} style={{
+            <button key={t} onClick={() => goTab(t)} style={{
               flex: 1, padding: '9px 0', borderRadius: 10, border: 'none',
               background: tab === t ? gradient.heroSoft : 'transparent',
               color: tab === t ? '#FFF' : T.inkSoft,
@@ -697,7 +705,7 @@ export default function PlanoPage() {
                             return (
                               <div
                                 key={i}
-                                onClick={imgUrl ? () => { setTab('produtos'); window.scrollTo({ top: 0, behavior: 'smooth' }); } : undefined}
+                                onClick={imgUrl ? () => goTab('produtos') : undefined}
                                 style={{
                                   padding: '13px 18px', display: 'flex', alignItems: 'flex-start', gap: 14,
                                   borderBottom: i < tasks.length - 1 ? `1px solid ${T.borderSoft}` : 'none',
@@ -1232,6 +1240,9 @@ function PreparingState({ profile }: { profile: Profile | null }) {
           </>
         )}
 
+        {/* Enquanto espera: aulas da Juliane (aula 1 → libera aula 2) */}
+        <AulasEspera />
+
         {/* Enquanto espera: FOCO em entrar no grupo VIP de promoções */}
         <div style={{ padding: '0 16px 30px' }}>
           <div style={{
@@ -1258,6 +1269,90 @@ function PreparingState({ profile }: { profile: Profile | null }) {
         </div>
 
         <style>{`@keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.85); } }`}</style>
+      </div>
+    </div>
+  );
+}
+
+// Aulas na tela de espera: Aula 1 (história do cabelo da Ju) sempre; Aula 2 só
+// depois que a pessoa ASSISTE a aula 1 (detecta o fim pela API do YouTube; salva).
+function AulasEspera() {
+  const [aula1Done, setAula1Done] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  useEffect(() => {
+    try { if (localStorage.getItem('aula1_done') === '1') setAula1Done(true); } catch { /* ok */ }
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = window as any;
+    const markDone = () => { try { localStorage.setItem('aula1_done', '1'); } catch { /* ok */ } setAula1Done(true); };
+    if (!w.__ytApiLoading && !w.YT) {
+      w.__ytApiLoading = true;
+      const tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      document.body.appendChild(tag);
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let player: any;
+    const init = () => {
+      if (!iframeRef.current || !w.YT?.Player) return;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      player = new w.YT.Player(iframeRef.current, {
+        // 0 = ENDED → terminou de assistir a aula 1
+        events: { onStateChange: (e: { data: number }) => { if (e.data === 0) markDone(); } },
+      });
+    };
+    if (w.YT?.Player) init();
+    else { const prev = w.onYouTubeIframeAPIReady; w.onYouTubeIframeAPIReady = () => { prev?.(); init(); }; }
+    return () => { try { player?.destroy?.(); } catch { /* ok */ } };
+  }, []);
+
+  return (
+    <div style={{ padding: '0 16px 16px' }}>
+      <div style={{ background: T.surface, border: `1px solid ${T.borderSoft}`, borderRadius: 16, padding: 18, boxShadow: shadow.card }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: T.ink, fontFamily: fonts.display, marginBottom: 4 }}>
+          🎬 Enquanto espera, comece a sua transformação
+        </div>
+        <div style={{ fontSize: 13, color: T.inkSoft, lineHeight: 1.5 }}>
+          <strong>Aula 1</strong> — A história do cabelo da Juliane. É a base de tudo que você precisa saber. 💛
+        </div>
+        <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', borderRadius: 12, overflow: 'hidden', background: '#000', marginTop: 10 }}>
+          <iframe
+            id="aula1-player" ref={iframeRef}
+            src="https://www.youtube.com/embed/dIFrA6sBrfw?enablejsapi=1&rel=0&playsinline=1"
+            title="Aula 1 — A história do cabelo da Juliane"
+            allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+            allowFullScreen
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }}
+          />
+        </div>
+
+        {aula1Done ? (
+          <div style={{ marginTop: 18 }}>
+            <div style={{ fontSize: 13, color: T.green, fontWeight: 700, marginBottom: 4 }}>✓ Aula 1 concluída — agora a Aula 2!</div>
+            <div style={{ fontSize: 13, color: T.inkSoft, lineHeight: 1.5 }}>
+              <strong>Aula 2</strong> — o próximo passo pra você ir ainda mais longe.
+            </div>
+            <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', borderRadius: 12, overflow: 'hidden', background: '#000', marginTop: 10 }}>
+              <iframe
+                src="https://www.youtube.com/embed/GOs6M5yLlfw?rel=0&playsinline=1"
+                title="Aula 2"
+                allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                allowFullScreen
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }}
+              />
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => { try { localStorage.setItem('aula1_done', '1'); } catch { /* ok */ } setAula1Done(true); }}
+            style={{ marginTop: 12, width: '100%', background: 'transparent', border: `1px solid ${T.borderSoft}`, borderRadius: 12, padding: '10px', fontSize: 12.5, color: T.inkSoft, cursor: 'pointer', fontFamily: fonts.ui }}
+          >
+            Assista até o fim que a <strong>Aula 2</strong> libera 💛 · já assistiu? toque aqui
+          </button>
+        )}
       </div>
     </div>
   );
