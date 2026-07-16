@@ -20,7 +20,7 @@ export const maxDuration = 300;
  * ?dry=1 → só relata quem entraria.
  */
 const MIN_AGE_HOURS = 48;
-const BATCH = 4;
+const BATCH = 6;   // 6 × ~40s < maxDuration 300s
 
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET;
@@ -56,12 +56,18 @@ export async function GET(req: NextRequest) {
 
   // Ativa (paga OU cortesia), em pending_photo, SEM foto, elegível há >48h.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // Filtra JÁ NO SQL por cliente real (ativa/parceria) COM email e quiz — senão os
+  // 200 mais antigos são cadastros abandonados (nunca pagaram) e os elegíveis de
+  // verdade (mais novos) nunca eram alcançados → cron achava 0.
   const { data: cands, error } = await (sb.from('profiles') as any)
     .select('id, email, full_name, hair_type, quiz_answers, subscription_status, subscription_type, partner_label, plan_requested_at, subscription_activated_at, created_at')
     .eq('plan_status', 'pending_photo')
     .is('photo_url', null)
+    .not('email', 'is', null)
+    .not('quiz_answers', 'is', null)
+    .or('subscription_status.eq.active,subscription_type.eq.parceria,partner_label.eq.bianca')
     .order('created_at', { ascending: true })
-    .limit(200);
+    .limit(500);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const eligible = (cands ?? []).filter((p: Record<string, unknown>) => {
