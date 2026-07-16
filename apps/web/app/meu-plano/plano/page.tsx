@@ -136,13 +136,16 @@ export default function PlanoPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [isPreview, setIsPreview] = useState(false);
 
-  // Troca de aba SEMPRE rola até a barra de abas (não pro topo/carta) — senão dá
-  // a impressão de que clicar num produto "volta pra mensagem da Ju".
+  // Troca de aba SEMPRE ancora a barra de abas no topo (não sobe pra carta) — senão
+  // dá a impressão de que clicar num produto "volta pra mensagem da Ju".
   const tabsRef = useRef<HTMLDivElement>(null);
-  const goTab = (t: Tab) => {
-    setTab(t);
-    requestAnimationFrame(() => tabsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
-  };
+  const tabsMounted = useRef(false);
+  const goTab = (t: Tab) => setTab(t);
+  // Roda DEPOIS do render (conteúdo da nova aba já trocado) → scroll certeiro.
+  useEffect(() => {
+    if (!tabsMounted.current) { tabsMounted.current = true; return; }
+    tabsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [tab]);
 
   useEffect(() => {
     try { setShowIg(localStorage.getItem('ig_followed') !== '1'); } catch { setShowIg(true); }
