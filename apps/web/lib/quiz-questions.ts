@@ -266,18 +266,11 @@ export const QUIZ_STEPS: QuizStep[] = [
       { id: 'nao', label: 'Não' },
     ],
   },
-  // ── 20
-  {
-    id: 'como_plano',
-    kind: 'single',
-    title: 'Como você quer seu plano?',
-    subtitle: 'Isso serve para que a Ju monte o plano do seu jeitinho. Pense na sua parte financeira.',
-    options: [
-      { id: 'sem_dinheiro',  label: 'Não posso comprar nenhum produto novo **(Caso você esteja sem dinheiro para investir)**' },
-      { id: 'aproveitar',    label: 'Quero aproveitar os produtos que tenho e comprar o mínimo possível' },
-      { id: 'trocar_todos',  label: 'Posso trocar todos os meus produtos **(Se a ju achar necessário)**' },
-    ],
-  },
+  // ── 20 (removida — a pergunta "Como você quer seu plano?" com opções sobre
+  // "aproveitar os produtos que tenho" passava a impressão errada de que o
+  // plano seria montado com os produtos da própria cliente. O plano é sempre
+  // com os produtos indicados pela Ju. Resposta `como_plano` não é usada na
+  // geração do plano; downstream (admin/e-mail) já trata a ausência.)
   // ── 21 (removida — campo de texto livre causava 84% de abandono no funil
   // do quiz. Reposicionada como pergunta opcional no onboarding pós-compra,
   // depois do upload da foto.)
