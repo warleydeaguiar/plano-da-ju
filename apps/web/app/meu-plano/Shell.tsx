@@ -141,9 +141,9 @@ export default function MeuPlanoShell({ children }: { children: React.ReactNode 
       )}
 
       {/* Botão flutuante do WhatsApp da Ju — em (quase) todas as páginas, pra
-          fomentar a conversa da cliente com a Juliane. Some no onboarding/check-in
-          (nav escondida) e no modo preview do admin. */}
-      {!hideNav && !pv && (
+          fomentar a conversa da cliente com a Juliane. Some só no onboarding/
+          check-in (nav escondida). Aparece também no "ver como cliente". */}
+      {!hideNav && (
         <a href={juWhatsappLink()} target="_blank" rel="noopener noreferrer"
           aria-label="Falar com a Juliane no WhatsApp"
           style={{
