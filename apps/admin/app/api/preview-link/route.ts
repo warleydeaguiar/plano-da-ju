@@ -17,5 +17,6 @@ export async function GET(req: NextRequest) {
   const secret = process.env.PLAN_PREVIEW_SECRET;
   if (!secret) return NextResponse.json({ error: 'PLAN_PREVIEW_SECRET não configurado' }, { status: 500 });
   const url = `${WEB_URL}/meu-plano/plano?preview_user=${encodeURIComponent(user)}&k=${encodeURIComponent(secret)}`;
-  return NextResponse.json({ url });
+  const pdfUrl = `${WEB_URL}/api/admin/plan-pdf?user=${encodeURIComponent(user)}&k=${encodeURIComponent(secret)}`;
+  return NextResponse.json({ url, pdfUrl });
 }

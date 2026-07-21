@@ -1182,6 +1182,26 @@ export default function PlanosClient(
                     >
                       👁 Ver como cliente
                     </button>
+                    {/* Gerar PDF — abre a página de impressão do plano; o navegador salva como PDF */}
+                    <button
+                      onClick={async () => {
+                        try {
+                          const r = await fetch(`/api/preview-link?user=${selectedUserId}`);
+                          const d = await r.json();
+                          if (d.pdfUrl) window.open(d.pdfUrl, '_blank', 'noopener');
+                          else alert(d.error || 'Erro ao gerar o PDF');
+                        } catch { alert('Erro ao gerar o PDF'); }
+                      }}
+                      title="Abre o plano em layout de PDF e a caixa de impressão — escolha 'Salvar como PDF'"
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                        fontSize: 13, fontWeight: 600, padding: '9px 16px', borderRadius: 9,
+                        background: ACCENT, border: `1.5px solid ${ACCENT}`, color: '#fff',
+                        cursor: 'pointer', transition: 'all 0.15s',
+                      }}
+                    >
+                      🖨 Gerar PDF
+                    </button>
                     {/* Gerar link de acesso (magic link) — copia pra mandar no Chatwoot/WhatsApp */}
                     <button
                       onClick={async () => {
