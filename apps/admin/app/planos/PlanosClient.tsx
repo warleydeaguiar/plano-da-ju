@@ -566,6 +566,9 @@ export default function PlanosClient(
   const [revOpen, setRevOpen]         = useState(false); // painel de pedidos de ajuste recolhido por padrão
   const [filterTab, setFilterTab]     = useState<'pending' | 'approved' | 'all'>('pending');
   const [search, setSearch]           = useState('');
+  // A lista pode ter milhares de ativas — renderiza em blocos de 50 pra não travar
+  // o navegador (o "infinito" que pesava). Reseta ao trocar filtro/busca.
+  const [visibleCount, setVisibleCount] = useState(50);
   const [planTab, setPlanTab]         = useState<'cronograma' | 'produtos' | 'dicas'>('cronograma');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(
     initialCards.find(c => !c.approved)?.user_id ?? initialCards[0]?.user_id ?? null,
@@ -630,6 +633,9 @@ export default function PlanosClient(
       (c.phone ?? '').replace(/\D/g, '').includes(q.replace(/\D/g, '')));
     return list;
   }, [cards, filterTab, isDelivered, search]);
+
+  // Volta pro topo da lista (50) sempre que muda o filtro ou a busca.
+  useEffect(() => { setVisibleCount(50); }, [filterTab, search]);
 
   const counts = useMemo(() => ({
     pending:  cards.filter(c => !isDelivered(c)).length,
@@ -1044,7 +1050,8 @@ export default function PlanosClient(
                     : 'Sem planos no sistema'}
                 </div>
               ) : (
-                filtered.map(p => {
+                <>
+                {filtered.slice(0, visibleCount).map(p => {
                   const isActive = selectedUserId === p.user_id;
                   const stageCfg = p.stage ? STAGE_CONFIG[p.stage] : null;
                   return (
@@ -1111,7 +1118,16 @@ export default function PlanosClient(
                       </div>
                     </div>
                   );
-                })
+                })}
+                {filtered.length > visibleCount && (
+                  <button onClick={() => setVisibleCount(c => c + 50)} style={{
+                    width: '100%', padding: '13px', background: 'transparent', border: 'none',
+                    borderTop: '1px solid #F3EBE1', color: ACCENT, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                  }}>
+                    Carregar mais ({(filtered.length - visibleCount).toLocaleString('pt-BR')} restantes)
+                  </button>
+                )}
+                </>
               )}
             </div>
           </div>

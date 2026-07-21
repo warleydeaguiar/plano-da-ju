@@ -81,18 +81,21 @@ export default async function PlanosPage({
   // travado" (mesmo com plano pronto). Era a causa do "200 travados".
   const userIds = profileList.map(p => p.id);
   const CHUNK = 50;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const weekOnePlans: Array<{ user_id: string; approved_by_juliane: boolean; created_at: string; juliane_notes: string | null }> = [];
-  for (let i = 0; i < userIds.length; i += CHUNK) {
-    const slice = userIds.slice(i, i + CHUNK);
+  const chunks: string[][] = [];
+  for (let i = 0; i < userIds.length; i += CHUNK) chunks.push(userIds.slice(i, i + CHUNK));
+  // Antes: os ~60 lotes rodavam em SÉRIE (await dentro do loop) = vários segundos
+  // de latência com milhares de ativas. Agora rodam em PARALELO → tempo ≈ 1 query.
+  const chunkResults = await Promise.all(chunks.map(slice =>
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await (sb.from('hair_plans') as any)
+    (sb.from('hair_plans') as any)
       .select('user_id,approved_by_juliane,created_at,juliane_notes')
       .eq('week_number', 1)
-      .in('user_id', slice);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (Array.isArray(data)) weekOnePlans.push(...(data as any[]));
-  }
+      .in('user_id', slice),
+  ));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const weekOnePlans: Array<{ user_id: string; approved_by_juliane: boolean; created_at: string; juliane_notes: string | null }> = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const { data } of chunkResults) if (Array.isArray(data)) weekOnePlans.push(...(data as any[]));
 
   const planMap = new Map(
     (weekOnePlans as Array<{ user_id: string; approved_by_juliane: boolean; created_at: string; juliane_notes: string | null }>)
