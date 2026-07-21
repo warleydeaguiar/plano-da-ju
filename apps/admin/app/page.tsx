@@ -12,6 +12,7 @@ import { createAdminClient } from '../lib/supabase';
 import { getQuizAdSpend, META_TAX_RATE, type AdGroupResult } from '../lib/meta-ads-quiz';
 import { getAiCosts } from '../lib/ai-costs';
 import { getPlanRatings } from '../lib/plan-ratings';
+import { getYberaDashboard } from '../lib/ybera-dashboard';
 import { fetchYberaOrders, salesOnDateBR, salesTotal, YBERA_COMMISSION_RATE } from '../lib/ybera-api';
 import { T, fonts, shadow, gradient, gradientForId } from './theme';
 import {
@@ -246,6 +247,75 @@ function YberaDailyChart({ data }: {
   );
 }
 
+function YberaConversionTrend({ data, activeCount }: {
+  data: Array<{ ym: string; label: string; buyers: number; conversion: number; revenue: number }>;
+  activeCount: number;
+}) {
+  const maxConv = Math.max(0.0001, ...data.map(d => d.conversion));
+  return (
+    <div>
+      <div style={{ fontSize: 14, fontWeight: 700, color: T.ink, fontFamily: fonts.ui, marginBottom: 2 }}>
+        📈 Conversão das alunas por mês — está subindo?
+      </div>
+      <div style={{ fontSize: 11.5, color: T.inkMuted, marginBottom: 16 }}>
+        % da base de {activeCount.toLocaleString('pt-BR')} alunas ativas que comprou na Ybera no mês
+      </div>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 130 }}>
+        {data.map(t => (
+          <div key={t.ym} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, height: '100%', justifyContent: 'flex-end' }}
+            title={`${t.label}: ${(t.conversion * 100).toFixed(1)}% · ${t.buyers} alunas · ${brl(t.revenue)}`}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: T.pinkDeep }}>{(t.conversion * 100).toFixed(0)}%</div>
+            <div style={{ width: '100%', maxWidth: 46, height: Math.max((t.conversion / maxConv) * 90, t.conversion > 0 ? 4 : 2), borderRadius: '5px 5px 0 0', background: `linear-gradient(180deg, ${T.pinkDeep}, ${T.pink})` }} />
+            <div style={{ fontSize: 10, color: T.inkMuted }}>{t.label}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PlanClickFunnel({ data, buyRate, totalClickers, totalBuyers }: {
+  data: Array<{ day: string; clickers: number; buyers: number; clicks: number }>;
+  buyRate: number; totalClickers: number; totalBuyers: number;
+}) {
+  const maxC = Math.max(1, ...data.map(d => d.clickers));
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 2, flexWrap: 'wrap', gap: 8 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: T.ink, fontFamily: fonts.ui }}>
+          🎯 Cliques nos produtos do plano × quem comprou (por dia)
+        </div>
+        <div style={{ fontSize: 12, color: T.inkMuted }}>
+          14 dias: <strong style={{ color: T.blue }}>{totalClickers.toLocaleString('pt-BR')}</strong> clicaram ·{' '}
+          <strong style={{ color: T.green }}>{totalBuyers.toLocaleString('pt-BR')}</strong> compraram ·{' '}
+          <strong style={{ color: buyRate >= 0.15 ? T.green : T.danger }}>{(buyRate * 100).toFixed(1)}%</strong> conversão
+        </div>
+      </div>
+      <div style={{ fontSize: 11.5, color: T.inkMuted, marginBottom: 16 }}>
+        Barra clara = clientes que clicaram num produto indicado · barra cheia = quantos desses compraram na Ybera. O vão entre as duas é a venda que estamos perdendo.
+      </div>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 140 }}>
+        {data.map((d, i) => {
+          const hc = d.clickers > 0 ? Math.max(8, (d.clickers / maxC) * 100) : 3;
+          const hb = d.clickers > 0 ? (d.buyers / d.clickers) * hc : 0;
+          return (
+            <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: T.ink, whiteSpace: 'nowrap' }}>
+                {d.clickers > 0 ? `${d.buyers}/${d.clickers}` : '—'}
+              </div>
+              <div style={{ width: '100%', maxWidth: 40, height: hc, borderRadius: '6px 6px 0 0', background: T.blueSoft, position: 'relative' }}
+                title={`${d.day}: ${d.clickers} clicaram, ${d.buyers} compraram (${d.clicks} cliques)`}>
+                <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: hb, borderRadius: hb >= hc - 1 ? '6px 6px 0 0' : 0, background: T.green }} />
+              </div>
+              <div style={{ fontSize: 10, color: d.day.startsWith(String(new Date().getDate())) ? T.blue : T.inkMuted }}>{d.day}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function CampaignList({ campaigns, color }: { campaigns: AdGroupResult['campaigns']; color: string }) {
   if (campaigns.length === 0) {
     return <div style={{ fontSize: 13, color: T.inkMuted, padding: '12px 0' }}>Nenhuma campanha com gasto este mês</div>;
@@ -435,6 +505,9 @@ export default async function DashboardPage() {
 
   // Avaliações dos planos entregues (plan_feedback)
   const planRatings = await getPlanRatings();
+
+  // Conversão Ybera: tendência mensal + funil diário cliques→vendas
+  const yberaDash = await getYberaDashboard();
 
   // ── SMS (Zenvia) — recuperação de PIX + aviso de plano pronto ────────
   // Contamos as colunas ATUAIS: pix_sms_last_at (fluxo de PIX: imediato + 24h/72h)
@@ -1024,6 +1097,27 @@ export default async function DashboardPage() {
           <div style={{ fontSize: 11.5, color: T.inkSoft, marginTop: 12, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
             <span style={{ color: T.alert, flexShrink: 0, marginTop: 1 }}><IconWarning size={14} /></span>
             <span>Cliques ≠ cadastros. Nem todo quem clica entra no grupo. O CPA acima usa os cadastros confirmados (Evolution webhook).</span>
+          </div>
+        </div>
+
+        {/* ════════════════════════════════════════════════════════ */}
+        {/* CONVERSÃO DOS PRODUTOS INDICADOS (alunas → Ybera)         */}
+        {/* ════════════════════════════════════════════════════════ */}
+        <SectionHeader
+          icon={IconBag}
+          title="Conversão dos produtos indicados → Ybera"
+          subtitle="A meta nº1: fazer as alunas do plano comprarem os produtos que a Ju indica. Clicaram × compraram (por dia) e a evolução da conversão mês a mês."
+          accent={T.gold}
+        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ ...card, padding: '22px 24px' }}>
+            <PlanClickFunnel
+              data={yberaDash.funnel} buyRate={yberaDash.buyRate}
+              totalClickers={yberaDash.totalClickers} totalBuyers={yberaDash.totalBuyers}
+            />
+          </div>
+          <div style={{ ...card, padding: '22px 24px' }}>
+            <YberaConversionTrend data={yberaDash.trend} activeCount={yberaDash.activeCount} />
           </div>
         </div>
 
