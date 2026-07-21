@@ -203,27 +203,43 @@ export default function OnboardingPage() {
         } catch { /* vídeo é opcional — segue sem ele se falhar */ }
       }
 
+      // Fotos → sobem DIRETO pro Storage via URLs assinadas (não passam pelo limite
+      // de ~4,5MB de corpo da serverless — era o "Request Entity Too Large").
       setSubmitMsg('Enviando suas fotos…');
-      const fd = new FormData();
-      fd.append('photo', frontC);
-      fd.append('photo_back', backC);
-      fd.append('photo_root', rootC);
-      if (videoUrl) fd.append('video_url', videoUrl);
-      if (!skipLength && lengthCm) {
-        const n = parseFloat(lengthCm.replace(',', '.'));
-        if (!isNaN(n) && n > 0 && n < 200) fd.append('hair_length_cm', String(n));
+      const su = await fetch('/api/meu-plano/photo-url', {
+        method: 'POST',
+        headers: { ...authH, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slots: ['front', 'back', 'root'] }),
+      });
+      const suData = await su.json().catch(() => ({}));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (!su.ok || !Array.isArray(suData.uploads)) throw new Error(suData.error || 'Não consegui preparar o envio das fotos. Tente de novo.');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const bySlot: Record<string, any> = Object.fromEntries(suData.uploads.map((u: any) => [u.slot, u]));
+      const files: Record<string, File> = { front: frontC, back: backC, root: rootC };
+      for (const slot of ['front', 'back', 'root']) {
+        const u = bySlot[slot];
+        if (!u) throw new Error('Falha ao preparar o envio das fotos.');
+        const up = await supabase.storage.from('hair-photos').uploadToSignedUrl(u.path, u.token, files[slot]);
+        if (up.error) throw new Error('Não consegui enviar suas fotos. Verifique a conexão e tente de novo.');
       }
-      if (weightKg) {
-        const w = parseFloat(weightKg.replace(',', '.'));
-        if (!isNaN(w) && w >= 30 && w <= 300) fd.append('weight_kg', String(w));
-      }
+
+      const payload: Record<string, unknown> = {
+        photo_url: bySlot.front.publicUrl,
+        photo_back_url: bySlot.back?.publicUrl,
+        photo_root_url: bySlot.root?.publicUrl,
+      };
+      if (videoUrl) payload.video_url = videoUrl;
+      if (!skipLength && lengthCm) { const n = parseFloat(lengthCm.replace(',', '.')); if (!isNaN(n) && n > 0 && n < 200) payload.hair_length_cm = n; }
+      if (weightKg) { const w = parseFloat(weightKg.replace(',', '.')); if (!isNaN(w) && w >= 30 && w <= 300) payload.weight_kg = w; }
 
       const res = await fetch('/api/meu-plano/photo', {
         method: 'POST',
-        headers: authH,
-        body: fd,
+        headers: { ...authH, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
-      const data = await res.json();
+      // Trata resposta não-JSON com elegância (evita o "Unexpected token R" cru).
+      const data = await res.json().catch(() => ({ error: 'Não consegui concluir o envio. Tente de novo.' }));
       if (!res.ok) throw new Error(data.error ?? 'Erro ao enviar foto');
 
       // Foto enviada → dispara a geração do plano; leva a cliente direto pro app

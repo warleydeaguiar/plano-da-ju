@@ -9,6 +9,21 @@ export const runtime = 'nodejs';
 // a foto já salva.
 export const maxDuration = 60;
 
+const parseLen = (v: unknown): number | null => {
+  if (typeof v === 'string' || typeof v === 'number') {
+    const n = parseFloat(String(v).replace(',', '.'));
+    if (!isNaN(n) && n > 0 && n < 200) return n;
+  }
+  return null;
+};
+const parseW = (v: unknown): number | null => {
+  if (typeof v === 'string' || typeof v === 'number') {
+    const w = parseFloat(String(v).replace(',', '.'));
+    if (!isNaN(w) && w >= 30 && w <= 300) return w;
+  }
+  return null;
+};
+
 export async function POST(req: NextRequest) {
   try {
     // Auth
@@ -24,107 +39,83 @@ export async function POST(req: NextRequest) {
     const { data: { user }, error: authErr } = await anon.auth.getUser(token);
     if (authErr || !user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
-    // Read multipart
-    const form = await req.formData();
-    const file = form.get('photo');
-    if (!file || typeof file === 'string') return NextResponse.json({ error: 'Foto não enviada' }, { status: 400 });
+    const supabase = await createServiceClient();
 
-    const f = file as File;
-    if (f.size > 10 * 1024 * 1024) return NextResponse.json({ error: 'Foto muito grande (máx. 10 MB)' }, { status: 400 });
-    if (!f.type.startsWith('image/')) return NextResponse.json({ error: 'Arquivo precisa ser uma imagem' }, { status: 400 });
+    // ── Entrada: JSON (fotos já subiram DIRETO pro Storage via URL assinada) OU
+    //    multipart/form-data (legado — progresso/home). O caminho JSON evita o
+    //    limite de ~4,5MB de corpo da serverless que causava "Request Entity Too
+    //    Large" (erro "Unexpected token R … is not valid JSON") no onboarding.
+    const isJson = (req.headers.get('content-type') ?? '').includes('application/json');
 
-    // Foto de COSTAS (opcional). A de frente (acima) é a principal — usada na
-    // análise e na geração do plano. A de costas é guardada como complemento.
-    const backFile = form.get('photo_back');
-    const backF = backFile && typeof backFile !== 'string' ? (backFile as File) : null;
-    if (backF && (backF.size > 10 * 1024 * 1024 || !backF.type.startsWith('image/'))) {
-      return NextResponse.json({ error: 'Foto de costas inválida (máx. 10 MB, precisa ser imagem)' }, { status: 400 });
-    }
-
-    // Foto da RAIZ / couro cabeludo (opcional no endpoint, obrigatória no onboarding).
-    // Mostra oleosidade da raiz e o couro — entra na análise junto com frente e costas.
-    const rootFile = form.get('photo_root');
-    const rootF = rootFile && typeof rootFile !== 'string' ? (rootFile as File) : null;
-    if (rootF && (rootF.size > 10 * 1024 * 1024 || !rootF.type.startsWith('image/'))) {
-      return NextResponse.json({ error: 'Foto da raiz inválida (máx. 10 MB, precisa ser imagem)' }, { status: 400 });
-    }
-
-    // Vídeo (opcional) — sobe direto pro Storage via URL assinada; aqui só chega
-    // a URL pública pra salvar no perfil.
-    const videoUrlRaw = form.get('video_url');
-    const videoUrl = typeof videoUrlRaw === 'string' && videoUrlRaw.startsWith('http') ? videoUrlRaw : null;
-
-    // Optional hair length (cm) — vem do onboarding ou progresso
-    const rawLength = form.get('hair_length_cm');
+    let photoUrl = '';
+    let photoBackUrl: string | null = null;
+    let photoRootUrl: string | null = null;
+    let videoUrl: string | null = null;
     let hairLengthCm: number | null = null;
-    if (rawLength && typeof rawLength === 'string') {
-      const n = parseFloat(rawLength.replace(',', '.'));
-      if (!isNaN(n) && n > 0 && n < 200) hairLengthCm = n;
+    let weightKg: number | null = null;
+    let frontBuffer = new Uint8Array(0);
+    let frontMime = 'image/jpeg';
+
+    if (isJson) {
+      const body = await req.json().catch(() => ({}));
+      photoUrl = typeof body.photo_url === 'string' ? body.photo_url : '';
+      if (!photoUrl.startsWith('http')) return NextResponse.json({ error: 'Foto não enviada' }, { status: 400 });
+      photoBackUrl = typeof body.photo_back_url === 'string' && body.photo_back_url.startsWith('http') ? body.photo_back_url : null;
+      photoRootUrl = typeof body.photo_root_url === 'string' && body.photo_root_url.startsWith('http') ? body.photo_root_url : null;
+      videoUrl = typeof body.video_url === 'string' && body.video_url.startsWith('http') ? body.video_url : null;
+      hairLengthCm = parseLen(body.hair_length_cm);
+      weightKg = parseW(body.weight_kg);
+      // Baixa a foto de frente (do Storage) só pra disparar a geração do plano em
+      // base64. Se falhar, o cron recover-stuck-plans regenera pela URL do perfil.
+      try {
+        const r = await fetch(photoUrl);
+        if (r.ok) {
+          frontBuffer = new Uint8Array(await r.arrayBuffer());
+          frontMime = r.headers.get('content-type') || 'image/jpeg';
+        }
+      } catch { /* segue — a rede de segurança do cron cobre */ }
+    } else {
+      // Caminho LEGADO (multipart): fotos vêm no corpo. Usado por progresso/home.
+      const form = await req.formData();
+      const file = form.get('photo');
+      if (!file || typeof file === 'string') return NextResponse.json({ error: 'Foto não enviada' }, { status: 400 });
+      const f = file as File;
+      if (f.size > 10 * 1024 * 1024) return NextResponse.json({ error: 'Foto muito grande (máx. 10 MB)' }, { status: 400 });
+      if (!f.type.startsWith('image/')) return NextResponse.json({ error: 'Arquivo precisa ser uma imagem' }, { status: 400 });
+
+      const backFile = form.get('photo_back');
+      const backF = backFile && typeof backFile !== 'string' ? (backFile as File) : null;
+      const rootFile = form.get('photo_root');
+      const rootF = rootFile && typeof rootFile !== 'string' ? (rootFile as File) : null;
+      const videoUrlRaw = form.get('video_url');
+      videoUrl = typeof videoUrlRaw === 'string' && videoUrlRaw.startsWith('http') ? videoUrlRaw : null;
+      hairLengthCm = parseLen(form.get('hair_length_cm'));
+      weightKg = parseW(form.get('weight_kg'));
+
+      const ext = f.type === 'image/png' ? 'png' : f.type === 'image/webp' ? 'webp' : 'jpg';
+      const fileName = `${user.id}/${Date.now()}.${ext}`;
+      frontBuffer = new Uint8Array(await f.arrayBuffer());
+      frontMime = f.type;
+      const { error: upErr } = await supabase.storage.from('hair-photos').upload(fileName, frontBuffer, { contentType: f.type, upsert: false });
+      if (upErr) { console.error('[photo] upload error', upErr); return NextResponse.json({ error: 'Falha ao salvar foto' }, { status: 500 }); }
+      photoUrl = supabase.storage.from('hair-photos').getPublicUrl(fileName).data.publicUrl;
+
+      if (backF && backF.type.startsWith('image/') && backF.size <= 10 * 1024 * 1024) {
+        const backName = `${user.id}/${Date.now()}-costas.jpg`;
+        const { error: e } = await supabase.storage.from('hair-photos').upload(backName, new Uint8Array(await backF.arrayBuffer()), { contentType: backF.type, upsert: false });
+        if (!e) photoBackUrl = supabase.storage.from('hair-photos').getPublicUrl(backName).data.publicUrl;
+        else console.error('[photo] back upload error', e);
+      }
+      if (rootF && rootF.type.startsWith('image/') && rootF.size <= 10 * 1024 * 1024) {
+        const rootName = `${user.id}/${Date.now()}-raiz.jpg`;
+        const { error: e } = await supabase.storage.from('hair-photos').upload(rootName, new Uint8Array(await rootF.arrayBuffer()), { contentType: rootF.type, upsert: false });
+        if (!e) photoRootUrl = supabase.storage.from('hair-photos').getPublicUrl(rootName).data.publicUrl;
+        else console.error('[photo] root upload error', e);
+      }
     }
 
     // Peso → meta diária de água (35ml × kg). Editável depois no perfil.
-    const rawWeight = form.get('weight_kg');
-    let weightKg: number | null = null;
-    let waterGoalMl: number | null = null;
-    if (rawWeight && typeof rawWeight === 'string') {
-      const w = parseFloat(rawWeight.replace(',', '.'));
-      if (!isNaN(w) && w >= 30 && w <= 300) {
-        weightKg = w;
-        waterGoalMl = Math.round((w * 35) / 50) * 50; // arredonda p/ 50ml
-      }
-    }
-
-    const supabase = await createServiceClient();
-    const ext = f.type === 'image/png' ? 'png' : f.type === 'image/webp' ? 'webp' : 'jpg';
-    const fileName = `${user.id}/${Date.now()}.${ext}`;
-
-    const arrayBuf = await f.arrayBuffer();
-    const buffer = new Uint8Array(arrayBuf);
-
-    // Upload to storage
-    const { error: upErr } = await supabase.storage.from('hair-photos').upload(fileName, buffer, {
-      contentType: f.type,
-      upsert: false,
-    });
-    if (upErr) {
-      console.error('[photo] upload error', upErr);
-      return NextResponse.json({ error: 'Falha ao salvar foto' }, { status: 500 });
-    }
-
-    const { data: pub } = supabase.storage.from('hair-photos').getPublicUrl(fileName);
-    const photoUrl = pub.publicUrl;
-
-    // Upload da foto de COSTAS (opcional) — guardada como complemento.
-    let photoBackUrl: string | null = null;
-    if (backF) {
-      const backExt = backF.type === 'image/png' ? 'png' : backF.type === 'image/webp' ? 'webp' : 'jpg';
-      const backName = `${user.id}/${Date.now()}-costas.${backExt}`;
-      const backBuf = new Uint8Array(await backF.arrayBuffer());
-      const { error: backErr } = await supabase.storage.from('hair-photos').upload(backName, backBuf, {
-        contentType: backF.type, upsert: false,
-      });
-      if (!backErr) {
-        photoBackUrl = supabase.storage.from('hair-photos').getPublicUrl(backName).data.publicUrl;
-      } else {
-        console.error('[photo] back upload error', backErr);
-      }
-    }
-
-    // Upload da foto da RAIZ (opcional) — guardada como complemento.
-    let photoRootUrl: string | null = null;
-    if (rootF) {
-      const rootExt = rootF.type === 'image/png' ? 'png' : rootF.type === 'image/webp' ? 'webp' : 'jpg';
-      const rootName = `${user.id}/${Date.now()}-raiz.${rootExt}`;
-      const rootBuf = new Uint8Array(await rootF.arrayBuffer());
-      const { error: rootErr } = await supabase.storage.from('hair-photos').upload(rootName, rootBuf, {
-        contentType: rootF.type, upsert: false,
-      });
-      if (!rootErr) {
-        photoRootUrl = supabase.storage.from('hair-photos').getPublicUrl(rootName).data.publicUrl;
-      } else {
-        console.error('[photo] root upload error', rootErr);
-      }
-    }
+    const waterGoalMl = weightKg !== null ? Math.round((weightKg * 35) / 50) * 50 : null;
 
     // Esta foto vai DISPARAR a geração do plano? (1ª foto do onboarding). Se sim,
     // NÃO analisamos a imagem aqui — o gerador do plano já faz a análise da foto e
@@ -135,8 +126,6 @@ export async function POST(req: NextRequest) {
       .eq('id', user.id)
       .single();
     const planKey = process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_API_KEY;
-    // Dispara geração se: (a) 1ª foto do onboarding (pending_photo), OU (b) o plano
-    // foi feito SEM foto (fallback 48h) e agora ela enviou → refaz COM a foto.
     const willGeneratePlan =
       (profile?.plan_status === 'pending_photo' || !!profile?.plan_without_photo)
       && !profile?.photo_url && !!profile?.email
@@ -150,7 +139,7 @@ export async function POST(req: NextRequest) {
       pontas_score: null as number | null,
       crescimento_estimado_cm: null as number | null,
       avaliacao_texto: null as string | null,
-      raw_response: null as unknown,   // coluna real em photo_analyses é raw_response (não "raw")
+      raw_response: null as unknown,
     };
 
     if (!willGeneratePlan && process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_API_KEY.startsWith('X')) {
@@ -168,10 +157,7 @@ export async function POST(req: NextRequest) {
             messages: [{
               role: 'user',
               content: [
-                {
-                  type: 'image',
-                  source: { type: 'url', url: photoUrl },
-                },
+                { type: 'image', source: { type: 'url', url: photoUrl } },
                 {
                   type: 'text',
                   text: `Analise esta foto de cabelo e retorne APENAS JSON válido com este formato:
@@ -211,7 +197,6 @@ export async function POST(req: NextRequest) {
     }
 
     // Insert photo_analyses row — só quando NÃO vamos gerar plano agora (progresso).
-    // No onboarding, o /api/plan/generate insere a linha com os scores do plano.
     if (!willGeneratePlan) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error: paErr } = await (supabase as any).from('photo_analyses').insert({
@@ -240,30 +225,24 @@ export async function POST(req: NextRequest) {
       })
       .eq('id', user.id);
 
-    // Se é a 1ª foto E o plano ainda está pendente, dispara geração
-    // Falha graciosamente — não bloqueia a response (cliente vê foto OK; plano vem depois)
+    // Se é a 1ª foto E o plano ainda está pendente, dispara geração.
     let planTriggered = false;
     if ((profile?.plan_status === 'pending_photo' || profile?.plan_without_photo) && !profile.photo_url && profile.email) {
       try {
         const apiKey = process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_API_KEY;
         const hasRealKey = !!apiKey && !apiKey.startsWith('X');
         if (hasRealKey) {
-          // Atualiza status pra "processing" antes de chamar IA. Zera o flag de
-          // "sem foto" — agora vamos refazer o plano COM a foto que ela enviou.
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await (supabase.from('profiles') as any)
             .update({ plan_status: 'processing', plan_requested_at: new Date().toISOString(), plan_without_photo: false })
             .eq('id', user.id);
 
-          // Dispara plan/generate (~30s). Antes era `void fetch` — em serverless
-          // a função podia congelar/morrer ao retornar a resposta ANTES do fetch
-          // sair, deixando o plano travado em "processing". `after()` mantém a
-          // execução viva até o trigger completar (dentro do maxDuration=60).
           const origin = req.nextUrl.origin;
+          // Se conseguimos os bytes da foto, mandamos base64; senão o generate usa
+          // a photo_url que acabamos de salvar no perfil (e o cron cobre falhas).
           const planBody = JSON.stringify({
             email: profile.email,
-            photo_base64: Buffer.from(buffer).toString('base64'),
-            photo_mime_type: f.type,
+            ...(frontBuffer.length ? { photo_base64: Buffer.from(frontBuffer).toString('base64'), photo_mime_type: frontMime } : { photo_url: photoUrl }),
           });
           after(async () => {
             try {
