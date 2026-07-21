@@ -89,6 +89,8 @@ interface ProductRow {
   video_url?: string | null;   // vídeo da Juliane sobre o produto (YouTube Short)
   motivo?: string | null;   // por que foi indicado pra ELA (personalizado)
   combos?: Array<{ id: string; name: string; affiliate_url: string | null }>;  // opções de compra em combo
+  // Alternativa mais barata (outra marca) do MESMO produto — aninhada, nunca card solto.
+  alternativa?: { name: string; brand: string | null; affiliate_url: string | null } | null;
 }
 
 // Rótulos limpos pra valores crus do quiz (evita underscores tipo "sim_absorve"
@@ -227,9 +229,14 @@ export default function PlanoPage() {
       const list: ProductRow[] = [];
       for (const r of rec) {
         const main = byId.get(r?.produto_id);
-        if (main && !list.find(x => x.id === main.id)) list.push({ ...main, motivo: r?.motivo ?? null });
+        if (!main || list.find(x => x.id === main.id)) continue;
+        // A alternativa (outra marca, mais barata) fica ANINHADA dentro do principal —
+        // nunca como card separado, pra não parecer "mais um produto pra comprar".
         const alt = r?.alternativa_id ? byId.get(r.alternativa_id) : null;
-        if (alt && !list.find(x => x.id === alt.id)) list.push({ ...alt, motivo: null });
+        list.push({
+          ...main, motivo: r?.motivo ?? null,
+          alternativa: alt ? { name: alt.name, brand: alt.brand, affiliate_url: alt.affiliate_url } : null,
+        });
       }
       // Anexa os COMBOS de cada produto-base (parent_product_id) como opção de compra.
       if (list.length) {
@@ -789,6 +796,9 @@ export default function PlanoPage() {
         {tab === 'produtos' && (
           <>
             <SectionLabel>Produtos recomendados</SectionLabel>
+            <p style={{ fontSize: 12, color: T.inkSoft, margin: '-2px 16px 12px', lineHeight: 1.5 }}>
+              São os produtos que a Juliane indica pra você. Alguns têm uma <strong>opção mais barata de outra marca</strong> logo abaixo — nesse caso, é só escolher <strong>uma das duas</strong>, não precisa comprar as duas.
+            </p>
             <div style={{ padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
               {products.filter(p => p.is_ybera).map(p => <ProductCard key={p.id} product={p} userId={userId} essential />)}
               {products.filter(p => !p.is_ybera).map(p => <ProductCard key={p.id} product={p} userId={userId} />)}
@@ -1013,6 +1023,29 @@ function ProductCard({ product, userId, essential = false }: { product: ProductR
         </a>
       )}
     </div>
+    {product.alternativa && (
+      <div style={{ borderTop: `1px dashed ${T.borderSoft}`, background: '#FBFAFB', padding: '10px 14px' }}>
+        <div style={{ fontSize: 10, fontWeight: 800, color: T.inkMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 5 }}>
+          🔁 Opção mais barata — escolha esta <span style={{ color: T.pinkDeep }}>OU</span> a de cima (não as duas)
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 12.5, color: T.ink, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {product.alternativa.name}
+            </div>
+            <div style={{ fontSize: 10.5, color: T.inkMuted, marginTop: 1 }}>
+              {product.alternativa.brand ?? 'Outra marca'} · mais em conta
+            </div>
+          </div>
+          {product.alternativa.affiliate_url && (
+            <a href={product.alternativa.affiliate_url} target="_blank" rel="noopener noreferrer" style={{
+              fontSize: 11.5, fontWeight: 700, color: T.inkSoft, textDecoration: 'none', flexShrink: 0,
+              border: `1px solid ${T.borderSoft}`, borderRadius: 9, padding: '6px 11px', background: '#FFF',
+            }}>Ver ↗</a>
+          )}
+        </div>
+      </div>
+    )}
     {videoId && (
       <div style={{ borderTop: `1px solid ${T.borderSoft}`, background: '#FFF6F9', padding: '11px 14px' }}>
         {!playing ? (
