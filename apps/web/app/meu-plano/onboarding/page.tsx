@@ -10,15 +10,15 @@ import { IconCamera, IconSparkles } from '../icons';
  * Onboarding — primeira tela após login.
  * Bloqueia o app até a usuária enviar a foto do cabelo.
  *
- * Fluxo em 2 etapas:
- *  1. 'photo'    — foto (obrigatória) + comprimento cm (opcional)
- *  2. 'products' — quais produtos já tem em casa (opcional)
- *                  → pergunta migrada do quiz porque causava 84% de abandono
- *                    no funil pré-compra. Aqui ela já comprou, então skip ≠ perda.
+ * Fluxo:
+ *  0. 'quiz'  — mini-quiz (só p/ cadastro manual sem quiz_answers)
+ *  1. 'photo' — 3 fotos (obrigatórias) + vídeo/comprimento/peso (opcionais)
  *
- *  Ao final → router.replace('/meu-plano') (banner "plano em preparação")
+ *  Ao final da foto → router.replace('/meu-plano') (banner "plano em preparação").
+ *  (A pergunta "produtos que já tem em casa" foi REMOVIDA a pedido da equipe —
+ *   causava confusão; a lista de compras é montada pela indicação da Ju.)
  */
-type Step = 'quiz' | 'photo' | 'submitting' | 'products' | 'saving';
+type Step = 'quiz' | 'photo' | 'submitting';
 
 // Mini-quiz in-app — só aparece pra quem foi cadastrada manualmente (sem
 // quiz_answers). São as perguntas que mais pesam na geração do plano.
@@ -98,9 +98,6 @@ export default function OnboardingPage() {
   const [lengthCm, setLengthCm] = useState('');
   const [skipLength, setSkipLength] = useState(false);
   const [weightKg, setWeightKg] = useState('');
-
-  // Etapa 2: produtos em casa
-  const [productsText, setProductsText] = useState('');
 
   // Etapa 0 (cadastro manual): mini-quiz
   const [quizAnswers, setQuizAnswers] = useState<Record<string, string>>({});
@@ -229,38 +226,12 @@ export default function OnboardingPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Erro ao enviar foto');
 
-      // Avança pra etapa 2 (produtos em casa)
-      setStep('products');
+      // Foto enviada → dispara a geração do plano; leva a cliente direto pro app
+      // (banner "plano em preparação"). A pergunta de produtos em casa foi removida.
+      router.replace('/meu-plano');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro inesperado');
       setStep('photo');
-    }
-  }
-
-  // ── Etapa 2 → salvar produtos (ou pular) e ir pro app ──────
-  async function submitProducts(skip: boolean) {
-    setError('');
-    setStep('saving');
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { router.replace('/login'); return; }
-
-      if (!skip && productsText.trim()) {
-        // Salva no quiz_answers via API
-        await fetch('/api/meu-plano/quiz-extra', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ produtos_casa: productsText.trim() }),
-        }).catch(err => console.error('[onboarding/products]', err));
-      }
-
-      router.replace('/meu-plano');
-    } catch {
-      // Se falhar salvar produtos, segue mesmo assim — não bloqueia o acesso ao app
-      router.replace('/meu-plano');
     }
   }
 
@@ -348,119 +319,6 @@ export default function OnboardingPage() {
   }
 
   const isSubmittingPhoto = step === 'submitting';
-  const isSaving          = step === 'saving';
-
-  // ────────────────────────────────────────────────────────────
-  // ETAPA 2: produtos em casa (após foto enviada)
-  // ────────────────────────────────────────────────────────────
-  if (step === 'products' || isSaving) {
-    return (
-      <div style={{ minHeight: '100vh', background: T.bg, padding: '32px 20px 40px', fontFamily: fonts.ui }}>
-        <div style={{ maxWidth: 440, margin: '0 auto' }}>
-          {/* Header */}
-          <div style={{ textAlign: 'center', marginBottom: 24 }}>
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              background: T.greenSoft, color: T.green,
-              fontSize: 11, fontWeight: 700, letterSpacing: 1,
-              padding: '6px 12px', borderRadius: 99,
-              textTransform: 'uppercase', marginBottom: 16,
-            }}>
-              ✓ Foto enviada
-            </div>
-            <h1 style={{
-              fontSize: 24, fontWeight: 700, color: T.ink,
-              margin: '0 0 10px', letterSpacing: -0.5,
-              fontFamily: fonts.display, lineHeight: 1.2,
-            }}>
-              Última pergunta {firstName ? firstName + ', ' : ''}— quais produtos você já tem em casa?
-            </h1>
-            <p style={{ fontSize: 14, color: T.inkSoft, lineHeight: 1.6, margin: 0, padding: '0 4px' }}>
-              Isso ajuda a Juliane a aproveitar o que você já tem ao montar o cronograma.
-              Pode <strong>pular essa pergunta</strong> e responder depois no perfil.
-            </p>
-          </div>
-
-          {/* Textarea */}
-          <div style={{
-            background: T.surface, borderRadius: 18, padding: 18,
-            marginBottom: 16, boxShadow: shadow.card,
-            border: `1px solid ${T.borderSoft}`,
-          }}>
-            <label htmlFor="onb-products" style={{
-              display: 'block', fontSize: 13, fontWeight: 700, color: T.ink,
-              fontFamily: fonts.display, marginBottom: 10,
-            }}>
-              Produtos que você já tem
-            </label>
-            <textarea
-              id="onb-products"
-              value={productsText}
-              onChange={e => setProductsText(e.target.value)}
-              placeholder="Ex: shampoo Ybera Hydra, máscara hidratação Salon Line, óleo de coco, leave-in…"
-              rows={5}
-              maxLength={2000}
-              style={{
-                width: '100%', padding: '12px 14px', fontSize: 14,
-                border: `1.5px solid ${T.border}`, borderRadius: 12,
-                background: '#FFF', color: T.ink,
-                outline: 'none', fontFamily: fonts.ui,
-                resize: 'vertical', minHeight: 100, lineHeight: 1.5,
-                boxSizing: 'border-box',
-              }}
-            />
-            <p style={{ fontSize: 11.5, color: T.inkMuted, margin: '8px 0 0', lineHeight: 1.5 }}>
-              Pode escrever do jeito que lembrar — não precisa ser nome exato.
-            </p>
-          </div>
-
-          {error && (
-            <p style={{ color: '#C0392B', fontSize: 13, marginBottom: 12, textAlign: 'center', padding: '11px 16px', background: '#FDE8EE', borderRadius: 12 }}>
-              {error}
-            </p>
-          )}
-
-          {/* Action buttons */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <button
-              onClick={() => submitProducts(false)}
-              disabled={isSaving || !productsText.trim()}
-              style={{
-                width: '100%', padding: 16,
-                background: isSaving || !productsText.trim()
-                  ? '#D4A0AC' : `linear-gradient(135deg, ${T.pink}, ${T.pinkDeep})`,
-                border: 'none', borderRadius: 14,
-                fontSize: 15, fontWeight: 800, color: '#FFF',
-                cursor: isSaving || !productsText.trim() ? 'not-allowed' : 'pointer',
-                fontFamily: fonts.ui,
-                boxShadow: !productsText.trim() ? 'none' : '0 8px 22px rgba(190,24,93,0.28)',
-                transition: 'all 0.18s',
-              }}
-            >
-              {isSaving ? 'Salvando…' : 'Salvar e entrar no app →'}
-            </button>
-            <button
-              onClick={() => submitProducts(true)}
-              disabled={isSaving}
-              style={{
-                width: '100%', padding: 12,
-                background: 'transparent',
-                border: `1px solid ${T.border}`, borderRadius: 12,
-                fontSize: 13, color: T.inkSoft, cursor: isSaving ? 'not-allowed' : 'pointer',
-                fontFamily: fonts.ui,
-              }}
-            >
-              {isSaving ? '…' : 'Pular por agora'}
-            </button>
-          </div>
-
-          <p style={{ textAlign: 'center', color: T.inkMuted, fontSize: 11, marginTop: 14, lineHeight: 1.6 }}>
-            Você pode adicionar/editar essa lista a qualquer momento no perfil.
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   // ────────────────────────────────────────────────────────────
   // ETAPA 1: foto + comprimento (default)
