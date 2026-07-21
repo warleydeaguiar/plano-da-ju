@@ -5,7 +5,7 @@ import { createBrowserClient } from '@supabase/ssr';
 import { T, fonts } from '../theme';
 
 // WhatsApp de suporte (fallback quando a revisão estoura o prazo).
-const WA_SUPORTE = '5531971445597';
+const WA_SUPORTE = '553199994001'; // número oficial (Cloud API / Chatwoot)
 const WA_MSG = 'Oi! Já passou das 48h do prazo de revisão do meu plano capilar e gostaria de ajuda com ele 💛';
 const waLink = () => `https://wa.me/${WA_SUPORTE}?text=${encodeURIComponent(WA_MSG)}`;
 

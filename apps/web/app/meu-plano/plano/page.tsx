@@ -6,8 +6,9 @@ import Image from 'next/image';
 import { createBrowserClient } from '@supabase/ssr';
 import { T, fonts, shadow, gradient } from '../theme';
 import {
-  IconCheck, IconBag, IconSparkles, IconInstagram, iconForTask, iconForCategory,
+  IconCheck, IconBag, IconSparkles, IconInstagram, IconWhatsApp, iconForTask, iconForCategory,
 } from '../icons';
+import { juWhatsappLink } from '../../../lib/contact';
 import { normalizeTasks } from '../plan-helpers';
 import { PlanoLoading } from '../Loading';
 import PlanFeedback from './PlanFeedback';
@@ -799,6 +800,20 @@ export default function PlanoPage() {
             <p style={{ fontSize: 12, color: T.inkSoft, margin: '-2px 16px 12px', lineHeight: 1.5 }}>
               São os produtos que a Juliane indica pra você. Alguns têm uma <strong>opção mais barata de outra marca</strong> logo abaixo — nesse caso, é só escolher <strong>uma das duas</strong>, não precisa comprar as duas.
             </p>
+            {/* Fale com a Juliane — dúvida sobre qual produto comprar leva à venda */}
+            <a href={juWhatsappLink('Oi Juliane! 💛 Quero tirar uma dúvida sobre os produtos indicados no meu plano.')}
+              target="_blank" rel="noopener noreferrer"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 11, margin: '0 16px 14px', padding: '13px 15px',
+                background: '#E9F9EE', border: '1px solid #A9E6BE', borderRadius: 14, textDecoration: 'none',
+              }}>
+              <IconWhatsApp size={26} color="#25D366" />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 800, color: '#1F7A55' }}>Dúvida sobre qual produto comprar?</div>
+                <div style={{ fontSize: 11.5, color: T.inkSoft, marginTop: 1 }}>Fale com a Juliane no WhatsApp — ela te ajuda a escolher 💛</div>
+              </div>
+              <span style={{ fontSize: 12, fontWeight: 800, color: '#25D366', flexShrink: 0 }}>Chamar →</span>
+            </a>
             <div style={{ padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
               {products.filter(p => p.is_ybera).map(p => <ProductCard key={p.id} product={p} userId={userId} essential />)}
               {products.filter(p => !p.is_ybera).map(p => <ProductCard key={p.id} product={p} userId={userId} />)}
@@ -883,6 +898,21 @@ export default function PlanoPage() {
         />
 
       </div>
+
+      {/* Botão flutuante — WhatsApp da Juliane sempre à mão (dúvidas do plano/produtos → vendas) */}
+      {!isPreview && (
+        <a href={juWhatsappLink()} target="_blank" rel="noopener noreferrer"
+          aria-label="Falar com a Juliane no WhatsApp"
+          style={{
+            position: 'fixed', right: 16, bottom: 92, zIndex: 60,
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            background: '#25D366', color: '#fff', textDecoration: 'none',
+            padding: '11px 16px 11px 13px', borderRadius: 999,
+            boxShadow: '0 6px 20px rgba(37,211,102,0.45)', fontWeight: 800, fontSize: 13.5,
+          }}>
+          <IconWhatsApp size={22} color="#fff" /> Falar com a Ju
+        </a>
+      )}
     </div>
   );
 }

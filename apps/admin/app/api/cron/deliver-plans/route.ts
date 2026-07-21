@@ -28,6 +28,11 @@ function emailHtml(firstName: string): string {
         <a href="${APP_URL}" style="background:#BE185D;color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:12px;display:inline-block">Ver meu plano agora</a>
       </p>
       <p style="font-size:13px;color:#7C6B7E;line-height:1.6">Deu pra ver tudo? No app você também pode <strong>avaliar o plano</strong> e pedir ajustes se quiser — a gente responde em até 2 dias úteis. 😉</p>
+      <div style="margin-top:18px;padding:14px 16px;background:#E9F9EE;border:1px solid #A9E6BE;border-radius:12px">
+        <p style="font-size:13.5px;color:#1F7A55;font-weight:700;margin:0 0 4px">Dúvida sobre o plano ou qual produto comprar?</p>
+        <p style="font-size:13px;color:#3f5a4d;margin:0 0 10px;line-height:1.5">Fala com a Juliane no WhatsApp — ela te ajuda a escolher e a começar do jeito certo. 💚</p>
+        <a href="https://wa.me/553199994001?text=${encodeURIComponent('Oi Juliane! 💛 Tenho uma dúvida sobre o meu plano capilar e os produtos.')}" style="background:#25D366;color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:11px 20px;border-radius:10px;display:inline-block">Falar com a Juliane no WhatsApp</a>
+      </div>
     </div>
   </div>`
 }
