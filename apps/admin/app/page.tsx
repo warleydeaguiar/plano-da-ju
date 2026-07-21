@@ -11,6 +11,7 @@ import {
 import { createAdminClient } from '../lib/supabase';
 import { getQuizAdSpend, META_TAX_RATE, type AdGroupResult } from '../lib/meta-ads-quiz';
 import { getAiCosts } from '../lib/ai-costs';
+import { getPlanRatings } from '../lib/plan-ratings';
 import { fetchYberaOrders, salesOnDateBR, salesTotal, YBERA_COMMISSION_RATE } from '../lib/ybera-api';
 import { T, fonts, shadow, gradient, gradientForId } from './theme';
 import {
@@ -194,6 +195,47 @@ function RevenueDailyChart({ data }: {
                 transition: 'all 0.2s',
               }} />
               <div style={{ fontSize: 11, color: d.isToday ? T.green : T.inkMuted, fontWeight: d.isToday ? 700 : 500 }}>
+                {d.day}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function YberaDailyChart({ data }: {
+  data: Array<{ day: string; subtotal: number; count: number; isToday: boolean }>;
+}) {
+  const maxVal = Math.max(1, ...data.map(d => d.subtotal));
+  const total = data.reduce((s, d) => s + d.subtotal, 0);
+  const totalPedidos = data.reduce((s, d) => s + d.count, 0);
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 18 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: T.ink, fontFamily: fonts.ui }}>
+          Vendas Ybera por dia{' '}
+          <span style={{ fontSize: 11, fontWeight: 500, color: T.inkMuted }}>(últimos 14 dias · subtotal dos produtos)</span>
+        </div>
+        <div style={{ fontSize: 12, color: T.inkMuted }}>
+          Total 14d: <strong style={{ color: T.gold }}>{brl(total)}</strong> · {totalPedidos.toLocaleString('pt-BR')} pedidos
+        </div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 120 }}>
+        {data.map((d, i) => {
+          const h = d.subtotal > 0 ? Math.max(8, (d.subtotal / maxVal) * 88) : 4;
+          return (
+            <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: d.isToday ? T.gold : T.ink, whiteSpace: 'nowrap' }}>
+                {d.subtotal > 0 ? `R$${d.subtotal >= 1000 ? (d.subtotal / 1000).toFixed(1) + 'k' : d.subtotal.toFixed(0)}` : '—'}
+              </div>
+              <div style={{
+                width: '100%', height: h, borderRadius: '6px 6px 0 0',
+                background: d.subtotal === 0 ? T.borderSoft : d.isToday ? T.gold : T.goldSoft,
+                transition: 'all 0.2s',
+              }} title={`${d.count} pedido(s)`} />
+              <div style={{ fontSize: 10, color: d.isToday ? T.gold : T.inkMuted, fontWeight: d.isToday ? 700 : 500 }}>
                 {d.day}
               </div>
             </div>
@@ -391,6 +433,9 @@ export default async function DashboardPage() {
     ? (aiCosts.dailyUsd * aiCosts.rate) / plansGeneratedToday
     : null;
 
+  // Avaliações dos planos entregues (plan_feedback)
+  const planRatings = await getPlanRatings();
+
   // ── SMS (Zenvia) — recuperação de PIX + aviso de plano pronto ────────
   // Contamos as colunas ATUAIS: pix_sms_last_at (fluxo de PIX: imediato + 24h/72h)
   // e plan_sms_sent_at (SMS de "plano pronto"). Custo estimado por SMS ajustável.
@@ -460,6 +505,16 @@ export default async function DashboardPage() {
   const yberaSalesToday     = salesOnDateBR(yberaOrders, todayBR);
   const yberaSalesYesterday = salesOnDateBR(yberaOrders, yesterdayBR);
   const yberaSalesMonth     = salesTotal(yberaOrders);
+
+  // Vendas Ybera por dia (últimos 14 dias BR) — pro gráfico do dashboard
+  const yberaByDay = Array.from({ length: 14 }, (_, i) => {
+    const dt = new Date(todayStartBR.getTime() - (13 - i) * 86400_000);
+    const key = `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`;
+    const subtotal = salesOnDateBR(yberaOrders, key);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const count = yberaOrders.filter((o: any) => new Date(new Date(o.registerDate).getTime() - 3 * 3600_000).toISOString().slice(0, 10) === key).length;
+    return { day: `${dt.getUTCDate()}/${String(dt.getUTCMonth() + 1).padStart(2, '0')}`, subtotal, count, isToday: key === todayBR };
+  });
 
   const commissionToday     = yberaSalesToday     * YBERA_COMMISSION_RATE;
   const commissionMonth     = yberaSalesMonth     * YBERA_COMMISSION_RATE;
@@ -916,6 +971,9 @@ export default async function DashboardPage() {
                 valueColor={gruposProfitMonth >= 0 ? T.green : T.danger}
               />
             </div>
+            <div style={{ ...card, padding: '20px 24px' }}>
+              <YberaDailyChart data={yberaByDay} />
+            </div>
           </>
         ) : (
           <div style={{
@@ -1214,6 +1272,42 @@ export default async function DashboardPage() {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* ════════════════════════════════════════════════════════ */}
+        {/* AVALIAÇÕES DOS PLANOS ENTREGUES (plan_feedback)            */}
+        {/* ════════════════════════════════════════════════════════ */}
+        <SectionHeader
+          icon={IconReceipt}
+          title="Avaliações dos planos entregues"
+          subtitle={`Notas de 1 a 5 que as clientes dão ao plano no app. ${planRatings.total.toLocaleString('pt-BR')} avaliações de ${planRatings.delivered.toLocaleString('pt-BR')} planos entregues.`}
+          accent={T.gold}
+        />
+        <div className="dash-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
+          <StatCard
+            icon={IconChart} label="Nota média"
+            value={planRatings.avg != null ? `${planRatings.avg.toFixed(2)} ★` : '—'}
+            accent={T.gold} accentSoft={T.goldSoft} valueColor={T.gold}
+            sub={`${planRatings.total.toLocaleString('pt-BR')} avaliações no total`}
+          />
+          <StatCard
+            icon={IconReceipt} label="Avaliações no mês"
+            value={planRatings.month.toLocaleString('pt-BR')}
+            accent={T.pink} accentSoft={T.pinkSoft}
+            sub={`${planRatings.today.toLocaleString('pt-BR')} hoje`}
+          />
+          <StatCard
+            icon={IconTarget} label="Taxa de avaliação"
+            value={planRatings.rate != null ? `${(planRatings.rate * 100).toFixed(1)}%` : '—'}
+            accent={T.blue} accentSoft={T.blueSoft} valueColor={T.blue}
+            sub={`${planRatings.total.toLocaleString('pt-BR')} de ${planRatings.delivered.toLocaleString('pt-BR')} entregues avaliaram`}
+          />
+          <StatCard
+            icon={IconTrendUp} label="Deram nota máxima (5★)"
+            value={planRatings.fiveStarPct != null ? `${planRatings.fiveStarPct.toFixed(0)}%` : '—'}
+            accent={T.green} accentSoft={T.greenSoft} valueColor={T.green}
+            sub={planRatings.lowPct != null ? `insatisfeitas (1–2★): ${planRatings.lowPct.toFixed(0)}%` : '—'}
+          />
         </div>
 
         {/* ════════════════════════════════════════════════════════ */}

@@ -285,6 +285,26 @@ function ExperimentCard({
             &ldquo;{exp.hypothesis}&rdquo;
           </p>
         )}
+        {exp.status === 'concluded' && exp.winner && (
+          <div style={{
+            marginTop: 12, padding: '11px 14px', borderRadius: 10,
+            background: green + '12', border: `1px solid ${green}33`,
+          }}>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: green }}>
+              🏆 Vencedor: {exp.winner === 'control' ? exp.control_name : exp.winner === 'variant' ? exp.variant_name : exp.winner}
+              {exp.ended_at && (
+                <span style={{ fontWeight: 500, color: gray, marginLeft: 8 }}>
+                  · encerrado em {new Date(exp.ended_at).toLocaleDateString('pt-BR')}
+                </span>
+              )}
+            </div>
+            {exp.conclusion_notes && (
+              <div style={{ fontSize: 12.5, color: dark, marginTop: 5, lineHeight: 1.5 }}>
+                {exp.conclusion_notes}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Stats table */}

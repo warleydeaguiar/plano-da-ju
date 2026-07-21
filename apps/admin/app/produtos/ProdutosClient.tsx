@@ -262,11 +262,11 @@ function Modal({
             >
               <option value="">Nenhuma</option>
               {products
-                .filter(p => p.id !== editingId && !p.is_ybera)
+                .filter(p => p.id !== editingId && !p.parent_product_id)
                 .map(p => <option key={p.id} value={p.id}>{p.name}{p.brand ? ` · ${p.brand}` : ''}</option>)}
             </select>
             <div style={{ fontSize: 11, color: gray, marginTop: 4 }}>
-              Opção econômica (de outra marca) sugerida quando este produto Ybera for indicado.
+              Opção econômica (geralmente de outra marca, mais barata) sugerida quando este produto for indicado. Aparecem todos os produtos cadastrados.
             </div>
           </div>
 

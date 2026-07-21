@@ -194,9 +194,188 @@ export function buildHtml(data) {
       </div>
     </section>`
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // SEÇÕES EDUCATIVAS — conteúdo do "Guia Completo de Cuidados Capilares" da
+  // Juliane, adaptado pro plano personalizado. Estático (vale pra todas), com
+  // toques personalizados onde faz sentido (frequência de lavagem pelo couro).
+  // ═══════════════════════════════════════════════════════════════════════
+  const mlSearch = (q) => `https://lista.mercadolivre.com.br/${encodeURIComponent(q)}`
+
+  const callout = (kicker, html, tone = 'rose') =>
+    `<div class="callout ${tone}">${kicker ? `<div class="callout-k">${esc(kicker)}</div>` : ''}<div class="callout-b">${html}</div></div>`
+
+  // Fundamentos: bem-vinda + o que transforma + como o cabelo funciona
+  const fundamentos = () => `
+    <section class="sheet pad break-before">
+      <div class="label">Antes de começar</div>
+      <h2 class="serif-h">Bem-vinda!</h2>
+      <p class="lead">Se você chegou até aqui, é porque decidiu cuidar do seu cabelo de verdade. E eu preciso te contar uma coisa importante logo de cara.</p>
+      ${callout('Não existe produto milagroso.', 'O que realmente transforma um cabelo é a soma de vários fatores trabalhando juntos, todos os dias. Mesmo o melhor tratamento do mundo pode não entregar resultado se for usado da forma errada.', 'wine')}
+      <div class="sub-h">O que transforma um cabelo</div>
+      <ul class="pillars">
+        <li><b>Produtos corretos</b> — os certos para o que o seu fio precisa.</li>
+        <li><b>Aplicação correta</b> — a ordem e o modo de usar fazem toda a diferença.</li>
+        <li><b>Constância</b> — resultado nasce da repetição, não de um dia perfeito.</li>
+        <li><b>Alimentação</b> — fio bonito também se constrói de dentro pra fora.</li>
+        <li><b>Hábitos diários</b> — pequenos cuidados que somam ao longo dos meses.</li>
+      </ul>
+    </section>
+    <section class="sheet pad break-before">
+      <div class="label">Fundamentos</div>
+      <h2 class="serif-h">Como o cabelo funciona</h2>
+      <p class="lead">Antes de tratar, entenda como o fio é formado. Ele tem três camadas — e o tratamento acontece principalmente nas duas primeiras.</p>
+      <div class="tri">
+        <div class="tri-card"><div class="tri-t">Cutícula</div><div class="tri-k">Camada externa</div><p>Como um telhado de escamas. Fechada, protege tudo o que está por dentro.</p></div>
+        <div class="tri-card"><div class="tri-t">Córtex</div><div class="tri-k">Camada central</div><p>Onde fica quase toda a estrutura: queratina, proteínas, pigmentos e a elasticidade do fio.</p></div>
+        <div class="tri-card"><div class="tri-t">Medula</div><div class="tri-k">Núcleo</div><p>A parte mais interna. Praticamente não influencia nos tratamentos cosméticos.</p></div>
+      </div>
+      <div class="sub-h">A cutícula é o seu termômetro</div>
+      <div class="two-col">
+        <div class="tc-card ok"><div class="tc-h">Cutícula fechada</div><ul><li>Cabelo com brilho</li><li>Desembaraça fácil</li><li>Perde menos água</li><li>Toque macio</li></ul></div>
+        <div class="tc-card bad"><div class="tc-h">Cutícula aberta</div><ul><li>Frizz e aspereza</li><li>Ressecamento</li><li>Pontas duplas</li><li>Quebra</li></ul></div>
+      </div>
+      ${callout('Guarde isto', 'Grande parte do tratamento é manter a cutícula saudável. Quando o córtex sofre com descoloração, chapinha, secador ou química, o fio perde força e começa a quebrar — é por isso que a reconstrução existe.', 'rose')}
+    </section>`
+
+  // O cronograma e as 3 etapas (com ativos)
+  const etapas = () => `
+    <section class="sheet pad break-before">
+      <div class="label">O coração do tratamento</div>
+      <h2 class="serif-h">O que é cronograma capilar?</h2>
+      <p class="lead">É um planejamento pra devolver ao cabelo, de forma organizada, tudo o que ele perde no dia a dia. Cada etapa tem uma função — e é a alternância entre elas que faz o resultado acontecer.</p>
+      <div class="etapas-chips">
+        <div class="ec h"><span>Devolve ÁGUA</span><b>Hidratação</b></div>
+        <div class="ec n"><span>Devolve LIPÍDIOS</span><b>Nutrição</b></div>
+        <div class="ec r"><span>Devolve PROTEÍNAS</span><b>Reconstrução</b></div>
+      </div>
+      <div class="need">
+        <div><span>Sem brilho, opaco</span> → está pedindo <b>hidratação</b></div>
+        <div><span>Frizz e ressecado</span> → está pedindo <b>nutrição</b></div>
+        <div><span>Quebrando muito</span> → está pedindo <b>reconstrução</b></div>
+      </div>
+      ${callout('A regra de ouro', 'Um cronograma de verdade se diferencia de "usar sempre a mesma máscara" justamente porque alterna as etapas. O excesso de qualquer uma — principalmente reconstrução — atrapalha em vez de ajudar.', 'rose')}
+    </section>
+    <section class="sheet pad break-before">
+      <div class="label">As três etapas</div>
+      <h2 class="serif-h">Hidratação, Nutrição &amp; Reconstrução</h2>
+      <div class="step-card h"><div class="step-h"><span class="step-ic">💧</span><div><b>Hidratação</b><small>Devolve água</small></div></div>
+        <p>Imagine uma planta sem água: ela murcha. O cabelo também. Quando falta hidratação, o fio fica opaco, áspero, armado e difícil de desembaraçar.</p>
+        <p class="ativos"><b>Ativos:</b> babosa, pantenol, glicerina, aloe vera, ácido hialurônico. É a etapa mais frequente do cronograma.</p></div>
+      <div class="step-card n"><div class="step-h"><span class="step-ic">🫧</span><div><b>Nutrição</b><small>Devolve lipídios</small></div></div>
+        <p>São os óleos naturais que protegem o fio. Quando falta nutrição, surgem frizz, pontas espigadas, excesso de volume e porosidade. A nutrição é a responsável pelo brilho.</p>
+        <p class="ativos"><b>Ativos:</b> óleo de argan, coco, abacate e macadâmia; manteiga de karité e murumuru.</p></div>
+      <div class="step-card r"><div class="step-h"><span class="step-ic">✚</span><div><b>Reconstrução</b><small>Devolve proteínas</small></div></div>
+        <p>Repõe queratina, colágeno e aminoácidos. Indicada pra cabelos descoloridos, quebradiços, elásticos ou muito danificados.</p>
+        <p class="ativos"><b>Atenção:</b> reconstrução em excesso endurece o fio. Entra só a cada 15–30 dias, conforme a necessidade — nunca toda semana.</p></div>
+    </section>`
+
+  // Como lavar + máscara/condicionador + óleo/protetor
+  const comoLavar = () => `
+    <section class="sheet pad break-before">
+      <div class="label">Passo a passo</div>
+      <h2 class="serif-h">Como lavar corretamente</h2>
+      <p class="lead">Parece simples, mas a maior parte das pessoas lava o cabelo do jeito errado. Estes cinco passos mudam a base de tudo.</p>
+      <ol class="steps">
+        <li><b>Molhe completamente os fios.</b> A água precisa penetrar de verdade antes do shampoo.</li>
+        <li><b>Shampoo apenas na raiz.</b> Nunca esfregue o comprimento — quem limpa o comprimento é a espuma escorrendo.</li>
+        <li><b>Massageie com as pontas dos dedos.</b> Nunca as unhas. A massagem ativa a circulação do couro.</li>
+        <li><b>Enxágue completamente.</b> Resíduo de shampoo deixa o cabelo pesado e sem brilho.</li>
+        <li><b>Raiz muito oleosa? Faça uma segunda lavagem.</b> A primeira remove a sujeira; a segunda realmente limpa.</li>
+      </ol>
+      ${callout('Temperatura importa', 'Água morna na lavagem e água fria no enxágue final. Água muito quente abre demais a cutícula, estimula oleosidade na raiz, resseca o comprimento e aumenta o frizz.', 'rose')}
+    </section>
+    <section class="sheet pad break-before">
+      <div class="label">Aplicação</div>
+      <h2 class="serif-h">Máscara &amp; condicionador</h2>
+      <ol class="steps">
+        <li><b>Retire o excesso de água com a toalha.</b> Quanto menos água no fio, melhor a absorção da máscara.</li>
+        <li><b>Divida o cabelo em mechas</b> e passe mecha por mecha, enluvando delicadamente.</li>
+        <li><b>Nunca aplique na raiz</b> — exceto máscaras específicas pra couro cabeludo.</li>
+        <li><b>Respeite o tempo indicado.</b> Mais tempo não significa mais resultado. Depois, enxágue completamente.</li>
+      </ol>
+      ${callout('Condicionador é obrigatório? Sim.', 'Muita gente acha que a máscara substitui — na maioria das vezes, não. O condicionador sela a cutícula depois do tratamento: menos frizz, mais brilho e fios alinhados.', 'rose')}
+      <div class="sub-h">Óleo capilar &amp; protetor térmico</div>
+      <p class="lead">O óleo é um finalizador: ele não hidrata em profundidade, ele sela tudo o que a máscara entregou. <b>Óleo de Mirra:</b> 2 a 3 gotas já bastam — óleo em excesso pesa. Se você usa chapinha ou secador, protetor térmico <b>não é opcional</b>: o calor acima de 180 °C começa a degradar as proteínas do fio.</p>
+      ${callout('A ordem certa importa', 'Máscara sela com água fria → toalha → óleo de mirra nas pontas úmidas → protetor térmico → só então o calor. Fazer na sequência errada é o que consome a hidratação mais rápido do que qualquer máscara consegue repor.', 'wine')}
+    </section>`
+
+  // Rotina & hábitos (frequência personalizada pelo couro) + o que prejudica
+  const habitos = () => {
+    const c = data.couro
+    const freq = [
+      ['Raiz oleosa', 'Pode lavar diariamente.', 'oleoso'],
+      ['Raiz normal', 'Dia sim, dia não.', 'normal'],
+      ['Raiz seca', '2 a 3 vezes por semana.', 'seco'],
+    ].map(([t, d, key]) => `<div class="freq-row${c === key ? ' on' : ''}"><span>${esc(t)}</span><span>${esc(d)}${c === key ? ' <b>· o seu caso</b>' : ''}</span></div>`).join('')
+    return `
+    <section class="sheet pad break-before">
+      <div class="label">No dia a dia</div>
+      <h2 class="serif-h">Rotina &amp; hábitos que fazem a diferença</h2>
+      <div class="sub-h">Com que frequência lavar?</div>
+      <div class="freq">${freq}</div>
+      <p class="micro">Couro cabeludo limpo favorece um ambiente mais saudável pros fios crescerem.</p>
+      <div class="two-col">
+        <div class="tc-card"><div class="tc-h">Como pentear</div><ul><li>Comece sempre pelas pontas.</li><li>Depois o comprimento; só então a raiz.</li><li>Nunca puxe o pente de cima pra baixo.</li><li>Pente de dentes largos ou cerdas macias.</li></ul></div>
+        <div class="tc-card"><div class="tc-h">Fronha de cetim</div><ul><li>Menos quebra e menos nós</li><li>Menos frizz</li><li>Mais brilho ao acordar</li></ul></div>
+      </div>
+      ${callout('Evite dormir de cabelo molhado', 'O fio molhado é mais frágil, e o hábito favorece quebra, frizz, caspa e fungos. Deixe secar antes de deitar e evite prender o cabelo muito apertado.', 'rose')}
+    </section>
+    <section class="sheet pad break-before">
+      <div class="label">Fuja disto</div>
+      <h2 class="serif-h">O que mais prejudica o cabelo</h2>
+      <p class="lead">Boa parte dos danos não vem do que falta — vem do que se repete sem perceber.</p>
+      <div class="two-col avoid">
+        <ul><li>Dormir de cabelo molhado.</li><li>Prender o cabelo muito apertado.</li><li>Chapinha todos os dias.</li><li>Água muito quente.</li></ul>
+        <ul><li>Escovar com força.</li><li>Descolorações frequentes.</li><li>Lavar pouco quando o couro é oleoso.</li><li>Não cortar as pontas.</li></ul>
+      </div>
+      ${callout('Cortar os fios regularmente', 'Cabelo danificado: corte a cada <b>3 meses</b>. Pontas saudáveis: a cada <b>6 meses</b> pra manter o formato e a saúde.', 'wine')}
+    </section>`
+  }
+
+  // Escovas & acessórios (indicações com busca no Mercado Livre)
+  const escovas = () => {
+    const brush = (nome, tag, desc, itens, buscar) => `<div class="brush"><div class="brush-h">${tag ? `<span class="brush-tag">${esc(tag)}</span>` : ''}<b>${esc(nome)}</b></div><p>${esc(desc)}</p><ul>${itens.map(i => `<li>${esc(i)}</li>`).join('')}</ul>${buscar ? `<a class="buy sm" href="${mlSearch(buscar)}">Buscar no Mercado Livre →</a>` : ''}</div>`
+    return `
+    <section class="sheet pad break-before">
+      <div class="label">Ferramentas</div>
+      <h2 class="serif-h">As melhores escovas</h2>
+      <p class="lead">A escova certa diminui a quebra, reduz o frizz e facilita o desembaraço. A errada faz o contrário: arranca fios e favorece pontas duplas.</p>
+      ${brush('Tangle Teezer', '★ Minha favorita', 'Uma das melhores do mundo pra desembaraçar sem puxar os fios. Pode usar no cabelo molhado.', ['Reduz a quebra', 'Ótima pra fios finos, loiros e com química'], 'tangle teezer escova')}
+      ${brush('Michel Mercier', '★', 'Pensada pra diferentes espessuras. Muito confortável e puxa menos os fios.', ['Ótima pra cabelos longos e grossos', 'Diminui bastante a quebra'], 'escova michel mercier')}
+      ${brush('Wet Brush', null, 'Ótimo custo-benefício, cerdas extremamente flexíveis. Desembaraça molhado sem machucar o couro.', ['Serve pra todos os tipos de cabelo'], 'wet brush escova')}
+      ${brush('Escovas de bambu', null, 'Pra quem prefere materiais naturais: massageiam o couro e produzem menos eletricidade estática.', ['Ajudam a reduzir o frizz', 'Muito resistentes'], 'escova de bambu cabelo')}
+      ${callout('Escovas que eu evitaria', 'Escovas com bolinhas nas pontas <b>quando essas bolinhas começam a soltar</b> — o plástico exposto vira um "gancho" que aumenta o atrito e a quebra. Evite também cerdas quebradas, escovas muito antigas ou sujas. Lave a sua pelo menos 1x por semana com água morna e shampoo neutro.', 'rose')}
+      <div class="brush"><div class="brush-h"><span class="brush-tag">★ Pra prender</span><b>Scrunchie de cetim</b></div><p>O acessório que menos agride — ideal pro dia a dia e pra dormir.</p><ul><li>Reduz a quebra e o atrito</li><li>Não marca tanto os fios</li><li>Diminui o frizz</li></ul><a class="buy sm" href="${mlSearch('scrunchie de cetim')}">Buscar no Mercado Livre →</a></div>
+      ${callout('Dica da Ju', 'Se você prende o cabelo todo dia, <b>alterne a altura do penteado</b>: um dia mais alto, outro mais baixo, outro com presilha. Isso evita a tração constante sempre na mesma região do couro e ajuda a prevenir a quebra.', 'wine')}
+    </section>`
+  }
+
+  // Alimentação de dentro pra fora
+  const alimentacao = () => `
+    <section class="sheet pad break-before">
+      <div class="label">De dentro pra fora</div>
+      <h2 class="serif-h">Alimentação que fortalece</h2>
+      <p class="lead">O cabelo é formado principalmente por proteína. Se faltam nutrientes, ele sente — e nenhum produto tópico compensa isso sozinho.</p>
+      <div class="food-card">
+        <div class="tc-h">Inclua na rotina</div>
+        <div class="two-col">
+          <ul><li>Carnes magras e ovos</li><li>Peixes</li><li>Espinafre e brócolis</li><li>Castanhas</li></ul>
+          <ul><li>Abacate</li><li>Morango e laranja</li><li>Feijão</li></ul>
+        </div>
+        <p class="micro">Proteínas, ferro, zinco, vitamina C, complexo B e gorduras boas — nutrientes pra formação e fortalecimento dos fios.</p>
+      </div>
+      <div class="two-col">
+        <div class="tc-card"><div class="tc-h">Água</div><ul><li>Fios desidratados começam dentro do corpo.</li><li>Beba água ao longo do dia.</li></ul></div>
+        <div class="tc-card"><div class="tc-h">Vitaminas que ajudam</div><ul><li>Ferro, vitamina D, zinco</li><li>Biotina, complexo B, ômega 3</li></ul></div>
+      </div>
+      <p class="micro">A suplementação pode ajudar quando existe deficiência nutricional, mas deve ser orientada por um profissional de saúde. Este material é educativo e não substitui avaliação individual.</p>
+    </section>`
+
   const body =
-    cover() + carta() + analise() + produtos() + compraRastreio() +
-    cronograma() + ritual() + dicas() + retorno() + footer()
+    cover() + carta() + fundamentos() + analise() + etapas() +
+    produtos() + compraRastreio() + comoLavar() +
+    cronograma() + ritual() + habitos() + escovas() + alimentacao() +
+    retorno() + footer()
 
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=430">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500;1,9..144,600&family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -302,4 +481,70 @@ img { display:block; max-width:100%; }
 .footer-msg { font-family:'Fraunces',Georgia,serif; font-size:18px; line-height:1.55; margin-bottom:8px; }
 .footer-sign { font-family:'Fraunces',Georgia,serif; font-style:italic; font-size:22px; margin-bottom:20px; }
 .ln { display:block; background:rgba(255,255,255,0.2); color:#fff; text-decoration:none; font-weight:800; font-size:13.5px; padding:13px; border-radius:13px; margin-top:9px; }
+
+/* ── Seções educativas (guia) ── */
+.serif-h { font-family:'Fraunces',Georgia,serif; font-size:30px; font-weight:600; line-height:1.12; color:#7A1B3D; margin:2px 0 10px; }
+.lead { font-size:13.5px; line-height:1.55; color:#5c4a4e; margin-bottom:12px; }
+.sub-h { font-size:15px; font-weight:800; color:#3D2B2E; margin:14px 0 9px; }
+.micro { font-size:11.5px; line-height:1.5; color:#9A8A8E; margin-top:12px; font-style:italic; }
+.callout { border-radius:14px; padding:16px 18px; margin:16px 0 4px; }
+.callout.rose { background:#FBEAF1; }
+.callout.wine { background:#F3E7ED; border-left:4px solid #BE185D; }
+.callout-k { font-size:11px; font-weight:800; letter-spacing:.6px; text-transform:uppercase; color:#BE185D; margin-bottom:6px; }
+.callout-b { font-size:13px; line-height:1.6; color:#5c4a4e; }
+.callout.wine .callout-b, .callout.rose .callout-b { font-family:'Fraunces',Georgia,serif; font-size:13.5px; }
+.pillars { list-style:none; }
+.pillars li { font-size:13.5px; line-height:1.5; padding:7px 0 7px 18px; position:relative; border-bottom:1px solid #F6E7EC; color:#5c4a4e; }
+.pillars li:last-child { border-bottom:none; }
+.pillars li:before { content:''; position:absolute; left:0; top:13px; width:8px; height:8px; border-radius:2px; background:#E9A9BF; }
+.pillars b, .lead b, .need b, .callout-b b, .ativos b, .freq-row b { color:#7A1B3D; }
+.tri { display:flex; flex-direction:column; gap:8px; margin-bottom:4px; }
+.tri-card { background:#fff; border:1px solid #F0DCE4; border-radius:14px; padding:11px 15px; }
+.tri-t { font-family:'Fraunces',Georgia,serif; font-size:18px; color:#7A1B3D; }
+.tri-k { font-size:9.5px; font-weight:800; letter-spacing:.8px; text-transform:uppercase; color:#A89AA0; margin:1px 0 4px; }
+.tri-card p { font-size:12px; line-height:1.45; color:#5c4a4e; }
+.two-col { display:flex; gap:10px; }
+.two-col > * { flex:1; }
+.tc-card { background:#fff; border:1px solid #F0DCE4; border-radius:14px; padding:14px 15px; }
+.tc-card.ok { border-color:#BBE3CF; } .tc-card.bad { border-color:#F3C6D4; }
+.tc-h { font-size:13.5px; font-weight:800; color:#7A1B3D; margin-bottom:8px; }
+.tc-card.ok .tc-h { color:#1F7A55; }
+.tc-card ul, .avoid ul { list-style:none; }
+.tc-card li, .avoid li { font-size:12.5px; line-height:1.45; padding:3px 0 3px 14px; position:relative; color:#5c4a4e; }
+.tc-card li:before, .avoid li:before { content:'•'; position:absolute; left:2px; color:#E9A9BF; font-weight:800; }
+.etapas-chips { display:flex; gap:8px; margin-bottom:16px; }
+.etapas-chips .ec { flex:1; border-radius:12px; padding:14px 8px; text-align:center; color:#fff; }
+.ec span { display:block; font-size:9px; font-weight:800; letter-spacing:.5px; opacity:.9; }
+.ec b { font-family:'Fraunces',Georgia,serif; font-size:16px; font-weight:600; }
+.ec.h { background:#5B7C99; } .ec.n { background:#C08A2E; } .ec.r { background:#7A1B3D; }
+.need > div { font-size:13px; line-height:1.5; padding:9px 0; border-bottom:1px solid #F6E7EC; color:#5c4a4e; }
+.need > div:last-child { border-bottom:none; }
+.need span { font-weight:800; color:#3D2B2E; }
+.step-card { border-radius:14px; padding:15px 16px; margin-bottom:11px; }
+.step-card.h { background:#EEF3F7; } .step-card.n { background:#FBF2E2; } .step-card.r { background:#F6E7ED; }
+.step-h { display:flex; align-items:center; gap:11px; margin-bottom:8px; }
+.step-ic { width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:18px; background:#fff; flex-shrink:0; }
+.step-h b { font-family:'Fraunces',Georgia,serif; font-size:19px; color:#3D2B2E; display:block; }
+.step-h small { font-size:10px; font-weight:800; letter-spacing:.6px; text-transform:uppercase; color:#A89AA0; }
+.step-card p { font-size:12.5px; line-height:1.55; color:#5c4a4e; margin-bottom:6px; }
+.step-card .ativos { font-size:12px; color:#7A6A6D; margin-bottom:0; }
+.steps { list-style:none; counter-reset:s; }
+.steps li { counter-increment:s; font-size:13px; line-height:1.5; padding:9px 0 9px 34px; position:relative; border-bottom:1px solid #F6E7EC; color:#5c4a4e; }
+.steps li:last-child { border-bottom:none; }
+.steps li:before { content:counter(s); position:absolute; left:0; top:8px; width:23px; height:23px; border-radius:50%; background:#7A1B3D; color:#fff; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+.freq { background:#fff; border:1px solid #F0DCE4; border-radius:14px; overflow:hidden; }
+.freq-row { display:flex; justify-content:space-between; gap:12px; font-size:13px; padding:11px 15px; border-bottom:1px solid #F6E7EC; color:#5c4a4e; }
+.freq-row:last-child { border-bottom:none; }
+.freq-row span:first-child { font-weight:800; color:#7A1B3D; }
+.freq-row.on { background:#FBEAF1; }
+.brush { background:#fff; border:1px solid #F0DCE4; border-radius:14px; padding:14px 16px; margin-bottom:11px; page-break-inside:avoid; }
+.brush-h { display:flex; align-items:center; gap:9px; margin-bottom:5px; }
+.brush-h b { font-family:'Fraunces',Georgia,serif; font-size:17px; color:#7A1B3D; }
+.brush-tag { background:#7A1B3D; color:#fff; font-size:9px; font-weight:800; letter-spacing:.4px; text-transform:uppercase; padding:3px 8px; border-radius:99px; }
+.brush p { font-size:12.5px; line-height:1.5; color:#5c4a4e; margin-bottom:6px; }
+.brush ul { list-style:none; margin-bottom:4px; }
+.brush li { font-size:12px; line-height:1.4; padding:2px 0 2px 14px; position:relative; color:#5c4a4e; }
+.brush li:before { content:'•'; position:absolute; left:2px; color:#E9A9BF; font-weight:800; }
+.buy.sm { font-size:12.5px; padding:9px; margin-top:8px; }
+.food-card { background:#F6ECE4; border-radius:14px; padding:16px; margin-bottom:12px; }
 `

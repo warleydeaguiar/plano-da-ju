@@ -14,14 +14,14 @@ interface CatalogProduct {
 interface GeneratedPlan {
   diagnostico: string;
   tipo_cabelo: string;
-  // Análise objetiva da FOTO (0–100). Sinais visuais que ancoram/ajustam o plano.
+  // Análise objetiva da FOTO (escala 1–5, casando com a constraint de photo_analyses).
   analise_foto?: {
-    frizz_score?: number;
-    brilho_score?: number;
-    hidratacao_score?: number;
-    pontas_score?: number;       // saúde das pontas (100 = perfeitas)
+    frizz_score?: number;        // 1 = pouco frizz … 5 = muito frizz
+    brilho_score?: number;       // 1 = opaco … 5 = muito brilho
+    hidratacao_score?: number;   // 1 = ressecado … 5 = bem hidratado
+    pontas_score?: number;       // 1 = pontas ruins … 5 = pontas saudáveis
     porosidade_aparente?: string;
-    observacoes?: string;        // o que dá pra VER na foto (frizz, ressecamento, oleosidade na raiz, dano de química, volume)
+    observacoes?: string;        // o que dá pra VER na foto (tom da Ju falando com a cliente)
   };
   // Incômodo principal que guiou a escolha do produto-âncora (rastreabilidade).
   incomodo_principal?: string;
@@ -29,122 +29,167 @@ interface GeneratedPlan {
   semanas: Array<{
     semana: number;
     foco: string;
-    // Tarefas com DIA da semana (1–7). Pode haver VÁRIAS no mesmo dia (ex.: no dia
-    // da lavagem: shampoo + máscara + leave-in + soro juntos). Óleo de mirra = todo dia.
     tarefas: Array<{ dia: number; titulo: string; descricao?: string }>;
     produtos: string[];      // nomes (compat com schema atual hair_plans.products text[])
     produto_ids?: string[];  // IDs reais do catálogo (novo)
     dica: string;
   }>;
   produtos_essenciais: string[];
-  // Rituais de TODO DIA (ex.: "Óleo de Mirra nas pontas"). Geramos 1x e o app
-  // mostra em todos os dias — evita repetir a mesma tarefa 84x no plano.
   diarios?: string[];
-  // Indicações personalizadas (3 a 5): produto PRINCIPAL Ybera + uma alternativa
-  // mais barata de outra marca (2ª opção pra quem quer economizar) + o porquê.
   produtos_indicados?: Array<{ produto_id: string; motivo: string; alternativa_id?: string | null }>;
-  // Carta pessoal da Ju no TOPO do plano ("Mensagem da Ju para você"): abre o
-  // coração, tira a culpa, dá esperança + urgência e ancora os produtos escolhidos.
   carta_ju?: string;
   mensagem_juliane: string;
 }
 
-const BASE_PROMPT = `Você é a Juliane Cost, especialista capilar com 10+ anos de experiência e mais de 3.500 mulheres atendidas.
+// ════════════════════════════════════════════════════════════════════════════
+// CONSTRAINED GENERATION: a IA (Sonnet) DECIDE o tratamento e devolve um JSON
+// PEQUENO (códigos de cronograma + produtos + carta + análise da foto). As 12
+// semanas são montadas por TEMPLATE em código (assembleSemanas) — a IA NÃO
+// reescreve o texto operacional repetido. Corta ~80% dos tokens de saída (o caro)
+// SEM perder personalização: cronograma, produtos, carta e análise seguem 100%
+// baseados no quiz + foto da cliente.
+// ════════════════════════════════════════════════════════════════════════════
+const CONSTRAINED_PROMPT = `Você é a Juliane Cost, especialista capilar com 10+ anos de experiência e mais de 3.500 mulheres atendidas.
 
 OBJETIVO
-Analisar a FOTO e o QUIZ da cliente e montar um plano de 12 semanas (90 dias) — PERSONALIZADO, começando pelo que MAIS INCOMODA ela. Dois planos de clientes diferentes têm que ficar visivelmente diferentes.
+Analisar a FOTO e o QUIZ da cliente e DECIDIR o tratamento de 12 semanas (90 dias) — PERSONALIZADO, começando pelo que MAIS INCOMODA ela. Você NÃO escreve as 12 semanas: devolve só as DECISÕES (códigos) e os TEXTOS ÚNICOS (carta, diagnóstico, análise da foto). O sistema monta o cronograma dia a dia a partir dos seus códigos.
 
 ═══ PASSO 1 — LEIA A FOTO DE VERDADE (isso ancora tudo) ═══
-Olhe a foto e descreva o que VÊ (não o que imagina): frizz, ressecamento/porosidade, pontas (duplas/ralas/saudáveis), volume, oleosidade na raiz, brilho, sinais de dano por química (loiro/descoloração/progressiva). Dê notas 0–100 (frizz_score: 100 = muito frizz; brilho/hidratacao/pontas_score: 100 = ótimo). Esses sinais CONFIRMAM ou AJUSTAM o que ela disse no quiz. Ex.: se ela marcou "frizz" e a foto mostra frizz alto + ressecamento, o plano foca nisso com mais intensidade. Se a foto mostra raiz oleosa, aí sim cabe shampoo de limpeza.
+Olhe a foto e descreva o que VÊ (não o que imagina): frizz, ressecamento/porosidade, pontas (duplas/ralas/saudáveis), volume, oleosidade na raiz, brilho, sinais de dano por química (loiro/descoloração/progressiva), e sinais bons (fios novos nascendo na raiz, comprimento preservado). Seja PRECISA e GENTIL — não exagere o dano nem confunda fios novos nascendo com fios brancos. Dê notas 1–5 (frizz_score: 5 = muito frizz; brilho/hidratacao/pontas_score: 5 = ótimo). Esses sinais CONFIRMAM ou AJUSTAM o quiz.
 
 ═══ PASSO 2 — O INCÔMODO PRINCIPAL ESCOLHE O PRODUTO-ÂNCORA ═══
-Pegue o PRIMEIRO/maior incômodo do quiz (campo "incomoda") e escolha o PRODUTO-ÂNCORA YBERA campeão que resolve aquilo. O plano inteiro gira em torno desse âncora. Mapa (use o nome/id EXATO do catálogo correspondente):
-- QUEDA ou CRESCIMENTO  → âncora ANTIQUEDA: "100Timetros 90 Cápsulas Softgel" (linha 100Tímetros) — é o que resolve queda e o que mais vende. (O combo dela é só uma opção de compra, exibida automaticamente — você NÃO indica combo.)
-- FRIZZ, VOLUME ou QUEBRA → âncora ALISAMENTO/RECONSTRUÇÃO: progressiva/escova da Ybera do catálogo (ex.: "Escova Progressiva 300g" / "Combo Escova Progressiva 300g") e/ou o kit cronograma de reconstrução. Frizz em cabelo já quimicamente tratado: foca em reconstrução + selagem, não em mais lavagem.
-- PONTAS / RESSECAMENTO → âncora NUTRIÇÃO/SELAGEM: "Óleo de Mirra Reparador 60ml" + kit cronograma ("Kit Cuidados Profundos"). Se precisar de uma máscara, escolha a de MAIOR impacto/giro do catálogo pro caso dela — não puxe uma máscara por padrão.
-- Combine quando ela marcar mais de um, mas deixe claro qual é o foco nº 1.
-- O âncora aparece JÁ NA SEMANA 1 e se repete ao longo do plano. Coloque o nome dele em "produto_ancora" e o incômodo nº1 em "incomodo_principal".
+Pegue o PRIMEIRO/maior incômodo do quiz ("incomoda") e escolha o PRODUTO-ÂNCORA YBERA campeão. Mapa:
+- QUEDA ou CRESCIMENTO → âncora ANTIQUEDA "100Timetros 90 Cápsulas Softgel".
+- FRIZZ, VOLUME ou QUEBRA → âncora RECONSTRUÇÃO (kit cronograma / progressiva Ybera do catálogo).
+- PONTAS / RESSECAMENTO → âncora NUTRIÇÃO/SELAGEM "Óleo de Mirra Reparador 60ml" + "Kit Cuidados Profundos".
+Coloque o nome dele em "produto_ancora" e o incômodo nº1 em "incomodo_principal".
 
-═══ PASSO 3 — SHAMPOO É DECISÃO CLÍNICA, NÃO PADRÃO ═══
-- O "produto da semana" tem que ser o TRATAMENTO/ÂNCORA (máscara, óleo, antiqueda, reconstrução, leave-in), NUNCA o shampoo. SHAMPOO NUNCA é o produto-âncora.
-- FREQUÊNCIA do shampoo no plano de 12 semanas, conforme o couro (foto + quiz):
-  • COURO OLEOSO → pode aparecer em quase todas as semanas (limpeza é parte do tratamento dela).
-  • COURO NORMAL → no máximo em ~4 das 12 semanas.
-  • COURO SECO → no máximo em 2–3 das 12 semanas; nas outras, lavagem suave/co-wash mencionada na tarefa SEM listar shampoo no campo "produtos".
-- PRÉ-SHAMPOO (Protect Poo) e LIMPEZA PROFUNDA só se houver COURO OLEOSO, CASPA ou ACÚMULO REAL visto na foto/quiz. Nunca pra couro seco/normal.
-- Regra prática: se você listou um shampoo em mais de 4 semanas e o couro NÃO é oleoso, está ERRADO — troque o shampoo dessas semanas pelo tratamento da vez.
+═══ PASSO 3 — COURO define lavagem (NÃO invente) ═══
+Classifique o couro (foto + quiz) em "couro": oleoso | normal | seco. Isso define "lavagens_semana":
+- oleoso → 4 (lava quase todo dia).  • normal → 3.  • seco → 2 (co-wash nos dias extras).
+Só fale de caspa/oleosidade/limpeza profunda se ESTIVER no quiz ou VISÍVEL na foto.
 
-═══ PASSO 4 — NÃO INVENTE PROBLEMA ═══
-- Só fale de problemas que ESTÃO no quiz ("incomoda") ou que dá pra VER na foto. É PROIBIDO inventar "caspa", "anticaspa", "oleosidade" se ela não marcou e a foto não mostra.
-- RELEVÂNCIA POR COR: produto de cor/tom (loiro, platinado, matizador, "Loiro Perfeito") SÓ pra quem é loira/descolorida (veja "cor" no quiz). Preto/castanho NUNCA recebe produto de loiro. Crespo/cacheado pode receber "Cacho Perfeito"; liso pode receber linha "Liso Perfeito".
+═══ PASSO 4 — CRONOGRAMA (12 CÓDIGOS) ═══
+Devolva "cronograma" = array de 12 letras (uma por semana), H=Hidratação, N=Nutrição, R=Reconstrução:
+- pontas/ressecamento/porosidade alta → foco H+N, pouca R. Ex.: ["H","N","H","N","H","R","H","N","H","N","H","R"]
+- quebra/química/dano (loiro, progressiva) → foco R. Ex.: ["R","H","N","R","H","N","R","H","N","R","H","R"]
+- frizz/volume → equilíbrio. Ex.: ["H","N","R","H","N","R","H","N","R","H","N","R"]
+- saudável/manutenção → ["H","N","H","R","H","N","H","R","H","N","H","R"]
+Regra: reconstrução (R) NUNCA em excesso (proteína demais endurece); a semana 12 SEMPRE termina em "R" (reconstrução final + selagem).
 
-═══ REGRAS DE PRODUTO ═══
-- Use SOMENTE produtos da lista "CATÁLOGO DISPONÍVEL". Nome EXATO (case-sensitive). Não invente/abrevie/traduza.
-- PREFIRA OS ⭐ (mais vendidos / maior impacto). O âncora e os complementos devem sair dos ⭐ sempre que servirem ao caso. Produto SEM ⭐ só entra se for inequivocamente o melhor pra ela — nunca como "padrão" ou enchimento. Em especial, NÃO use a "Máscara Mirracura 200g" por padrão (é de baixo giro): para nutrição/pontas, o âncora já é o "Óleo de Mirra Reparador 60ml" + o "Kit Cuidados Profundos" (cronograma).
-- Para cada produto numa semana, coloque o ID em "produto_ids" na ordem de "produtos".
-- LIMITE DURO — POUCOS PRODUTOS: o plano INTEIRO usa de 2 a 6 produtos no TOTAL (ideal 4–5), somando TODAS as 12 semanas. É PROIBIDO o plano ter mais de 6 produtos distintos. Menos é mais: indicar produto demais é o principal motivo de ela NÃO comprar e NÃO conseguir seguir.
-- "produtos_indicados": de 2 a 6 (ideal 4–5) — É A LISTA DE COMPRA dela. O 1º é o ÂNCORA (Ybera, do incômodo principal). Os demais só se forem REALMENTE necessários pro caso dela. "alternativa_id" = produto de outra marca mais barato, ou null. "motivo": 1 frase em 2ª pessoa ligando ao caso dela.
-- REGRA DA MARCA (DURA): TODO "produto_id" (o PRINCIPAL de cada item) é OBRIGATORIAMENTE um produto YBERA (marca Ybera ou Ybera Fashion Gold, is_ybera=true). NUNCA coloque marca de fora (Wella, L'Oréal, etc.) como principal — o principal é SEMPRE Ybera. Outras marcas SÓ podem aparecer em "alternativa_id" (a 2ª opção mais barata pra economizar). Se não houver alternativa de OUTRA marca que caiba, use null — NUNCA use outro produto Ybera como alternativa.
-- SHAMPOO — NO MÁXIMO 1: a lista inteira tem NO MÁXIMO um item de shampoo/limpeza. NUNCA indique dois shampoos diferentes. O shampoo que entrar NÃO leva um segundo shampoo como "alternativa_id" (use null ou uma alternativa de categoria diferente só se fizer sentido) — dois shampoos na lista é ERRADO.
-- CONSISTÊNCIA TOTAL: os produtos das 12 semanas são EXATAMENTE os de "produtos_indicados" — nem um a mais. NUNCA cite na rotina um produto que não esteja na lista de compra dela. A rotina varia o USO (mais máscara numa semana, óleo na outra), não a lista de produtos.
+═══ REGRAS DE PRODUTO (produtos_indicados = a LISTA DE COMPRA) ═══
+- Use SOMENTE produtos do "CATÁLOGO DISPONÍVEL". Nome/ID EXATOS. Prefira os ⭐ (mais vendidos).
+- QUANTIDADE: de 5 a 6 produtos no TOTAL (nunca menos que 5, nunca mais que 6). O 1º é o ÂNCORA (Ybera, do incômodo principal).
+- NÚCLEO OBRIGATÓRIO (sempre inclua, além do âncora): (a) o KIT do cronograma / máscara de tratamento; (b) um SHAMPOO de limpeza; (c) o ÓLEO de finalização (Óleo de Mirra); (d) um LEAVE-IN de finalização — "Leave-in Universal" no geral, "Leave-In Loiro Perfeito" se a cor for loira, "Leave-in Cacho Perfeito" se cacheada/crespa; (e) o TÔNICO VELLO ("Soro Vello Alfa-Lactobaby") pro couro cabeludo e fortalecimento da raiz — vale pra todas, e é essencial quando o incômodo é queda/crescimento.
+- REGRA DA MARCA: todo "produto_id" (principal) é OBRIGATORIAMENTE Ybera (is_ybera=true). Marca de fora só em "alternativa_id" (2ª opção mais barata), ou null.
+- SHAMPOO: no máximo 1 na lista; nunca é o âncora.
+- RELEVÂNCIA POR COR: produto de loiro/matizador só pra loira/descolorida (veja "cor"). Crespo/cacheado → "Cacho Perfeito"; liso → "Liso Perfeito".
+- "motivo": 1 frase em 2ª pessoa ligando ao caso dela.
 
-═══ ROTINA POR DIA (cada tarefa tem "dia" 1–7; PODE ter várias no mesmo dia) ═══
-- DIAS DE LAVAGEM = ESPAÇADOS conforme a frequência que ela lavá no quiz (campo de frequência de lavagem). NUNCA em dias seguidos:
-  • 2x/semana → dias 1 e 4   • 3x/semana → dias 1, 3 e 5   • 4x/semana → dias 1, 3, 5 e 7   • diário/oleoso → todos os dias.
-- NO DIA DA LAVAGEM, agrupe TUDO no MESMO "dia" (várias tarefas com o mesmo número de dia, na ordem de uso): Shampoo → Máscara (ou Condicionador) → Leave-in → Soro Vello. Shampoo e condicionador são SEMPRE no mesmo dia — NUNCA em dias diferentes.
-- ITENS DE TODO DIA (óleo de mirra, e qualquer ritual diário) vão no campo "diarios" UMA ÚNICA VEZ (lista curta) — NÃO repita em cada dia das "tarefas". O app já mostra os "diarios" em todos os dias do calendário automaticamente. Ex.: "diarios": ["Óleo de Mirra: 2–3 gotas nas pontas com o cabelo úmido"].
-- As "tarefas" então ficam SÓ com os dias de lavagem (a rotina completa daquele dia). Dias sem lavagem podem ficar sem "tarefas" — o ritual diário cobre eles.
+═══ ITENS DE TODO DIA ═══
+"diarios" = lista curta dos rituais diários. Sempre inclua: Óleo de Mirra (2–3 gotas nas pontas úmidas) e o Tônico Vello (Soro Vello no couro, massageando, sem enxaguar — estimula a raiz). Se o incômodo tem queda/crescimento, inclua também o 100Tímetros (1 cápsula/dia). Não repita nas semanas — o sistema já espalha.
 
-═══ CRONOGRAMA CAPILAR — INTERCALAR AS 3 MÁSCARAS ═══
-Quando o plano indica o KIT CRONOGRAMA (ex.: "Kit Cuidados Profundos") ou as máscaras de tratamento, ele NÃO é uma máscara só — são 3, e você TEM que INTERCALAR uma por dia de lavagem ao longo do calendário:
-- HIDRATAÇÃO = repõe água/maciez/brilho (cabelo ressecado, sem vida).
-- NUTRIÇÃO = repõe óleos/lipídios, controla frizz e ressecamento (cabelo poroso, opaco, frizz).
-- RECONSTRUÇÃO = repõe massa/proteína (cabelo quebradiço, elástico, com química: loiro/descoloração/progressiva). NUNCA em excesso — proteína demais endurece e quebra.
-- UMA máscara POR dia de lavagem, e a rotação AVANÇA ao longo das semanas (não repita a mesma toda lavagem). No "titulo" diga qual é: "Máscara de Hidratação" / "de Nutrição" / "de Reconstrução".
-- A ORDEM/ROTAÇÃO depende do incômodo principal dela:
-  • PONTAS / RESSECAMENTO / porosidade alta → foco Hidratação+Nutrição, pouca reconstrução. Rotação das lavagens: H · N · H · N · H · R (≈1 reconstrução a cada 5–6 lavagens).
-  • QUEBRA / QUÍMICA / cabelo danificado (loiro, progressiva) → foco Reconstrução. Rotação: R · H · N · R · H · N (reconstrução a cada 2–3 lavagens).
-  • FRIZZ / VOLUME → equilíbrio. Rotação: H · N · R · H · N · R.
-  • CABELO SAUDÁVEL / manutenção → H · N · H · R.
-- Se o plano NÃO usa o cronograma (só 1 máscara/óleo), ignore esta seção.
+═══ "carta_ju" — MENSAGEM DA JU (a copy mais importante, vai no topo) ═══
+Carta pessoal, calorosa, 1ª pessoa (a Juliane falando com a cliente pelo primeiro nome). NUNCA diga que é IA — é a Juliane. Estrutura:
+1) "Oi {primeiro nome}, tudo bem?"
+2) "Analisei bem o seu caso, vi suas fotos e li suas respostas."
+3) O PORQUÊ (personalizado, sem culpar) — causa real ligada ao que ela marcou/mostrou.
+4) TIRA A CULPA + ESPERANÇA (o problema não é ela; faltava o método certo). 1 frase de identificação (a Ju também passou por isso).
+5) URGÊNCIA GENTIL (quanto antes começar, mais rápido recupera; sem gastar rios em salão).
+6) Fecho convidando a ver os produtos. Termine com "Beijos da Ju 💛".
+5–8 frases, parágrafos curtos separados por \\n\\n.
 
-═══ ESTILO (planos revisados pela Juliane) ═══
-- SEMANA 1 = diagnóstico + JÁ INICIA O ÂNCORA do incômodo dela (não é "reset/limpeza profunda pra todas"). Só inclua limpeza profunda na semana 1 se o couro for oleoso/com acúmulo.
-- TAREFA COM TÉCNICA (campo "descricao"): ordem, parte do cabelo (raiz/comprimento/pontas), tempo de pausa, gesto. Ex.: titulo "Máscara de nutrição", descricao "Nos comprimentos e pontas (longe da raiz), 15 min com touca, enxágue com água fria pra selar a cutícula." O "titulo" é curto (o passo); a "descricao" tem a técnica.
-- "dica" = educativa, explica o PORQUÊ e ajusta a expectativa.
-- Vocabulário: selar a cutícula, água fria no enxágue, massagem no couro, pontas ainda úmidas, não esfregar a toalha.
-- "mensagem_juliane" SEMPRE termina com (texto fixo): "Os produtos indicados são os que eu uso e confio nos resultados. Mas podem ser substituídos por produtos de outras marcas, desde que cumpram a mesma função."
-
-═══ "carta_ju" — MENSAGEM DA JU PARA VOCÊ (vai no TOPO do plano; é a copy mais importante) ═══
-Escreva uma carta pessoal, calorosa e emocional, em 1ª pessoa (a Juliane falando com a cliente pelo primeiro nome). NUNCA diga que foi feita por IA — é a Juliane mesmo. Siga EXATAMENTE esta estrutura e tom (personalize o conteúdo com o caso REAL dela — foto + quiz):
-1) Abertura: "Oi {primeiro nome}, tudo bem?"
-2) "Analisei bem o seu caso, vi todas as suas fotos e li suas respostas no meu questionário."
-3) O PORQUÊ (personalizado, sem culpar): "Seu cabelo está do jeito que está porque [explique de forma acolhedora a causa real ligada ao que ela marcou/mostrou — ex.: química + secador sem proteção ressecaram as pontas; falta de constância na hidratação; etc.]."
-4) TIRA A CULPA + ESPERANÇA: "Mas não se preocupe, o problema não é você — é que você não sabia o que ia funcionar ESPECIFICAMENTE pro seu cabelo. Agora eu escolhi a dedo pra você." Conte, em 1–2 frases, que a Ju também passou por isso (cabelo curto, com frizz, sem hidratação e com queda) e se sentia mal — criando identificação com o incômodo DELA.
-5) URGÊNCIA GENTIL: quanto antes começar, mais rápido o cabelo recupera; e que dá pra chegar na melhor versão do cabelo dela SEM gastar rios de dinheiro em salão, seguindo a ordem certa dos produtos que ela vai ver logo abaixo.
-6) Fechamento: convide a ver os produtos indicados e começar o tratamento. Termine com "Beijos da Ju 💛".
-Tamanho: 5 a 8 frases no total, quebrada em parágrafos curtos (use \\n entre eles). Acolhedora, nunca técnica, nunca robótica. É a carta que faz ela ACREDITAR que aquilo é tudo que ela precisa.
-
-FORMATO DA RESPOSTA — SOMENTE JSON válido, sem markdown:
+FORMATO DA RESPOSTA — SOMENTE JSON válido, sem markdown, SEM o campo "semanas":
 {
-  "carta_ju": "Oi {nome}, tudo bem?\\n\\nAnalisei bem o seu caso... (siga a estrutura da MENSAGEM DA JU acima; termine com 'Beijos da Ju 💛')",
-  "diagnostico": "2–3 frases ligando o que VÊ na foto ao que ela marcou no quiz, e qual é o foco nº1",
-  "tipo_cabelo": "Crespo|Cacheado|Ondulado|Liso",
-  "analise_foto": { "frizz_score": 0-100, "brilho_score": 0-100, "hidratacao_score": 0-100, "pontas_score": 0-100, "porosidade_aparente": "baixa|média|alta", "observacoes": "o que dá pra ver na foto" },
+  "tipo_cabelo": "Liso|Ondulado|Cacheado|Crespo",
+  "couro": "seco|normal|oleoso",
+  "lavagens_semana": 2,
   "incomodo_principal": "queda|crescimento|frizz|quebra|pontas|volume|ressecamento",
   "produto_ancora": "Nome exato do produto-âncora Ybera",
+  "cronograma": ["H","N","H","R","H","N","H","R","N","H","N","R"],
+  "diagnostico": "2–3 frases ligando o que VÊ na foto ao que ela marcou, e qual é o foco nº1",
+  "analise_foto": { "frizz_score": 1-5, "brilho_score": 1-5, "hidratacao_score": 1-5, "pontas_score": 1-5, "porosidade_aparente": "baixa|média|alta", "observacoes": "o que dá pra ver na foto (2–4 frases, tom da Ju falando com a cliente)" },
   "diarios": ["Óleo de Mirra: 2–3 gotas nas pontas com o cabelo úmido"],
-  "semanas": [
-    { "semana": 1, "foco": "...", "tarefas": [ {"dia":1,"titulo":"Shampoo de limpeza","descricao":"massageie o couro 1 min, enxágue"}, {"dia":1,"titulo":"Máscara de nutrição","descricao":"comprimentos e pontas, 15 min com touca"}, {"dia":1,"titulo":"Leave-in","descricao":"nos comprimentos, sem enxaguar"} ], "produtos": ["Nome exato"], "produto_ids": ["<uuid>"], "dica": "..." }
-  ],
-  "produtos_essenciais": ["os MESMOS 2 a 6 produtos da lista de compra, âncora primeiro — nunca mais que 6"],
-  "produtos_indicados": [
-    { "produto_id": "<uuid Ybera ÂNCORA>", "motivo": "Por que serve pro caso dela", "alternativa_id": "<uuid outra marca, ou null>" }
-  ],
-  "mensagem_juliane": "Mensagem pessoal mencionando algo específico da foto/quiz + a observação fixa no fim"
+  "produtos_indicados": [ { "produto_id": "<uuid Ybera ÂNCORA>", "motivo": "Por que serve pro caso dela", "alternativa_id": "<uuid outra marca, ou null>" } ],
+  "mensagem_juliane": "Mensagem pessoal citando algo da foto/quiz + a observação fixa no fim"
+}`;
+
+// mensagem_juliane SEMPRE termina com esta observação fixa (garantido em código):
+const NOTA_FIXA = 'Os produtos indicados são os que eu uso e confio nos resultados. Mas podem ser substituídos por produtos de outras marcas, desde que cumpram a mesma função.';
+
+// ── TEMPLATE: monta as 12 semanas a partir dos códigos da IA ─────────────────
+const MASKNAME: Record<string, string> = { H: 'Máscara de Hidratação', N: 'Máscara de Nutrição', R: 'Máscara de Reconstrução' };
+const FOCO_BASE: Record<string, string> = {
+  H: 'HIDRATAÇÃO — repor água, maciez e brilho nos comprimentos e pontas.',
+  N: 'NUTRIÇÃO — repor os lipídios (óleos naturais) que a química e o calor tiraram, controlando o frizz.',
+  R: 'RECONSTRUÇÃO — repor proteína e devolver força ao fio (combate a quebra). Só 1x no bloco.',
+};
+
+function washDaysFor(couro: string, lavagens?: number): number[] {
+  if (couro === 'oleoso') {
+    const n = Math.max(3, Math.min(4, lavagens || 4));
+    return [1, 3, 5, 7].slice(0, n);
+  }
+  if (couro === 'seco') return [1, 5];
+  return [1, 3, 5];
 }
 
-Gere exatamente 12 semanas (90 dias) com cronograma correto (hidratação → nutrição → reconstrução) SEMPRE ancorado no incômodo principal dela.`;
+// Descobre nome de shampoo e de finalizador/óleo entre os produtos escolhidos,
+// pra listar produtos coerentes em cada semana. Fallback pra rótulos genéricos.
+function resolveNames(
+  catalog: CatalogProduct[],
+  indicados: NonNullable<GeneratedPlan['produtos_indicados']>,
+): { shampoo: string; oleo: string } {
+  const byId = new Map(catalog.map(p => [p.id, p]));
+  const SHAMPOO_CATS = new Set(['limpeza', 'pre_shampoo']);
+  let shampoo = '';
+  let oleo = '';
+  for (const item of indicados) {
+    const p = byId.get(item.produto_id);
+    if (!p) continue;
+    if (!shampoo && SHAMPOO_CATS.has(p.category ?? '')) shampoo = p.name;
+    if (!oleo && /óleo|oleo|leave|s[ée]rum|finaliz|mirra/i.test(p.name)) oleo = p.name;
+  }
+  return { shampoo: shampoo || 'Shampoo de limpeza', oleo: oleo || 'Óleo de Mirra nas pontas' };
+}
+
+function assembleSemanas(
+  couro: string,
+  lavagens: number | undefined,
+  cronograma: string[],
+  names: { shampoo: string; oleo: string },
+): GeneratedPlan['semanas'] {
+  const codes = (Array.isArray(cronograma) && cronograma.length === 12)
+    ? cronograma.map(c => (['H', 'N', 'R'].includes(c) ? c : 'H'))
+    : ['H', 'N', 'H', 'R', 'H', 'N', 'H', 'R', 'N', 'H', 'N', 'R'];
+  const washDays = washDaysFor(couro, lavagens);
+  return codes.map((code, i) => {
+    const w = i + 1;
+    const mask = MASKNAME[code] || MASKNAME.H;
+    let foco = FOCO_BASE[code] || FOCO_BASE.H;
+    if (w === 1) foco = 'Diagnóstico + ' + foco;
+    if (w === 12) foco += ' Resultado consolidado — compare com o dia 1!';
+    const tarefas: Array<{ dia: number; titulo: string; descricao?: string }> = [];
+    washDays.forEach((dia, idx) => {
+      const trata = idx % 2 === 0;                       // dia de máscara alternado
+      const coWash = couro === 'seco' && idx > 0;        // couro seco: co-wash nos dias extras
+      tarefas.push(coWash
+        ? { dia, titulo: 'Lavagem suave (co-wash)', descricao: 'Só com a máscara/condicionador nos comprimentos, sem shampoo, pra não ressecar o couro seco. Massageie e enxágue bem.' }
+        : { dia, titulo: 'Shampoo de limpeza', descricao: couro === 'oleoso' ? 'Aplique na raiz, massageie 1–2 min com a polpa dos dedos e enxágue. Pode repetir se o couro estiver muito oleoso.' : 'Aplique na raiz, massageie 1 min e enxágue bem. Não esfregue os comprimentos.' });
+      if (trata) tarefas.push({ dia, titulo: mask, descricao: `Aplique do comprimento médio até as pontas, longe da raiz. Deixe agir 15 min com touca. Enxágue com água fria pra selar a cutícula.${code === 'R' ? ' Use no máximo 1x na semana pra não endurecer o fio.' : ''}` });
+      tarefas.push({ dia, titulo: 'Óleo de Mirra nas pontas', descricao: '2–3 gotas nas pontas ainda úmidas, antes do secador. Não enxágue — protege e sela a umidade.' });
+    });
+    const dica = code === 'R' ? 'A reconstrução repõe proteína, mas em excesso endurece — por isso entra 1x a cada bloco, nunca toda semana.'
+      : code === 'N' ? 'A nutrição repõe os óleos naturais do fio — combina bem com a toalha quente sobre a touca pra penetrar mais fundo.'
+      : 'Água fria no fim do enxágue fecha a cutícula e deixa o brilho maior. Vale o esforço!';
+    return {
+      semana: w, foco,
+      tarefas: tarefas.sort((a, b) => a.dia - b.dia),
+      produtos: [names.shampoo, mask, names.oleo],
+      dica,
+    };
+  });
+}
 
 function buildCatalogBlock(products: CatalogProduct[]): string {
   if (products.length === 0) {
@@ -156,61 +201,47 @@ function buildCatalogBlock(products: CatalogProduct[]): string {
     const star = p.is_priority ? '⭐ ' : '';
     return `- ${star}id: ${p.id} | nome: ${p.name} | marca: ${p.brand ?? 'Ybera'} | categoria: ${cat} | tipos: ${ht}`;
   }).join('\n');
-  return `\n\nCATÁLOGO DISPONÍVEL (use SOMENTE estes produtos). Os marcados com ⭐ são os MAIS VENDIDOS / de MAIOR impacto — prefira-os como âncora e complementos. Produtos SEM ⭐ só quando forem claramente melhores pro caso dela:\n${lines}`;
+  return `\n\nCATÁLOGO DISPONÍVEL (use SOMENTE estes produtos). Os marcados com ⭐ são os MAIS VENDIDOS / de MAIOR impacto — prefira-os como âncora e complementos:\n${lines}`;
 }
 
 function buildQuizBlock(quizAnswers: Record<string, unknown> | null): string {
   if (!quizAnswers) return '';
-  // Destaca o incômodo principal (campo "incomoda") — é o EIXO da escolha.
   const inc = quizAnswers['incomoda'];
   const incList = Array.isArray(inc) ? inc.map(String) : (inc ? [String(inc)] : []);
   const destaque = incList.length
-    ? `\n\n⚠️ O QUE MAIS INCOMODA ELA (EIXO DO PLANO — em ordem de prioridade): ${incList.join(', ')}\nO primeiro item (${incList[0]}) é o foco nº1 e define o produto-âncora.`
+    ? `\n\n⚠️ O QUE MAIS INCOMODA ELA (EIXO DO PLANO — em ordem de prioridade): ${incList.join(', ')}\nO primeiro item (${incList[0]}) é o foco nº1 e define o produto-âncora e o cronograma.`
     : '';
   return `${destaque}\n\nRESPOSTAS DO QUIZ (completo):\n${JSON.stringify(quizAnswers, null, 2)}`;
 }
 
 /**
  * Busca os produtos ativos do catálogo, priorizando os que casam com o tipo de cabelo.
- * Retorna até 30 produtos (suficiente pra diversificar nas 12 semanas).
  */
 async function loadCatalog(sb: SupabaseClient, hairType: string | null): Promise<CatalogProduct[]> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data } = await (sb.from('products') as any)
     .select('id,name,brand,category,hair_types,is_priority,is_ybera')
     .eq('active', true)
-    .is('parent_product_id', null)   // combos NÃO entram: são opção de compra do produto-base, exibidas na UI
+    .is('parent_product_id', null)
     .order('is_priority', { ascending: false })
     .limit(50);
   const all: CatalogProduct[] = (data ?? []) as CatalogProduct[];
   if (!hairType || all.length === 0) return all;
 
   const h = hairType.toLowerCase();
-  // Priorizar produtos cujo hair_types contenha o tipo da cliente.
   const matching = all.filter(p => (p.hair_types ?? []).some(t => t.toLowerCase() === h));
   const others = all.filter(p => !matching.includes(p));
   return [...matching, ...others].slice(0, 30);
 }
 
 interface GenerateOptions {
-  /** Foto em base64 (opcional — quando regenera um plano sem foto nova, busca da storage) */
   photoBase64?: string;
   photoMimeType?: string;
-  /** URL pública/assinada de uma foto já hospedada — usada quando regenera */
   photoUrl?: string;
-  /** Fotos extras (costas, raiz) por URL — entram na análise junto com a principal */
   extraPhotoUrls?: string[];
 }
 
-/**
- * Chama Claude com a foto + quiz + catálogo real e retorna o plano estruturado.
- * Não persiste nada — o caller decide o que fazer.
- */
-// Trava (não confia só no prompt) as regras de indicação:
-//  1) PRINCIPAL é SEMPRE Ybera — se o principal não for Ybera mas a alternativa for,
-//     troca; nunca deixa marca de fora como principal.
-//  2) ALTERNATIVA nunca é Ybera (alternativa = 2ª opção de OUTRA marca) → zera.
-//  3) NO MÁXIMO 1 shampoo/limpeza na lista (nem como alternativa).
+// Trava (não confia só no prompt) as regras de indicação de produto.
 function enforceProductRules(plan: GeneratedPlan, catalog: CatalogProduct[]): void {
   const list = Array.isArray(plan.produtos_indicados) ? plan.produtos_indicados : [];
   if (!list.length) return;
@@ -229,14 +260,10 @@ function enforceProductRules(plan: GeneratedPlan, catalog: CatalogProduct[]): vo
     let principal = item?.produto_id;
     let alt: string | null | undefined = item?.alternativa_id ?? null;
     if (!principal) continue;
-
-    // 1) principal sempre Ybera (troca com a alternativa se ela for a Ybera)
     if (!isYbera(principal) && isYbera(alt)) { const t = principal; principal = alt as string; alt = t; }
-    // 2) alternativa nunca é Ybera (é outra marca, mais barata)
     if (isYbera(alt)) alt = null;
-    // 3) no máximo 1 shampoo na lista; e alternativa do shampoo não é outro shampoo
     if (isShampoo(principal)) {
-      if (shampooSeen) continue;      // pula shampoo extra
+      if (shampooSeen) continue;
       shampooSeen = true;
       if (isShampoo(alt)) alt = null;
     }
@@ -245,6 +272,11 @@ function enforceProductRules(plan: GeneratedPlan, catalog: CatalogProduct[]): vo
   plan.produtos_indicados = out;
 }
 
+/**
+ * Chama a IA (constrained) com a foto + quiz + catálogo real e retorna o plano
+ * estruturado — a IA decide os códigos e escreve os textos únicos; as 12 semanas
+ * são montadas por template aqui. Não persiste nada.
+ */
 export async function generatePlanWithClaude(
   sb: SupabaseClient,
   args: {
@@ -258,12 +290,10 @@ export async function generatePlanWithClaude(
 ): Promise<GeneratedPlan> {
   const catalog = await loadCatalog(sb, args.hairType ?? null);
 
-  const fullPrompt = BASE_PROMPT + buildCatalogBlock(catalog) + buildQuizBlock(args.quizAnswers);
+  const fullPrompt = CONSTRAINED_PROMPT + buildCatalogBlock(catalog) + buildQuizBlock(args.quizAnswers);
 
   const hadPhoto = !!(args.photo.photoBase64 || args.photo.photoUrl || (args.photo.extraPhotoUrls?.some(Boolean)));
 
-  // Monta o content da mensagem. dropPhoto=true ignora as fotos (fallback quando a
-  // foto está quebrada/vazia ou a IA se recusa a analisá-la → gera só pelo quiz).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function buildContent(dropPhoto: boolean): any[] {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -283,7 +313,7 @@ export async function generatePlanWithClaude(
       content.push({ type: 'text', text: `Você recebeu ${nFotos} fotos do MESMO cabelo (geralmente: frente, costas e raiz/couro cabeludo). Analise TODAS juntas — a de costas mostra comprimento e pontas; a da raiz mostra oleosidade e couro cabeludo.` });
     }
     if (nFotos === 0) {
-      content.push({ type: 'text', text: 'SEM FOTO: a cliente NÃO enviou foto do cabelo. Baseie TODO o plano no questionário. Em "analise_foto" NÃO invente o que veria numa foto — preencha os scores com uma estimativa conservadora a partir das respostas dela e coloque em "observacoes": "Plano montado com base no seu questionário — a foto não foi enviada." A "mensagem_juliane" deve COMEÇAR dizendo com carinho que, como a foto não chegou, a Ju montou o plano pelas respostas do questionário, e convidar a enviar a foto depois pra ela ajustar os detalhes.' });
+      content.push({ type: 'text', text: 'SEM FOTO: a cliente NÃO enviou foto. Baseie TODO o plano no questionário. Em "analise_foto" preencha os scores com uma estimativa conservadora a partir das respostas e coloque em "observacoes": "Plano montado com base no seu questionário — a foto não foi enviada." A "mensagem_juliane" deve COMEÇAR dizendo com carinho que, como a foto não chegou, a Ju montou o plano pelas respostas, e convidar a enviar a foto depois pra ela ajustar.' });
     }
     content.push({ type: 'text', text: fullPrompt });
     return content;
@@ -292,14 +322,9 @@ export async function generatePlanWithClaude(
   const apiKey = process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('OPENROUTER_API_KEY não configurado');
 
-  // As 12 semanas geram um JSON grande (~14k+ chars). max_tokens precisa de
-  // FOLGA: com 6000 a resposta truncava (~13,8k chars em PT) no meio do array
-  // → "Expected ',' or ']'" — causa nº1 dos planos travados. 16000 cobre as 12
-  // semanas com sobra e cabe nos 300s de maxDuration. Tentamos até 2x: se a IA
-  // devolver JSON quebrado/truncado, regeramos uma vez antes de desistir.
-  // 22000: planos com 3 incômodos (queda+frizz+pontas) + cronograma ficam mais
-  // longos e truncavam em 16k → 2 retries → 504. Folga maior = completa de 1ª.
-  const MAX_TOKENS = 22000;
+  // Saída agora é PEQUENA (só decisões + carta): ~600–1000 tokens. Folga de 4000
+  // cobre até cartas longas com sobra e nunca trunca (as 12 semanas não saem daqui).
+  const MAX_TOKENS = 4000;
 
   async function requestPlan(dropPhoto: boolean): Promise<GeneratedPlan> {
     const controller = new AbortController();
@@ -327,8 +352,6 @@ export async function generatePlanWithClaude(
 
     if (!response.ok) {
       const errBody = await response.text();
-      // Mensagem amigável quando a chave do OpenRouter ficou sem crédito —
-      // o problema é da conta (limite diário / créditos), não do código.
       if (response.status === 402) {
         let detail = '';
         try { detail = (JSON.parse(errBody)?.error?.message ?? '').slice(0, 280); } catch { /* ignore */ }
@@ -346,32 +369,59 @@ export async function generatePlanWithClaude(
     if (aiResult.usage) { try { opts?.onUsage?.(aiResult.usage); } catch { /* ignore */ } console.log('[plan-usage]', JSON.stringify(aiResult.usage)); }
     const finishReason = aiResult.choices?.[0]?.finish_reason;
     const text = aiResult.choices?.[0]?.message?.content || '';
-    // Se a resposta foi cortada por tamanho, o JSON está incompleto — não
-    // adianta tentar fazer parse, melhor sinalizar pra repetir.
     if (finishReason === 'length') throw new Error('Resposta da IA truncada (finish_reason=length)');
 
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('JSON do plano não encontrado na resposta da IA');
 
-    const plan = JSON.parse(jsonMatch[0]) as GeneratedPlan;
-    if (!Array.isArray(plan.semanas) || plan.semanas.length === 0) {
-      throw new Error('Plano sem semanas válidas');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw = JSON.parse(jsonMatch[0]) as any;
+
+    // Normaliza produtos_indicados e aplica as travas de marca/shampoo ANTES de
+    // montar as semanas (os nomes das semanas saem daqui).
+    const planShell: GeneratedPlan = {
+      diagnostico: String(raw.diagnostico ?? ''),
+      tipo_cabelo: String(raw.tipo_cabelo ?? args.hairType ?? 'Liso'),
+      analise_foto: raw.analise_foto ?? undefined,
+      incomodo_principal: raw.incomodo_principal ?? undefined,
+      produto_ancora: raw.produto_ancora ?? undefined,
+      semanas: [],
+      produtos_essenciais: [],
+      diarios: Array.isArray(raw.diarios) ? raw.diarios.filter(Boolean) : [],
+      produtos_indicados: Array.isArray(raw.produtos_indicados) ? raw.produtos_indicados : [],
+      carta_ju: typeof raw.carta_ju === 'string' ? raw.carta_ju : undefined,
+      mensagem_juliane: String(raw.mensagem_juliane ?? ''),
+    };
+    enforceProductRules(planShell, catalog);
+
+    // Monta as 12 semanas por TEMPLATE a partir dos códigos da IA.
+    const couro = ['seco', 'normal', 'oleoso'].includes(raw.couro)
+      ? raw.couro
+      : (args.quizAnswers?.['oleosidade'] === 'oleoso' ? 'oleoso' : args.quizAnswers?.['oleosidade'] === 'seco' ? 'seco' : 'normal');
+    const names = resolveNames(catalog, planShell.produtos_indicados ?? []);
+    planShell.semanas = assembleSemanas(couro, Number(raw.lavagens_semana) || undefined, raw.cronograma, names);
+    planShell.produtos_essenciais = (planShell.produtos_indicados ?? [])
+      .map(pi => catalog.find(c => c.id === pi.produto_id)?.name)
+      .filter((n): n is string => !!n);
+
+    // Garante a observação fixa no fim da mensagem_juliane.
+    if (!planShell.mensagem_juliane.includes('podem ser substituídos')) {
+      planShell.mensagem_juliane = (planShell.mensagem_juliane ? planShell.mensagem_juliane + '\n\n' : '') + NOTA_FIXA;
     }
-    enforceProductRules(plan, catalog);
-    return plan;
+
+    if (!Array.isArray(planShell.semanas) || planShell.semanas.length !== 12) {
+      throw new Error('Falha ao montar as 12 semanas do cronograma');
+    }
+    return planShell;
   }
 
   let lastErr: unknown;
   for (let attempt = 1; attempt <= 2; attempt++) {
-    // 2ª tentativa: se a cliente TINHA foto, tenta SEM ela — cobre foto vazia/
-    // corrompida (0 bytes) ou recusa da IA em analisar a imagem, que travava o
-    // plano em "JSON não encontrado". Sem foto, gera pelo quiz e não trava.
     const dropPhoto = attempt === 2 && hadPhoto;
     try {
       return await requestPlan(dropPhoto);
     } catch (e) {
       lastErr = e;
-      // Erro de crédito (402) não se resolve repetindo — propaga na hora.
       if (e instanceof Error && e.message.includes('HTTP 402')) throw e;
     }
   }
@@ -390,16 +440,12 @@ export async function savePlanToDb(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (sb.from('hair_plans') as any).delete().eq('user_id', userId);
 
-  // Nota padrão da Juliane (mesma dos planos revisados manualmente) — já vem
-  // preenchida na semana 1 pra não precisar adicionar à mão na aprovação. Se vier
-  // uma nota extra (ex.: plano feito sem foto), ela aparece ANTES da padrão.
   const NOTA_PADRAO = 'Os produtos indicados são os que eu uso e confio nos resultados. Mas podem ser substituídos por produtos de outras marcas, desde que cumpram a mesma função.';
   const NOTA_SEMANA1 = opts?.extraNote ? `${opts.extraNote}\n\n${NOTA_PADRAO}` : NOTA_PADRAO;
   const rows = plan.semanas.map(s => ({
     user_id: userId,
     week_number: s.semana,
     focus: s.foco,
-    // Normaliza pro shape que o app espera ({day,title,description}). Ordena por dia.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     tasks: (Array.isArray(s.tarefas) ? s.tarefas : []).map((t: any, i: number) =>
       typeof t === 'string'
@@ -414,8 +460,6 @@ export async function savePlanToDb(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (sb.from('hair_plans') as any).insert(rows);
 
-  // Rituais de TODO DIA (óleo etc.) — salvos 1x no perfil; o app renderiza em
-  // todos os dias. Evita repetir a mesma tarefa 84x (corte de custo, sem perder UX).
   const diarios = Array.isArray(plan.diarios) ? plan.diarios.filter(Boolean) : [];
   const cartaJu = typeof plan.carta_ju === 'string' && plan.carta_ju.trim() ? plan.carta_ju.trim() : null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
