@@ -43,7 +43,6 @@ export async function POST(req: NextRequest) {
     mimetype,
     instance_name,
     scheduled_at,
-    mention_all,
   } = body
 
   if (!message?.trim()) {
@@ -77,7 +76,7 @@ export async function POST(req: NextRequest) {
       status:        isScheduled ? 'scheduled' : 'sending',
       scheduled_at:  isScheduled ? scheduled_at : null,
       total_groups:  groups?.length ?? 0,
-      mention_all:   !!mention_all,
+      mention_all:   false,  // @all desligado (anti-ban) — nunca gravamos true
     })
     .select()
     .single()

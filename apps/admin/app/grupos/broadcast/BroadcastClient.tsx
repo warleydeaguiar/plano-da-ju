@@ -214,7 +214,7 @@ export default function BroadcastClient({
   const [instanceName, setInstanceName] = useState('')
   const [scheduleMode, setScheduleMode] = useState(false)
   const [scheduledAt, setScheduledAt]   = useState('')
-  const [mentionAll, setMentionAll]     = useState(false)
+  const [mentionAll] = useState(false)  // @all desativado (anti-ban) — nunca liga
   const [alsoEmail, setAlsoEmail]       = useState(false)
   const [emailSubject, setEmailSubject] = useState('')
 
@@ -526,22 +526,15 @@ export default function BroadcastClient({
               )}
             </div>
 
-            {/* Mencionar todos (@all) */}
-            <div style={{ background: mentionAll ? accent + '08' : '#F9F9FC', border: `1px solid ${mentionAll ? accent + '30' : '#EDE0D2'}`, borderRadius: 12, padding: '14px 16px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
-                <div onClick={() => setMentionAll(v => !v)}
-                  style={{ width: 44, height: 24, borderRadius: 12, cursor: 'pointer', transition: 'background .2s', background: mentionAll ? accent : '#D0D0D8', position: 'relative', flexShrink: 0 }}>
-                  <div style={{ position: 'absolute', top: 3, left: mentionAll ? 22 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left .2s', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
+            {/* Mencionar todos (@all) — DESATIVADO (anti-ban) */}
+            <div style={{ background: '#FBF2E2', border: '1px solid #E7C98A', borderRadius: 12, padding: '14px 16px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <span style={{ fontSize: 18, lineHeight: 1, flexShrink: 0 }}>🔕</span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#2A1E2C' }}>Menção a todos (@all) desativada</div>
+                <div style={{ fontSize: 11, color: gray, marginTop: 2, lineHeight: 1.45 }}>
+                  Marcar todos os membros é o principal motivo de bloqueio do número no WhatsApp — por isso os disparos com @all foram desligados.
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#2A1E2C' }}>
-                    Mencionar todos do grupo <span style={{ color: accent, fontWeight: 800 }}>@all</span>
-                  </div>
-                  <div style={{ fontSize: 11, color: gray, marginTop: 2, lineHeight: 1.4 }}>
-                    Todos os membros recebem notificação de menção. Use com moderação para não saturar.
-                  </div>
-                </div>
-              </label>
+              </div>
             </div>
 
             {/* Também por email */}

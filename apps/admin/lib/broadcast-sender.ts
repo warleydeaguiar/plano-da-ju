@@ -11,9 +11,11 @@ const rand = (min: number, max: number) => Math.floor(min + Math.random() * (max
  * chama de novo e retoma de onde parou — espalhando o envio por vários minutos
  * em vez de disparar tudo de uma vez (que é o que bane o número).
  */
-const BATCH_SIZE = 4              // grupos por execução (cabe no maxDuration de 300s)
-const MIN_GAP_MS = 25_000         // delay mínimo ENTRE grupos (~25s)
-const MAX_GAP_MS = 50_000         // delay máximo ENTRE grupos (~50s)
+// Com UM único número não-oficial pra 34 grupos, o ritmo tem que ser BEM lento
+// (o WhatsApp bane disparo em rajada). Lotes pequenos + gaps longos; o cron retoma.
+const BATCH_SIZE = 3              // grupos por execução (3 × ~60s < maxDuration 300s)
+const MIN_GAP_MS = 30_000         // delay mínimo ENTRE grupos (~30s)
+const MAX_GAP_MS = 60_000         // delay máximo ENTRE grupos (~60s)
 
 /** Expande spintax {a|b|c} escolhendo uma opção aleatória por ocorrência, para
  *  que a mensagem NÃO seja byte-idêntica em todos os grupos (padrão de spam). */
@@ -95,7 +97,8 @@ export async function executeBroadcast(broadcastId: string) {
   const media = (broadcast.media_url as string | null) ?? null
   const mediaType = (broadcast.media_type as string | null) ?? null
   const instanceName = (broadcast.instance_name as string) ?? 'grupos-promo'
-  const mentionAll = !!broadcast.mention_all
+  // "Mencionar todos" (mentionsEveryOne) fica SEMPRE DESLIGADO — é o gatilho nº1
+  // de ban do WhatsApp em grupos. Ignoramos o que estiver salvo no broadcast.
 
   // 5. Envia o lote com delay humano entre cada grupo
   let success = 0
@@ -117,17 +120,28 @@ export async function executeBroadcast(broadcastId: string) {
 
     try {
       const text = spin(message)
-      if (mediaType && media) {
-        const mime = mediaType === 'image' ? 'image/jpeg'
-                   : mediaType === 'video' ? 'video/mp4'
-                   : 'application/octet-stream'
-        await sendMediaToGroup(group.jid, media, mediaType as 'image' | 'video' | 'document', mime, '', instanceName, mentionAll)
-        if (text.trim()) {
-          await sleep(rand(1500, 4000))
-          await sendTextToGroup(group.jid, text, instanceName, mentionAll)
+      const hasText = !!text.trim()
+      const hasMedia = !!(mediaType && media)
+      const mime = mediaType === 'image' ? 'image/jpeg'
+                 : mediaType === 'video' ? 'video/mp4'
+                 : 'application/octet-stream'
+
+      if (hasText) {
+        // TEXTO é o principal (leve e confiável). Sempre SEM menção-todos.
+        await sendTextToGroup(group.jid, text, instanceName, false)
+        // MÍDIA é BEST-EFFORT: se der timeout (throttle do WhatsApp), NÃO derruba
+        // o grupo — o texto já chegou. Antes 1 timeout de mídia perdia o grupo todo.
+        if (hasMedia) {
+          try {
+            await sleep(rand(1500, 4000))
+            await sendMediaToGroup(group.jid, media, mediaType as 'image' | 'video' | 'document', mime, '', instanceName, false)
+          } catch (mErr) {
+            console.warn('[broadcast] mídia falhou (texto entregue):', String(mErr).slice(0, 90))
+          }
         }
-      } else {
-        await sendTextToGroup(group.jid, text, instanceName, mentionAll)
+      } else if (hasMedia) {
+        // Broadcast só de mídia — aí a mídia é o conteúdo (obrigatória).
+        await sendMediaToGroup(group.jid, media, mediaType as 'image' | 'video' | 'document', mime, '', instanceName, false)
       }
       await recordResult(sb, broadcastId, group.id, 'ok')
       success++
