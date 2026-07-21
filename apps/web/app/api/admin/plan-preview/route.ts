@@ -55,9 +55,13 @@ export async function GET(req: NextRequest) {
     const list: any[] = [];
     for (const r of rec) {
       const main = byId.get(r?.produto_id);
-      if (main && !list.find(x => x.id === main.id)) list.push({ ...main, motivo: r?.motivo ?? null });
+      if (!main || list.find(x => x.id === main.id)) continue;
+      // Alternativa (outra marca, mais barata) ANINHADA no principal — nunca card solto.
       const alt = r?.alternativa_id ? byId.get(r.alternativa_id) : null;
-      if (alt && !list.find(x => x.id === alt.id)) list.push({ ...alt, motivo: null });
+      list.push({
+        ...main, motivo: r?.motivo ?? null,
+        alternativa: alt ? { name: alt.name, brand: alt.brand, affiliate_url: alt.affiliate_url } : null,
+      });
     }
     if (list.length) {
       const baseIds = list.map(x => x.id);
