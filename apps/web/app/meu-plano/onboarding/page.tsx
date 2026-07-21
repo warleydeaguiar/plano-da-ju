@@ -111,6 +111,19 @@ export default function OnboardingPage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   );
 
+  // Alguns access_tokens salvos no navegador chegavam MALFORMADOS ao servidor
+  // (o Auth recusava com "token is malformed" → 401 no salvar/foto). Antes de
+  // qualquer chamada autenticada, forçamos um refresh pra garantir um token novo
+  // e bem-formado. Se o refresh falhar, cai no token atual (não piora nada).
+  async function getFreshToken(fallback: string): Promise<string> {
+    try {
+      const { data } = await supabase.auth.refreshSession();
+      return data.session?.access_token ?? fallback;
+    } catch {
+      return fallback;
+    }
+  }
+
   // Auth check + pula onboarding se já tem foto
   useEffect(() => {
     (async () => {
@@ -158,12 +171,15 @@ export default function OnboardingPage() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { router.replace('/login'); return; }
+      const accessToken = await getFreshToken(session.access_token);
       const res = await fetch('/api/meu-plano/quiz-extra', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify({ answers: quizAnswers }),
       });
-      if (!res.ok) { setError('Não consegui salvar suas respostas. Tente de novo.'); return; }
+      // Não bloqueia o cadastro se o save falhar — as respostas ajudam, mas a
+      // cliente PRECISA conseguir avançar pra foto (o que gera o plano).
+      if (!res.ok) { console.error('[onboarding/quiz] save falhou', res.status); }
       setStep('photo');
     } catch {
       setError('Falha de conexão. Tente de novo.');
@@ -179,7 +195,8 @@ export default function OnboardingPage() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { router.replace('/login'); return; }
-      const authH = { Authorization: `Bearer ${session.access_token}` };
+      const accessToken = await getFreshToken(session.access_token);
+      const authH = { Authorization: `Bearer ${accessToken}` };
 
       // Comprime as três fotos no navegador (rápido + cabe no limite da Vercel).
       const [frontC, backC, rootC] = await Promise.all([compressImage(photoFile), compressImage(backFile), compressImage(rootFile)]);
