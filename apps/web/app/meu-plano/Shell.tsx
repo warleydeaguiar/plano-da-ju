@@ -5,9 +5,10 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { createBrowserClient } from '@supabase/ssr';
 import { T, fonts } from './theme';
-import { IconHome, IconCalendar, IconList, IconChart, IconSparkles } from './icons';
+import { IconHome, IconCalendar, IconList, IconChart, IconSparkles, IconWhatsApp } from './icons';
 import InstallPrompt from './InstallPrompt';
 import { previewCtx, previewHref } from './preview';
+import { juWhatsappLink } from '../../lib/contact';
 
 const TABS = [
   { href: '/meu-plano',           Icon: IconHome,     label: 'Início'    },
@@ -137,6 +138,24 @@ export default function MeuPlanoShell({ children }: { children: React.ReactNode 
             })}
           </div>
         </nav>
+      )}
+
+      {/* Botão flutuante do WhatsApp da Ju — em (quase) todas as páginas, pra
+          fomentar a conversa da cliente com a Juliane. Some no onboarding/check-in
+          (nav escondida) e no modo preview do admin. */}
+      {!hideNav && !pv && (
+        <a href={juWhatsappLink()} target="_blank" rel="noopener noreferrer"
+          aria-label="Falar com a Juliane no WhatsApp"
+          style={{
+            position: 'fixed', right: 16, zIndex: 99,
+            bottom: 'calc(88px + env(safe-area-inset-bottom, 0px))',
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            background: '#25D366', color: '#fff', textDecoration: 'none',
+            padding: '11px 16px 11px 13px', borderRadius: 999,
+            boxShadow: '0 6px 20px rgba(37,211,102,0.45)', fontWeight: 800, fontSize: 13.5,
+          }}>
+          <IconWhatsApp size={22} color="#fff" /> Falar com a Ju
+        </a>
       )}
 
       {!hideNav && <InstallPrompt />}

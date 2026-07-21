@@ -898,21 +898,6 @@ export default function PlanoPage() {
         />
 
       </div>
-
-      {/* Botão flutuante — WhatsApp da Juliane sempre à mão (dúvidas do plano/produtos → vendas) */}
-      {!isPreview && (
-        <a href={juWhatsappLink()} target="_blank" rel="noopener noreferrer"
-          aria-label="Falar com a Juliane no WhatsApp"
-          style={{
-            position: 'fixed', right: 16, bottom: 92, zIndex: 60,
-            display: 'inline-flex', alignItems: 'center', gap: 8,
-            background: '#25D366', color: '#fff', textDecoration: 'none',
-            padding: '11px 16px 11px 13px', borderRadius: 999,
-            boxShadow: '0 6px 20px rgba(37,211,102,0.45)', fontWeight: 800, fontSize: 13.5,
-          }}>
-          <IconWhatsApp size={22} color="#fff" /> Falar com a Ju
-        </a>
-      )}
     </div>
   );
 }
