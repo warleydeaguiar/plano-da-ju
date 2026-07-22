@@ -66,7 +66,7 @@ Coloque o nome dele em "produto_ancora" e o incômodo nº1 em "incomodo_principa
 
 ═══ PASSO 3 — COURO define lavagem (NÃO invente) ═══
 Classifique o couro (foto + quiz) em "couro": oleoso | normal | seco. Isso define "lavagens_semana":
-- oleoso → 4 (lava quase todo dia).  • normal → 3.  • seco → 2 (co-wash nos dias extras).
+- oleoso → 4 (lava quase todo dia).  • normal → 3.  • seco → 2 (lava menos vezes; TODA lavagem tem shampoo).
 Só fale de caspa/oleosidade/limpeza profunda se ESTIVER no quiz ou VISÍVEL na foto.
 
 ═══ PASSO 4 — CRONOGRAMA (12 CÓDIGOS) ═══
@@ -158,6 +158,7 @@ function assembleSemanas(
   lavagens: number | undefined,
   cronograma: string[],
   names: { shampoo: string; oleo: string },
+  temQueda: boolean = false,
 ): GeneratedPlan['semanas'] {
   const codes = (Array.isArray(cronograma) && cronograma.length === 12)
     ? cronograma.map(c => (['H', 'N', 'R'].includes(c) ? c : 'H'))
@@ -172,12 +173,20 @@ function assembleSemanas(
     const tarefas: Array<{ dia: number; titulo: string; descricao?: string }> = [];
     washDays.forEach((dia, idx) => {
       const trata = idx % 2 === 0;                       // dia de máscara alternado
-      const coWash = couro === 'seco' && idx > 0;        // couro seco: co-wash nos dias extras
-      tarefas.push(coWash
-        ? { dia, titulo: 'Lavagem suave (co-wash)', descricao: 'Só com a máscara/condicionador nos comprimentos, sem shampoo, pra não ressecar o couro seco. Massageie e enxágue bem.' }
-        : { dia, titulo: 'Shampoo de limpeza', descricao: couro === 'oleoso' ? 'Aplique na raiz, massageie 1–2 min com a polpa dos dedos e enxágue. Pode repetir se o couro estiver muito oleoso.' : 'Aplique na raiz, massageie 1 min e enxágue bem. Não esfregue os comprimentos.' });
+      // TODA lavagem leva SHAMPOO (regra da Juliane: "lavagem precisa ter shampoo
+      // sempre"). Couro seco ganha instrução mais suave, mas nunca co-wash sem shampoo.
+      tarefas.push({ dia, titulo: 'Shampoo de limpeza', descricao:
+        couro === 'oleoso' ? 'Aplique na raiz, massageie 1–2 min com a polpa dos dedos e enxágue. Pode repetir se o couro estiver muito oleoso.'
+        : couro === 'seco' ? 'Aplique só na raiz e massageie de leve, sem esfregar os comprimentos, e enxágue bem. Toda lavagem leva shampoo — ele limpa o couro; a maciez volta com a máscara logo em seguida.'
+        : 'Aplique na raiz, massageie 1 min e enxágue bem. Não esfregue os comprimentos.' });
+      // Kit antiqueda 1x na semana — só pra quem queixa queda/crescimento (sugestão da Juliane).
+      if (temQueda && idx === 0) tarefas.push({ dia, titulo: 'Kit antiqueda (1x na semana)', descricao: 'No dia da lavagem, use o kit antiqueda no couro cabeludo massageando bem por 1–2 min. Pelo menos 1x na semana pra estimular a raiz e reduzir a queda.' });
       if (trata) tarefas.push({ dia, titulo: mask, descricao: `Aplique do comprimento médio até as pontas, longe da raiz. Deixe agir 15 min com touca. Enxágue com água fria pra selar a cutícula.${code === 'R' ? ' Use no máximo 1x na semana pra não endurecer o fio.' : ''}` });
-      tarefas.push({ dia, titulo: 'Óleo de Mirra nas pontas', descricao: '2–3 gotas nas pontas ainda úmidas, antes do secador. Não enxágue — protege e sela a umidade.' });
+      // Leave-in + Óleo de finalização + Tônico Vello — em TODA lavagem, em todos os
+      // planos (regra da Juliane: "ta faltando indicar o leavin e o tônico").
+      tarefas.push({ dia, titulo: 'Leave-in de finalização', descricao: 'Nos comprimentos e pontas ainda úmidos, antes de finalizar. Não enxágue — dá deslize, controla o frizz e protege o fio ao longo do dia.' });
+      tarefas.push({ dia, titulo: 'Óleo de Mirra nas pontas', descricao: '2–3 gotas nas pontas úmidas, depois do leave-in. Não enxágue — sela a umidade e dá brilho.' });
+      tarefas.push({ dia, titulo: 'Tônico Vello no couro', descricao: 'Aplique o Soro Vello direto no couro limpo e massageie 1 min com a polpa dos dedos. Não enxágue — fortalece a raiz e estimula o crescimento.' });
     });
     const dica = code === 'R' ? 'A reconstrução repõe proteína, mas em excesso endurece — por isso entra 1x a cada bloco, nunca toda semana.'
       : code === 'N' ? 'A nutrição repõe os óleos naturais do fio — combina bem com a toalha quente sobre a touca pra penetrar mais fundo.'
@@ -399,7 +408,13 @@ export async function generatePlanWithClaude(
       ? raw.couro
       : (args.quizAnswers?.['oleosidade'] === 'oleoso' ? 'oleoso' : args.quizAnswers?.['oleosidade'] === 'seco' ? 'seco' : 'normal');
     const names = resolveNames(catalog, planShell.produtos_indicados ?? []);
-    planShell.semanas = assembleSemanas(couro, Number(raw.lavagens_semana) || undefined, raw.cronograma, names);
+    // Queixa de queda/crescimento? (incômodo principal OU marcado no quiz) → ativa o
+    // kit antiqueda 1x/semana no cronograma (sugestão da Juliane).
+    const incomodaArr = Array.isArray(args.quizAnswers?.['incomoda'])
+      ? (args.quizAnswers!['incomoda'] as unknown[]).map(String) : [];
+    const temQueda = /queda|cresc/i.test(String(planShell.incomodo_principal ?? ''))
+      || incomodaArr.some(x => /queda|cresc/i.test(x));
+    planShell.semanas = assembleSemanas(couro, Number(raw.lavagens_semana) || undefined, raw.cronograma, names, temQueda);
     planShell.produtos_essenciais = (planShell.produtos_indicados ?? [])
       .map(pi => catalog.find(c => c.id === pi.produto_id)?.name)
       .filter((n): n is string => !!n);

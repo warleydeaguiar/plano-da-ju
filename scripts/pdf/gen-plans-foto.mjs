@@ -128,19 +128,22 @@ function buildSemanas(q) {
   const semanas = []
   for (let w = 1; w <= 12; w++) {
     const mask = MASKS[CICLO[w - 1]]
+    const incomoda = Array.isArray(q.incomoda) ? q.incomoda.map(String) : (q.incomoda ? [String(q.incomoda)] : [])
+    const temQueda = incomoda.some(x => /queda|cresc/i.test(x))
     const tarefas = []
     washDays.forEach((dia, idx) => {
       const trata = idx % 2 === 0
-      const semShampoo = couro === 'seco' && idx > 0
-      if (semShampoo) {
-        tarefas.push({ dia, titulo: 'Lavagem suave (co-wash)', descricao: 'Lave só com a máscara/condicionador nos comprimentos, sem shampoo, pra não ressecar o couro seco. Massageie e enxágue bem.' })
-      } else {
-        tarefas.push({ dia, titulo: 'Shampoo de limpeza', descricao: q.oleosidade === 'oleoso' ? 'Aplique na raiz, massageie 1–2 min com a polpa dos dedos e enxágue. Pode repetir se o couro estiver muito oleoso.' : 'Aplique na raiz, massageie 1 min e enxágue bem. Não esfregue os comprimentos.' })
+      // TODA lavagem tem shampoo (regra da Juliane) — couro seco só ganha instrução mais suave.
+      tarefas.push({ dia, titulo: 'Shampoo de limpeza', descricao: couro === 'oleoso' ? 'Aplique na raiz, massageie 1–2 min com a polpa dos dedos e enxágue. Pode repetir se o couro estiver muito oleoso.' : couro === 'seco' ? 'Aplique só na raiz e massageie de leve, sem esfregar os comprimentos, e enxágue bem. Toda lavagem leva shampoo — ele limpa o couro; a maciez volta com a máscara logo em seguida.' : 'Aplique na raiz, massageie 1 min e enxágue bem. Não esfregue os comprimentos.' })
+      if (temQueda && idx === 0) {
+        tarefas.push({ dia, titulo: 'Kit antiqueda (1x na semana)', descricao: 'No dia da lavagem, use o kit antiqueda no couro cabeludo massageando bem por 1–2 min. Pelo menos 1x na semana pra estimular a raiz e reduzir a queda.' })
       }
       if (trata) {
         tarefas.push({ dia, titulo: mask, descricao: `Aplique do comprimento médio até as pontas, longe da raiz. Deixe agir 15 min com touca. Enxágue com água fria pra selar a cutícula.${CICLO[w - 1] === 'R' ? ' Use no máximo 1x na semana pra não endurecer o fio.' : ''}` })
       }
-      tarefas.push({ dia, titulo: 'Óleo de Mirra nas pontas', descricao: '2–3 gotas nas pontas ainda úmidas, antes do secador. Não enxágue — protege e sela a umidade.' })
+      tarefas.push({ dia, titulo: 'Leave-in de finalização', descricao: 'Nos comprimentos e pontas ainda úmidos, antes de finalizar. Não enxágue — dá deslize, controla o frizz e protege o fio ao longo do dia.' })
+      tarefas.push({ dia, titulo: 'Óleo de Mirra nas pontas', descricao: '2–3 gotas nas pontas úmidas, depois do leave-in. Não enxágue — sela a umidade e dá brilho.' })
+      tarefas.push({ dia, titulo: 'Tônico Vello no couro', descricao: 'Aplique o Soro Vello direto no couro limpo e massageie 1 min com a polpa dos dedos. Não enxágue — fortalece a raiz e estimula o crescimento.' })
     })
     const dica = CICLO[w - 1] === 'R'
       ? 'A reconstrução repõe proteína, mas em excesso endurece — por isso entra 1x a cada bloco, nunca toda semana.'
