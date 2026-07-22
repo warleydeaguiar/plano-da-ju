@@ -27,7 +27,7 @@ export function buildHtml(data) {
       <div class="cover-txt">
         <div class="cover-kicker">Plano Capilar Personalizado</div>
         <h1>${esc(first)}</h1>
-        <div class="cover-sub">Feito à mão pela <b>Juliane Cost</b><br>Tricologista · Especialista capilar Ybera Paris</div>
+        <div class="cover-sub">Feito à mão pela <b>Juliane Cost</b><br>Tricologista · Especialista em saúde capilar</div>
         <div class="cover-badge">💛 sua transformação em 90 dias</div>
       </div>
     </section>`
