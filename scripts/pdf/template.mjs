@@ -2,6 +2,8 @@
 // Recebe `data` já com imagens resolvidas (data URIs otimizados) e devolve o HTML.
 // A orquestração (fetch/otimização de imagem, datas, dados do banco) fica em render-plan.mjs.
 
+import { ESCOVA_IMAGES } from './escovas-images.mjs'
+
 const IG = 'https://instagram.com/julianecost'
 const GRUPO = 'https://planodaju.julianecost.com/g/entrar'
 const DIAS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
@@ -334,16 +336,16 @@ export function buildHtml(data) {
 
   // Escovas & acessórios (indicações com busca no Mercado Livre)
   const escovas = () => {
-    const brush = (nome, tag, desc, itens, buscar) => `<div class="brush"><div class="brush-h">${tag ? `<span class="brush-tag">${esc(tag)}</span>` : ''}<b>${esc(nome)}</b></div><p>${esc(desc)}</p><ul>${itens.map(i => `<li>${esc(i)}</li>`).join('')}</ul>${buscar ? `<a class="buy sm" href="${mlSearch(buscar)}">Buscar no Mercado Livre →</a>` : ''}</div>`
+    const brush = (nome, tag, desc, itens, buscar, imgKey) => `<div class="brush">${imgKey && ESCOVA_IMAGES[imgKey] ? `<img class="brush-photo" src="${ESCOVA_IMAGES[imgKey]}" alt="${esc(nome)}"/>` : ''}<div class="brush-body"><div class="brush-h">${tag ? `<span class="brush-tag">${esc(tag)}</span>` : ''}<b>${esc(nome)}</b></div><p>${esc(desc)}</p><ul>${itens.map(i => `<li>${esc(i)}</li>`).join('')}</ul>${buscar ? `<a class="buy sm" href="${mlSearch(buscar)}">Buscar no Mercado Livre →</a>` : ''}</div></div>`
     return `
     <section class="sheet pad break-before">
       <div class="label">Ferramentas</div>
       <h2 class="serif-h">As melhores escovas</h2>
       <p class="lead">A escova certa diminui a quebra, reduz o frizz e facilita o desembaraço. A errada faz o contrário: arranca fios e favorece pontas duplas.</p>
-      ${brush('Tangle Teezer', '★ Minha favorita', 'Uma das melhores do mundo pra desembaraçar sem puxar os fios. Pode usar no cabelo molhado.', ['Reduz a quebra', 'Ótima pra fios finos, loiros e com química'], 'tangle teezer escova')}
-      ${brush('Michel Mercier', '★', 'Pensada pra diferentes espessuras. Muito confortável e puxa menos os fios.', ['Ótima pra cabelos longos e grossos', 'Diminui bastante a quebra'], 'escova michel mercier')}
-      ${brush('Wet Brush', null, 'Ótimo custo-benefício, cerdas extremamente flexíveis. Desembaraça molhado sem machucar o couro.', ['Serve pra todos os tipos de cabelo'], 'wet brush escova')}
-      ${brush('Escovas de bambu', null, 'Pra quem prefere materiais naturais: massageiam o couro e produzem menos eletricidade estática.', ['Ajudam a reduzir o frizz', 'Muito resistentes'], 'escova de bambu cabelo')}
+      ${brush('Tangle Teezer', '★ Minha favorita', 'Uma das melhores do mundo pra desembaraçar sem puxar os fios. Pode usar no cabelo molhado.', ['Reduz a quebra', 'Ótima pra fios finos, loiros e com química'], 'tangle teezer escova', 'tangle')}
+      ${brush('Michel Mercier', '★', 'Pensada pra diferentes espessuras. Muito confortável e puxa menos os fios.', ['Ótima pra cabelos longos e grossos', 'Diminui bastante a quebra'], 'escova michel mercier', 'mercier')}
+      ${brush('Wet Brush', null, 'Ótimo custo-benefício, cerdas extremamente flexíveis. Desembaraça molhado sem machucar o couro.', ['Serve pra todos os tipos de cabelo'], 'wet brush escova', 'wet')}
+      ${brush('Escovas de bambu', null, 'Pra quem prefere materiais naturais: massageiam o couro e produzem menos eletricidade estática.', ['Ajudam a reduzir o frizz', 'Muito resistentes'], 'escova de bambu cabelo', 'bambu')}
       ${callout('Escovas que eu evitaria', 'Escovas com bolinhas nas pontas <b>quando essas bolinhas começam a soltar</b> — o plástico exposto vira um "gancho" que aumenta o atrito e a quebra. Evite também cerdas quebradas, escovas muito antigas ou sujas. Lave a sua pelo menos 1x por semana com água morna e shampoo neutro.', 'rose')}
       <div class="brush"><div class="brush-h"><span class="brush-tag">★ Pra prender</span><b>Scrunchie de cetim</b></div><p>O acessório que menos agride — ideal pro dia a dia e pra dormir.</p><ul><li>Reduz a quebra e o atrito</li><li>Não marca tanto os fios</li><li>Diminui o frizz</li></ul><a class="buy sm" href="${mlSearch('scrunchie de cetim')}">Buscar no Mercado Livre →</a></div>
       ${callout('Dica da Ju', 'Se você prende o cabelo todo dia, <b>alterne a altura do penteado</b>: um dia mais alto, outro mais baixo, outro com presilha. Isso evita a tração constante sempre na mesma região do couro e ajuda a prevenir a quebra.', 'wine')}
@@ -537,7 +539,9 @@ img { display:block; max-width:100%; }
 .freq-row:last-child { border-bottom:none; }
 .freq-row span:first-child { font-weight:800; color:#7A1B3D; }
 .freq-row.on { background:#FBEAF1; }
-.brush { background:#fff; border:1px solid #F0DCE4; border-radius:14px; padding:14px 16px; margin-bottom:11px; page-break-inside:avoid; }
+.brush { background:#fff; border:1px solid #F0DCE4; border-radius:14px; padding:14px 16px; margin-bottom:11px; page-break-inside:avoid; display:flex; gap:14px; align-items:flex-start; }
+.brush-photo { width:92px; height:92px; object-fit:contain; border-radius:10px; background:#FBF3F6; padding:5px; flex:none; }
+.brush-body { flex:1; min-width:0; }
 .brush-h { display:flex; align-items:center; gap:9px; margin-bottom:5px; }
 .brush-h b { font-family:'Fraunces',Georgia,serif; font-size:17px; color:#7A1B3D; }
 .brush-tag { background:#7A1B3D; color:#fff; font-size:9px; font-weight:800; letter-spacing:.4px; text-transform:uppercase; padding:3px 8px; border-radius:99px; }
