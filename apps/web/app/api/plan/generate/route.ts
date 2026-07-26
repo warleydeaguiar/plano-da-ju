@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { generatePlanWithClaude, savePlanToDb } from '@/lib/plan-generator';
 import { logServerError } from '@/lib/server-log';
+import { computeConsultaMinutes } from '@/lib/consulta';
 
 // 300s = max do Vercel Pro plan. Plano de 90 dias = 12 semanas.
 // Gera 12 semanas (90 dias) — cabe folgado em 300s.
@@ -142,11 +143,13 @@ export async function POST(req: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await savePlanToDb(supabase as any, profile.id, plan);
 
-    // ENTREGA AUTOMÁTICA: sem aprovação manual da Juliane. O plano é gerado e
-    // já fica 'ready'; a VISIBILIDADE é liberada 30 min depois (plan_released_at),
-    // mantendo a percepção de preparo — mas MUITO antes do prazo prometido (24h).
+    // ENTREGA AUTOMÁTICA: sem aprovação manual da Juliane. O plano é gerado e já
+    // fica 'ready'; a VISIBILIDADE é liberada quando a "Consulta com a Juliane"
+    // termina. O tempo varia por complexidade do caso (computeConsultaMinutes) —
+    // casos mais difíceis levam mais tempo, dando verdade ao "seu caso pediu mais".
     const now = Date.now();
-    const releasedAt = new Date(now + 30 * 60 * 1000).toISOString();
+    const consultaMs = computeConsultaMinutes(profile) * 60 * 1000;
+    const releasedAt = new Date(now + consultaMs).toISOString();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase.from('profiles') as any)
       .update({

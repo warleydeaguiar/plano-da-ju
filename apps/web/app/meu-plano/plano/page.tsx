@@ -14,6 +14,8 @@ import { PlanoLoading } from '../Loading';
 import PlanFeedback from './PlanFeedback';
 import { DICAS_UNIVERSAIS } from '@/lib/dicas-universais';
 import GroupInvite from '../GroupInvite';
+import Consulta from '../Consulta';
+import { buildConsultaData, computeConsultaMinutes } from '@/lib/consulta';
 
 // Meta de seguidores da Ju no Instagram (prova social — atualizar quando mudar)
 const IG_FOLLOWERS = 54421;
@@ -1152,6 +1154,15 @@ function PreparingState({ profile }: { profile: Profile | null }) {
   const mm = remainingMs != null ? Math.floor((remainingMs % 3600_000) / 60_000) : null;
   const ss = remainingMs != null ? Math.floor((remainingMs % 60_000) / 1000) : null;
   const pad = (n: number) => String(n).padStart(2, '0');
+
+  // NOVA EXPERIÊNCIA pós-compra: foto já recebida → "Consulta com a Juliane"
+  // (substitui o cronômetro). Se ainda falta a foto, segue o fluxo antigo abaixo.
+  if (!awaitingPhoto) {
+    const startC = requestedMs ?? Date.now();
+    const endC = releasedMs ?? (startC + computeConsultaMinutes(profile) * 60_000);
+    const minutesC = Math.max(1, Math.round((endC - startC) / 60_000)); // deriva da janela real
+    return <Consulta data={buildConsultaData(profile)} startMs={startC} endMs={endC} minutes={minutesC} />;
+  }
 
   return (
     <div>
