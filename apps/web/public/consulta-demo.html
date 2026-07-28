@@ -231,9 +231,9 @@
   <div class="btns">
     <button class="c primary" id="play">⏸ Pausar</button>
     <button class="c" id="restart">↺ Recomeçar</button>
-    <button class="c" id="speed">⏩ Turbo</button>
+    <button class="c" id="speed">⏩ Rápido</button>
   </div>
-  <p class="note">Prévia <b>acelerada</b> pra você ver tudo em segundos. No app real, essa tela dura em torno de <b>25 minutos</b> — e mais, quando o caso pede. Os dados são de um <b>caso-exemplo</b>; no ar, tudo vem da análise real (tipo, cor, couro, porosidade, química, as notas da foto e o problema principal).</p>
+  <p class="note">Por padrão roda <b>acelerada</b> pra você ver tudo em segundos. Toque no botão de velocidade pra alternar <b>Rápido → Turbo → 🕐 Tempo real</b> (a experiência exata da cliente: fila de 30s + consulta de ~25 min). Os dados são de um <b>caso-exemplo</b>; no ar, tudo vem da análise real (tipo, cor, couro, porosidade, química, as notas da foto e o problema principal).</p>
 </div>
 
 <script>
@@ -306,10 +306,10 @@
   var AVG_MIN = 17;
   var el = function(id){return document.getElementById(id)};
   var body=el('body');
-  var speeds=[24,90]; var spIdx=0;
+  var speeds=[24,90,1]; var spIdx=0; var SPEED_LABELS=['⏩ Rápido','⏩ Turbo','🕐 Tempo real'];
   var playing=true, raf=null, last=0, elapsed=0, curStage=-1, done=false;
   // Fila de espera (antes da consulta): "alguém na frente, você é a próxima".
-  var WAIT_SEC=28, WAIT_SPEED=4, waitElapsed=0, phase='waiting';
+  var WAIT_SEC=28, waitElapsed=0, phase='waiting';
   try{ el('waitbg').src = document.querySelector('.hero>img').src; }catch(e){}
 
   function fmt(sec){ sec=Math.max(0,Math.round(sec)); var m=Math.floor(sec/60), s=sec%60; return m+':'+(s<10?'0':'')+s; }
@@ -372,7 +372,7 @@
     var dt=(ts-last)/1000; last=ts;
     if(phase==='waiting'){
       if(playing){
-        waitElapsed += dt * WAIT_SPEED;
+        waitElapsed += dt * (speeds[spIdx]===1 ? 1 : 4);
         var rem=Math.max(0, WAIT_SEC-waitElapsed);
         el('waitnum').textContent=fmt(rem);
         var wr=document.querySelector('.wait-ring'); if(wr) wr.style.setProperty('--p', Math.min(100, waitElapsed/WAIT_SEC*100)+'%');
@@ -397,7 +397,7 @@
     if(e.target && e.target.id==='planbtn'){ toast('💛 No app, é aqui que abre o <b>seu plano completo</b> — cronograma de 90 dias + os produtos certos pro seu caso.'); }
   });
   el('play').onclick=function(){ if(done){restart();return;} playing=!playing; this.innerHTML=playing?'⏸ Pausar':'▶ Continuar'; };
-  el('speed').onclick=function(){ spIdx=(spIdx+1)%speeds.length; this.classList.toggle('on', spIdx===1); this.innerHTML= spIdx===1?'⏩ Turbo':'▶ Rápido'; };
+  el('speed').onclick=function(){ spIdx=(spIdx+1)%speeds.length; this.className='c'+(spIdx===2?' on':''); this.innerHTML=SPEED_LABELS[spIdx]; };
   function restart(){ elapsed=0; curStage=-1; done=false; playing=true; last=0; phase='waiting'; waitElapsed=0;
     el('wait').classList.remove('hidden'); el('waitnum').textContent='0:28';
     var wr=document.querySelector('.wait-ring'); if(wr) wr.style.setProperty('--p','0%');
