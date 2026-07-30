@@ -29,7 +29,7 @@ console.log('Criando plano trimestral...');
 const created = await req('POST', '/plans', {
   name: NAME, interval: 'month', interval_count: 3, billing_type: 'prepaid', currency: 'BRL',
   statement_descriptor: 'PLANODAJU',
-  items: [{ name: 'Plano da Ju — Acesso 90 dias', quantity: 1, pricing_scheme: { scheme_type: 'unit', price: 3490 } }],
+  items: [{ name: 'Plano da Ju — Acesso 90 dias', quantity: 1, pricing_scheme: { scheme_type: 'unit', price: 4700 } }],
   payment_methods: ['credit_card'], installments: [1,2,3,4],
 });
 if (!created.ok) { console.error('✘ Falha:', created.status, JSON.stringify(created.data)); process.exit(1); }

@@ -149,10 +149,10 @@ async function main() {
     }
 
     const item = plan.items?.[0];
-    if (item?.pricing_scheme?.price === 3490) {
-      log.pass(`preço: R$ 34,90 (3490 centavos)`);
+    if (item?.pricing_scheme?.price === 4700) {
+      log.pass(`preço: R$ 34,90 (4700 centavos)`);
     } else {
-      log.fail(`preço errado: ${item?.pricing_scheme?.price} — esperado 3490`);
+      log.fail(`preço errado: ${item?.pricing_scheme?.price} — esperado 4700`);
       failures++;
     }
 

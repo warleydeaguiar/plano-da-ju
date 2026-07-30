@@ -4,8 +4,7 @@ import { createServiceClient } from '@/lib/supabase/server';
 import { resolveAuthUserId } from '@/lib/supabase/auth-resolve';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { extractFieldsFromQuiz } from '@/lib/quiz-to-profile';
-import { getOrCreateCardPlan } from '@/lib/pagarme/plans';
-import type { PagarMeSubscription } from '@/lib/pagarme/types';
+import type { PagarMeOrder } from '@/lib/pagarme/types';
 import { logCheckoutError } from '@/lib/checkout-log';
 import { normalizeEmail, isValidEmailFormat } from '@/lib/normalize-email';
 import { installmentInfo, MAX_INSTALLMENTS } from '@/lib/pricing';
@@ -72,41 +71,28 @@ export async function POST(req: NextRequest) {
 
     const supabase = await createServiceClient();
 
-    // Idempotência: se já existe subscription recente para esse email, reusa
+    // Idempotência: se o perfil já está ativo (pago), não cobra de novo.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: existingProfile } = await (supabase.from('profiles') as any)
-      .select('pagarme_subscription_id, subscription_status, updated_at')
+      .select('subscription_status, pagarme_charge_id')
       .eq('email', email)
       .maybeSingle();
 
-    if (existingProfile?.pagarme_subscription_id) {
-      const updatedAt = new Date(existingProfile.updated_at ?? 0).getTime();
-      const recent = Date.now() - updatedAt < 5 * 60 * 1000; // 5min
-
-      if (recent || existingProfile.subscription_status === 'active') {
-        try {
-          const sub = await pagarme.get<PagarMeSubscription>(`/subscriptions/${existingProfile.pagarme_subscription_id}`);
-          const charge = sub.charges?.[0];
-          const isPaid = charge?.status === 'paid' || (sub.status === 'active' && !charge);
-          return NextResponse.json({
-            order_id:     charge?.id ?? sub.id,
-            status:       sub.status,
-            paid:         isPaid,
-            redirect_url: isPaid ? '/obrigado' : null,
-            idempotent:   true,
-          });
-        } catch {
-          // Subscription antiga inválida — continua e cria nova
-        }
-      }
+    if (existingProfile?.subscription_status === 'active') {
+      return NextResponse.json({
+        order_id:     existingProfile.pagarme_charge_id ?? null,
+        status:       'paid',
+        paid:         true,
+        redirect_url: '/obrigado',
+        idempotent:   true,
+      });
     }
 
-    // ── PagarMe v5 Subscription (trimestral/90 dias, renova a cada 3 meses) ──
-    const plan = await getOrCreateCardPlan(n);
-    const subscription = await pagarme.post<PagarMeSubscription>('/subscriptions', {
-      plan_id: plan.id,
-      installments: n,
-      payment_method: 'credit_card',
+    // ── PagarMe v5 — cobrança ÚNICA no cartão (PAGAMENTO ÚNICO, sem recorrência) ──
+    // Antes era uma subscription trimestral (renovava). Agora é um /orders comum:
+    // cobra uma vez só. Parcelas (1–3x) continuam sendo UMA compra parcelada, não
+    // mensalidade. billing_address já vai dentro do card_token (tokenizado no front).
+    const order = await pagarme.post<PagarMeOrder>('/orders', {
       customer: {
         name,
         email,
@@ -120,18 +106,25 @@ export async function POST(req: NextRequest) {
           },
         } : {}),
       },
-      // card_token vai no TOP-LEVEL — dentro de `card` a PagarMe ignora o token
-      // e exige número/validade do cartão (erro "The card number is required").
-      card_token,
-      card: {
-        billing_address: {
-          line_1: billing_address?.line_1 ?? billing_address?.street ?? '',
-          zip_code: cleanCep,
-          city:  billing_address?.city  ?? '',
-          state: billing_address?.state ?? '',
-          country: 'BR',
+      items: [
+        {
+          amount: PRICE_CENTS,
+          description: 'Plano da Ju — Plano Capilar Personalizado',
+          quantity: 1,
+          code: 'plano-da-ju-card',
         },
-      },
+      ],
+      payments: [
+        {
+          payment_method: 'credit_card',
+          credit_card: {
+            recurrence: false,
+            installments: n,
+            statement_descriptor: 'PLANODAJU',
+            card_token,
+          },
+        },
+      ],
       metadata: {
         source:       'plano-da-ju-web',
         payment_type: 'card',
@@ -141,12 +134,10 @@ export async function POST(req: NextRequest) {
 
     const userId   = await resolveAuthUserId(supabase, email);
 
-    // Confia primariamente no status da primeira charge — subscription.status
-    // pode ser 'active' enquanto a cobrança ainda está em processamento.
-    const charge = subscription.charges?.[0];
-    const chargeId = charge?.id ?? null;
-    const isReallyPaid = charge?.status === 'paid' ||
-                         (subscription.status === 'active' && !charge); // fallback
+    // Status da cobrança única (charge da ordem).
+    const charge = order.charges?.[0];
+    const chargeId = charge?.id ?? order.id ?? null;
+    const isReallyPaid = charge?.status === 'paid' || order.status === 'paid';
 
     const extracted = extractFieldsFromQuiz(quiz_answers);
     // phone: prefere o que veio do form (cleanPhone), fallback pro quiz_answers
@@ -163,10 +154,11 @@ export async function POST(req: NextRequest) {
       subscription_type:    isReallyPaid ? 'annual_card' : 'none',
       subscription_status:  isReallyPaid ? 'active' : 'pending',
       subscription_activated_at: isReallyPaid ? new Date().toISOString() : null,
+      // Pagamento ÚNICO: acesso não expira por renovação (expiry longe no futuro).
       subscription_expires_at: isReallyPaid
-        ? new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString()
+        ? new Date(Date.now() + 3650 * 24 * 60 * 60 * 1000).toISOString()
         : null,
-      pagarme_subscription_id: subscription.id,
+      pagarme_subscription_id: null,
       pagarme_charge_id:    chargeId,
       plan_status:          isReallyPaid ? 'pending_photo' : 'awaiting_payment',
       plan_requested_at:    isReallyPaid ? new Date().toISOString() : null,
@@ -180,12 +172,12 @@ export async function POST(req: NextRequest) {
         email,
         payment_type: 'card',
         amount_cents: PRICE_CENTS,
-        order_id:     chargeId ?? subscription.id,
+        order_id:     chargeId,
         metadata: {
-          subscription_status: subscription.status,
-          subscription_id:     subscription.id,
-          billing_address:     billing_address ?? null,
-          installments:        n,
+          order_status:    order.status,
+          pagarme_order_id: order.id,
+          billing_address: billing_address ?? null,
+          installments:    n,
         },
       });
     }
@@ -199,22 +191,22 @@ export async function POST(req: NextRequest) {
     const lt: any = (charge as any)?.last_transaction ?? {};
     const chargeStatus = charge?.status ?? '';
     const txStatus = lt?.status ?? '';
-    const subStatus = subscription.status ?? '';
+    const orderStatus = order.status ?? '';
     const REFUSED = ['failed', 'refused', 'canceled', 'not_authorized', 'with_error'];
-    // Detecta recusa olhando os 3 níveis: charge, transação E a própria
-    // subscription — porque numa recusa a PagarMe às vezes devolve a subscription
-    // 'failed'/'canceled' SEM uma charge utilizável (aí charge.status vem vazio).
+    // Detecta recusa olhando os 3 níveis: charge, transação E a própria ordem —
+    // numa recusa a PagarMe às vezes devolve a ordem 'failed'/'canceled' SEM uma
+    // charge utilizável (aí charge.status vem vazio).
     const isRefused = !isReallyPaid && (
       REFUSED.includes(chargeStatus) ||
       REFUSED.includes(txStatus) ||
-      ['failed', 'canceled'].includes(subStatus)
+      ['failed', 'canceled'].includes(orderStatus)
     );
 
     if (isRefused) {
       const declineMsg =
         lt?.acquirer_message ||
         lt?.gateway_response?.errors?.[0]?.message ||
-        `Pagamento ${chargeStatus || subStatus || 'recusado'}`;
+        `Pagamento ${chargeStatus || orderStatus || 'recusado'}`;
       await logCheckoutError({
         route: 'checkout/card',
         email: logEmail,
@@ -226,19 +218,19 @@ export async function POST(req: NextRequest) {
           installments:         n,
           charge_status:        chargeStatus,
           transaction_status:   txStatus,
-          subscription_status:  subStatus,
+          order_status:         orderStatus,
           acquirer_message:     lt?.acquirer_message ?? null,
           acquirer_return_code: lt?.acquirer_return_code ?? null,
           acquirer_name:        lt?.acquirer_name ?? null,
           gateway_response:     lt?.gateway_response ?? null,
-          subscription_id:      subscription.id,
+          pagarme_order_id:     order.id,
         },
       });
     }
 
     return NextResponse.json({
-      order_id:     chargeId ?? subscription.id,
-      status:       subscription.status,
+      order_id:     chargeId,
+      status:       order.status,
       paid:         isReallyPaid,
       redirect_url: isReallyPaid ? '/obrigado' : null,
     });

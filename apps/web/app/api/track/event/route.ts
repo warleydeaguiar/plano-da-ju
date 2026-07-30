@@ -66,10 +66,10 @@ export async function POST(req: NextRequest) {
 
     // PageView e Lead NÃO levam `value` (Lead com preço fixo faz o Meta acusar
     // "todos os Leads com o mesmo preço" e derruba a qualidade/ROAS). Lead mantém
-    // só `currency`. IC/AddPaymentInfo levam value (fallback 34.90 BRL do plano).
+    // só `currency`. IC/AddPaymentInfo levam value (fallback 47 BRL do plano).
     const isPageView = event_name === 'PageView';
     const noValueEvent = isPageView || event_name === 'Lead';
-    const value = noValueEvent ? undefined : (typeof body.value === 'number' && isFinite(body.value) ? body.value : 34.9);
+    const value = noValueEvent ? undefined : (typeof body.value === 'number' && isFinite(body.value) ? body.value : 47);
     const currency = isPageView ? undefined : (clean(body.currency, 8) ?? 'BRL');
 
     await sendCapiEvent({

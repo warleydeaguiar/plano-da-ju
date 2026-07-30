@@ -375,7 +375,6 @@ export default function BroadcastClient({
       removeMedia()
       setScheduleMode(false)
       setScheduledAt('')
-      setMentionAll(false)
       setAlsoEmail(false)
       setEmailSubject('')
       const h2 = await fetch('/api/grupos/broadcast')

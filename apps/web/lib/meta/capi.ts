@@ -26,7 +26,7 @@ interface CapiUserData {
 }
 
 interface CapiCustomData {
-  value?: number;       // ex: 34.90 (omitido em PageView)
+  value?: number;       // ex: 47 (omitido em PageView)
   currency?: string;    // 'BRL' (omitido em PageView)
   content_name?: string;
   content_category?: string;

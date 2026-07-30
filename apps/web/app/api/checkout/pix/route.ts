@@ -10,7 +10,7 @@ import type { PagarMeOrder } from '@/lib/pagarme/types';
 import { logCheckoutError } from '@/lib/checkout-log';
 import { normalizeEmail, isValidEmailFormat } from '@/lib/normalize-email';
 
-const PRICE_CENTS = 3490; // R$34,90
+const PRICE_CENTS = 4700; // R$47,00 (pagamento único)
 
 export const runtime = 'nodejs';
 // Headroom pro retry do QR (a PagarMe às vezes demora pra popular o copia-e-cola).

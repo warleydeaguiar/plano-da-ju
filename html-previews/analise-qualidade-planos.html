@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Qualidade dos Planos Capilares — Diagnóstico & Proposta</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500;1,9..144,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#FFFAF5; --ink:#3D2B2E; --soft:#7A6A6D; --muted:#A89AA0;
+    --pink:#FB7185; --pinkD:#BE185D; --rose:#FFE4EC; --gold:#C9A45C;
+    --green:#10B981; --greenD:#059669; --red:#E0526B; --redbg:#FDECEF;
+    --line:#F0E0E4; --card:#FFFFFF;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:"Plus Jakarta Sans",system-ui,sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:860px;margin:0 auto;padding:0 22px 80px}
+  .display{font-family:"Fraunces",Georgia,serif}
+  em{font-style:italic;color:var(--pinkD)}
+
+  /* HERO */
+  .hero{background:radial-gradient(circle at 30% 0%, var(--rose), transparent 60%), linear-gradient(135deg,#fff,#FFF7F2);
+        text-align:center;padding:56px 22px 46px;border-bottom:1px solid var(--line)}
+  .hero .kicker{font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:14px}
+  .hero h1{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:38px;line-height:1.15;letter-spacing:-.5px}
+  .hero p{max-width:600px;margin:14px auto 0;color:var(--soft);font-size:16px}
+  .brand{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:15px;color:var(--ink);margin-bottom:26px}
+
+  section{margin-top:48px}
+  h2{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:26px;letter-spacing:-.3px;margin-bottom:6px}
+  .lead{color:var(--soft);font-size:15px;margin-bottom:22px}
+  h3{font-size:16px;font-weight:700;margin-bottom:10px}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:24px;box-shadow:0 8px 24px rgba(190,24,93,.05)}
+  .grid{display:grid;gap:16px}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g2{grid-template-columns:repeat(2,1fr)}
+  @media(max-width:680px){.g3,.g2{grid-template-columns:1fr}}
+
+  .pill{display:inline-block;font-size:11px;font-weight:700;padding:4px 11px;border-radius:999px;letter-spacing:.4px}
+  .pill.bad{background:var(--redbg);color:var(--red)}
+  .pill.good{background:#E7F8F1;color:var(--greenD)}
+  .pill.gold{background:#FAF1DD;color:#9A7B2E}
+
+  /* problem cards */
+  .prob{border-left:4px solid var(--red)}
+  .prob .n{font-family:"Fraunces",serif;font-size:30px;color:var(--red);font-weight:600;line-height:1}
+  .prob h3{margin:10px 0 6px}
+  .prob p{font-size:13.5px;color:var(--soft)}
+
+  /* bar chart */
+  .bar-row{display:flex;align-items:center;gap:12px;margin-bottom:11px}
+  .bar-row .lbl{width:230px;font-size:13.5px;flex-shrink:0}
+  .bar-row .track{flex:1;height:24px;background:#F4ECEF;border-radius:7px;overflow:hidden;position:relative}
+  .bar-row .fill{height:100%;border-radius:7px;display:flex;align-items:center;justify-content:flex-end;padding-right:9px;color:#fff;font-size:12px;font-weight:700}
+  .fill.pink{background:linear-gradient(90deg,var(--pink),var(--pinkD))}
+  .fill.gold{background:linear-gradient(90deg,#E2C078,var(--gold))}
+  .fill.green{background:linear-gradient(90deg,#34D399,var(--greenD))}
+
+  .note{font-size:13px;color:var(--muted);margin-top:8px;font-style:italic}
+
+  /* before/after */
+  .ba{display:grid;grid-template-columns:1fr 1fr;gap:0;border-radius:16px;overflow:hidden;border:1px solid var(--line)}
+  @media(max-width:680px){.ba{grid-template-columns:1fr}}
+  .ba .col{padding:18px 20px}
+  .ba .before{background:var(--redbg)}
+  .ba .after{background:#EAFBF4}
+  .ba .tag{font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px}
+  .ba .before .tag{color:var(--red)}
+  .ba .after .tag{color:var(--greenD)}
+  .ba ul{list-style:none;font-size:13.5px;color:var(--ink)}
+  .ba li{padding:4px 0 4px 20px;position:relative}
+  .ba .before li:before{content:"✕";position:absolute;left:0;color:var(--red);font-weight:700}
+  .ba .after li:before{content:"✓";position:absolute;left:0;color:var(--greenD);font-weight:700}
+  .case-h{display:flex;align-items:center;gap:10px;margin:26px 0 12px}
+  .case-h .who{font-weight:700;font-size:15px}
+  .case-h .meta{font-size:12.5px;color:var(--soft)}
+
+  /* map */
+  .maprow{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--line)}
+  .maprow:last-child{border-bottom:none}
+  .maprow .concern{flex:1;font-weight:700;font-size:14.5px}
+  .maprow .arrow{color:var(--muted);font-size:18px}
+  .maprow .anchor{flex:1.4;font-size:13.5px}
+  .maprow .anchor b{color:var(--pinkD)}
+  .star{color:var(--gold)}
+
+  .kpi{text-align:center}
+  .kpi .big{font-family:"Fraunces",serif;font-size:40px;font-weight:600;line-height:1}
+  .kpi .cap{font-size:12.5px;color:var(--soft);margin-top:6px}
+  .kpi.red .big{color:var(--red)} .kpi.gold .big{color:var(--gold)} .kpi.pink .big{color:var(--pinkD)}
+
+  .callout{background:linear-gradient(135deg,#FFF,#FFF4F7);border:1px solid var(--line);border-left:4px solid var(--pinkD);border-radius:14px;padding:20px 22px;font-size:14.5px}
+  footer{margin-top:54px;text-align:center;color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:24px}
+</style>
+</head>
+<body>
+
+  <div class="hero">
+    <div class="brand">Plano da <em>Ju</em></div>
+    <div class="kicker">Qualidade dos Planos Capilares</div>
+    <h1>O que estava acontecendo<br>e como vamos melhorar</h1>
+    <p>Um raio-X dos planos que entregamos este mês, cruzado com o que as clientes mais precisam e com o que realmente vende na Ybera — e a nova forma de montar os planos.</p>
+  </div>
+
+  <div class="wrap">
+
+    <!-- RESUMO -->
+    <section>
+      <div class="grid g3">
+        <div class="card kpi red"><div class="big">226</div><div class="cap">planos entregues este mês</div></div>
+        <div class="card kpi red"><div class="big">~97%</div><div class="cap">receberam os <b>mesmos</b> 4 produtos</div></div>
+        <div class="card kpi gold"><div class="big">0</div><div class="cap">shampoos entre os mais vendidos da Ybera</div></div>
+      </div>
+    </section>
+
+    <!-- O PROBLEMA -->
+    <section>
+      <h2>O que descobrimos</h2>
+      <p class="lead">Três problemas que estão fazendo os planos renderem menos do que poderiam — pra cliente e pra venda de produtos.</p>
+      <div class="grid g3">
+        <div class="card prob">
+          <div class="n">1</div>
+          <h3>Quase o mesmo plano pra todas</h3>
+          <p>Independente do que incomoda cada mulher, quase todas recebem o mesmo conjunto de produtos e a mesma estrutura de 12 semanas.</p>
+        </div>
+        <div class="card prob">
+          <div class="n">2</div>
+          <h3>Shampoo demais — e shampoo não vende</h3>
+          <p>Indicamos shampoo e pré-shampoo pra quase todo mundo. Mas nenhum shampoo está entre os campeões de venda da Ybera.</p>
+        </div>
+        <div class="card prob">
+          <div class="n">3</div>
+          <h3>O maior incômodo dela fica de lado</h3>
+          <p>O sistema não usa o "o que mais te incomoda" como o centro da escolha dos produtos — então o produto que resolveria o problema dela fica escondido.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- UNIFORMIDADE -->
+    <section>
+      <h2>Os mesmos produtos pra (quase) todas</h2>
+      <p class="lead">Em quantos dos 226 planos do mês cada produto apareceu:</p>
+      <div class="card">
+        <div class="bar-row"><div class="lbl">Óleo de Mirra</div><div class="track"><div class="fill pink" style="width:98%">98%</div></div></div>
+        <div class="bar-row"><div class="lbl">Máscara Mirracura</div><div class="track"><div class="fill pink" style="width:97%">97%</div></div></div>
+        <div class="bar-row"><div class="lbl">Shampoo Multifunção</div><div class="track"><div class="fill pink" style="width:97%">97%</div></div></div>
+        <div class="bar-row"><div class="lbl">Soro Vello</div><div class="track"><div class="fill pink" style="width:90%">90%</div></div></div>
+        <div class="bar-row"><div class="lbl">Protect Poo (pré-shampoo)</div><div class="track"><div class="fill pink" style="width:79%">79%</div></div></div>
+        <p class="note">Ou seja: o "esqueleto" do plano é praticamente o mesmo, troque quem trocar.</p>
+      </div>
+    </section>
+
+    <!-- DEMANDA -->
+    <section>
+      <h2>Mas o que incomoda varia muito</h2>
+      <p class="lead">O que as clientes deste mês marcaram como "o que mais me incomoda no cabelo":</p>
+      <div class="card">
+        <div class="bar-row"><div class="lbl">Pontas (ressecadas/duplas)</div><div class="track"><div class="fill gold" style="width:81%">81%</div></div></div>
+        <div class="bar-row"><div class="lbl">Queda</div><div class="track"><div class="fill gold" style="width:68%">68%</div></div></div>
+        <div class="bar-row"><div class="lbl">Crescimento</div><div class="track"><div class="fill gold" style="width:67%">67%</div></div></div>
+        <div class="bar-row"><div class="lbl">Quebra</div><div class="track"><div class="fill gold" style="width:56%">56%</div></div></div>
+        <div class="bar-row"><div class="lbl">Frizz</div><div class="track"><div class="fill gold" style="width:42%">42%</div></div></div>
+        <div class="bar-row"><div class="lbl">Volume</div><div class="track"><div class="fill gold" style="width:6%">6%</div></div></div>
+        <p class="note">Necessidades bem diferentes — que hoje recebem quase a mesma resposta.</p>
+      </div>
+    </section>
+
+    <!-- O QUE VENDE -->
+    <section>
+      <h2>O que realmente vende na Ybera</h2>
+      <p class="lead">Campeões de venda (histórico real) — repare: <b>nenhum shampoo</b>, e quase tudo casa com os incômodos acima.</p>
+      <div class="card">
+        <div class="bar-row"><div class="lbl">Progressiva Fashion Gold <span class="pill good">frizz/quebra</span></div><div class="track"><div class="fill green" style="width:100%">R$ 40,5 mil</div></div></div>
+        <div class="bar-row"><div class="lbl">Combo Progressiva Fashion Gold</div><div class="track"><div class="fill green" style="width:92%">R$ 37,2 mil</div></div></div>
+        <div class="bar-row"><div class="lbl">Soro Vital Vello</div><div class="track"><div class="fill green" style="width:74%">R$ 29,8 mil</div></div></div>
+        <div class="bar-row"><div class="lbl">Antiqueda 100Tímetros <span class="pill good">queda/cresc</span></div><div class="track"><div class="fill green" style="width:67%">R$ 27 mil</div></div></div>
+        <div class="bar-row"><div class="lbl">Kit Cronograma Capilar</div><div class="track"><div class="fill green" style="width:48%">R$ 19,6 mil</div></div></div>
+        <div class="bar-row"><div class="lbl">Óleo de Mirra <span class="pill good">pontas</span></div><div class="track"><div class="fill green" style="width:41%">R$ 16,6 mil</div></div></div>
+        <p class="note">A demanda das clientes (queda, crescimento, frizz, pontas) bate com o que vende — só não estamos conectando as duas pontas.</p>
+      </div>
+    </section>
+
+    <!-- ANTES E DEPOIS -->
+    <section>
+      <h2>3 casos reais desta semana — antes e depois</h2>
+      <p class="lead">Peguei três clientes reais com necessidades diferentes e refiz o plano do jeito novo.</p>
+
+      <div class="case-h">
+        <span class="pill bad">Caso 1</span>
+        <span class="who">Samantha</span>
+        <span class="meta">liso · couro normal · incômodo: <b>só queda</b></span>
+      </div>
+      <div class="ba">
+        <div class="col before">
+          <div class="tag">Como estava</div>
+          <ul>
+            <li>Cronograma genérico de 12 semanas</li>
+            <li>Shampoo nas 12 semanas + pré-shampoo em 6</li>
+            <li>Antiqueda escondido (só nas semanas 4, 6, 8, 10)</li>
+            <li>O foco dela — a queda — não é o centro do plano</li>
+          </ul>
+        </div>
+        <div class="col after">
+          <div class="tag">Como fica</div>
+          <ul>
+            <li>Plano girando em torno de <b>parar a queda</b></li>
+            <li>Âncora: <b>Antiqueda 100Tímetros</b> (creme + cápsula) <span class="star">★ campeão</span></li>
+            <li>Apoio: hidratação quinzenal + óleo nas pontas</li>
+            <li>Sem pré-shampoo, sem lavar profundo toda semana</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="case-h">
+        <span class="pill bad">Caso 2</span>
+        <span class="who">Raquel</span>
+        <span class="meta">crespo · loiro · progressiva · <b>muito seco</b> · frizz + pontas + quebra</span>
+      </div>
+      <div class="ba">
+        <div class="col before">
+          <div class="tag">Como estava</div>
+          <ul>
+            <li>Mesmo esqueleto das outras</li>
+            <li>3 semanas de "anticaspa" — <b>ela nunca falou de caspa</b></li>
+            <li>Nenhum produto específico pra loira</li>
+          </ul>
+        </div>
+        <div class="col after">
+          <div class="tag">Como fica</div>
+          <ul>
+            <li>Âncora: <b>Kit Cronograma + Óleo de Mirra</b> (reconstrução)</li>
+            <li>Leave-in Cacho Perfeito p/ controlar o frizz no dia a dia</li>
+            <li>Linha de loiro pra cuidar da cor</li>
+            <li>Lavagem suave, 1x na semana — sem inventar caspa</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="case-h">
+        <span class="pill bad">Caso 3</span>
+        <span class="who">Karina</span>
+        <span class="meta">liso · loiro · descoloração+progressiva · <b>couro oleoso</b> · pontas + frizz</span>
+      </div>
+      <div class="ba">
+        <div class="col before">
+          <div class="tag">Como estava</div>
+          <ul>
+            <li>Mesmo esqueleto + "anticaspa" não pedido</li>
+            <li>Sem cuidado específico pro loiro descolorido</li>
+          </ul>
+        </div>
+        <div class="col after">
+          <div class="tag">Como fica</div>
+          <ul>
+            <li>Âncora: <b>reconstrução (Kit Cronograma) + Óleo de Mirra</b></li>
+            <li><b>Aqui o shampoo faz sentido</b> (couro oleoso) — é decisão, não padrão</li>
+            <li>Linha de loiro pra manter o tom</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- COMO VAI FUNCIONAR -->
+    <section>
+      <h2>Como os planos vão ser montados agora</h2>
+      <p class="lead">A regra de ouro: <b>o maior incômodo da cliente escolhe o produto-âncora</b> — e o âncora é sempre um campeão de venda da Ybera que resolve aquele problema.</p>
+      <div class="card">
+        <div class="maprow"><div class="concern">Queda / Crescimento</div><div class="arrow">→</div><div class="anchor"><b>Antiqueda 100Tímetros</b> (creme + cápsula) <span class="star">★</span></div></div>
+        <div class="maprow"><div class="concern">Frizz / Quebra / Volume</div><div class="arrow">→</div><div class="anchor"><b>Progressiva Fashion Gold</b> / Kit Cronograma <span class="star">★</span></div></div>
+        <div class="maprow"><div class="concern">Pontas / Ressecamento</div><div class="arrow">→</div><div class="anchor"><b>Óleo de Mirra</b> + Kit Cronograma <span class="star">★</span></div></div>
+        <div class="maprow"><div class="concern">Couro oleoso / caspa</div><div class="arrow">→</div><div class="anchor">Aí sim entra <b>shampoo de limpeza</b> — só nesses casos</div></div>
+      </div>
+
+      <div class="grid g2" style="margin-top:16px">
+        <div class="card">
+          <span class="pill good">Regra nova</span>
+          <h3 style="margin-top:10px">Shampoo é decisão, não padrão</h3>
+          <p style="font-size:13.5px;color:var(--soft)">Só entra quando o couro é oleoso ou tem caspa. Couro normal ou seco: lavagem suave, sem pré-shampoo toda semana. Shampoo nunca é o produto principal.</p>
+        </div>
+        <div class="card">
+          <span class="pill good">Regra nova</span>
+          <h3 style="margin-top:10px">Nada de inventar problema</h3>
+          <p style="font-size:13.5px;color:var(--soft)">O plano só fala do que a cliente realmente marcou no quiz. Acabou o "anticaspa" pra quem não tem caspa, e o produto de loiro só pra quem é loira.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="callout" style="margin-top:30px">
+      <b>Em uma frase:</b> em vez de entregar o mesmo cronograma de shampoo pra todas, cada plano vai começar pelo que mais incomoda a cliente e indicar o produto Ybera campeão que resolve aquilo — planos mais certeiros pra ela e que vendem o que de fato sai.
+    </div>
+
+    <footer>
+      Plano da Ju · Diagnóstico de qualidade dos planos capilares · dados reais do mês corrente
+    </footer>
+
+  </div>
+</body>
+</html>

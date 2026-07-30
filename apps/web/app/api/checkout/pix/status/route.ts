@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
           event_type: 'payment_confirmed',
           email,
           payment_type: 'pix',
-          amount_cents: order.amount ?? 3490,
+          amount_cents: order.amount ?? 4700,
           order_id: orderId,
           metadata: { source: 'pix_polling' },
         });
@@ -114,7 +114,7 @@ export async function GET(req: NextRequest) {
             cpf: trk.cpf,
           },
           customData: {
-            value: (order.amount ?? 3490) / 100,
+            value: (order.amount ?? 4700) / 100,
             currency: 'BRL',
             content_name: 'Plano Capilar Personalizado',
             order_id: orderId,

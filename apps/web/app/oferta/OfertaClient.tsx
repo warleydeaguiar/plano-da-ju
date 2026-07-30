@@ -167,7 +167,7 @@ function useOfferCountdown() {
 }
 
 // ─── Cálculo de parcelas (cartão: até 3x COM juros 2,99% a.m.) ───
-// À vista (1x) e PIX = R$34,90 sem juros. Fonte única em lib/pricing.
+// À vista (1x) e PIX = R$47 sem juros. Fonte única em lib/pricing.
 function installPerStr(n: number): string {
   const info = installmentInfo(n);
   return `${info.n}x de ${brlCents(info.perCents)}`;
@@ -400,7 +400,7 @@ function OfferCard({ countdown, name, onBuy }: { countdown: string; name: string
               lineHeight: 1.05, letterSpacing: -0.5,
             }}>{installPerStr(MAX_INSTALLMENTS)}</div>
             <div style={{ fontSize: 9, color: T.inkSoft, marginTop: 3, fontFamily: fonts.ui }}>
-              com juros · ou à vista <strong style={{ color: T.ink }}>R$34,90</strong>
+              com juros · ou à vista <strong style={{ color: T.ink }}>R$47</strong>
             </div>
           </div>
         </div>
@@ -568,7 +568,7 @@ export default function OfertaClient() {
         const data = await res.json();
         if (data.paid) {
           localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now(), orderId: cardOrderId }));
-          await logEvent({ event_type: 'payment_confirmed', email, payment_type: 'card', amount_cents: 3490 });
+          await logEvent({ event_type: 'payment_confirmed', email, payment_type: 'card', amount_cents: 4700 });
           router.push('/obrigado');
         } else if (data.failed) {
           setCardPolling(false);
@@ -873,7 +873,7 @@ export default function OfertaClient() {
       // Cobrança aprovada imediatamente?
       if (data.paid) {
         localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now(), orderId: data.order_id }));
-        await logEvent({ event_type: 'payment_confirmed', email, payment_type: 'card', amount_cents: 3490 });
+        await logEvent({ event_type: 'payment_confirmed', email, payment_type: 'card', amount_cents: 4700 });
         router.push('/obrigado');
       } else {
         // Order criado mas cobrança ainda pendente — inicia polling
@@ -901,7 +901,7 @@ export default function OfertaClient() {
 
   const onBuy = () => {
     // Log evento de checkout iniciado
-    logEvent({ event_type: 'checkout_initiated', email, payment_type: payType, amount_cents: 3490 });
+    logEvent({ event_type: 'checkout_initiated', email, payment_type: payType, amount_cents: 4700 });
 
     // Pixel Meta — InitiateCheckout com Advanced Matching
     // eventID compartilhado entre Pixel e CAPI → deduplicação no Meta.
@@ -920,7 +920,7 @@ export default function OfertaClient() {
         }
         ;(window as any).fbq('track', 'InitiateCheckout', {
           content_name: 'Plano Capilar Personalizado',
-          value: 34.90,
+          value: 47,
           currency: 'BRL',
         }, { eventID: icEventId });
       }
@@ -929,7 +929,7 @@ export default function OfertaClient() {
     // Espelha o InitiateCheckout no CAPI server-side (mesmo eventID → dedup)
     sendServerEvent('InitiateCheckout', {
       eventId: icEventId,
-      value: 34.90,
+      value: 47,
       currency: 'BRL',
       email: icEmail || undefined,
       phone: icPhoneE164 || undefined,
@@ -1194,7 +1194,7 @@ export default function OfertaClient() {
                       }}>{installPerStr(MAX_INSTALLMENTS)}</span>
                       <span style={{ fontSize: 10, color: T.inkSoft, fontFamily: fonts.ui }}>com juros</span>
                     </div>
-                    <div style={{ fontSize: 10, color: T.inkSoft, marginTop: 2 }}>ou à vista R$34,90</div>
+                    <div style={{ fontSize: 10, color: T.inkSoft, marginTop: 2 }}>ou à vista R$47</div>
                   </div>
                 </div>
               </div>
@@ -1279,7 +1279,7 @@ export default function OfertaClient() {
                     }}>MAIS RÁPIDO</span>
                   </div>
                   <div style={{ fontSize: 12, color: T.inkSoft, marginTop: 2 }}>
-                    Aprovação instantânea · R$34,90 à vista
+                    Aprovação instantânea · R$47 à vista
                   </div>
                 </div>
               </button>
@@ -1436,7 +1436,7 @@ export default function OfertaClient() {
                       ))}
                     </select>
                     <p style={{ fontSize: 11, color: T.inkSoft, marginTop: 4 }}>
-                      Plano de 90 dias — renova automaticamente nas mesmas condições.
+                      Pagamento único — sem mensalidade e sem renovação.
                     </p>
                   </div>
                 </div>
@@ -1448,7 +1448,7 @@ export default function OfertaClient() {
               <div style={sectionTitle}>Resumo do pedido</div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                 <span style={{ fontSize: 13, color: T.inkSoft }}>Plano Capilar Personalizado</span>
-                <span style={{ fontSize: 13, color: T.ink, fontWeight: 600 }}>R$34,90</span>
+                <span style={{ fontSize: 13, color: T.ink, fontWeight: 600 }}>R$47</span>
               </div>
               <div style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -1457,11 +1457,11 @@ export default function OfertaClient() {
                 <span style={{ fontSize: 15, fontWeight: 700, color: T.ink }}>Total</span>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: 20, fontWeight: 800, color: T.pinkDeep, fontFamily: fonts.display }}>
-                    {payType === 'card' && installments > 1 ? installAmt : 'R$34,90'}
+                    {payType === 'card' && installments > 1 ? installAmt : 'R$47'}
                   </div>
                   {payType === 'card' && installments > 1 && (
                     <div style={{ fontSize: 11, color: T.inkSoft }}>
-                      com juros · total {brlCents(installmentInfo(installments).totalCents)} · renova a cada 90 dias
+                      com juros · total {brlCents(installmentInfo(installments).totalCents)} · pagamento único
                     </div>
                   )}
                   {payType === 'pix' && (
@@ -1469,9 +1469,9 @@ export default function OfertaClient() {
                   )}
                 </div>
               </div>
-              {/* Aviso discreto: plano de 90 dias com renovação */}
+              {/* Pagamento único — sem recorrência */}
               <div style={{ fontSize: 10.5, color: T.inkSoft, marginTop: 10, paddingTop: 10, borderTop: '1px solid #F0EAF5', lineHeight: 1.4 }}>
-                Acesso por 90 dias. Depois renova automaticamente por mais 90 dias nas mesmas condições — você pode cancelar quando quiser.
+                Pagamento único — você paga uma vez só. Sem mensalidade e sem cobrança recorrente.
               </div>
             </div>
 
@@ -1493,7 +1493,7 @@ export default function OfertaClient() {
               {isSubmitting
                 ? '⏳ Processando…'
                 : payType === 'pix'
-                  ? '🔒 Gerar PIX — R$34,90'
+                  ? '🔒 Gerar PIX — R$47'
                   : `🔒 Pagar ${installAmt}`}
             </GreenButton>
 

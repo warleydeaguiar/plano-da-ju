@@ -208,7 +208,7 @@ ANOTAÇÕES PESSOAIS DA JULIANE (em planos aprovados, mostra o que ela vem obser
 ${data.julianeNotes.length > 0 ? data.julianeNotes.map(n => `- "${n.slice(0, 200)}"`).join('\n') : '(ainda sem anotações)'}
 
 CONTEXTO DO NEGÓCIO
-- Plano capilar vendido a R$34,90 (PIX) ou em até 4× no cartão
+- Plano capilar vendido a R$47 (PIX) ou em até 4× no cartão
 - Público dominante: mulheres 31-50 com cabelo danificado por química
 - Tom da Juliane: caloroso, direto, sem clichês de "amiga", sem "linda" excessivo
 - Cada vídeo precisa ter: gancho (hook) forte nos primeiros 3s, conteúdo de valor, CTA sutil pro quiz/plano

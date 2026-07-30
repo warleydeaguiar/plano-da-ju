@@ -6,7 +6,7 @@ import { fetchYberaOrders, salesOnDateBR, YBERA_COMMISSION_RATE } from '@/lib/yb
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
-const PLAN_PRICE = 34.90
+const PLAN_PRICE = 47
 const WEBHOOK = process.env.DISCORD_DAILY_REPORT_WEBHOOK ?? ''
 
 /**

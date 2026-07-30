@@ -333,7 +333,7 @@ export default function PerfilPage() {
           <InfoRow label="E-mail" value={profile.email} />
           <InfoRow label="Plano" value={subLabel} />
           {expiresAt && (
-            <InfoRow label="Renova em" value={expiresAt.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })} last />
+            <InfoRow label="Acesso" value="Vitalício — pagamento único" last />
           )}
         </div>
       </div>

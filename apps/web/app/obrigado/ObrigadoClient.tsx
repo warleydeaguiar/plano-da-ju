@@ -177,7 +177,7 @@ export default function ObrigadoClient() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (window as any).fbq('track', 'Purchase', {
           content_name: 'Plano Capilar Personalizado',
-          value: data.amount ?? 34.90,
+          value: data.amount ?? 47,
           currency: 'BRL',
         }, { eventID: String(eventId) });
         localStorage.setItem(purchaseFlagKey, '1');

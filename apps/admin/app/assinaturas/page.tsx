@@ -28,10 +28,10 @@ const SUB_TYPE: Record<string, string> = {
 
 // Pricing
 const PRICE: Record<string, number> = {
-  annual_card:    34.90,
-  annual_pix:     34.90,
-  quarterly_card: 34.90,
-  quarterly_pix:  34.90,
+  annual_card:    47,
+  annual_pix:     47,
+  quarterly_card: 47,
+  quarterly_pix:  47,
   none:           0,
 }
 
@@ -89,7 +89,7 @@ export default async function AssinaturasPage() {
         {/* Header */}
         <div style={{ marginBottom: 28 }}>
           <div style={{ fontSize: 22, fontWeight: 700, color: '#2A1E2C' }}>Assinaturas</div>
-          <div style={{ fontSize: 13, color: gray, marginTop: 4 }}>Plano de 90 dias — R$ 34,90 · renova a cada 3 meses</div>
+          <div style={{ fontSize: 13, color: gray, marginTop: 4 }}>Plano capilar — R$ 47 · pagamento único</div>
         </div>
 
         {/* KPIs */}
