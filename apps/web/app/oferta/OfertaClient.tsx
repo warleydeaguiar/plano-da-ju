@@ -1553,21 +1553,26 @@ export default function OfertaClient() {
             </svg>
           </button>
 
-          {/* Antes/Depois */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 18, animation: 'cardIn 0.6s cubic-bezier(.2,.85,.25,1)' }}>
-            <CompareCard side="antes" stats={[
-              { label: 'Comprimento do cabelo', desc: 'Pequeno',  pct: 25 },
-              { label: 'Frizz',                 desc: 'Alto',     pct: 90 },
-              { label: 'Hidratação',            desc: 'Baixo',    pct: 25 },
-              { label: 'Pontas',                desc: 'Ralas',    pct: 25 },
-            ]} />
-            <CompareCard side="depois" stats={[
-              { label: 'Comprimento',  desc: 'Grande',   pct: 90  },
-              { label: 'Frizz',        desc: 'Pouco',    pct: 5   },
-              { label: 'Hidratação',   desc: 'Elevado',  pct: 100 },
-              { label: 'Pontas',       desc: 'Cheias',   pct: 88  },
-            ]} />
-          </div>
+          {/* Antes/Depois — FOTO REAL do perfil da cliente (dinâmica pelo quiz:
+              loira, queda, progressiva, química, densidade). Reforça "feito
+              exatamente pro SEU caso". Só a imagem muda; nada de texto estático. */}
+          {(() => {
+            const s = (v: unknown) => String(v ?? '').toLowerCase();
+            const arr = (v: unknown) => Array.isArray(v) ? v.map(x => s(x)) : (v != null && v !== '' ? [s(v)] : []);
+            const cor = s(quizAnswers.cor), inc = arr(quizAnswers.incomoda), qui = arr(quizAnswers.quimica), corte = s(quizAnswers.corte_quimico);
+            let src = '/images/ba-progressiva.jpg';
+            if (cor.includes('loiro')) src = '/images/ba-loira.jpg';
+            else if (inc.includes('queda')) src = '/images/ba-queda.jpg';
+            else if (qui.some(q => q.includes('progressiva') || q.includes('relax') || q.includes('botox'))) src = '/images/ba-progressiva.jpg';
+            else if (corte.includes('sim') || qui.some(q => q.includes('descolor') || q.includes('mechas') || q.includes('tintura') || q.includes('decap'))) src = '/images/ba-quimica.jpg';
+            else if (inc.includes('cresc')) src = '/images/ba-densidade.jpg';
+            return (
+              <div style={{ marginBottom: 18, borderRadius: 16, overflow: 'hidden', boxShadow: '0 10px 28px -14px rgba(0,0,0,0.22)', border: `1px solid ${T.border}`, animation: 'cardIn 0.6s cubic-bezier(.2,.85,.25,1)' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={src} alt="Antes e depois do seu tipo de cabelo com o Plano da Ju" style={{ width: '100%', height: 'auto', display: 'block' }} />
+              </div>
+            );
+          })()}
 
           {/* Plano completo + grupo */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 22 }}>
