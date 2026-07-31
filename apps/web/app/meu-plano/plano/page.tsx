@@ -685,77 +685,86 @@ export default function PlanoPage() {
                   </div>
                 </div>
 
-                {/* Rotina por DIA — agrupada: um bloco por dia da semana (não um
-                    card por tarefa). Ex.: "Segunda-feira" com Shampoo + Máscara + Óleo juntos. */}
-                <div style={{ margin: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* Lavagem da SEMANA — o plano é semanal, então mostramos UM passo a
+                    passo numerado (não uma lavagem por dia). Colapsa as tarefas
+                    distintas dos dias de lavagem em passos únicos. */}
+                <div style={{ margin: '0 16px 16px' }}>
                   {(() => {
+                    // União das tarefas distintas (por título), na ordem em que aparecem —
+                    // pega o Kit/máscara mesmo quando ele só vinha em dias alternados.
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const byDay = new Map<number, any[]>();
-                    for (const t of currentPlan.tasks) {
-                      const arr = byDay.get(t.day) ?? [];
-                      arr.push(t); byDay.set(t.day, arr);
+                    const ordered = [...currentPlan.tasks].sort((a: any, b: any) => (a.day ?? 0) - (b.day ?? 0));
+                    const seen = new Set<string>();
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const steps: any[] = [];
+                    for (const t of ordered) {
+                      const key = (t.title ?? '').trim().toLowerCase();
+                      if (key && !seen.has(key)) { seen.add(key); steps.push(t); }
                     }
-                    const days = [...byDay.keys()].sort((a, b) => a - b);
-                    const DAY_NAMES = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo'];
-                    return days.map(day => {
-                      const tasks = byDay.get(day)!;
-                      const dayName = DAY_NAMES[day - 1] ?? `Dia ${day}`;
-                      return (
-                        <div key={day} style={{
-                          background: T.surface, borderRadius: 16, overflow: 'hidden',
-                          boxShadow: shadow.card, border: `1px solid ${T.borderSoft}`,
-                        }}>
-                          {/* Cabeçalho do dia */}
-                          <div style={{ padding: '11px 18px', background: T.pinkSoft, borderBottom: `1px solid ${T.borderSoft}` }}>
-                            <div style={{ fontSize: 12.5, fontWeight: 800, color: T.pinkDeep, textTransform: 'uppercase', letterSpacing: 0.6 }}>
-                              {dayName}
-                            </div>
+                    return (
+                      <div style={{
+                        background: T.surface, borderRadius: 16, overflow: 'hidden',
+                        boxShadow: shadow.card, border: `1px solid ${T.borderSoft}`,
+                      }}>
+                        {/* Cabeçalho */}
+                        <div style={{ padding: '13px 18px', background: T.pinkSoft, borderBottom: `1px solid ${T.borderSoft}` }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 800, color: T.pinkDeep, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+                            🚿 Lavagem da semana
                           </div>
-                          {/* Tarefas do dia */}
-                          {tasks.map((task, i) => {
-                            const TaskIcon = iconForTask(task.title);
-                            const imgUrl = taskImageUrl(task.title, task.description, products);
-                            return (
-                              <div
-                                key={i}
-                                onClick={imgUrl ? () => goTab('produtos') : undefined}
-                                style={{
-                                  padding: '13px 18px', display: 'flex', alignItems: 'flex-start', gap: 14,
-                                  borderBottom: i < tasks.length - 1 ? `1px solid ${T.borderSoft}` : 'none',
-                                  cursor: imgUrl ? 'pointer' : 'default',
-                                }}
-                              >
-                                {/* Foto do produto (ícone fica atrás como fallback se a imagem falhar) */}
-                                <div style={{
-                                  position: 'relative', width: 44, height: 44, borderRadius: 12, flexShrink: 0,
-                                  background: '#FFF', border: `1px solid ${T.pinkSoft}`, overflow: 'hidden',
-                                }}>
-                                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: T.rose, color: T.pinkDeep }}>
-                                    <TaskIcon size={20} />
-                                  </div>
-                                  {imgUrl && (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img src={imgUrl} alt="" loading="lazy"
-                                      onError={e => { e.currentTarget.style.display = 'none'; }}
-                                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', background: '#fff' }}
-                                    />
-                                  )}
-                                </div>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                  <div style={{ fontSize: 14, fontWeight: 700, color: T.ink }}>{task.title}</div>
-                                  <div style={{ fontSize: 12.5, color: T.inkSoft, marginTop: 2, lineHeight: 1.45 }}>{task.description}</div>
-                                  {imgUrl && (
-                                    <div style={{ fontSize: 11.5, fontWeight: 700, color: T.pinkDeep, marginTop: 5, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                                      <IconBag size={12} stroke={2} /> Ver produto pra comprar ›
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
+                          <div style={{ fontSize: 12, color: T.inkSoft, marginTop: 3, lineHeight: 1.4 }}>
+                            Siga esse passo a passo em <strong>todas as lavagens da semana</strong>.
+                          </div>
                         </div>
-                      );
-                    });
+                        {/* Passos numerados */}
+                        {steps.map((task, i) => {
+                          const TaskIcon = iconForTask(task.title);
+                          const imgUrl = taskImageUrl(task.title, task.description, products);
+                          return (
+                            <div
+                              key={i}
+                              onClick={imgUrl ? () => goTab('produtos') : undefined}
+                              style={{
+                                padding: '13px 18px', display: 'flex', alignItems: 'flex-start', gap: 12,
+                                borderBottom: i < steps.length - 1 ? `1px solid ${T.borderSoft}` : 'none',
+                                cursor: imgUrl ? 'pointer' : 'default',
+                              }}
+                            >
+                              {/* Número do passo */}
+                              <div style={{
+                                width: 24, height: 24, borderRadius: '50%', flexShrink: 0, marginTop: 10,
+                                background: T.pink, color: '#fff', fontSize: 12.5, fontWeight: 800,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              }}>{i + 1}</div>
+                              {/* Foto do produto (ícone fica atrás como fallback se a imagem falhar) */}
+                              <div style={{
+                                position: 'relative', width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+                                background: '#FFF', border: `1px solid ${T.pinkSoft}`, overflow: 'hidden',
+                              }}>
+                                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: T.rose, color: T.pinkDeep }}>
+                                  <TaskIcon size={20} />
+                                </div>
+                                {imgUrl && (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={imgUrl} alt="" loading="lazy"
+                                    onError={e => { e.currentTarget.style.display = 'none'; }}
+                                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', background: '#fff' }}
+                                  />
+                                )}
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 14, fontWeight: 700, color: T.ink }}>{task.title}</div>
+                                <div style={{ fontSize: 12.5, color: T.inkSoft, marginTop: 2, lineHeight: 1.45 }}>{task.description}</div>
+                                {imgUrl && (
+                                  <div style={{ fontSize: 11.5, fontWeight: 700, color: T.pinkDeep, marginTop: 5, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                                    <IconBag size={12} stroke={2} /> Ver produto pra comprar ›
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
                   })()}
                 </div>
 

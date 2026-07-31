@@ -27,6 +27,7 @@ export default function MeuPlanoShell({ children }: { children: React.ReactNode 
   const router = useRouter();
   const pathname = usePathname();
   const [ready, setReady] = useState(false);
+  const [needsPhoto, setNeedsPhoto] = useState(false);
   const pv = previewCtx();  // modo "ver como cliente" (admin) — preserva na navegação
 
   const supabase = createBrowserClient(
@@ -44,8 +45,9 @@ export default function MeuPlanoShell({ children }: { children: React.ReactNode 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { router.push('/login'); return; }
 
-      // Gate: se ainda não enviou foto → força onboarding
-      // (exceto se já estiver na onboarding ou /perfil)
+      // Sem foto ainda? Antes FORÇAVA o onboarding (a cliente caía direto na tela
+      // de foto e, se desse erro, ficava sem acesso ao plano). Agora deixa entrar
+      // no plano e mostra um aviso pra adicionar a foto — feedback do time.
       const allowedHere = ALLOWED_WITHOUT_PHOTO.some(p => pathname.startsWith(p));
       if (!allowedHere) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -53,10 +55,7 @@ export default function MeuPlanoShell({ children }: { children: React.ReactNode 
           .select('photo_url')
           .eq('id', session.user.id)
           .maybeSingle();
-        if (!prof?.photo_url) {
-          router.replace('/meu-plano/onboarding');
-          return;
-        }
+        setNeedsPhoto(!prof?.photo_url);
       }
 
       setReady(true);
@@ -91,6 +90,23 @@ export default function MeuPlanoShell({ children }: { children: React.ReactNode 
       fontFamily: fonts.ui,
       color: T.ink,
     }}>
+      {/* Aviso não-bloqueante pra adicionar foto (no lugar de forçar o onboarding) */}
+      {needsPhoto && !hideNav && (
+        <Link href={previewHref('/meu-plano/onboarding', pv)} style={{ textDecoration: 'none', display: 'block' }}>
+          <div style={{
+            background: `linear-gradient(135deg, ${T.pink}, ${T.pinkDeep})`, color: '#fff',
+            padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, fontFamily: fonts.ui,
+          }}>
+            <span style={{ fontSize: 22, lineHeight: 1 }}>📸</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>Falta sua foto pro plano ficar completo</div>
+              <div style={{ fontSize: 12, opacity: 0.92, lineHeight: 1.35 }}>A Juliane usa a foto do seu cabelo pra deixar seu plano ainda mais certeiro. É rapidinho 💗</div>
+            </div>
+            <span style={{ background: 'rgba(255,255,255,0.22)', borderRadius: 20, padding: '6px 12px', fontSize: 12.5, fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>Enviar →</span>
+          </div>
+        </Link>
+      )}
+
       <div style={{ paddingBottom: hideNav ? 0 : 78 }}>
         {children}
       </div>
