@@ -491,6 +491,62 @@ function ColorSwatch({ color, size = 32, selected = false }: { color: string; si
 }
 
 // ─── Card de opção (single) — premium ────────────────────────
+// Card com IMAGEM (variante A/B do passo "tipo de cabelo"): foto + barra escura
+// com o nome e a seta, igual ao mockup. Robusto a qualquer foto retrato.
+function ImageCard({ option, image, selected, onClick, indexDelay }: {
+  option: { id: string; label: string }
+  image: string
+  selected: boolean
+  onClick: () => void
+  indexDelay: number
+}) {
+  const [hovered, setHovered] = useState(false)
+  const [burst, setBurst] = useState(0)
+  return (
+    <button
+      onClick={() => { setBurst(b => b + 1); onClick() }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        position: 'relative', padding: 0, border: `2px solid ${selected ? T.pink : 'rgba(196,140,150,0.18)'}`,
+        borderRadius: 18, overflow: 'hidden', cursor: 'pointer', background: '#fff', width: '100%',
+        boxShadow: selected
+          ? `0 12px 32px ${T.pink}33, 0 2px 8px ${T.pink}22`
+          : hovered ? '0 8px 24px rgba(190,24,93,0.14)' : '0 2px 8px rgba(190,24,93,0.05)',
+        transition: 'all 0.32s cubic-bezier(.2,.7,.3,1)',
+        animation: `cardIn 0.55s ${indexDelay}ms both cubic-bezier(.2,.85,.25,1)`,
+        transform: selected ? 'translateY(-2px) scale(1.01)' : hovered ? 'translateY(-1px)' : 'translateY(0)',
+        display: 'block',
+      }}
+    >
+      <SparkleBurst trigger={burst} />
+      <div style={{ position: 'relative', width: '100%', aspectRatio: '1 / 1.18', overflow: 'hidden' }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={image} alt={option.label} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', filter: selected ? 'none' : hovered ? 'none' : 'saturate(0.98)' }} />
+        {/* Barra escura com nome + seta */}
+        <div style={{
+          position: 'absolute', left: 0, right: 0, bottom: 0,
+          background: selected ? `linear-gradient(180deg, rgba(60,40,50,0.0), ${T.pinkDeep}F2 55%)` : 'linear-gradient(180deg, rgba(45,30,40,0.0), rgba(45,30,40,0.92) 55%)',
+          padding: '26px 14px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+        }}>
+          <span style={{ color: '#fff', fontSize: 17, fontWeight: 700, fontFamily: fonts.display, letterSpacing: -0.2 }}>{option.label}</span>
+          <span style={{
+            width: 30, height: 30, borderRadius: '50%', background: '#fff', flexShrink: 0,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            color: selected ? T.pink : '#3A2A34', boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+          }}>
+            {selected ? (
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8l3 3 7-7" /></svg>
+            ) : (
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3l5 5-5 5" /></svg>
+            )}
+          </span>
+        </div>
+      </div>
+    </button>
+  )
+}
+
 function SingleCard({ option, selected, onClick, indexDelay, hasColorSwatch }: {
   option: { id: string; label: string; color?: string }
   selected: boolean
@@ -637,7 +693,7 @@ function MultiCard({ option, selected, onClick, indexDelay }: {
 }
 
 // ─── Tela: pergunta single ────────────────────────────────────
-function SingleScreen({ q, value, onChoose, compact }: {
+function SingleScreen({ q, value, onChoose, compact, imageOptions }: {
   q: QuizStep
   value: string | undefined
   onChoose: (v: string) => void
@@ -645,10 +701,13 @@ function SingleScreen({ q, value, onChoose, compact }: {
    *  Reduz fontSize do intro/title e espaçamentos pra todas as opções
    *  ficarem visíveis sem scroll na viewport mobile. */
   compact?: boolean
+  /** Variante A/B: mapa opção→imagem. Se presente, renderiza cards com foto. */
+  imageOptions?: Record<string, string> | null
 }) {
   const opts = q.options ?? []
   const isCor = q.id === 'cor'
-  const useGrid = !isCor && opts.length === 4
+  const useImages = !!imageOptions && opts.every(o => typeof imageOptions[o.id] === 'string')
+  const useGrid = useImages || (!isCor && opts.length === 4)
 
   return (
     <div style={{
@@ -691,14 +750,25 @@ function SingleScreen({ q, value, onChoose, compact }: {
         }
       >
         {opts.map((opt, i) => (
-          <SingleCard
-            key={opt.id}
-            option={opt}
-            selected={value === opt.id}
-            onClick={() => onChoose(opt.id)}
-            indexDelay={i * 65}
-            hasColorSwatch={isCor}
-          />
+          useImages ? (
+            <ImageCard
+              key={opt.id}
+              option={opt}
+              image={imageOptions![opt.id]}
+              selected={value === opt.id}
+              onClick={() => onChoose(opt.id)}
+              indexDelay={i * 65}
+            />
+          ) : (
+            <SingleCard
+              key={opt.id}
+              option={opt}
+              selected={value === opt.id}
+              onClick={() => onChoose(opt.id)}
+              indexDelay={i * 65}
+              hasColorSwatch={isCor}
+            />
+          )
         ))}
       </div>
     </div>
@@ -2107,6 +2177,14 @@ export default function QuizClient({ experiments = [] }: { experiments?: ActiveE
                 compact={
                   currentVariant?.side === 'variant' &&
                   typeof currentVariant.content.image_url === 'string'
+                }
+                /* Variante A/B com foto em cada opção (ex.: passo "tipo") */
+                imageOptions={
+                  currentVariant?.side === 'variant' &&
+                  currentVariant.content.option_images &&
+                  typeof currentVariant.content.option_images === 'object'
+                    ? (currentVariant.content.option_images as Record<string, string>)
+                    : null
                 }
               />
             )}
