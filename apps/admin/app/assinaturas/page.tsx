@@ -1,6 +1,6 @@
 import { createAdminClient } from '../../lib/supabase'
 import Sidebar from '../components/Sidebar'
-import Link from 'next/link'
+import SubsTable from './SubsTable'
 
 export const revalidate = 60
 export const metadata = { title: 'Assinaturas — Admin Plano da Ju' }
@@ -10,21 +10,6 @@ const green   = '#22A06B'
 const orange  = '#D97706'
 const red     = '#DC2626'
 const gray    = '#7C6B7E'
-
-const SUB_STATUS: Record<string, { label: string; color: string }> = {
-  active:    { label: 'Ativa',     color: green },
-  cancelled: { label: 'Cancelada', color: red },
-  expired:   { label: 'Expirada',  color: orange },
-  pending:   { label: 'Pendente',  color: gray },
-}
-
-const SUB_TYPE: Record<string, string> = {
-  annual_card:    '90 dias — Cartão',
-  annual_pix:     '90 dias — PIX',
-  quarterly_card: '90 dias — Cartão',
-  quarterly_pix:  '90 dias — PIX',
-  none:           '—',
-}
 
 // Pricing
 const PRICE: Record<string, number> = {
@@ -163,68 +148,8 @@ export default async function AssinaturasPage() {
           </div>
         </div>
 
-        {/* Full list */}
-        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)' }}>
-          <div style={{ padding: '18px 24px', borderBottom: '1px solid #F0F0F5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#2A1E2C' }}>Todas as assinaturas</div>
-            <Link href="/usuarios" style={{ fontSize: 13, color: accent, fontWeight: 600, textDecoration: 'none' }}>
-              Ver usuárias →
-            </Link>
-          </div>
-
-          {list.length === 0 ? (
-            <div style={{ padding: '40px 24px', textAlign: 'center', color: gray, fontSize: 14 }}>
-              Nenhuma assinatura encontrada
-            </div>
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid #F0F0F5', background: '#FFF7EE' }}>
-                  {['Usuária', 'Plano', 'Status', 'PagarMe ID', 'Expira em', 'Cadastro'].map(h => (
-                    <th key={h} style={{ padding: '10px 20px', textAlign: 'left', fontSize: 11, color: gray, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4 }}>
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {list.map((s: any) => {
-                  const st = SUB_STATUS[s.subscription_status] ?? { label: s.subscription_status, color: gray }
-                  return (
-                    <tr key={s.id} style={{ borderBottom: '1px solid #F9F9FC' }}>
-                      <td style={{ padding: '12px 20px' }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: '#2A1E2C' }}>
-                          {s.full_name ?? s.email.split('@')[0]}
-                        </div>
-                        <div style={{ fontSize: 11, color: gray }}>{s.email}</div>
-                      </td>
-                      <td style={{ padding: '12px 20px', fontSize: 13, color: '#2A1E2C' }}>
-                        {SUB_TYPE[s.subscription_type] ?? s.subscription_type}
-                      </td>
-                      <td style={{ padding: '12px 20px' }}>
-                        <span style={{
-                          fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20,
-                          background: st.color + '18', color: st.color,
-                        }}>{st.label}</span>
-                      </td>
-                      <td style={{ padding: '12px 20px', fontSize: 12, color: gray, fontFamily: 'monospace' }}>
-                        {s.pagarme_subscription_id ?? '—'}
-                      </td>
-                      <td style={{ padding: '12px 20px', fontSize: 12, color: s.subscription_expires_at ? '#2A1E2C' : gray }}>
-                        {s.subscription_expires_at
-                          ? new Date(s.subscription_expires_at).toLocaleDateString('pt-BR')
-                          : '—'}
-                      </td>
-                      <td style={{ padding: '12px 20px', fontSize: 12, color: gray }}>
-                        {new Date(s.created_at).toLocaleDateString('pt-BR')}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
+        {/* Full list — paginada (50/página) */}
+        <SubsTable list={list} />
 
       </main>
     </div>
