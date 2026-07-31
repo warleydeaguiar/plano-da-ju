@@ -55,7 +55,7 @@ export default async function RelatoriosPage() {
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#FFFAF5', fontFamily: 'Plus Jakarta Sans, -apple-system, system-ui, sans-serif' }}>
       <Sidebar />
-      <main style={{ flex: 1, padding: '28px 32px', overflow: 'auto' }}>
+      <main style={{ marginLeft: 234, flex: 1, padding: '28px 32px', overflow: 'auto' }}>
         <h1 style={{ fontSize: 24, fontWeight: 800, color: '#2A1E2C', margin: '0 0 4px' }}>Relatórios</h1>
         <p style={{ fontSize: 13.5, color: gray, margin: '0 0 24px' }}>Parcerias ativadas por dia (últimos {DAYS} dias)</p>
 
