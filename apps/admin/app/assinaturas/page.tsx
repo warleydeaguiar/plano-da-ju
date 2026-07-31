@@ -64,20 +64,6 @@ export default async function AssinaturasPage(
     .limit(5000)
   const all = (allSubs ?? []) as any[]
 
-  // Valor REAL pago por pessoa (soma real do Pagar.me — payment_confirmed)
-  const { data: payRows } = await (sb.from('checkout_events') as any)
-    .select('email,amount_cents')
-    .eq('event_type', 'payment_confirmed')
-    .not('email', 'is', null)
-    .limit(50000)
-  const paidMap = new Map<string, number>()
-  for (const r of ((payRows ?? []) as any[])) {
-    const e = String(r.email ?? '').toLowerCase().trim()
-    if (!e) continue
-    const c = r.amount_cents ?? 0
-    if (c > (paidMap.get(e) ?? 0)) paidMap.set(e, c)
-  }
-
   // Tabela paginada (50/página). Filtro "só vendas pagas" = exclui parcerias.
   let q = (sb.from('profiles') as any)
     .select('id,full_name,email,subscription_type,subscription_status,subscription_expires_at,pagarme_subscription_id,created_at', { count: 'exact' })
@@ -91,6 +77,22 @@ export default async function AssinaturasPage(
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
   const pageHref = (p: number) => `/assinaturas?page=${p}${paidOnly ? '&paid=1' : ''}`
 
+  // Valor REAL pago — busca só os e-mails DESTA página (leve; sem varrer tudo).
+  const pageEmails = list.map((s: any) => s.email).filter(Boolean)
+  const paidMap = new Map<string, number>()
+  if (pageEmails.length) {
+    const { data: payRows } = await (sb.from('checkout_events') as any)
+      .select('email,amount_cents')
+      .eq('event_type', 'payment_confirmed')
+      .in('email', pageEmails)
+    for (const r of ((payRows ?? []) as any[])) {
+      const e = String(r.email ?? '').toLowerCase().trim()
+      if (!e) continue
+      const c = r.amount_cents ?? 0
+      if (c > (paidMap.get(e) ?? 0)) paidMap.set(e, c)
+    }
+  }
+
   const active    = all.filter((s: any) => s.subscription_status === 'active')
   const cancelled = all.filter((s: any) => s.subscription_status === 'cancelled')
   const pending   = all.filter((s: any) => s.subscription_status === 'pending')
@@ -99,8 +101,8 @@ export default async function AssinaturasPage(
   const annualCard = active.filter((s: any) => s.subscription_type === 'annual_card')
   const annualPix  = active.filter((s: any) => s.subscription_type === 'annual_pix')
 
-  // Receita total = soma REAL dos pagamentos confirmados (não assume preço)
-  const totalRevenue = Math.round(Array.from(paidMap.values()).reduce((s, c) => s + c, 0) / 100)
+  // Receita estimada (rápida): soma o preço por tipo das assinaturas pagas.
+  const totalRevenue = Math.round(all.reduce((s: number, x: any) => s + (PRICE[x.subscription_type] ?? 0), 0))
 
   // Expirations in the next 30 days
   const now = Date.now()
