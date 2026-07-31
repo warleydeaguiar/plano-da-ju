@@ -94,14 +94,18 @@ async function getData() {
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const since30 = new Date(Date.now() - 30 * 86400_000).toISOString()
 
-  const [viewsAllRows, viewsTodayRows, profiles, activeProfiles, answersAll, dailyViewsRows, dailyLeadsRows, stepEvents, leadsCount, checkoutEvents] = await Promise.all([
+  const [viewsAllRows, viewsTodayRows, profiles, activeProfiles, answerStats, questionSessions, dailyViewsRows, dailyLeadsRows, stepEvents, leadsCount, checkoutEvents] = await Promise.all([
     // Todas as views (session_id + created_at) para deduplicar em JS
     sb.from('wg_quiz_views' as any).select('session_id, created_at').eq('quiz_slug', 'plano-capilar'),
     // Views de hoje
     sb.from('wg_quiz_views' as any).select('session_id, created_at').eq('quiz_slug', 'plano-capilar').gte('created_at', today.toISOString()),
     sb.from('profiles').select('id', { count: 'exact', head: true }),
     sb.from('profiles').select('id', { count: 'exact', head: true }).eq('subscription_status', 'active'),
-    sb.from('wg_quiz_answers' as any).select('question_id, answer, session_id').eq('quiz_slug', 'plano-capilar'),
+    // Agregado no BANCO (contornar teto de linhas do PostgREST — antes truncava
+    // em ~4k de 317k respostas). quiz_answer_stats: contagem por resposta;
+    // quiz_question_sessions: sessões distintas por pergunta (funil).
+    sb.rpc('quiz_answer_stats' as any, { p_slug: 'plano-capilar' }),
+    sb.rpc('quiz_question_sessions' as any, { p_slug: 'plano-capilar' }),
     // Views dos últimos 30d para série diária
     sb.from('wg_quiz_views' as any).select('session_id, created_at').eq('quiz_slug', 'plano-capilar').gte('created_at', since30).order('created_at', { ascending: true }),
     // Leads dos últimos 30d para série diária (dado mais confiável — não depende de session_id)
@@ -156,17 +160,15 @@ async function getData() {
     }
   })
 
-  // Agregar respostas por pergunta
+  // Agregar respostas por pergunta (já vem contado do banco por pergunta+valor)
   const questionMap: Record<string, Record<string, number>> = {}
-  for (const row of (answersAll.data ?? []) as any[]) {
+  for (const row of (answerStats.data ?? []) as any[]) {
     const qid = row.question_id as string
     if (!QUESTION_LABELS[qid]) continue // pular perguntas sem label (ex: texto livre)
+    if (row.value == null) continue
     if (!questionMap[qid]) questionMap[qid] = {}
-    const values = Array.isArray(row.answer) ? row.answer : [row.answer]
-    for (const v of values) {
-      const s = String(v)
-      questionMap[qid][s] = (questionMap[qid][s] ?? 0) + 1
-    }
+    const s = String(row.value)
+    questionMap[qid][s] = (questionMap[qid][s] ?? 0) + Number(row.cnt ?? 0)
   }
 
   // Construir analytics com % e labels
@@ -215,21 +217,17 @@ async function getData() {
     email: 'E-mail',
   }
 
-  // Conta sessões únicas por pergunta
-  const answerSessionMap: Record<string, Set<string>> = {}
-  for (const row of (answersAll.data ?? []) as any[]) {
-    const qid = row.question_id as string
-    const sid = row.session_id as string
-    if (!sid) continue
-    if (!answerSessionMap[qid]) answerSessionMap[qid] = new Set()
-    answerSessionMap[qid].add(sid)
+  // Sessões únicas por pergunta (contadas no banco — não trunca)
+  const answerSessionMap: Record<string, number> = {}
+  for (const row of (questionSessions.data ?? []) as any[]) {
+    answerSessionMap[row.question_id as string] = Number(row.sessions ?? 0)
   }
 
-  const topAnswerSessions = Math.max(...ANSWER_FUNNEL_ORDER.map(q => answerSessionMap[q]?.size ?? 0), 1)
+  const topAnswerSessions = Math.max(...ANSWER_FUNNEL_ORDER.map(q => answerSessionMap[q] ?? 0), 1)
 
   const answerFunnel = ANSWER_FUNNEL_ORDER.map((qid, i) => {
-    const sessions = answerSessionMap[qid]?.size ?? 0
-    const prevSessions = i > 0 ? (answerSessionMap[ANSWER_FUNNEL_ORDER[i - 1]]?.size ?? 0) : null
+    const sessions = answerSessionMap[qid] ?? 0
+    const prevSessions = i > 0 ? (answerSessionMap[ANSWER_FUNNEL_ORDER[i - 1]] ?? 0) : null
     const dropoff = prevSessions != null && prevSessions > 0 && sessions < prevSessions
       ? Math.round(((prevSessions - sessions) / prevSessions) * 100)
       : null
