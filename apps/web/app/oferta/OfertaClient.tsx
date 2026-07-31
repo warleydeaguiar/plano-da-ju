@@ -1602,12 +1602,18 @@ export default function OfertaClient() {
 
           {/* Resumo do SEU caso — mostra que o plano é feito pra ESSA pessoa (dados do quiz) */}
           {(() => {
+            const qa = quizAnswers as Record<string, unknown>;
+            const temTipo = !!(qa?.tipo);
+            const temInc = !!(Array.isArray(qa?.incomoda) ? (qa.incomoda as unknown[]).length : qa?.incomoda);
+            // Sem dados reais do quiz (ex.: visita direta) → não mostra o resumo.
+            if (!temTipo && !temInc && !qa?.cor) return null;
             const d = buildConsultaData({ full_name: name, quiz_answers: quizAnswers });
             const linhas: Array<{ icon: string; label: string; valor: string }> = [];
-            linhas.push({ icon: '💇‍♀️', label: 'Seu cabelo', valor: [d.tipo, d.cor].filter(Boolean).join(' · ') || 'seu tipo de cabelo' });
+            if (temTipo || qa?.cor) linhas.push({ icon: '💇‍♀️', label: 'Seu cabelo', valor: [d.tipo, d.cor].filter(Boolean).join(' · ') });
             if (d.couro && d.couroKind) linhas.push({ icon: '🌿', label: 'Couro / fios', valor: d.couro });
-            linhas.push({ icon: '🎯', label: 'Maior dificuldade', valor: d.problema });
+            if (temInc) linhas.push({ icon: '🎯', label: 'Maior dificuldade', valor: d.problema });
             if (d.temQuimica) linhas.push({ icon: '🧪', label: 'Química no cabelo', valor: d.quimica.join(', ') });
+            if (linhas.length === 0) return null;
             return (
               <div style={{
                 background: `linear-gradient(135deg, ${T.rose}, ${T.cream})`,
@@ -1616,7 +1622,7 @@ export default function OfertaClient() {
                 animation: 'cardIn 0.55s both cubic-bezier(.2,.85,.25,1)',
               }}>
                 <div style={{ fontSize: 12.5, fontWeight: 700, color: T.pinkDeep, marginBottom: 12, fontFamily: fonts.ui, letterSpacing: 0.2 }}>
-                  ✨ Feito exatamente pro caso da {name || 'você'}:
+                  ✨ Feito exatamente {name ? `pro caso da ${name}` : 'pro seu caso'}:
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
                   {linhas.map((l, i) => (
