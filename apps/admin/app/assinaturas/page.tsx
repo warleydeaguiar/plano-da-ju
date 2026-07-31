@@ -33,13 +33,33 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
 export default async function AssinaturasPage() {
   const sb = createAdminClient()
 
-  const { data: subs } = await (sb.from('profiles') as any)
-    .select('id,full_name,email,subscription_type,subscription_status,subscription_expires_at,pagarme_subscription_id,created_at')
-    .not('subscription_type', 'eq', 'none')
-    .order('created_at', { ascending: false })
-    .limit(200)
+  const [{ data: subs }, { data: payRows }] = await Promise.all([
+    (sb.from('profiles') as any)
+      .select('id,full_name,email,subscription_type,subscription_status,subscription_expires_at,pagarme_subscription_id,created_at')
+      .not('subscription_type', 'eq', 'none')
+      .order('created_at', { ascending: false })
+      .limit(200),
+    // Valor realmente pago por e-mail (pagamentos confirmados).
+    (sb.from('checkout_events') as any)
+      .select('email,amount_cents')
+      .eq('event_type', 'payment_confirmed')
+      .not('amount_cents', 'is', null),
+  ])
 
-  const list = (subs ?? []) as any[]
+  // Mapa e-mail → maior valor pago confirmado (o valor do plano que a pessoa comprou).
+  const payMap = new Map<string, number>()
+  for (const r of (payRows ?? []) as any[]) {
+    const key = (r.email ?? '').toLowerCase().trim()
+    if (!key) continue
+    const cents = Number(r.amount_cents) || 0
+    if (cents > (payMap.get(key) ?? 0)) payMap.set(key, cents)
+  }
+
+  const list = ((subs ?? []) as any[]).map(s => ({
+    ...s,
+    paid_cents: payMap.get((s.email ?? '').toLowerCase().trim()) ?? null,
+    is_parceria: s.subscription_type === 'parceria',
+  }))
 
   const active    = list.filter((s: any) => s.subscription_status === 'active')
   const cancelled = list.filter((s: any) => s.subscription_status === 'cancelled')
@@ -49,8 +69,11 @@ export default async function AssinaturasPage() {
   const annualCard = active.filter((s: any) => s.subscription_type === 'annual_card')
   const annualPix  = active.filter((s: any) => s.subscription_type === 'annual_pix')
 
-  // Total revenue (lifetime): somar todos os pagamentos (por tipo)
+  // Receita total: valor REALMENTE pago (checkout_events); fallback no preço do
+  // tipo pra vendas pagas sem evento registrado (dados antigos). Parceria = R$0.
   const totalRevenue = list.reduce((sum: number, s: any) => {
+    if (s.paid_cents != null) return sum + s.paid_cents / 100
+    if (s.is_parceria) return sum
     return sum + (PRICE[s.subscription_type] ?? 0)
   }, 0)
 

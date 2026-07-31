@@ -23,28 +23,47 @@ const SUB_TYPE: Record<string, string> = {
 
 const PAGE_SIZE = 50
 
+const brl = (cents: number) => `R$ ${(cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default function SubsTable({ list }: { list: any[] }) {
   const [page, setPage] = useState(0)
-  const total = list.length
+  const [paidOnly, setPaidOnly] = useState(false)
+
+  // "Só vendas pagas" = exclui parcerias (brindes/permutas).
+  const view = paidOnly ? list.filter(s => !s.is_parceria) : list
+
+  const total = view.length
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const safePage = Math.min(page, pages - 1)
   const start = safePage * PAGE_SIZE
-  const rows = list.slice(start, start + PAGE_SIZE)
+  const rows = view.slice(start, start + PAGE_SIZE)
 
   return (
     <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)' }}>
-      <div style={{ padding: '18px 24px', borderBottom: '1px solid #F0F0F5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ padding: '18px 24px', borderBottom: '1px solid #F0F0F5', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#2A1E2C' }}>Todas as assinaturas</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#2A1E2C' }}>{paidOnly ? 'Vendas pagas' : 'Todas as assinaturas'}</div>
           <div style={{ fontSize: 12, color: gray, marginTop: 2 }}>
             {total === 0 ? 'Nenhuma' : `${total} no total`}
             {total > PAGE_SIZE && ` · mostrando ${start + 1}–${start + rows.length}`}
           </div>
         </div>
-        <Link href="/usuarios" style={{ fontSize: 13, color: accent, fontWeight: 600, textDecoration: 'none' }}>
-          Ver usuárias →
-        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <button
+            onClick={() => { setPaidOnly(v => !v); setPage(0) }}
+            style={{
+              padding: '7px 13px', borderRadius: 8, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit',
+              border: `1px solid ${paidOnly ? accent : '#E6DEE8'}`,
+              background: paidOnly ? accent : '#fff', color: paidOnly ? '#fff' : gray,
+            }}
+          >
+            {paidOnly ? '✓ Só vendas pagas' : 'Só vendas pagas'}
+          </button>
+          <Link href="/usuarios" style={{ fontSize: 13, color: accent, fontWeight: 600, textDecoration: 'none' }}>
+            Ver usuárias →
+          </Link>
+        </div>
       </div>
 
       {total === 0 ? (
@@ -56,7 +75,7 @@ export default function SubsTable({ list }: { list: any[] }) {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid #F0F0F5', background: '#FFF7EE' }}>
-                {['Usuária', 'Plano', 'Status', 'PagarMe ID', 'Expira em', 'Cadastro'].map(h => (
+                {['Usuária', 'Plano', 'Valor pago', 'Status', 'PagarMe ID', 'Expira em', 'Cadastro'].map(h => (
                   <th key={h} style={{ padding: '10px 20px', textAlign: 'left', fontSize: 11, color: gray, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4 }}>
                     {h}
                   </th>
@@ -76,6 +95,13 @@ export default function SubsTable({ list }: { list: any[] }) {
                     </td>
                     <td style={{ padding: '12px 20px', fontSize: 13, color: '#2A1E2C' }}>
                       {SUB_TYPE[s.subscription_type] ?? s.subscription_type}
+                    </td>
+                    <td style={{ padding: '12px 20px', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                      {s.paid_cents != null
+                        ? <span style={{ color: '#16A34A' }}>{brl(s.paid_cents)}</span>
+                        : s.is_parceria
+                          ? <span style={{ color: '#B8860B', fontWeight: 500 }}>Parceria</span>
+                          : <span style={{ color: '#B0A0B2' }}>—</span>}
                     </td>
                     <td style={{ padding: '12px 20px' }}>
                       <span style={{
