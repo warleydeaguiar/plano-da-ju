@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
 // ─── Design tokens ───────────────────────────────────────────
 const T = {
@@ -302,65 +302,56 @@ function DashboardView({ metrics, loading }: { metrics: Metrics | null; loading:
   )
 }
 
-// ─── Editor de TEXTO (sem HTML) + prévia ──────────────────────
-// O template de HTML nunca muda — só o texto. Então extraímos os pedaços de
-// texto do HTML pra pessoa editar em campos simples, e reescrevemos de volta
-// nos MESMOS lugares, sem ela precisar tocar em código.
-
-interface TextBlock { text: string; tag: string; isLink: boolean }
-
-function walkTextNodes(body: HTMLElement): Text[] {
-  const out: Text[] = []
-  const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT, {
-    acceptNode(n) {
-      const p = (n as Text).parentElement
-      if (!p) return NodeFilter.FILTER_REJECT
-      const tag = p.nodeName.toLowerCase()
-      if (['style', 'script', 'title', 'head'].includes(tag)) return NodeFilter.FILTER_REJECT
-      if (p.closest('style,script,head')) return NodeFilter.FILTER_REJECT
-      if (!n.nodeValue || !n.nodeValue.trim()) return NodeFilter.FILTER_REJECT
-      return NodeFilter.FILTER_ACCEPT
-    },
-  })
-  let cur: Node | null
-  while ((cur = walker.nextNode())) out.push(cur as Text)
-  return out
-}
-
-function extractTextBlocks(html: string): TextBlock[] {
-  if (typeof window === 'undefined' || !html) return []
-  const doc = new DOMParser().parseFromString(html, 'text/html')
-  return walkTextNodes(doc.body).map(n => {
-    const el = n.parentElement
-    return {
-      text: n.nodeValue ?? '',
-      tag: el ? el.nodeName.toLowerCase() : '',
-      isLink: el ? el.closest('a') != null : false,
-    }
-  })
-}
-
-// Reescreve os textos nos mesmos nós do HTML base (estrutura intocada).
-function applyTextBlocks(baseHtml: string, texts: string[]): string {
-  if (typeof window === 'undefined' || !baseHtml) return baseHtml
-  const doc = new DOMParser().parseFromString(baseHtml, 'text/html')
-  walkTextNodes(doc.body).forEach((n, i) => { if (i < texts.length) n.nodeValue = texts[i] })
-  const isFullDoc = /<html[\s>]/i.test(baseHtml)
-  const doctype = /^\s*<!doctype/i.test(baseHtml) ? '<!DOCTYPE html>\n' : ''
-  return isFullDoc ? doctype + doc.documentElement.outerHTML : doc.body.innerHTML
-}
+// ─── Editor visual "clica e edita" + prévia ───────────────────
+// A pessoa edita o texto direto no email renderizado (contentEditable via
+// designMode no iframe). O HTML/layout fica intocado — só o texto muda.
 
 // Substitui as variáveis pra prévia parecer um email de verdade.
 function fillPreview(html: string): string {
   return (html || '').replace(/\{nome\}/g, 'Maria').replace(/\{email\}/g, 'maria@email.com')
 }
 
-function blockLabel(b: TextBlock): string {
-  if (b.isLink || b.tag === 'a') return 'Botão / link'
-  if (['h1', 'h2'].includes(b.tag)) return 'Título'
-  if (['h3', 'h4'].includes(b.tag)) return 'Subtítulo'
-  if (['strong', 'b'].includes(b.tag)) return 'Destaque'
-  return 'Texto'
+// Editor visual: clica no texto do email e edita direto. Mostra {nome}
+// literal (não substitui) pra a pessoa manter as variáveis.
+function VisualEmailEditor({ html, iframeRef }: {
+  html: string
+  iframeRef: React.RefObject<HTMLIFrameElement | null>
+}) {
+  const onLoad = () => {
+    const doc = iframeRef.current?.contentDocument
+    if (!doc) return
+    try { doc.designMode = 'on' } catch { /* noop */ }
+    // Feedback visual do que está sendo editado.
+    const style = doc.createElement('style')
+    style.textContent = 'body{cursor:text}*:focus{outline:2px solid #F472B6;outline-offset:2px;border-radius:2px}a{cursor:text}'
+    doc.head?.appendChild(style)
+    // Não deixa clicar em links "sair" da edição.
+    doc.querySelectorAll('a').forEach(a => a.addEventListener('click', e => e.preventDefault()))
+  }
+  const exec = (cmd: string) => {
+    const win = iframeRef.current?.contentWindow
+    win?.focus()
+    try { iframeRef.current?.contentDocument?.execCommand(cmd, false) } catch { /* noop */ }
+  }
+  const btn: React.CSSProperties = { width: 30, height: 28, borderRadius: 6, border: `1px solid ${T.border}`, background: '#fff', cursor: 'pointer', fontSize: 13, fontFamily: 'serif' }
+  return (
+    <div style={{ border: `1px solid ${T.border}`, borderRadius: 10, overflow: 'hidden', background: '#fff' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 10px', background: T.graySoft, borderBottom: `1px solid ${T.border}` }}>
+        <button type="button" title="Negrito" onClick={() => exec('bold')} style={{ ...btn, fontWeight: 800 }}>B</button>
+        <button type="button" title="Itálico" onClick={() => exec('italic')} style={{ ...btn, fontStyle: 'italic' }}>I</button>
+        <button type="button" title="Desfazer" onClick={() => exec('undo')} style={btn}>↶</button>
+        <button type="button" title="Refazer" onClick={() => exec('redo')} style={btn}>↷</button>
+        <span style={{ fontSize: 11, color: T.inkMuted, marginLeft: 6 }}>🖱 Clique no texto do email pra editar. O layout fica igual.</span>
+      </div>
+      <iframe
+        ref={iframeRef}
+        title="Editar email"
+        srcDoc={html}
+        onLoad={onLoad}
+        style={{ width: '100%', height: 520, border: 'none', display: 'block', background: '#fff' }}
+      />
+    </div>
+  )
 }
 
 // Prévia ao vivo do email num iframe isolado.
@@ -402,30 +393,16 @@ function SequenceEditor({ seq, onSave, onDelete }: {
     send_hour: seq.send_hour,
     quiz_slug: seq.quiz_slug ?? '',
   })
-  // Editor de texto simples (padrão) vs HTML avançado.
+  // Editor visual "clica e edita" (padrão) vs HTML avançado.
   const [htmlMode, setHtmlMode] = useState(false)
-  const [baseHtml, setBaseHtml] = useState(seq.html_body)
-  const [blockMeta, setBlockMeta] = useState<TextBlock[]>([])
-  const [blocks, setBlocks] = useState<string[]>([])
+  const visualRef = useRef<HTMLIFrameElement | null>(null)
 
-  // Ao abrir a edição, extrai os textos do HTML pro modo simples.
-  useEffect(() => {
-    if (!editing) return
-    const meta = extractTextBlocks(draft.html_body)
-    setBaseHtml(draft.html_body)
-    setBlockMeta(meta)
-    setBlocks(meta.map(m => m.text))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editing])
-
-  // Edita um bloco de texto e reescreve o HTML nos mesmos lugares.
-  const setBlock = (i: number, val: string) => {
-    setBlocks(prev => {
-      const next = [...prev]
-      next[i] = val
-      setDraft(d => ({ ...d, html_body: applyTextBlocks(baseHtml, next) }))
-      return next
-    })
+  // Lê o HTML de volta do iframe editável (preserva doctype).
+  const readVisualHtml = (): string | null => {
+    const doc = visualRef.current?.contentDocument
+    if (!doc || !doc.documentElement) return null
+    const hadDoctype = /^\s*<!doctype/i.test(draft.html_body)
+    return (hadDoctype ? '<!DOCTYPE html>\n' : '') + doc.documentElement.outerHTML
   }
 
   const handleToggleEnabled = async () => {
@@ -436,15 +413,18 @@ function SequenceEditor({ seq, onSave, onDelete }: {
 
   const handleSave = async () => {
     setSaving(true)
+    // No modo visual, pega o HTML final direto do iframe editável.
+    const html = htmlMode ? draft.html_body : (readVisualHtml() ?? draft.html_body)
     await onSave({
       id: seq.id,
       name: draft.name,
       subject: draft.subject,
-      html_body: draft.html_body,
+      html_body: html,
       text_body: draft.text_body,
       send_hour: Number(draft.send_hour),
       quiz_slug: draft.quiz_slug || null,
     })
+    setDraft(d => ({ ...d, html_body: html }))
     setEditing(false)
     setSaving(false)
   }
@@ -588,59 +568,36 @@ function SequenceEditor({ seq, onSave, onDelete }: {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: T.inkSoft }}>
-                Conteúdo do email {' '}
+                Conteúdo do email — clique no texto pra editar {' '}
                 <code style={{ fontSize: 11, background: T.graySoft, padding: '1px 5px', borderRadius: 4 }}>{'{nome}'}</code>{' '}
                 <span style={{ color: T.inkMuted }}>vira o nome da cliente</span>
               </label>
               <button
                 type="button"
-                onClick={() => setHtmlMode(m => !m)}
+                onClick={() => {
+                  if (!htmlMode) {
+                    const h = readVisualHtml()
+                    if (h) setDraft(d => ({ ...d, html_body: h }))
+                  }
+                  setHtmlMode(m => !m)
+                }}
                 style={{ padding: '5px 10px', borderRadius: 7, background: htmlMode ? T.pinkSoft : T.graySoft, color: htmlMode ? T.pink : T.inkSoft, border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
               >
-                {htmlMode ? '📝 Editar por texto' : '</> Editar HTML (avançado)'}
+                {htmlMode ? '🖱 Voltar ao visual' : '</> Editar HTML (avançado)'}
               </button>
             </div>
 
             {!htmlMode ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {blockMeta.length === 0 ? (
-                  <div style={{ fontSize: 12.5, color: T.inkMuted, padding: '10px 12px', background: T.graySoft, borderRadius: 8 }}>
-                    Não consegui separar os textos deste email automaticamente. Use o modo <strong>HTML (avançado)</strong> pra editar.
-                  </div>
-                ) : (
-                  blockMeta.map((m, i) => {
-                    const long = (blocks[i] ?? '').length > 60
-                    return (
-                      <div key={i}>
-                        <div style={{ fontSize: 10.5, fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 3 }}>
-                          {blockLabel(m)}
-                        </div>
-                        <textarea
-                          value={blocks[i] ?? ''}
-                          onChange={e => setBlock(i, e.target.value)}
-                          rows={long ? 3 : 1}
-                          style={{ width: '100%', padding: '8px 11px', fontSize: 13, fontFamily: 'inherit', border: `1px solid ${T.border}`, borderRadius: 8, resize: 'vertical', boxSizing: 'border-box', lineHeight: 1.5, color: T.ink }}
-                        />
-                      </div>
-                    )
-                  })
-                )}
-                <div style={{ fontSize: 11.5, color: T.inkMuted, lineHeight: 1.4 }}>
-                  💡 Você só edita os textos — o visual e o layout do email continuam iguais. A palavra <code style={{ background: T.graySoft, padding: '1px 4px', borderRadius: 3 }}>{'{nome}'}</code> é trocada pelo nome de cada cliente no envio.
-                </div>
-              </div>
+              <VisualEmailEditor key={htmlMode ? 'html' : 'visual'} html={draft.html_body} iframeRef={visualRef} />
             ) : (
               <textarea
                 value={draft.html_body}
                 onChange={e => setDraft(d => ({ ...d, html_body: e.target.value }))}
-                rows={10}
+                rows={12}
                 style={{ width: '100%', padding: '10px 12px', fontSize: 12, fontFamily: 'ui-monospace, monospace', border: `1px solid ${T.border}`, borderRadius: 8, resize: 'vertical', boxSizing: 'border-box', lineHeight: 1.5 }}
               />
             )}
           </div>
-
-          {/* Prévia ao vivo do email (atualiza enquanto você edita) */}
-          <EmailPreview html={draft.html_body} />
           <div style={{ display: 'flex', gap: 12 }}>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: T.inkSoft, display: 'block', marginBottom: 4 }}>Hora de envio (0–23)</label>
