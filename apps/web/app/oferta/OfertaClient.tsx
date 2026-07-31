@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { enrichIdentity, newEventId, sendServerEvent } from '@/lib/tracking-client';
 import { pixelMatchingPayload, pixelPhone } from '@/lib/pixel-pii';
 import { installmentInfo, brlCents, MAX_INSTALLMENTS } from '@/lib/pricing';
+import { getFunilCopy } from '@/lib/hair-copy';
 
 // ╔══════════════════════════════════════════════════════════╗
 // ║  V2 — Página de oferta moderna feminina                  ║
@@ -400,7 +401,7 @@ function OfferCard({ countdown, name, onBuy }: { countdown: string; name: string
               lineHeight: 1.05, letterSpacing: -0.5,
             }}>{installPerStr(MAX_INSTALLMENTS)}</div>
             <div style={{ fontSize: 9, color: T.inkSoft, marginTop: 3, fontFamily: fonts.ui }}>
-              com juros · ou à vista <strong style={{ color: T.ink }}>R$47</strong>
+              ou à vista <strong style={{ color: T.ink }}>R$47</strong>
             </div>
           </div>
         </div>
@@ -1128,7 +1129,7 @@ export default function OfertaClient() {
     // Cartão: até 3x. 1x à vista (sem juros), 2x/3x COM juros (2,99% a.m.)
     const INSTALLMENTS = [1, 2, 3].map(n => ({
       n,
-      label: installPerStr(n) + (n === 1 ? ' (à vista)' : ' com juros'),
+      label: installPerStr(n) + (n === 1 ? ' (à vista)' : ''),
     }));
     const installAmt = installPerStr(installments);
 
@@ -1192,7 +1193,7 @@ export default function OfertaClient() {
                         WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
                         lineHeight: 1,
                       }}>{installPerStr(MAX_INSTALLMENTS)}</span>
-                      <span style={{ fontSize: 10, color: T.inkSoft, fontFamily: fonts.ui }}>com juros</span>
+                      <span style={{ fontSize: 10, color: T.inkSoft, fontFamily: fonts.ui }}>no cartão</span>
                     </div>
                     <div style={{ fontSize: 10, color: T.inkSoft, marginTop: 2 }}>ou à vista R$47</div>
                   </div>
@@ -1461,7 +1462,7 @@ export default function OfertaClient() {
                   </div>
                   {payType === 'card' && installments > 1 && (
                     <div style={{ fontSize: 11, color: T.inkSoft }}>
-                      com juros · total {brlCents(installmentInfo(installments).totalCents)} · pagamento único
+                      total {brlCents(installmentInfo(installments).totalCents)} · pagamento único
                     </div>
                   )}
                   {payType === 'pix' && (
@@ -1553,26 +1554,11 @@ export default function OfertaClient() {
             </svg>
           </button>
 
-          {/* Antes/Depois — FOTO REAL do perfil da cliente (dinâmica pelo quiz:
-              loira, queda, progressiva, química, densidade). Reforça "feito
-              exatamente pro SEU caso". Só a imagem muda; nada de texto estático. */}
-          {(() => {
-            const s = (v: unknown) => String(v ?? '').toLowerCase();
-            const arr = (v: unknown) => Array.isArray(v) ? v.map(x => s(x)) : (v != null && v !== '' ? [s(v)] : []);
-            const cor = s(quizAnswers.cor), inc = arr(quizAnswers.incomoda), qui = arr(quizAnswers.quimica), corte = s(quizAnswers.corte_quimico);
-            let src = '/images/ba-progressiva.jpg';
-            if (cor.includes('loiro')) src = '/images/ba-loira.jpg';
-            else if (inc.includes('queda')) src = '/images/ba-queda.jpg';
-            else if (qui.some(q => q.includes('progressiva') || q.includes('relax') || q.includes('botox'))) src = '/images/ba-progressiva.jpg';
-            else if (corte.includes('sim') || qui.some(q => q.includes('descolor') || q.includes('mechas') || q.includes('tintura') || q.includes('decap'))) src = '/images/ba-quimica.jpg';
-            else if (inc.includes('cresc')) src = '/images/ba-densidade.jpg';
-            return (
-              <div style={{ marginBottom: 18, borderRadius: 16, overflow: 'hidden', boxShadow: '0 10px 28px -14px rgba(0,0,0,0.22)', border: `1px solid ${T.border}`, animation: 'cardIn 0.6s cubic-bezier(.2,.85,.25,1)' }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={src} alt="Antes e depois do seu tipo de cabelo com o Plano da Ju" style={{ width: '100%', height: 'auto', display: 'block' }} />
-              </div>
-            );
-          })()}
+          {/* Antes/Depois — foto real dinâmica pelo perfil (fonte única: hair-copy.ts) */}
+          <div style={{ marginBottom: 18, borderRadius: 16, overflow: 'hidden', boxShadow: '0 10px 28px -14px rgba(0,0,0,0.22)', border: `1px solid ${T.border}`, animation: 'cardIn 0.6s cubic-bezier(.2,.85,.25,1)' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={getFunilCopy(quizAnswers).beforeAfterSrc} alt="Antes e depois do seu tipo de cabelo com o Plano da Ju" style={{ width: '100%', height: 'auto', display: 'block' }} />
+          </div>
 
           {/* Plano completo + grupo */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 22 }}>
@@ -1606,7 +1592,11 @@ export default function OfertaClient() {
             fontSize: 24, fontFamily: fonts.display, color: T.ink, fontWeight: 600,
             textAlign: 'center', marginBottom: 22, lineHeight: 1.25, letterSpacing: -0.3,
           }}>
-            <em style={{ color: T.pinkDeep }}>{name || 'Você'}</em>, seu plano personalizado está pronto! ✨
+            <em style={{ color: T.pinkDeep }}>{name || 'Você'}</em>, seu <span style={{ color: T.pinkDeep }}>{getFunilCopy(quizAnswers).planoNome}</span> está pronto! ✨
+          </div>
+          {/* Argumento "específico > genérico" — dinâmico pelo perfil (hair-copy.ts) */}
+          <div style={{ fontSize: 13.5, color: T.inkSoft, textAlign: 'center', margin: '-8px auto 22px', maxWidth: 360, lineHeight: 1.5 }}>
+            {getFunilCopy(quizAnswers).argumento}
           </div>
 
           {/* First offer */}
@@ -1715,7 +1705,7 @@ export default function OfertaClient() {
                 animation: `cardIn 0.5s ${i * 80}ms both cubic-bezier(.2,.85,.25,1)`,
               }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={src} alt={`Resultado ${i+1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={src} alt={`Resultado ${i+1}`} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
               </div>
             ))}
           </div>
