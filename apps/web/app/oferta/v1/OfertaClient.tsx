@@ -605,7 +605,7 @@ export default function OfertaClient() {
           {[
             {
               q: 'Quando eu adquirir o plano, ele já está disponível?',
-              a: 'Sim, todo o conteúdo do plano é liberado imediatamente, porém, a parte personalizada será entregue em até 3 dias pois precisa ler cada resposta para fazer algo feito para você.',
+              a: 'Sim, todo o conteúdo do plano é liberado imediatamente, porém, a parte personalizada será entregue em até 30 minutos pois precisa ler cada resposta para fazer algo feito para você.',
             },
             { q: 'Os produtos indicados são difíceis de encontrar?', a: 'Não. Indicamos produtos acessíveis e que você encontra em qualquer farmácia ou loja de cosméticos.' },
             { q: 'Quando posso começar a ver resultados?', a: 'Os primeiros resultados aparecem em até 4 semanas seguindo o plano corretamente. Em 90 dias você verá a transformação completa.' },

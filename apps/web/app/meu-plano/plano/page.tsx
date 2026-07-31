@@ -1278,7 +1278,7 @@ function PreparingState({ profile }: { profile: Profile | null }) {
               </div>
             </div>
 
-            {/* Cronômetro — pronto em até 2 horas */}
+            {/* Cronômetro — pronto em até 30 minutos */}
             <div style={{
               margin: '0 16px 18px',
               background: gradient.warm,
@@ -1286,7 +1286,7 @@ function PreparingState({ profile }: { profile: Profile | null }) {
               borderRadius: 16, padding: '18px 16px', textAlign: 'center',
             }}>
               <div style={{ fontSize: 12.5, color: T.ink, fontWeight: 600, marginBottom: 8 }}>
-                ⏳ Seu plano fica pronto em até <strong>2 horas</strong>
+                ⏳ Seu plano fica pronto em até <strong>30 minutos</strong>
               </div>
               {remainingMs != null && (
                 <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontFamily: fonts.display, fontWeight: 800, color: T.pinkDeep, fontSize: 30, letterSpacing: 1 }}>

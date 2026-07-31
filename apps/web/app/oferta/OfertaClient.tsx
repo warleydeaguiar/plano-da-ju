@@ -6,6 +6,7 @@ import { enrichIdentity, newEventId, sendServerEvent } from '@/lib/tracking-clie
 import { pixelMatchingPayload, pixelPhone } from '@/lib/pixel-pii';
 import { installmentInfo, brlCents, MAX_INSTALLMENTS } from '@/lib/pricing';
 import { getFunilCopy } from '@/lib/hair-copy';
+import { buildConsultaData } from '@/lib/consulta';
 
 // ╔══════════════════════════════════════════════════════════╗
 // ║  V2 — Página de oferta moderna feminina                  ║
@@ -1599,6 +1600,42 @@ export default function OfertaClient() {
             {getFunilCopy(quizAnswers).argumento}
           </div>
 
+          {/* Resumo do SEU caso — mostra que o plano é feito pra ESSA pessoa (dados do quiz) */}
+          {(() => {
+            const d = buildConsultaData({ full_name: name, quiz_answers: quizAnswers });
+            const linhas: Array<{ icon: string; label: string; valor: string }> = [];
+            linhas.push({ icon: '💇‍♀️', label: 'Seu cabelo', valor: [d.tipo, d.cor].filter(Boolean).join(' · ') || 'seu tipo de cabelo' });
+            if (d.couro && d.couroKind) linhas.push({ icon: '🌿', label: 'Couro / fios', valor: d.couro });
+            linhas.push({ icon: '🎯', label: 'Maior dificuldade', valor: d.problema });
+            if (d.temQuimica) linhas.push({ icon: '🧪', label: 'Química no cabelo', valor: d.quimica.join(', ') });
+            return (
+              <div style={{
+                background: `linear-gradient(135deg, ${T.rose}, ${T.cream})`,
+                border: `1px solid ${T.pinkSoft}`, borderRadius: 18, padding: '18px 18px 16px',
+                marginBottom: 22, boxShadow: '0 6px 18px rgba(190,24,93,0.07)',
+                animation: 'cardIn 0.55s both cubic-bezier(.2,.85,.25,1)',
+              }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: T.pinkDeep, marginBottom: 12, fontFamily: fonts.ui, letterSpacing: 0.2 }}>
+                  ✨ Feito exatamente pro caso da {name || 'você'}:
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+                  {linhas.map((l, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
+                      <span style={{ fontSize: 15, lineHeight: 1.3, width: 20, textAlign: 'center', flexShrink: 0 }}>{l.icon}</span>
+                      <div style={{ fontSize: 12.5, lineHeight: 1.4, fontFamily: fonts.ui }}>
+                        <span style={{ color: T.inkSoft }}>{l.label}: </span>
+                        <span style={{ color: T.ink, fontWeight: 600, textTransform: 'capitalize' }}>{l.valor}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ fontSize: 11.5, color: T.inkSoft, marginTop: 13, lineHeight: 1.45, fontFamily: fonts.ui, borderTop: `1px dashed ${T.pinkSoft}`, paddingTop: 11 }}>
+                  Não é um plano genérico — eu montei a rotina e a indicação de produtos olhando <strong style={{ color: T.pinkDeep }}>pro seu cabelo</strong>, e não pro de todo mundo. 💗
+                </div>
+              </div>
+            );
+          })()}
+
           {/* First offer */}
           <OfferCard countdown={countdown} name={name} onBuy={onBuy} />
 
@@ -1710,6 +1747,33 @@ export default function OfertaClient() {
             ))}
           </div>
 
+          {/* Quem vai cuidar do seu cabelo — foto profissional da Juliane */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 16,
+            background: `linear-gradient(135deg, ${T.rose}, ${T.cream})`,
+            border: `1px solid ${T.pinkSoft}`, borderRadius: 20, padding: '18px 18px',
+            marginBottom: 32, boxShadow: '0 8px 22px rgba(190,24,93,0.07)',
+          }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/images/juliane-perfil.jpg"
+              alt="Juliane Cost, tricologista"
+              style={{ width: 92, height: 92, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: `3px solid #fff`, boxShadow: '0 4px 14px rgba(190,24,93,0.18)' }}
+            />
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: T.pinkDeep, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 3, fontFamily: fonts.ui }}>
+                Quem vai cuidar do seu cabelo
+              </div>
+              <div style={{ fontSize: 17, fontWeight: 700, color: T.ink, fontFamily: fonts.display, lineHeight: 1.15 }}>
+                Juliane Cost
+              </div>
+              <div style={{ fontSize: 12.5, color: T.inkSoft, marginBottom: 7, fontFamily: fonts.ui }}>Tricologista</div>
+              <div style={{ fontSize: 12.5, color: T.ink, lineHeight: 1.45, fontFamily: fonts.ui }}>
+                Sou eu que analiso a sua foto e monto o seu plano, um por um. +3.500 mulheres já cuidam do cabelo comigo. 💗
+              </div>
+            </div>
+          </div>
+
           {/* Perguntas Frequentes */}
           <div style={{
             fontSize: 22, fontFamily: fonts.display, color: T.ink,
@@ -1723,14 +1787,18 @@ export default function OfertaClient() {
             marginBottom: 32, overflow: 'hidden',
           }}>
             {[
-              { q: 'Quando eu adquirir o plano, ele já estará disponível?', a: 'Você acessa o app imediatamente após o pagamento. Pra eu montar seu plano personalizado, você precisa enviar uma foto do seu cabelo no app (é a primeira coisa que aparece quando entra). A partir daí, em até 3 dias úteis eu analiso sua foto + suas respostas e libero o plano completo. Você é avisada por e-mail quando estiver pronto.' },
-              { q: 'Os produtos indicados são difíceis de encontrar?', a: 'Não! Eu tenho parceria com as marcas de produtos de cabelo e por isso tenho preços abaixo do mercado para vocês.' },
-              { q: 'E se eu tiver dúvidas ao longo do processo?', a: 'Você terá suporte diário através do WhatsApp, vou ficar disponível para falar com você e te ajudar.' },
-              { q: 'Quando posso começar a ver resultados?', a: 'Cada cabelo tem seu ritmo, mas a maioria começa a notar mudanças significativas já nas primeiras semanas, especialmente com a combinação de rotina de cuidados e os produtos certos.' },
-              { q: 'Você usa Mega Hair?', a: 'Não, no meu insta tem diversos videos mostrando meu cabelo desde a raiz.' },
-              { q: 'O que é Tricologia?', a: 'A tricologia é uma área focada no estudo, tratamento e prevenção de problemas que possam afetar o cabelo.\n\nAtravés de uma consulta preliminar, o tricologista é capaz de examinar e identificar as possíveis causas de adversidades capilares, trazendo ao paciente soluções para resolvê-las.' },
-            ].map((f, i) => (
-              <div key={i} style={{ borderBottom: i < 5 ? `1px solid ${T.border}` : 'none' }}>
+              { q: 'Funciona de verdade ou é só mais um produto?', a: 'Não é produto, é um plano. Eu sou tricologista e analiso o SEU cabelo (sua foto + o que você respondeu) pra montar uma rotina de cuidados semana a semana e te dizer exatamente o que usar e quando. O que estraga a maioria dos cabelos não é falta de produto caro — é fazer a coisa errada na hora errada. É isso que a gente organiza. Já são +3.500 mulheres cuidando do cabelo comigo assim.' },
+              { q: 'Serve pro MEU tipo de cabelo?', a: 'Serve, e é exatamente esse o ponto: o plano é feito pro seu caso. Liso, ondulado, cacheado ou crespo, com ou sem química, oleoso ou ressecado — eu monto a rotina olhando pro seu cabelo, não uma receita genérica igual pra todo mundo. Por isso peço suas respostas e sua foto antes de liberar.' },
+              { q: 'Eu faço progressiva / tenho química no cabelo. Posso fazer?', a: 'Pode, sim! Cabelo com progressiva, tintura, descoloração, mechas ou relaxamento é justamente onde um plano certo faz mais diferença — porque a química exige cuidado redobrado pra não quebrar. Eu levo isso em conta e monto a rotina respeitando a sua química. Você não precisa cortar nem parar nada.' },
+              { q: 'Vou ter que comprar muito produto caro?', a: 'Não. Eu indico o que o SEU cabelo realmente precisa — nem mais, nem menos. E como tenho parceria com as marcas, você entra no meu grupo fechado de promoções e compra os produtos que eu indico com preço abaixo do mercado. Muita gente até economiza, porque para de comprar por impulso o que não serve.' },
+              { q: 'Quando eu recebo meu plano?', a: 'Rapidinho! Assim que você paga, já entra no app. Aí você envia uma foto do seu cabelo (é a primeira coisa que aparece) e eu analiso a sua foto junto com as suas respostas. Em até 30 minutos eu libero seu plano completo e você é avisada. É bem pertinho — no mesmo dia você já começa.' },
+              { q: 'É a Juliane mesmo que monta o meu plano?', a: 'Sou eu, sim. Sou tricologista e é o meu trabalho olhar cada caso. Não é um resultado automático genérico — cada plano sai da análise do seu cabelo. Tanto que casos mais complexos (com química, queda, porosidade alta) levam mais tempo pra eu montar, porque eu realmente olho pro seu caso.' },
+              { q: 'É confiável? Não é golpe?', a: 'Entendo total a desconfiança, tem muita coisa ruim na internet. Eu sou tricologista, tenho meu Instagram com milhares de mulheres acompanhando, mostro meu próprio cabelo desde a raiz (não uso mega hair) e tenho +3.500 alunas. Pagamento é feito em ambiente seguro e, se você não gostar, tem garantia — devolvo 100% do seu dinheiro, sem perguntas.' },
+              { q: 'E se eu tiver dúvidas depois?', a: 'Você não fica sozinha. Tem suporte por WhatsApp pra tirar dúvidas ao longo do caminho — se ficar na dúvida de algum passo ou produto, é só me chamar que eu te ajudo. 💗' },
+              { q: 'Os produtos são difíceis de achar?', a: 'Não! São produtos que você encontra com facilidade, e os que eu indico ficam disponíveis no meu grupo de promoções com preço especial. Nada de fórmula secreta impossível de comprar.' },
+              { q: 'É pagamento único ou cobra todo mês?', a: 'Pagamento único, uma vez só. São R$ 47 e pronto — nada de mensalidade, nada de cobrança recorrente te pegando de surpresa depois. Você paga uma vez e tem acesso ao seu plano.' },
+            ].map((f, i, arrF) => (
+              <div key={i} style={{ borderBottom: i < arrF.length - 1 ? `1px solid ${T.border}` : 'none' }}>
                 <button
                   onClick={() => setOpenFaq(openFaq === i ? null : i)}
                   style={{
