@@ -148,8 +148,14 @@ function getSessionVariantLabel(
   return labels.length > 0 ? labels.join(',') : null
 }
 
+// Modo prévia (admin): ?preview=1 → não registra nada nem captura lead.
+function isPreview(): boolean {
+  if (typeof window === 'undefined') return false
+  return new URLSearchParams(window.location.search).get('preview') === '1'
+}
+
 function trackView(sessionId: string, abVariant: string | null) {
-  if (typeof window === 'undefined') return
+  if (typeof window === 'undefined' || isPreview()) return
   const params = new URLSearchParams(window.location.search)
   fetch('/api/quiz/view', {
     method: 'POST',
@@ -164,7 +170,7 @@ function trackView(sessionId: string, abVariant: string | null) {
   }).catch(() => {})
 }
 function trackAnswers(answersData: QuizAnswers) {
-  if (typeof window === 'undefined') return
+  if (typeof window === 'undefined' || isPreview()) return
   const params = new URLSearchParams(window.location.search)
   fetch('/api/quiz/answers', {
     method: 'POST',
@@ -185,7 +191,7 @@ function trackStepEvent(
   eventType: 'viewed' | 'answered',
   abVariant: string | null,
 ) {
-  if (typeof window === 'undefined' || !sessionId || !stepId) return
+  if (typeof window === 'undefined' || isPreview() || !sessionId || !stepId) return
   fetch('/api/quiz/step-event', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1803,7 +1809,17 @@ function MiniTestiScreen({ q, name, onContinue }: { q: QuizStep; name: string; o
 // ╚═══════════════════════════════════════════════════════════╝
 export default function QuizClient({ experiments = [] }: { experiments?: ActiveExperiment[] }) {
   const router = useRouter()
-  const [stepIndex, setStepIndex] = useState(0)
+  // Prévia (admin): ?preview=1&step=<id> abre direto naquele passo, sem tracking.
+  const preview = useMemo(() => isPreview(), [])
+  const [stepIndex, setStepIndex] = useState(() => {
+    if (typeof window === 'undefined') return 0
+    const sid = new URLSearchParams(window.location.search).get('step')
+    if (sid) {
+      const i = QUIZ_STEPS.findIndex(s => s.id === sid)
+      if (i >= 0) return i
+    }
+    return 0
+  })
   const [answers, setAnswers] = useState<QuizAnswers>({})
   const [phoneInput, setPhoneInput] = useState('')
   const [nameInput, setNameInput] = useState('')
@@ -1940,6 +1956,8 @@ export default function QuizClient({ experiments = [] }: { experiments?: ActiveE
   }, [step, phoneInput, total])
 
   const submitNameEmail = useCallback(async () => {
+    // Prévia: só avança, sem capturar lead / pixel / CAPI.
+    if (preview) { setStepIndex(i => Math.min(total - 1, i + 1)); return }
     setSubmitting(true)
     const finalAnswers = { ...answers, name: nameInput.trim(), email: emailInput.trim(), phone: phoneInput.replace(/\D/g, '') }
     if (!trackedRef.current) {
@@ -2013,9 +2031,11 @@ export default function QuizClient({ experiments = [] }: { experiments?: ActiveE
     setSubmitting(false)
     trackStepEvent(sessionIdRef.current, stepIndexRef.current, stepIdRef.current, 'answered', getStepVariantLabel(variantMapRef.current, stepIdRef.current))
     setStepIndex(i => Math.min(total - 1, i + 1))
-  }, [answers, nameInput, emailInput, phoneInput, total])
+  }, [answers, nameInput, emailInput, phoneInput, total, preview])
 
   const finalContinue = useCallback(async () => {
+    // Prévia: avança sem redirecionar pra roleta/parceria/perfil.
+    if (preview) { setStepIndex(i => Math.min(total - 1, i + 1)); return }
     trackStepEvent(sessionIdRef.current, stepIndexRef.current, stepIdRef.current, 'answered', getStepVariantLabel(variantMapRef.current, stepIdRef.current))
     if (stepIndex >= total - 1) {
       try { localStorage.setItem('quiz_answers', JSON.stringify(answers)) } catch {}
@@ -2058,13 +2078,18 @@ export default function QuizClient({ experiments = [] }: { experiments?: ActiveE
     } else {
       setStepIndex(i => Math.min(total - 1, i + 1))
     }
-  }, [stepIndex, total, answers, router])
+  }, [stepIndex, total, answers, router, preview])
 
   const canBack = stepIndex > 0 && step?.kind !== 'loading'
   const isLoading = step?.kind === 'loading'
 
   return (
     <>
+      {preview && (
+        <div style={{ position: 'fixed', top: 8, left: '50%', transform: 'translateX(-50%)', zIndex: 99999, background: '#BE185D', color: '#fff', fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 20, fontFamily: 'system-ui, sans-serif', boxShadow: '0 2px 8px rgba(0,0,0,0.25)', pointerEvents: 'none', letterSpacing: 0.3 }}>
+          PRÉVIA · nada é registrado
+        </div>
+      )}
       <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500;1,9..144,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
       <style>{`
         @keyframes cardIn { from { opacity: 0; transform: translateY(14px) scale(.97); } to { opacity: 1; transform: none; } }

@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import FunilPreview from './FunilPreview'
 
 const accent = '#BE185D'
 const green  = '#22A06B'
@@ -271,6 +272,9 @@ export default function PlanoCapilarClient({ data }: { data: any }) {
         💡 <strong>Pessoas únicas</strong> = sessões identificadas por localStorage (1 pessoa = 1 sessão mesmo fechando e reabrindo o quiz) ·{' '}
         <strong>Cliques</strong> = cada carregamento da página (bate com dados de anúncios)
       </div>
+
+      {/* Pré-visualização do funil (cada etapa como a cliente vê) */}
+      <FunilPreview />
 
       {/* Funil de checkout (30d) */}
       <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', padding: '20px 24px', marginBottom: 24 }}>
