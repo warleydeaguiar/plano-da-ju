@@ -627,10 +627,14 @@ export default function PlanosClient(
       : filterTab === 'approved' ? cards.filter(c => isDelivered(c))
       : cards;
     const q = search.trim().toLowerCase();
-    if (q) list = list.filter(c =>
-      (c.full_name ?? '').toLowerCase().includes(q) ||
-      (c.email ?? '').toLowerCase().includes(q) ||
-      (c.phone ?? '').replace(/\D/g, '').includes(q.replace(/\D/g, '')));
+    if (q) {
+      const qDigits = q.replace(/\D/g, '');
+      list = list.filter(c =>
+        (c.full_name ?? '').toLowerCase().includes(q) ||
+        (c.email ?? '').toLowerCase().includes(q) ||
+        // só casa por telefone se a busca tiver dígitos — senão ''.includes('') = true e voltava tudo
+        (qDigits !== '' && (c.phone ?? '').replace(/\D/g, '').includes(qDigits)));
+    }
     return list;
   }, [cards, filterTab, isDelivered, search]);
 
