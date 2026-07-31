@@ -61,20 +61,22 @@ export default async function AssinaturasPage(
   const { data: allSubs } = await (sb.from('profiles') as any)
     .select('subscription_type,subscription_status,subscription_expires_at')
     .not('subscription_type', 'eq', 'none')
-    .limit(5000)
+    .order('created_at', { ascending: false })
+    .limit(3000)
   const all = (allSubs ?? []) as any[]
 
-  // Tabela paginada (50/página). Filtro "só vendas pagas" = exclui parcerias.
+  // Tabela paginada (50/página). Sem count exato (era scan pesado → timeout):
+  // busca 51 e usa a linha extra pra saber se há próxima página.
   let q = (sb.from('profiles') as any)
-    .select('id,full_name,email,subscription_type,subscription_status,subscription_expires_at,pagarme_subscription_id,created_at', { count: 'exact' })
+    .select('id,full_name,email,subscription_type,subscription_status,subscription_expires_at,pagarme_subscription_id,created_at')
     .not('subscription_type', 'eq', 'none')
   if (paidOnly) q = q.neq('subscription_type', 'parceria')
-  const { data: subs, count } = await q
+  const { data: subs } = await q
     .order('created_at', { ascending: false })
-    .range(offset, offset + pageSize - 1)
-  const list = (subs ?? []) as any[]
-  const totalCount = count ?? 0
-  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
+    .range(offset, offset + pageSize)
+  const rowsRaw = (subs ?? []) as any[]
+  const hasNext = rowsRaw.length > pageSize
+  const list = rowsRaw.slice(0, pageSize)
   const pageHref = (p: number) => `/assinaturas?page=${p}${paidOnly ? '&paid=1' : ''}`
 
   // Valor REAL pago — busca só os e-mails DESTA página (leve; sem varrer tudo).
@@ -202,8 +204,7 @@ export default async function AssinaturasPage(
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)' }}>
           <div style={{ padding: '18px 24px', borderBottom: '1px solid #F0F0F5', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: '#2A1E2C' }}>
-              {paidOnly ? 'Vendas pagas' : 'Todas as assinaturas'}{' '}
-              <span style={{ fontSize: 12, fontWeight: 500, color: gray }}>({totalCount})</span>
+              {paidOnly ? 'Vendas pagas' : 'Todas as assinaturas'}
             </div>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
               <Link href={paidOnly ? '/assinaturas' : '/assinaturas?paid=1'} style={{
@@ -278,14 +279,14 @@ export default async function AssinaturasPage(
               </tbody>
             </table>
           )}
-          {totalPages > 1 && (
+          {(page > 1 || hasNext) && (
             <div style={{ padding: '14px 24px', borderTop: '1px solid #F0F0F5', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-              <div style={{ fontSize: 12.5, color: gray }}>Página {page} de {totalPages} · {totalCount} no total</div>
+              <div style={{ fontSize: 12.5, color: gray }}>Página {page} · {list.length} nesta página</div>
               <div style={{ display: 'flex', gap: 8 }}>
                 {page > 1
                   ? <Link href={pageHref(page - 1)} style={{ fontSize: 12.5, fontWeight: 600, textDecoration: 'none', padding: '7px 14px', borderRadius: 8, border: '1px solid #E5E0E8', color: accent, background: '#fff' }}>← Anterior</Link>
                   : <span style={{ fontSize: 12.5, fontWeight: 600, padding: '7px 14px', borderRadius: 8, border: '1px solid #F3F0F5', color: '#C9C2CE' }}>← Anterior</span>}
-                {page < totalPages
+                {hasNext
                   ? <Link href={pageHref(page + 1)} style={{ fontSize: 12.5, fontWeight: 600, textDecoration: 'none', padding: '7px 14px', borderRadius: 8, border: '1px solid #E5E0E8', color: accent, background: '#fff' }}>Próxima →</Link>
                   : <span style={{ fontSize: 12.5, fontWeight: 600, padding: '7px 14px', borderRadius: 8, border: '1px solid #F3F0F5', color: '#C9C2CE' }}>Próxima →</span>}
               </div>
