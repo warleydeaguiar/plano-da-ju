@@ -86,6 +86,7 @@ const NAV: NavItem[] = [
     ],
   },
   { icon: SbErros, label: 'Erros do Sistema', href: '/erros' },
+  { icon: SbSuporte, label: 'Feedback', href: '/feedback' },
   { icon: SbConfig, label: 'Configurações', href: '/configuracoes' },
 ];
 

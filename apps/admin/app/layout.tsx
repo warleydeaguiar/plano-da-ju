@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import FeedbackWidget from './components/FeedbackWidget';
 
 export const metadata: Metadata = {
   title: 'Admin — Plano da Ju',
@@ -17,7 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500;1,9..144,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
         />
       </head>
-      <body className="h-full">{children}</body>
+      <body className="h-full">{children}<FeedbackWidget /></body>
     </html>
   );
 }
