@@ -394,10 +394,10 @@ export default function PlanoPage() {
             flexShrink: 0,
           }}>
             <Image
-              src="/images/ju-depois.png"
-              alt="Juliane Cost"
+              src="/images/juliane-consultorio.jpg"
+              alt="Juliane Cost, tricologista, no consultório"
               width={52} height={52}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: '42% 20%' }}
             />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>

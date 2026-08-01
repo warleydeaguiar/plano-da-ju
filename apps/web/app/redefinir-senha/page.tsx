@@ -13,6 +13,34 @@ const ui = '"Plus Jakarta Sans", -apple-system, system-ui, sans-serif';
 
 type Status = 'verifying' | 'ready' | 'invalid' | 'done';
 
+// IMPORTANTE: Shell fica no escopo do MÓDULO (fora do componente da página).
+// Antes estava definido dentro de RedefinirSenhaPage — a cada tecla o estado
+// mudava, a página re-renderizava, o Shell virava uma função nova e o React
+// DESMONTAVA/REMONTAVA os <input> (o campo perdia o foco depois de 1 caractere
+// e o gerenciador de senha piscava a cada tecla). Fora do componente, é estável.
+function Shell({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500;1,9..144,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+      <div style={{
+        minHeight: '100vh', background: `radial-gradient(circle at 50% 0%, ${T.rose}, transparent 55%), ${T.bg}`,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 20px', fontFamily: ui,
+      }}>
+        <div style={{ maxWidth: 400, width: '100%' }}>
+          <div style={{ textAlign: 'center', marginBottom: 24 }}>
+            <div style={{ fontSize: 28, fontWeight: 600, color: T.ink, fontFamily: display, letterSpacing: -0.5 }}>
+              Plano da <em style={{ fontStyle: 'italic', color: T.pinkDeep }}>Ju</em>
+            </div>
+          </div>
+          <div style={{ background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)', borderRadius: 20, padding: 26, border: `1px solid ${T.border}`, boxShadow: `0 12px 32px ${T.pinkDeep}12` }}>
+            {children}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function RedefinirSenhaPage() {
   const router = useRouter();
   const [status, setStatus] = useState<Status>('verifying');
@@ -72,27 +100,6 @@ export default function RedefinirSenhaPage() {
     width: '100%', padding: '14px 16px', fontSize: 15, border: `1.5px solid ${T.border}`,
     borderRadius: 14, background: '#fff', color: T.ink, outline: 'none', boxSizing: 'border-box', fontFamily: ui,
   };
-
-  const Shell = ({ children }: { children: React.ReactNode }) => (
-    <>
-      <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500;1,9..144,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-      <div style={{
-        minHeight: '100vh', background: `radial-gradient(circle at 50% 0%, ${T.rose}, transparent 55%), ${T.bg}`,
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 20px', fontFamily: ui,
-      }}>
-        <div style={{ maxWidth: 400, width: '100%' }}>
-          <div style={{ textAlign: 'center', marginBottom: 24 }}>
-            <div style={{ fontSize: 28, fontWeight: 600, color: T.ink, fontFamily: display, letterSpacing: -0.5 }}>
-              Plano da <em style={{ fontStyle: 'italic', color: T.pinkDeep }}>Ju</em>
-            </div>
-          </div>
-          <div style={{ background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)', borderRadius: 20, padding: 26, border: `1px solid ${T.border}`, boxShadow: `0 12px 32px ${T.pinkDeep}12` }}>
-            {children}
-          </div>
-        </div>
-      </div>
-    </>
-  );
 
   if (status === 'verifying') {
     return <Shell><div style={{ textAlign: 'center', padding: '12px 0' }}>
