@@ -1052,8 +1052,6 @@ function InfoDepoimentos({ images }: { images: Record<string, string> }) {
     setActiveSlide(Math.round(scrollLeft / offsetWidth))
   }
 
-  // autoplay + muted + loop + sem controles + sem título
-  const youtubeParams = 'autoplay=1&mute=1&loop=1&playsinline=1&rel=0&controls=0&showinfo=0&modestbranding=1'
 
   return (
     <div>
@@ -1139,14 +1137,17 @@ function InfoDepoimentos({ images }: { images: Record<string, string> }) {
           position: 'relative', width: '100%', paddingTop: '177.78%',
           background: '#000',
         }}>
-          <iframe
-            src={`https://www.youtube.com/embed/Fwvy0YX7cZI?${youtubeParams}&playlist=Fwvy0YX7cZI`}
-            title="Depoimento Beatriz - Plano capilar da Ju"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
+          <video
+            src="/videos/depoimento-beatriz.mp4"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            aria-label="Depoimento Beatriz - Plano capilar da Ju"
             style={{
               position: 'absolute', top: 0, left: 0,
-              width: '100%', height: '100%', border: 'none',
+              width: '100%', height: '100%', objectFit: 'cover', border: 'none',
             }}
           />
         </div>
@@ -1160,14 +1161,17 @@ function InfoDepoimentos({ images }: { images: Record<string, string> }) {
           position: 'relative', width: '100%', paddingTop: '177.78%',
           background: '#000',
         }}>
-          <iframe
-            src={`https://www.youtube.com/embed/bguz9ckzABM?${youtubeParams}&playlist=bguz9ckzABM`}
-            title="Depoimento Fernanda - Plano capilar da Ju"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
+          <video
+            src="/videos/depoimento-fernanda.mp4"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            aria-label="Depoimento Fernanda - Plano capilar da Ju"
             style={{
               position: 'absolute', top: 0, left: 0,
-              width: '100%', height: '100%', border: 'none',
+              width: '100%', height: '100%', objectFit: 'cover', border: 'none',
             }}
           />
         </div>
