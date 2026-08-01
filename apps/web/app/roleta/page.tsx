@@ -65,6 +65,9 @@ function segPath(i: number): string {
 //   centro do seg-0 começa em -67,5°; precisa chegar em -90° (topo)
 //   R = (-90 - (-67,5)) + 6×360 = -22,5 + 2160 = 2137,5°
 const SPIN_TOTAL_DEG = 2137.5
+// Fase 1 para ~36° antes do prêmio: o ponteiro "quase para" no 5% vizinho
+// (segmento 7). Depois um creep lento leva até o 68% (segmento 0). Mais emoção.
+const PHASE1_DEG = SPIN_TOTAL_DEG - 36
 
 // ─── Countdown helper ─────────────────────────────────────────
 function fmt(secs: number): string {
@@ -128,6 +131,7 @@ export default function RoletaPage() {
   const [spinning, setSpinning] = useState(false)
   const [won,      setWon]      = useState(false)
   const [rotation, setRotation] = useState(0)
+  const [spinTransition, setSpinTransition] = useState('none')
   const [timeLeft, setTimeLeft] = useState(10 * 60) // 10 minutos em segundos
 
   // BUG FIX: guardar ref do timeout para cancelar se componente desmontar
@@ -151,13 +155,21 @@ export default function RoletaPage() {
     if (spun) return
     setSpun(true)
     setSpinning(true)
-    setRotation(SPIN_TOTAL_DEG)
 
-    // BUG FIX: zerar spinning após a animação (4s CSS + 200ms buffer)
+    // FASE 1 — gira rápido e desacelera forte, "quase parando" no 5% vizinho.
+    setSpinTransition('transform 3.3s cubic-bezier(0.13, 0.85, 0.18, 1)')
+    setRotation(PHASE1_DEG)
+
+    // FASE 2 — creep lento: sai do 5% e cai no prêmio maior (68%).
     spinTimerRef.current = setTimeout(() => {
-      setSpinning(false)   // remove a transition para evitar re-animações acidentais
-      setWon(true)
-    }, 4200)
+      setSpinTransition('transform 2.1s cubic-bezier(0.45, 0.05, 0.35, 1)')
+      setRotation(SPIN_TOTAL_DEG)
+      // Ao terminar o creep, revela o prêmio.
+      spinTimerRef.current = setTimeout(() => {
+        setSpinning(false)
+        setWon(true)
+      }, 2200)
+    }, 3380)
   }, [spun])
 
   const redeem = useCallback(() => {
@@ -313,9 +325,7 @@ export default function RoletaPage() {
                 transformOrigin: `${CX}px ${CY}px`,
                 // BUG FIX: transition só ativa enquanto spinning=true;
                 // após setSpinning(false) ela é removida, evitando re-animações.
-                transition: spinning
-                  ? 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)'
-                  : 'none',
+                transition: spinning ? spinTransition : 'none',
                 borderRadius: '50%',
                 boxShadow: '0 4px 24px rgba(190,24,93,0.15)',
               }}
@@ -513,7 +523,7 @@ export default function RoletaPage() {
                 <div style={{ textAlign: 'center' }}>
                   <span style={{ fontSize: 11, color: T.inkMuted, display: 'block' }}>de</span>
                   <span style={{ fontSize: 17, color: T.inkMuted, textDecoration: 'line-through', fontFamily: fonts.ui }}>
-                    R$99,90
+                    R$ 149,90
                   </span>
                 </div>
                 <span style={{ fontSize: 22, color: T.inkMuted }}>→</span>
