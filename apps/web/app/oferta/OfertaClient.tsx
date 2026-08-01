@@ -393,7 +393,7 @@ function OfferCard({ countdown, name, onBuy }: { countdown: string; name: string
             </div>
           </div>
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-            <div style={{ fontSize: 11, color: T.inkMuted, textDecoration: 'line-through', marginBottom: 1, fontFamily: fonts.ui }}>R$ 99,90</div>
+            <div style={{ fontSize: 11, color: T.inkMuted, textDecoration: 'line-through', marginBottom: 1, fontFamily: fonts.ui }}>R$ 149,90</div>
             <div style={{
               fontFamily: fonts.display, fontSize: 26, fontWeight: 700,
               background: `linear-gradient(135deg, ${T.pinkDeep}, ${T.pink})`,
@@ -1448,9 +1448,25 @@ export default function OfertaClient() {
             {/* ── Resumo ── */}
             <div style={{ ...sectionCard, marginBottom: 14 }}>
               <div style={sectionTitle}>Resumo do pedido</div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+
+              {/* Cupom de aniversário aplicado */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#EAF7EE', border: '1px solid #BFE8CC', borderRadius: 10, padding: '9px 12px', marginBottom: 12 }}>
+                <span style={{ fontSize: 15, lineHeight: 1 }}>🎟️</span>
+                <div style={{ fontSize: 12.5, color: '#166534', lineHeight: 1.35 }}>
+                  <strong>Cupom de aniversário aplicado!</strong>{' '}
+                  <span style={{ fontFamily: 'ui-monospace, monospace', background: '#fff', borderRadius: 5, padding: '1px 6px', fontWeight: 700, letterSpacing: 0.3 }}>ANIVERSARIO47</span>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
                 <span style={{ fontSize: 13, color: T.inkSoft }}>Plano Capilar Personalizado</span>
-                <span style={{ fontSize: 13, color: T.ink, fontWeight: 600 }}>R$47</span>
+                <span style={{ fontSize: 13, color: T.ink, fontWeight: 600 }}>
+                  <span style={{ color: T.inkMuted, textDecoration: 'line-through', fontWeight: 400, marginRight: 6 }}>R$ 149,90</span>R$47
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <span style={{ fontSize: 12.5, color: '#166534' }}>🎂 Desconto de aniversário</span>
+                <span style={{ fontSize: 12.5, color: '#166534', fontWeight: 700 }}>− R$ 102,90</span>
               </div>
               <div style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
