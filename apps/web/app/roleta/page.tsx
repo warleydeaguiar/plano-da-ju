@@ -34,7 +34,7 @@ const R       = 136
 const INNER_R = 36
 
 const SEGMENTS = [
-  { label: '53% OFF', sublabel: 'R$47', win: true },
+  { label: '68% OFF', sublabel: 'R$47', win: true },
   { label: '5%',      sublabel: 'PIX' },
   { label: '10%',     sublabel: 'CARTÃO' },
   { label: '5%',      sublabel: 'CARTÃO' },
@@ -491,7 +491,7 @@ export default function RoletaPage() {
                 backgroundClip: 'text',
                 marginBottom: 4,
               }}>
-                53% OFF
+                68% OFF
               </div>
               <p style={{
                 fontSize: 11, fontWeight: 700,

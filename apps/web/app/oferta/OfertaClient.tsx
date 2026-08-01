@@ -1187,6 +1187,10 @@ export default function OfertaClient() {
                   </div>
                   <div style={{ fontSize: 12, color: T.inkSoft, marginTop: 2 }}>Tricologista Juliane Cost</div>
                   <div style={{ marginTop: 6 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                      <span style={{ fontSize: 11.5, color: T.inkMuted, textDecoration: 'line-through', fontFamily: fonts.ui }}>de R$ 149,90</span>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: '#166534', background: '#EAF7EE', borderRadius: 5, padding: '1px 6px' }}>🎂 aniversário</span>
+                    </div>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
                       <span style={{
                         fontSize: 19, fontWeight: 800, fontFamily: fonts.display,
