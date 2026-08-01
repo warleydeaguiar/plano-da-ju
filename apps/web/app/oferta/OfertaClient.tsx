@@ -1753,28 +1753,27 @@ export default function OfertaClient() {
             ))}
           </div>
 
-          {/* Quem vai cuidar do seu cabelo — foto profissional da Juliane */}
+          {/* Quem vai cuidar do seu cabelo — foto grande da Juliane no consultório */}
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 16,
             background: `linear-gradient(135deg, ${T.rose}, ${T.cream})`,
-            border: `1px solid ${T.pinkSoft}`, borderRadius: 20, padding: '18px 18px',
+            border: `1px solid ${T.pinkSoft}`, borderRadius: 20, overflow: 'hidden',
             marginBottom: 32, boxShadow: '0 8px 22px rgba(190,24,93,0.07)',
           }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/images/juliane-perfil.jpg"
-              alt="Juliane Cost, tricologista"
-              style={{ width: 92, height: 92, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: `3px solid #fff`, boxShadow: '0 4px 14px rgba(190,24,93,0.18)' }}
+              src="/images/juliane-consultorio.jpg"
+              alt="Juliane Cost, tricologista, no consultório analisando um plano"
+              style={{ width: '100%', height: 'auto', display: 'block' }}
             />
-            <div style={{ minWidth: 0 }}>
+            <div style={{ padding: '16px 18px 18px' }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: T.pinkDeep, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 3, fontFamily: fonts.ui }}>
                 Quem vai cuidar do seu cabelo
               </div>
-              <div style={{ fontSize: 17, fontWeight: 700, color: T.ink, fontFamily: fonts.display, lineHeight: 1.15 }}>
+              <div style={{ fontSize: 19, fontWeight: 700, color: T.ink, fontFamily: fonts.display, lineHeight: 1.15 }}>
                 Juliane Cost
               </div>
-              <div style={{ fontSize: 12.5, color: T.inkSoft, marginBottom: 7, fontFamily: fonts.ui }}>Tricologista</div>
-              <div style={{ fontSize: 12.5, color: T.ink, lineHeight: 1.45, fontFamily: fonts.ui }}>
+              <div style={{ fontSize: 12.5, color: T.inkSoft, marginBottom: 8, fontFamily: fonts.ui }}>Tricologista</div>
+              <div style={{ fontSize: 13, color: T.ink, lineHeight: 1.5, fontFamily: fonts.ui }}>
                 Sou eu que analiso a sua foto e monto o seu plano, um por um. +3.500 mulheres já cuidam do cabelo comigo. 💗
               </div>
             </div>
