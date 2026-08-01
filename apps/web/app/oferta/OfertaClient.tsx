@@ -1712,6 +1712,28 @@ export default function OfertaClient() {
             <CheckItem color={T.pink}>Para todas que <strong>NÃO querem gastar dinheiro com produtos caros que não funcionam</strong></CheckItem>
           </div>
 
+          {/* Ancoragem de valor + custo de não agir — logo antes do preço */}
+          <div style={{
+            background: `linear-gradient(135deg, ${T.rose}, ${T.cream})`,
+            border: `1px solid ${T.pinkSoft}`, borderRadius: 18, padding: '22px 20px', marginBottom: 22,
+          }}>
+            <div style={{ fontSize: 11.5, fontWeight: 800, color: T.pinkDeep, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 12, fontFamily: fonts.ui }}>
+              💭 Antes de continuar, pensa comigo
+            </div>
+            <div style={{ fontSize: 19, fontFamily: fonts.display, color: T.ink, lineHeight: 1.4, fontWeight: 500, marginBottom: 10, letterSpacing: -0.2 }}>
+              Quanto vale pra você ter o cabelo que <em style={{ color: T.pinkDeep }}>sempre sonhou</em>?
+            </div>
+            <div style={{ fontSize: 19, fontFamily: fonts.display, color: T.ink, lineHeight: 1.4, fontWeight: 500, marginBottom: 16, letterSpacing: -0.2 }}>
+              E quanto vale <em style={{ color: T.pinkDeep }}>parar de gastar</em> com produto que não funciona?
+            </div>
+            <div style={{ fontSize: 14.5, color: T.inkSoft, lineHeight: 1.6, marginBottom: 16, fontFamily: fonts.ui }}>
+              Pensa em quanto dinheiro você <strong style={{ color: T.ink }}>já desperdiçou</strong> comprando produto atrás de produto que não serviu pra nada. 😔
+            </div>
+            <div style={{ fontSize: 15, color: T.ink, lineHeight: 1.6, fontFamily: fonts.ui, background: 'rgba(255,255,255,0.6)', borderRadius: 12, padding: '14px 16px', borderLeft: `4px solid ${T.pinkDeep}` }}>
+              O <strong style={{ color: T.pinkDeep }}>Plano da Ju você paga uma única vez</strong> e começa a resolver seu problema de vez. Custa menos que <strong>um único produto errado</strong> — e é feito exatamente pro seu cabelo. 💗
+            </div>
+          </div>
+
           {/* Second offer */}
           <OfferCard countdown={countdown} name={name} onBuy={onBuy} />
 
