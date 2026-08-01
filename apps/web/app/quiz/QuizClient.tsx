@@ -1003,14 +1003,19 @@ function InfoBio({ photoSrc, beforeSrc }: { photoSrc: string; beforeSrc: string 
           border: `3px solid #fff`,
           background: '#000',
         }}>
-          <iframe
-            src="https://www.youtube.com/embed/pv0dcXx2K0k?autoplay=1&mute=1&loop=1&playlist=pv0dcXx2K0k&controls=0&showinfo=0&modestbranding=1&playsinline=1&rel=0"
-            title="Resultado do cabelo da Juliane Cost"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
+          {/* Vídeo próprio (hospedado no site) — sai do YouTube: mais rápido,
+              sem player pesado nem rastreamento do Google. Autoplay mudo + loop. */}
+          <video
+            src="/videos/cabelo-juliane.mp4"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            aria-label="Resultado do cabelo da Juliane Cost"
             style={{
               position: 'absolute', top: 0, left: 0,
-              width: '100%', height: '100%', border: 'none',
+              width: '100%', height: '100%', objectFit: 'cover', border: 'none',
             }}
           />
         </div>
