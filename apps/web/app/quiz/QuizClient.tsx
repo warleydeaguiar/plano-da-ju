@@ -1788,7 +1788,8 @@ function PlanReadyScreen({ q, answers, name, onContinue }: { q: QuizStep; answer
 // ─── Mini depoimentos ─────────────────────────────────────────
 // Depoimentos em vídeo (YouTube Shorts). Sem autoplay: mostra a capa + botão
 // play e só carrega o player do YouTube quando a pessoa clica (leve).
-const VIDEO_TESTIS = ['CsCMS1CEnyA', 'sSplZQcckBc', '9Yq2w1FDcvw', '7ke9qi2Q3gc', 'XxIM2a_KKEM']
+// Ordem: o pior vídeo (antes 2º) foi pro final.
+const VIDEO_TESTIS = ['CsCMS1CEnyA', '9Yq2w1FDcvw', '7ke9qi2Q3gc', 'XxIM2a_KKEM', 'sSplZQcckBc']
 
 function ShortCard({ id }: { id: string }) {
   const [play, setPlay] = useState(false)
@@ -1836,9 +1837,21 @@ function ShortCard({ id }: { id: string }) {
 }
 
 function VideoTestiCarousel() {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const scrollByCard = (dir: number) => {
+    const el = scrollRef.current
+    if (el) el.scrollBy({ left: dir * (el.clientWidth * 0.76), behavior: 'smooth' })
+  }
+  const arrow: React.CSSProperties = {
+    position: 'absolute', top: 'calc(50% - 6px)', transform: 'translateY(-50%)', zIndex: 5,
+    width: 40, height: 40, borderRadius: '50%', border: 'none', cursor: 'pointer',
+    background: 'rgba(255,255,255,0.96)', boxShadow: '0 4px 14px rgba(190,24,93,0.28)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.pinkDeep,
+  }
   return (
-    <div style={{ marginBottom: 18 }}>
+    <div style={{ position: 'relative', marginBottom: 18 }}>
       <div
+        ref={scrollRef}
         className="carousel-scroll"
         style={{
           display: 'flex', gap: 12, overflowX: 'auto',
@@ -1849,8 +1862,17 @@ function VideoTestiCarousel() {
       >
         {VIDEO_TESTIS.map(id => <ShortCard key={id} id={id} />)}
       </div>
+
+      {/* Setas pra trocar de vídeo com um toque */}
+      <button type="button" onClick={() => scrollByCard(-1)} aria-label="Depoimento anterior" style={{ ...arrow, left: -6 }}>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3L5 8l5 5" /></svg>
+      </button>
+      <button type="button" onClick={() => scrollByCard(1)} aria-label="Próximo depoimento" style={{ ...arrow, right: -6 }}>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3l5 5-5 5" /></svg>
+      </button>
+
       <div style={{ fontSize: 11.5, color: T.inkSoft, textAlign: 'center', marginTop: 8, fontFamily: fonts.ui }}>
-        ← arraste pra ver mais · toque pra assistir
+        Toque nas setas pra trocar · toque no vídeo pra assistir
       </div>
     </div>
   )
