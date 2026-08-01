@@ -237,7 +237,7 @@ export default function RoletaPage() {
               border: `1px solid ${T.pinkBlush}`,
               borderRadius: 99, padding: '4px 14px', marginBottom: 14,
             }}>
-              🎯 Oferta exclusiva
+              🎂 Mês de aniversário
             </div>
             <h1 style={{
               fontFamily: fonts.display,
@@ -253,8 +253,8 @@ export default function RoletaPage() {
                 da história!
               </span>
             </h1>
-            <p style={{ color: T.inkSoft, fontSize: 14, marginTop: 10, marginBottom: 0 }}>
-              Gire a roleta e descubra seu desconto
+            <p style={{ color: T.inkSoft, fontSize: 14, marginTop: 10, marginBottom: 0, lineHeight: 1.55 }}>
+              É o mês de <strong style={{ color: T.ink }}>aniversário do Plano da Ju</strong>! Pra comemorar as <strong style={{ color: T.ink }}>+30 mil clientes</strong>, liberei uma condição exclusiva só neste mês. Gire e descubra seu desconto 🎁
             </p>
           </div>
 
@@ -267,9 +267,9 @@ export default function RoletaPage() {
             marginBottom: 28,
             boxShadow: '0 2px 8px rgba(196,140,150,0.1)',
           }}>
-            <span style={{ fontSize: 15 }}>✨</span>
+            <span style={{ fontSize: 15 }}>🎉</span>
             <span style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>
-              Mais de <span style={{ color: T.pinkDeep }}>15 mil</span> planos personalizados entregues
+              Mais de <span style={{ color: T.pinkDeep }}>30 mil</span> clientes já transformaram o cabelo com a Ju
             </span>
           </div>
 
