@@ -267,6 +267,7 @@ export interface RealSales {
   today: RealSalesBucket;
   yesterday: RealSalesBucket;
   month: RealSalesBucket;
+  last30: RealSalesBucket;   // 30 dias rolantes (pro funil "30D")
   byDay: Array<{ day: string; count: number; revenueCents: number; isToday: boolean }>;
 }
 
@@ -276,9 +277,11 @@ export async function getRealSales(): Promise<RealSales> {
     new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ts));
   const todayKey = brDay(Date.now());
   const yKey = brDay(Date.now() - 86400000);
+  const day30Key = brDay(Date.now() - 30 * 86400000);   // limite dos 30d rolantes
   const monthKey = todayKey.slice(0, 7);
   const monthStartUtc = new Date(`${monthKey}-01T03:00:00.000Z`).getTime(); // BR 00:00
-  const sinceISO = new Date(Math.min(monthStartUtc, Date.now() - 8 * 86400000)).toISOString();
+  // Sempre cobre pelo menos 31 dias (pro bucket de 30d rolantes do funil).
+  const sinceISO = new Date(Math.min(monthStartUtc, Date.now() - 31 * 86400000)).toISOString();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data } = await (sb.from('checkout_events') as any)
@@ -298,11 +301,12 @@ export async function getRealSales(): Promise<RealSales> {
     else if (cents < cur.cents) cur.cents = cents;
   }
 
-  const buckets: { today: RealSalesBucket; yesterday: RealSalesBucket; month: RealSalesBucket } = {
-    today: { count: 0, cents: 0 }, yesterday: { count: 0, cents: 0 }, month: { count: 0, cents: 0 },
+  const buckets: { today: RealSalesBucket; yesterday: RealSalesBucket; month: RealSalesBucket; last30: RealSalesBucket } = {
+    today: { count: 0, cents: 0 }, yesterday: { count: 0, cents: 0 }, month: { count: 0, cents: 0 }, last30: { count: 0, cents: 0 },
   };
   for (const s of sale.values()) {
     if (s.day.slice(0, 7) === monthKey) { buckets.month.count++; buckets.month.cents += s.cents; }
+    if (s.day >= day30Key) { buckets.last30.count++; buckets.last30.cents += s.cents; }
     if (s.day === todayKey) { buckets.today.count++; buckets.today.cents += s.cents; }
     else if (s.day === yKey) { buckets.yesterday.count++; buckets.yesterday.cents += s.cents; }
   }

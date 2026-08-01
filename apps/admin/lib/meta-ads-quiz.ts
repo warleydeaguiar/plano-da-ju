@@ -59,6 +59,7 @@ export interface AdGroupResult {
   funnelToday:     FunnelTotals
   funnelYesterday: FunnelTotals
   funnelMonth:     FunnelTotals
+  funnel30d:       FunnelTotals   // 30 dias rolantes (pro funil "30D")
 }
 
 export interface QuizAdsResult {
@@ -77,6 +78,7 @@ const EMPTY_GROUP: AdGroupResult = {
   funnelToday:     { ...EMPTY_FUNNEL },
   funnelYesterday: { ...EMPTY_FUNNEL },
   funnelMonth:     { ...EMPTY_FUNNEL },
+  funnel30d:       { ...EMPTY_FUNNEL },
 }
 
 const EMPTY: QuizAdsResult = {
@@ -216,6 +218,8 @@ function buildGroup(
   lastMonthRows: any[],
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   last7Rows: any[],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  last30Rows: any[],
   type: CampaignType,
 ): AdGroupResult {
   const campaigns: CampaignInsight[] = monthRows
@@ -256,6 +260,10 @@ function buildGroup(
       link_clicks:        sumLinkClicksOfType(monthRows, type),
       landing_page_views: sumLandingPageViewsOfType(monthRows, type),
     },
+    funnel30d: {
+      link_clicks:        sumLinkClicksOfType(last30Rows, type),
+      landing_page_views: sumLandingPageViewsOfType(last30Rows, type),
+    },
   }
 }
 
@@ -281,20 +289,23 @@ export async function getQuizAdSpend(): Promise<QuizAdsResult> {
 
     const fields = 'campaign_id,campaign_name,spend,impressions,clicks,inline_link_clicks,reach,cpc,cpm,ctr,actions'
 
+    const day30Str = toDate(new Date(nowBR.getTime() - 30 * 86400000))
+
     // Buscar tudo em paralelo
-    const [todayRows, yestRows, monthRows, lastMonthRows, last7Rows] = await Promise.all([
+    const [todayRows, yestRows, monthRows, lastMonthRows, last7Rows, last30Rows] = await Promise.all([
       fetchInsights({ level: 'campaign', fields, time_range: JSON.stringify({ since: todayStr,       until: todayStr      }) }),
       fetchInsights({ level: 'campaign', fields, time_range: JSON.stringify({ since: yestStr,        until: yestStr       }) }),
       fetchInsights({ level: 'campaign', fields, time_range: JSON.stringify({ since: monthStart,     until: todayStr      }) }),
       fetchInsights({ level: 'campaign', fields, time_range: JSON.stringify({ since: lastMonthStart, until: lastMonthEnd }) }),
       fetchInsights({ level: 'campaign', fields: 'campaign_id,campaign_name,spend', date_preset: 'last_7d', time_increment: '1' }, 900),
+      fetchInsights({ level: 'campaign', fields, time_range: JSON.stringify({ since: day30Str,       until: todayStr      }) }),
     ])
 
     return {
       status: 'ok',
-      plano:  buildGroup(monthRows, todayRows, yestRows, lastMonthRows, last7Rows, 'plano'),
-      grupos: buildGroup(monthRows, todayRows, yestRows, lastMonthRows, last7Rows, 'grupos'),
-      outros: buildGroup(monthRows, todayRows, yestRows, lastMonthRows, last7Rows, 'outros'),
+      plano:  buildGroup(monthRows, todayRows, yestRows, lastMonthRows, last7Rows, last30Rows, 'plano'),
+      grupos: buildGroup(monthRows, todayRows, yestRows, lastMonthRows, last7Rows, last30Rows, 'grupos'),
+      outros: buildGroup(monthRows, todayRows, yestRows, lastMonthRows, last7Rows, last30Rows, 'outros'),
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (e: any) {

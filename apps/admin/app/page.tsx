@@ -602,9 +602,12 @@ export default async function DashboardPage() {
   const adClicksToday = metaAds.plano.funnelToday.link_clicks;
   const adClicksYest  = metaAds.plano.funnelYesterday.link_clicks;
   const adClicksMonth = metaAds.plano.funnelMonth.link_clicks;
+  const adClicks30d   = metaAds.plano.funnel30d.link_clicks;   // 30d rolantes (coluna "30D")
   const lpvToday      = metaAds.plano.funnelToday.landing_page_views;
   const lpvYest       = metaAds.plano.funnelYesterday.landing_page_views;
   const lpvMonth      = metaAds.plano.funnelMonth.landing_page_views;
+  const lpv30d        = metaAds.plano.funnel30d.landing_page_views;
+  const sales30d      = realSales.last30.count;   // vendas em 30d rolantes
 
   // Funil — Interagiu (dedupe session_id em JS)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -676,10 +679,10 @@ export default async function DashboardPage() {
     convToday: string | null; convYest: string | null; convMonth: string | null;
     source: 'meta' | 'quiz' | 'sale' | 'conv'; highlight: boolean;
   }> = [
-    { icon: IconCursor, label: 'Cliques no link (Meta)', today: adClicksToday, yest: adClicksYest, month: adClicksMonth,
+    { icon: IconCursor, label: 'Cliques no link (Meta)', today: adClicksToday, yest: adClicksYest, month: adClicks30d,
       convToday: null, convYest: null, convMonth: null, source: 'meta', highlight: false },
-    { icon: IconEye, label: 'Visualização de página', today: lpvToday, yest: lpvYest, month: lpvMonth,
-      convToday: pct(lpvToday, adClicksToday), convYest: pct(lpvYest, adClicksYest), convMonth: pct(lpvMonth, adClicksMonth),
+    { icon: IconEye, label: 'Visualização de página', today: lpvToday, yest: lpvYest, month: lpv30d,
+      convToday: pct(lpvToday, adClicksToday), convYest: pct(lpvYest, adClicksYest), convMonth: pct(lpv30d, adClicks30d),
       source: 'meta', highlight: false },
     { icon: IconEdit, label: 'Interagiu (clicou na 1ª opção)', today: iToday, yest: iYest, month: iMonth,
       convToday: pct(iToday, lpvToday || qToday), convYest: pct(iYest, lpvYest || qYest), convMonth: pct(iMonth, lpvMonth || qMonth),
@@ -693,14 +696,14 @@ export default async function DashboardPage() {
     { icon: IconCreditCard, label: 'Iniciou checkout', today: cToday, yest: cYest, month: cMonth,
       convToday: pct(cToday, oToday), convYest: pct(cYest, oYest), convMonth: pct(cMonth, oMonth),
       source: 'quiz', highlight: false },
-    { icon: IconCheckCircle, label: 'Comprou', today: salesToday, yest: salesYesterday, month: salesMonth,
-      convToday: pct(salesToday, cToday), convYest: pct(salesYesterday, cYest), convMonth: pct(salesMonth, cMonth),
+    { icon: IconCheckCircle, label: 'Comprou', today: salesToday, yest: salesYesterday, month: sales30d,
+      convToday: pct(salesToday, cToday), convYest: pct(salesYesterday, cYest), convMonth: pct(sales30d, cMonth),
       source: 'sale', highlight: true },
     // Conversão geral = quem comprou ÷ cliques no link do Meta (o funil inteiro).
     { icon: IconTarget, label: 'Conversão geral (compra ÷ clique)',
       today: adClicksToday > 0 ? (salesToday / adClicksToday) * 100 : NaN,
       yest:  adClicksYest  > 0 ? (salesYesterday / adClicksYest) * 100 : NaN,
-      month: adClicksMonth > 0 ? (salesMonth / adClicksMonth) * 100 : NaN,
+      month: adClicks30d > 0 ? (sales30d / adClicks30d) * 100 : NaN,
       convToday: null, convYest: null, convMonth: null, source: 'conv', highlight: false },
   ];
 
