@@ -1958,8 +1958,25 @@ export default function QuizClient({ experiments = [] }: { experiments?: ActiveE
   const stepIdRef       = useRef(step?.id ?? '')
   const variantMapRef   = useRef<ReturnType<typeof buildVariantMap>>(new Map())
   const sessionLabelRef = useRef<string | null>(null)
+  const answersRef      = useRef<QuizAnswers>({})
   useEffect(() => { stepIndexRef.current = stepIndex }, [stepIndex])
   useEffect(() => { stepIdRef.current = step?.id ?? '' }, [step])
+  useEffect(() => { answersRef.current = answers }, [answers])
+
+  // Avanço/retorno que PULA perguntas condicionais (step.showIf) — ex.: a
+  // pergunta de "tempo de gravidez" só aparece se respondeu que é mãe.
+  const nextVisible = useCallback((from: number) => {
+    let n = from + 1
+    const a = answersRef.current
+    while (n < QUIZ_STEPS.length && QUIZ_STEPS[n].showIf && !QUIZ_STEPS[n].showIf!(a)) n++
+    return Math.min(QUIZ_STEPS.length - 1, n)
+  }, [])
+  const prevVisible = useCallback((from: number) => {
+    let p = from - 1
+    const a = answersRef.current
+    while (p > 0 && QUIZ_STEPS[p].showIf && !QUIZ_STEPS[p].showIf!(a)) p--
+    return Math.max(0, p)
+  }, [])
 
   // Variant assignment em STATE (não ref) pra disparar re-render no JSX
   const [variantMap, setVariantMap] = useState<ReturnType<typeof buildVariantMap>>(new Map())
@@ -2005,7 +2022,7 @@ export default function QuizClient({ experiments = [] }: { experiments?: ActiveE
       const t = setTimeout(() => {
         // Rastreia o auto-avanço do step de loading como "answered"
         trackStepEvent(sessionIdRef.current, stepIndexRef.current, stepIdRef.current, 'answered', getStepVariantLabel(variantMapRef.current, stepIdRef.current))
-        setStepIndex(i => Math.min(total - 1, i + 1))
+        setStepIndex(nextVisible)
       }, 5000)
       return () => clearTimeout(t)
     }
@@ -2043,14 +2060,14 @@ export default function QuizClient({ experiments = [] }: { experiments?: ActiveE
 
   const goNext = useCallback(() => {
     trackAnswered()
-    setStepIndex(i => Math.min(total - 1, i + 1))
+    setStepIndex(nextVisible)
   }, [total, trackAnswered])
-  const goBack = useCallback(() => setStepIndex(i => Math.max(0, i - 1)), [])
+  const goBack = useCallback(() => setStepIndex(prevVisible), [prevVisible])
 
   const choose = useCallback((qid: string, v: string) => {
     setAnswers(a => ({ ...a, [qid]: v }))
     trackStepEvent(sessionIdRef.current, stepIndexRef.current, stepIdRef.current, 'answered', getStepVariantLabel(variantMapRef.current, stepIdRef.current))
-    setTimeout(() => setStepIndex(i => Math.min(total - 1, i + 1)), 320)
+    setTimeout(() => setStepIndex(nextVisible), 320)
   }, [total])
 
   const toggleMulti = useCallback((qid: string, v: string) => {
@@ -2065,19 +2082,19 @@ export default function QuizClient({ experiments = [] }: { experiments?: ActiveE
     if (!step) return
     setAnswers(a => ({ ...a, [step.id]: textInput.trim() }))
     trackStepEvent(sessionIdRef.current, stepIndexRef.current, stepIdRef.current, 'answered', getStepVariantLabel(variantMapRef.current, stepIdRef.current))
-    setTimeout(() => setStepIndex(i => Math.min(total - 1, i + 1)), 100)
+    setTimeout(() => setStepIndex(nextVisible), 100)
   }, [step, textInput, total])
 
   const savePhone = useCallback(() => {
     if (!step) return
     setAnswers(a => ({ ...a, phone: phoneInput.replace(/\D/g, '') }))
     trackStepEvent(sessionIdRef.current, stepIndexRef.current, stepIdRef.current, 'answered', getStepVariantLabel(variantMapRef.current, stepIdRef.current))
-    setTimeout(() => setStepIndex(i => Math.min(total - 1, i + 1)), 100)
+    setTimeout(() => setStepIndex(nextVisible), 100)
   }, [step, phoneInput, total])
 
   const submitNameEmail = useCallback(async () => {
     // Prévia: só avança, sem capturar lead / pixel / CAPI.
-    if (preview) { setStepIndex(i => Math.min(total - 1, i + 1)); return }
+    if (preview) { setStepIndex(nextVisible); return }
     setSubmitting(true)
     const finalAnswers = { ...answers, name: nameInput.trim(), email: emailInput.trim(), phone: phoneInput.replace(/\D/g, '') }
     if (!trackedRef.current) {
@@ -2150,12 +2167,12 @@ export default function QuizClient({ experiments = [] }: { experiments?: ActiveE
 
     setSubmitting(false)
     trackStepEvent(sessionIdRef.current, stepIndexRef.current, stepIdRef.current, 'answered', getStepVariantLabel(variantMapRef.current, stepIdRef.current))
-    setStepIndex(i => Math.min(total - 1, i + 1))
+    setStepIndex(nextVisible)
   }, [answers, nameInput, emailInput, phoneInput, total, preview])
 
   const finalContinue = useCallback(async () => {
     // Prévia: avança sem redirecionar pra roleta/parceria/perfil.
-    if (preview) { setStepIndex(i => Math.min(total - 1, i + 1)); return }
+    if (preview) { setStepIndex(nextVisible); return }
     trackStepEvent(sessionIdRef.current, stepIndexRef.current, stepIdRef.current, 'answered', getStepVariantLabel(variantMapRef.current, stepIdRef.current))
     if (stepIndex >= total - 1) {
       try { localStorage.setItem('quiz_answers', JSON.stringify(answers)) } catch {}
@@ -2196,7 +2213,7 @@ export default function QuizClient({ experiments = [] }: { experiments?: ActiveE
       } catch {}
       router.push('/roleta')
     } else {
-      setStepIndex(i => Math.min(total - 1, i + 1))
+      setStepIndex(nextVisible)
     }
   }, [stepIndex, total, answers, router, preview])
 

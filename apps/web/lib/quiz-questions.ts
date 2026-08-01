@@ -36,6 +36,8 @@ export interface QuizStep {
   ctaText?: string;
   /** placeholder de input (textarea/phone/name_email) */
   placeholder?: string;
+  /** Só exibe o step se a condição for true (pergunta condicional). */
+  showIf?: (a: Record<string, string | string[]>) => boolean;
 }
 
 export const QUIZ_STEPS: QuizStep[] = [
@@ -294,6 +296,29 @@ export const QUIZ_STEPS: QuizStep[] = [
       { id: 'couro',       label: 'Couro cabeludo' },
       { id: 'comprimento', label: 'Comprimento' },
       { id: 'pontas',      label: 'Pontas' },
+    ],
+  },
+  // ── Você é mãe? (SÓ para copy/segmentação do funil — NÃO afeta a geração do plano)
+  {
+    id: 'e_mae',
+    kind: 'single',
+    title: 'Você é mãe?',
+    options: [
+      { id: 'sim', label: 'Sim' },
+      { id: 'nao', label: 'Não' },
+    ],
+  },
+  // Condicional: só aparece se respondeu "Sim" acima.
+  {
+    id: 'tempo_gravidez',
+    kind: 'single',
+    title: 'Há quanto tempo foi a sua gravidez?',
+    subtitle: 'A queda pós-parto é super comum — isso me ajuda a te entender melhor. 💗',
+    showIf: (a) => a['e_mae'] === 'sim',
+    options: [
+      { id: 'recente', label: 'Recente — menos de 1 ano' },
+      { id: 'ate_2',   label: 'Há menos de 2 anos' },
+      { id: 'mais_2',  label: 'Mais de 2 anos' },
     ],
   },
   // ── 24 — info bio Juliane
