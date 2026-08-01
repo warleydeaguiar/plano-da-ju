@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { QUIZ_STEPS, QuizAnswers, QuizStep } from '../../lib/quiz-questions'
+import { buildConsultaData } from '../../lib/consulta'
 import { enrichIdentity, newEventId, sendServerEvent } from '../../lib/tracking-client'
 import { pixelMatchingPayload, pixelPhone } from '../../lib/pixel-pii'
 import type { ActiveExperiment } from './page'
@@ -1676,7 +1677,18 @@ function LevelScreen({ q, onContinue }: {
 }
 
 // ─── Plano pronto ─────────────────────────────────────────────
-function PlanReadyScreen({ q, onContinue }: { q: QuizStep; onContinue: () => void }) {
+function PlanReadyScreen({ q, answers, name, onContinue }: { q: QuizStep; answers: QuizAnswers; name: string; onContinue: () => void }) {
+  // Personaliza com o que a pessoa preencheu no funil (fica claro que o plano é dela).
+  const d = buildConsultaData({ quiz_answers: answers, full_name: name });
+  const qa = answers as Record<string, unknown>;
+  const temTipo = !!qa?.tipo;
+  const temInc = !!(Array.isArray(qa?.incomoda) ? (qa.incomoda as unknown[]).length : qa?.incomoda);
+  const linhas: Array<{ icon: string; label: string; valor: string }> = [];
+  if (temTipo || qa?.cor) linhas.push({ icon: '💇‍♀️', label: 'Seu cabelo', valor: [d.tipo, d.cor].filter(Boolean).join(' · ') });
+  if (d.couro && d.couroKind) linhas.push({ icon: '🌿', label: 'Couro / fios', valor: d.couro });
+  if (temInc) linhas.push({ icon: '🎯', label: 'Maior incômodo', valor: d.problema });
+  if (d.temQuimica) linhas.push({ icon: '🧪', label: 'Química', valor: d.quimica.join(', ') });
+
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '0 20px 24px' }}>
       <div style={{
@@ -1689,18 +1701,44 @@ function PlanReadyScreen({ q, onContinue }: { q: QuizStep; onContinue: () => voi
           color: T.pinkDeep, letterSpacing: 1, textTransform: 'uppercase',
           margin: '0 0 14px',
         }}>
-          Seu Plano está pronto
+          {name ? `${name}, seu plano está pronto` : 'Seu plano está pronto'}
         </h2>
       </div>
       <h3 style={{
         fontSize: 22, fontFamily: fonts.display, fontWeight: 600, color: T.ink,
         textAlign: 'center', lineHeight: 1.25, margin: '0 0 14px', letterSpacing: -0.3,
       }}>
-        Montamos um plano <em style={{ color: T.pinkDeep }}>exclusivo</em> para você ter um cabelo cheio, sem frizz e hidratado em até <strong style={{ fontWeight: 700 }}>90 dias</strong>
+        Montamos um plano <em style={{ color: T.pinkDeep }}>exclusivo</em> {temTipo ? <>pro seu <strong style={{ fontWeight: 700 }}>{d.tipo.toLowerCase()}</strong></> : 'para você'} ter um cabelo cheio, sem frizz e hidratado em até <strong style={{ fontWeight: 700 }}>90 dias</strong>
       </h3>
       {q.subtitle && (
-        <div style={{ fontSize: 14, color: T.inkSoft, lineHeight: 1.6, textAlign: 'center', marginBottom: 22, fontFamily: fonts.ui }}>
+        <div style={{ fontSize: 14, color: T.inkSoft, lineHeight: 1.6, textAlign: 'center', marginBottom: 18, fontFamily: fonts.ui }}>
           {q.subtitle}
+        </div>
+      )}
+
+      {/* O que você nos contou — mostra que o plano é feito PRA ESSA pessoa */}
+      {linhas.length > 0 && (
+        <div style={{
+          background: `linear-gradient(135deg, ${T.rose}, ${T.cream})`,
+          border: `1px solid ${T.pinkSoft}`, borderRadius: 16, padding: '15px 16px', marginBottom: 20,
+        }}>
+          <div style={{ fontSize: 11.5, fontWeight: 800, color: T.pinkDeep, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 11, fontFamily: fonts.ui }}>
+            📋 O que você nos contou
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {linhas.map((l, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
+                <span style={{ fontSize: 14, width: 18, textAlign: 'center', flexShrink: 0 }}>{l.icon}</span>
+                <div style={{ fontSize: 12.5, lineHeight: 1.4, fontFamily: fonts.ui }}>
+                  <span style={{ color: T.inkSoft }}>{l.label}: </span>
+                  <span style={{ color: T.ink, fontWeight: 700, textTransform: 'capitalize' }}>{l.valor}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: 11.5, color: T.inkSoft, marginTop: 12, lineHeight: 1.45, fontFamily: fonts.ui, borderTop: `1px dashed ${T.pinkSoft}`, paddingTop: 10 }}>
+            Seu plano foi montado <strong style={{ color: T.pinkDeep }}>exatamente pra isso</strong> — não é receita genérica. 💗
+          </div>
         </div>
       )}
 
@@ -2241,7 +2279,7 @@ export default function QuizClient({ experiments = [] }: { experiments?: ActiveE
               />
             )}
             {step?.kind === 'level' && <LevelScreen q={step} answers={answers} onContinue={goNext} />}
-            {step?.kind === 'plan_ready' && <PlanReadyScreen q={step} onContinue={goNext} />}
+            {step?.kind === 'plan_ready' && <PlanReadyScreen q={step} answers={answers} name={nameInput} onContinue={goNext} />}
             {step?.kind === 'mini_testi' && <MiniTestiScreen q={step} name={nameInput} onContinue={finalContinue} />}
           </div>
         </div>
