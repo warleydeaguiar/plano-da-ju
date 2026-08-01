@@ -1726,11 +1726,26 @@ export default function OfertaClient() {
             <div style={{ fontSize: 19, fontFamily: fonts.display, color: T.ink, lineHeight: 1.4, fontWeight: 500, marginBottom: 16, letterSpacing: -0.2 }}>
               E quanto vale <em style={{ color: T.pinkDeep }}>parar de gastar</em> com produto que não funciona?
             </div>
-            <div style={{ fontSize: 14.5, color: T.inkSoft, lineHeight: 1.6, marginBottom: 16, fontFamily: fonts.ui }}>
+            <div style={{ fontSize: 14.5, color: T.inkSoft, lineHeight: 1.6, marginBottom: 14, fontFamily: fonts.ui }}>
               Pensa em quanto dinheiro você <strong style={{ color: T.ink }}>já desperdiçou</strong> comprando produto atrás de produto que não serviu pra nada. 😔
             </div>
+
+            {/* Comparação concreta: gasto "no escuro" × plano */}
+            <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+              <div style={{ flex: 1, background: 'rgba(255,255,255,0.55)', borderRadius: 12, padding: '12px 10px', textAlign: 'center', border: `1px solid ${T.pinkSoft}` }}>
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: T.inkSoft, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4, fontFamily: fonts.ui }}>Comprando no escuro</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#B0A0B2', fontFamily: fonts.display, textDecoration: 'line-through', lineHeight: 1 }}>+R$150<span style={{ fontSize: 12 }}>/mês</span></div>
+                <div style={{ fontSize: 11, color: T.inkSoft, marginTop: 4, lineHeight: 1.35, fontFamily: fonts.ui }}>em produto que não resolve</div>
+              </div>
+              <div style={{ flex: 1, background: `linear-gradient(135deg, ${T.pinkDeep}, ${T.pink})`, borderRadius: 12, padding: '12px 10px', textAlign: 'center', boxShadow: `0 6px 16px ${T.pink}44` }}>
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: 'rgba(255,255,255,0.85)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4, fontFamily: fonts.ui }}>Plano da Ju</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', fontFamily: fonts.display, lineHeight: 1 }}>R$47<span style={{ fontSize: 12 }}> uma vez</span></div>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', marginTop: 4, lineHeight: 1.35, fontFamily: fonts.ui }}>feito exatamente pro seu cabelo</div>
+              </div>
+            </div>
+
             <div style={{ fontSize: 15, color: T.ink, lineHeight: 1.6, fontFamily: fonts.ui, background: 'rgba(255,255,255,0.6)', borderRadius: 12, padding: '14px 16px', borderLeft: `4px solid ${T.pinkDeep}` }}>
-              O <strong style={{ color: T.pinkDeep }}>Plano da Ju você paga uma única vez</strong> e começa a resolver seu problema de vez. Custa menos que <strong>um único produto errado</strong> — e é feito exatamente pro seu cabelo. 💗
+              O <strong style={{ color: T.pinkDeep }}>Plano da Ju você paga uma única vez</strong> e começa a resolver seu problema de vez. Custa <strong>menos que um mês de produto errado</strong> — e resolve de verdade. 💗
             </div>
           </div>
 
