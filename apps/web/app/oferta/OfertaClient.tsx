@@ -1565,7 +1565,7 @@ export default function OfertaClient() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 22 }}>
             {[
               { title: 'Plano completo profissional', desc: 'Rotina capilar, indicação de produtos, análise de cabelo, tirar dúvidas pelo WhatsApp', icon: '✨' },
-              { title: 'Acesso ao grupo de promoções', desc: 'Um grupo fechado onde mando os produtos que eu indico', icon: '💝' },
+              { title: 'Grupo de promoções com descontos exclusivos', desc: 'Só com o desconto especial da Ju você já recupera o valor investido no plano capilar. 💰', icon: '💝' },
             ].map((c, i) => (
               <div key={i} style={{
                 background: `linear-gradient(135deg, ${T.rose}, ${T.cream})`,
