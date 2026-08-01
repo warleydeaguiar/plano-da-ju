@@ -1786,6 +1786,76 @@ function PlanReadyScreen({ q, answers, name, onContinue }: { q: QuizStep; answer
 }
 
 // ─── Mini depoimentos ─────────────────────────────────────────
+// Depoimentos em vídeo (YouTube Shorts). Sem autoplay: mostra a capa + botão
+// play e só carrega o player do YouTube quando a pessoa clica (leve).
+const VIDEO_TESTIS = ['CsCMS1CEnyA', 'sSplZQcckBc', '9Yq2w1FDcvw', '7ke9qi2Q3gc', 'XxIM2a_KKEM']
+
+function ShortCard({ id }: { id: string }) {
+  const [play, setPlay] = useState(false)
+  return (
+    <div style={{ scrollSnapAlign: 'start', flexShrink: 0, width: '72%', maxWidth: 250 }}>
+      <div style={{
+        position: 'relative', width: '100%', paddingTop: '177.78%',
+        borderRadius: 16, overflow: 'hidden', background: '#000',
+        boxShadow: '0 8px 20px rgba(190,24,93,0.10)',
+      }}>
+        {play ? (
+          <iframe
+            src={`https://www.youtube.com/embed/${id}?autoplay=1&playsinline=1&rel=0&modestbranding=1`}
+            title="Depoimento em vídeo"
+            allow="autoplay; encrypted-media; picture-in-picture"
+            allowFullScreen
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
+          />
+        ) : (
+          <button
+            onClick={() => setPlay(true)}
+            aria-label="Assistir depoimento"
+            style={{ position: 'absolute', inset: 0, padding: 0, border: 'none', cursor: 'pointer', background: '#000' }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`https://i.ytimg.com/vi/${id}/hqdefault.jpg`}
+              alt="Depoimento em vídeo"
+              loading="lazy"
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+            <span style={{
+              position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
+              width: 56, height: 56, borderRadius: '50%', background: 'rgba(0,0,0,0.5)',
+              backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              border: '2px solid rgba(255,255,255,0.85)',
+            }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z" /></svg>
+            </span>
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function VideoTestiCarousel() {
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <div
+        className="carousel-scroll"
+        style={{
+          display: 'flex', gap: 12, overflowX: 'auto',
+          scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'none', msOverflowStyle: 'none',
+          paddingBottom: 4,
+        }}
+      >
+        {VIDEO_TESTIS.map(id => <ShortCard key={id} id={id} />)}
+      </div>
+      <div style={{ fontSize: 11.5, color: T.inkSoft, textAlign: 'center', marginTop: 8, fontFamily: fonts.ui }}>
+        ← arraste pra ver mais · toque pra assistir
+      </div>
+    </div>
+  )
+}
+
 function MiniTestiScreen({ q, name, onContinue }: { q: QuizStep; name: string; onContinue: () => void }) {
   const testis = [
     { name: 'Fernanda Sanoli', handle: '@fernandasanoli', text: 'Finalmente consegui volume e brilho no meu cabelo! Cresceu muito rápido e ficou incrível, sem frizz!' },
@@ -1812,6 +1882,9 @@ function MiniTestiScreen({ q, name, onContinue }: { q: QuizStep; name: string; o
       <div style={{ fontSize: 12, color: T.inkSoft, marginBottom: 14, fontFamily: fonts.ui }}>
         Hoje somos mais de 43 mil mulheres que aplicam esse método personalizado e individual
       </div>
+
+      {/* Depoimentos em VÍDEO (carrossel, clica pra tocar) — acima do texto */}
+      <VideoTestiCarousel />
 
       <div style={{ marginBottom: 14 }}>
         <ContinueButton onClick={onContinue} label={q.ctaText ?? 'Continuar'} />
