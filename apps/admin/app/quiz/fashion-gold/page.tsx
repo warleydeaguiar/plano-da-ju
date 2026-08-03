@@ -7,18 +7,31 @@ export const dynamic = 'force-dynamic'
 async function getData() {
   const sb = createAdminClient()
   const today = new Date(); today.setHours(0, 0, 0, 0)
+  const yesterday = new Date(today.getTime() - 86400_000)
   const since30 = new Date(Date.now() - 30 * 86400_000).toISOString()
   const weekAgo = new Date(Date.now() - 7 * 86400_000).toISOString()
 
-  const [allLeads, todayLeads, weekLeads, viewsAll, viewsMonth, dailyLeads, utmData, leadsList] = await Promise.all([
-    sb.from('wg_quiz_leads' as any).select('id', { count: 'exact', head: true }).eq('quiz_slug', 'fashion-gold'),
-    sb.from('wg_quiz_leads' as any).select('id', { count: 'exact', head: true }).eq('quiz_slug', 'fashion-gold').gte('created_at', today.toISOString()),
-    sb.from('wg_quiz_leads' as any).select('id', { count: 'exact', head: true }).eq('quiz_slug', 'fashion-gold').gte('created_at', weekAgo),
-    sb.from('wg_quiz_views' as any).select('id', { count: 'exact', head: true }).eq('quiz_slug', 'fashion-gold'),
-    sb.from('wg_quiz_views' as any).select('id', { count: 'exact', head: true }).eq('quiz_slug', 'fashion-gold').gte('created_at', since30),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const L = (b?: (q: any) => any) => { let q = (sb.from('wg_quiz_leads' as any) as any).select('id', { count: 'exact', head: true }).eq('quiz_slug', 'fashion-gold'); if (b) q = b(q); return q }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const V = (b?: (q: any) => any) => { let q = (sb.from('wg_quiz_views' as any) as any).select('id', { count: 'exact', head: true }).eq('quiz_slug', 'fashion-gold'); if (b) q = b(q); return q }
+
+  const [
+    allLeads, todayLeads, weekLeads, viewsAll, viewsMonth, dailyLeads, utmData, leadsList,
+    leadsYest, leads30, viewsToday, viewsYest,
+  ] = await Promise.all([
+    L(),
+    L(q => q.gte('created_at', today.toISOString())),
+    L(q => q.gte('created_at', weekAgo)),
+    V(),
+    V(q => q.gte('created_at', since30)),
     sb.from('wg_quiz_leads' as any).select('created_at').eq('quiz_slug', 'fashion-gold').gte('created_at', since30).order('created_at', { ascending: true }),
     sb.from('wg_quiz_leads' as any).select('utm_source, utm_campaign, utm_medium').eq('quiz_slug', 'fashion-gold'),
     sb.from('wg_quiz_leads' as any).select('*').eq('quiz_slug', 'fashion-gold').order('created_at', { ascending: false }).limit(100),
+    L(q => q.gte('created_at', yesterday.toISOString()).lt('created_at', today.toISOString())),
+    L(q => q.gte('created_at', since30)),
+    V(q => q.gte('created_at', today.toISOString())),
+    V(q => q.gte('created_at', yesterday.toISOString()).lt('created_at', today.toISOString())),
   ])
 
   // Série diária
@@ -59,6 +72,10 @@ async function getData() {
       views,
       viewsMonth: viewsMonth.count ?? 0,
       conversion: views > 0 ? Math.round((total / views) * 100) : null,
+    },
+    funnel: {
+      acessos: { today: viewsToday.count ?? 0, yesterday: viewsYest.count ?? 0, d30: viewsMonth.count ?? 0 },
+      leads:   { today: todayLeads.count ?? 0, yesterday: leadsYest.count ?? 0, d30: leads30.count ?? 0 },
     },
     dailySeries,
     utmBreakdown,

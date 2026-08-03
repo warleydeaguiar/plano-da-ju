@@ -83,6 +83,68 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
+// Funil etapa por etapa — Acesso → Lead (métrica principal deste funil)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function FunnelTable({ funnel }: { funnel: any }) {
+  const pct = (a: number, b: number) => (b > 0 ? `${Math.round((a / b) * 100)}%` : '—')
+  const th: React.CSSProperties = { padding: '11px 18px', fontSize: 11, color: gray, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4 }
+  const td: React.CSSProperties = { padding: '13px 18px', fontSize: 14, color: '#2A1E2C', fontWeight: 700 }
+  const tdConv: React.CSSProperties = { padding: '13px 18px', fontSize: 13, color: green, fontWeight: 600 }
+  const rows = [
+    { icon: '👁', label: 'Acessos ao quiz', sub: 'quem abriu a página', t: funnel.acessos.today, y: funnel.acessos.yesterday, m: funnel.acessos.d30, ct: null as string | null, cy: null as string | null, cm: null as string | null, hi: false },
+    { icon: '✅', label: 'Completou (Lead)', sub: 'deixou nome + contato', t: funnel.leads.today, y: funnel.leads.yesterday, m: funnel.leads.d30,
+      ct: pct(funnel.leads.today, funnel.acessos.today), cy: pct(funnel.leads.yesterday, funnel.acessos.yesterday), cm: pct(funnel.leads.d30, funnel.acessos.d30), hi: true },
+  ]
+  return (
+    <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', marginBottom: 24, overflow: 'hidden' }}>
+      <div style={{ padding: '16px 18px 4px' }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C' }}>🎯 Funil de conversão — Acesso → Lead</div>
+        <div style={{ fontSize: 11.5, color: gray, marginTop: 2 }}>Conv. = % que vira lead. (Este quiz só rastreia acesso e lead — não tem passo a passo intermediário.)</div>
+      </div>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 620 }}>
+          <thead>
+            <tr style={{ background: '#FFF7EE', borderBottom: '1px solid #F0EAF2' }}>
+              <th style={{ ...th, textAlign: 'left' }}>Etapa</th>
+              <th style={{ ...th, textAlign: 'right' }}>Hoje</th>
+              <th style={{ ...th, textAlign: 'right' }}>Conv.</th>
+              <th style={{ ...th, textAlign: 'right' }}>Ontem</th>
+              <th style={{ ...th, textAlign: 'right' }}>Conv.</th>
+              <th style={{ ...th, textAlign: 'right' }}>30D</th>
+              <th style={{ ...th, textAlign: 'right' }}>Conv. 30D</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={i} style={{ borderBottom: '1px solid #F7F2F8', background: r.hi ? '#FDF2F6' : '#fff' }}>
+                <td style={{ padding: '13px 18px' }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: r.hi ? accent : '#2A1E2C' }}>{r.icon} {r.label}</div>
+                  <div style={{ fontSize: 11, color: gray, marginTop: 1 }}>{r.sub}</div>
+                </td>
+                <td style={{ ...td, textAlign: 'right', color: r.hi ? accent : '#2A1E2C' }}>{r.t.toLocaleString('pt-BR')}</td>
+                <td style={{ ...tdConv, textAlign: 'right' }}>{r.ct ?? '—'}</td>
+                <td style={{ ...td, textAlign: 'right', fontWeight: 600 }}>{r.y.toLocaleString('pt-BR')}</td>
+                <td style={{ ...tdConv, textAlign: 'right' }}>{r.cy ?? '—'}</td>
+                <td style={{ ...td, textAlign: 'right', fontWeight: 600 }}>{r.m.toLocaleString('pt-BR')}</td>
+                <td style={{ ...tdConv, textAlign: 'right' }}>{r.cm ?? '—'}</td>
+              </tr>
+            ))}
+            <tr style={{ background: '#FBF6EC' }}>
+              <td style={{ padding: '13px 18px', fontSize: 13, fontWeight: 700, color: gold }}>◎ Conversão geral (lead ÷ acesso)</td>
+              <td style={{ padding: '13px 18px', textAlign: 'right', fontSize: 14, fontWeight: 800, color: gold }}>{pct(funnel.leads.today, funnel.acessos.today)}</td>
+              <td />
+              <td style={{ padding: '13px 18px', textAlign: 'right', fontSize: 14, fontWeight: 800, color: gold }}>{pct(funnel.leads.yesterday, funnel.acessos.yesterday)}</td>
+              <td />
+              <td style={{ padding: '13px 18px', textAlign: 'right', fontSize: 14, fontWeight: 800, color: gold }}>{pct(funnel.leads.d30, funnel.acessos.d30)}</td>
+              <td />
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 export default function FashionGoldClient({ data }: { data: any }) {
   const { kpis, dailySeries, utmBreakdown, leads } = data
   const totalUtm = utmBreakdown.reduce((s: number, u: any) => s + u.count, 0) || 1
@@ -126,6 +188,9 @@ export default function FashionGoldClient({ data }: { data: any }) {
           color={kpis.conversion != null ? (kpis.conversion >= 15 ? green : kpis.conversion >= 5 ? accent : red) : '#2A1E2C'}
         />
       </div>
+
+      {/* ── Funil etapa por etapa — Acesso → Lead ── */}
+      <FunnelTable funnel={data.funnel} />
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 20, marginBottom: 24 }}>
         {/* Gráfico de leads por dia */}
