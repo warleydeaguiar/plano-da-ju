@@ -263,8 +263,8 @@ function Step1({ onNext, toastPeople }: { onNext: () => void; toastPeople: Testi
   return (
     <StepShell step={1} total={6} footer={
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <CTA onClick={onNext}>Quero entrar no grupo VIP</CTA>
-        <div style={{ textAlign: 'center', fontSize: 11, color: T.muted }}>Grátis · Sem compromisso · Cancele quando quiser</div>
+        <CTA onClick={onNext}>Quero entrar no grupo VIP do WhatsApp</CTA>
+        <div style={{ textAlign: 'center', fontSize: 11, color: T.muted }}>Grátis · Desconto adicional · Desconto exclusivo pra quem está no grupo</div>
       </div>
     }>
       {/* Product image */}
@@ -283,7 +283,7 @@ function Step1({ onNext, toastPeople }: { onNext: () => void; toastPeople: Testi
           Progressiva <em style={{ color: T.goldDeep }}>Fashion Gold</em><br />com até <strong>62% off</strong>
         </h1>
         <p style={{ fontSize: 14, color: T.muted, lineHeight: 1.5, maxWidth: 320, margin: '0 auto' }}>
-          Acesso ao grupo exclusivo de promoções + sorteios mensais de kits completos.
+Acesso ao grupo VIP de promoções <strong>no WhatsApp</strong> + sorteios mensais de kits completos.
         </p>
       </div>
 
