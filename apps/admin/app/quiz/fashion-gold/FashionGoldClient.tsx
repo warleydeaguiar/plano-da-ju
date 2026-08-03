@@ -83,42 +83,51 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
-// Funil página por página — Cliques (Meta) → Etapas do quiz → Lead
+const pctStr = (a: number, b: number) => (b > 0 ? `${Math.round((a / b) * 100)}%` : '—')
+const thCell: React.CSSProperties = { padding: '11px 16px', fontSize: 11, color: gray, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4 }
+const convCell: React.CSSProperties = { padding: '11px 16px', fontSize: 12.5, textAlign: 'right', color: green, fontWeight: 600 }
+
+function FunnelHead() {
+  return (
+    <thead>
+      <tr style={{ background: '#FFF7EE', borderBottom: '1px solid #F0EAF2' }}>
+        <th style={{ ...thCell, textAlign: 'left' }}>Etapa</th>
+        <th style={{ ...thCell, textAlign: 'right' }}>Hoje</th>
+        <th style={{ ...thCell, textAlign: 'right' }}>Conv.</th>
+        <th style={{ ...thCell, textAlign: 'right' }}>Ontem</th>
+        <th style={{ ...thCell, textAlign: 'right' }}>Conv.</th>
+        <th style={{ ...thCell, textAlign: 'right' }}>30D</th>
+        <th style={{ ...thCell, textAlign: 'right' }}>Conv. 30D</th>
+      </tr>
+    </thead>
+  )
+}
+
+// ── Funil PRINCIPAL: Cliques (Meta) → Visualização → Acessos → Lead ──
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function FunnelTable({ steps, metaOk }: { steps: any[]; metaOk: boolean }) {
-  const pct = (a: number, b: number) => (b > 0 ? `${Math.round((a / b) * 100)}%` : '—')
-  const th: React.CSSProperties = { padding: '11px 16px', fontSize: 11, color: gray, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4 }
-  const num = (v: number): React.CSSProperties => ({ padding: '11px 16px', fontSize: 14, textAlign: 'right', fontWeight: 700, color: '#2A1E2C' })
-  const conv: React.CSSProperties = { padding: '11px 16px', fontSize: 12.5, textAlign: 'right', color: green, fontWeight: 600 }
-
-  const base = (metaOk && steps[0] && (steps[0].today + steps[0].yesterday + steps[0].d30) > 0) ? steps[0] : steps.find(s => s.key === 'acessos')
-  const lead = steps[steps.length - 1]
-  const stepData = steps.filter(s => s.source === 'step').reduce((n, s) => n + s.today + s.yesterday + s.d30, 0)
-
+function MainFunnel({ rows, metaOk }: { rows: any[]; metaOk: boolean }) {
+  const num = (): React.CSSProperties => ({ padding: '11px 16px', fontSize: 14, textAlign: 'right', fontWeight: 700, color: '#2A1E2C' })
+  const cliques = rows.find(r => r.key === 'cliques')
+  const acessos = rows.find(r => r.key === 'acessos')
+  const lead = rows.find(r => r.key === 'lead')
+  // conversão de uma linha em relação à anterior; linhas noChain não puxam % (evita >100%)
+  const rowConv = (i: number, field: 'today' | 'yesterday' | 'd30') => {
+    const s = rows[i]; const prev = i > 0 ? rows[i - 1] : null
+    if (!prev || s.noChain) return '—'
+    return pctStr(s[field], prev[field])
+  }
   return (
     <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', marginBottom: 24, overflow: 'hidden' }}>
       <div style={{ padding: '16px 18px 4px' }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C' }}>🎯 Funil página por página — Anúncio → Lead</div>
-        <div style={{ fontSize: 11.5, color: gray, marginTop: 2 }}>Conv. = % que avança da etapa anterior. Lead é a métrica principal.</div>
-        {!metaOk && <div style={{ fontSize: 11, color: '#B8860B', marginTop: 4 }}>⚠️ Cliques do Meta indisponíveis no momento (mostrando o funil a partir dos acessos).</div>}
-        {stepData === 0 && <div style={{ fontSize: 11, color: gray, marginTop: 4 }}>💡 O rastreamento etapa por etapa começou hoje (03/08) — as linhas de Etapa vão se preencher conforme as pessoas passarem pelo quiz.</div>}
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C' }}>🎯 Funil principal — Anúncio → Lead</div>
+        <div style={{ fontSize: 11.5, color: gray, marginTop: 2 }}>Do clique no anúncio até virar lead. Lead é a métrica principal.</div>
+        {!metaOk && <div style={{ fontSize: 11, color: '#B8860B', marginTop: 4 }}>⚠️ Dados do Meta indisponíveis no momento — as linhas de Cliques/Visualização podem estar zeradas.</div>}
       </div>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 680 }}>
-          <thead>
-            <tr style={{ background: '#FFF7EE', borderBottom: '1px solid #F0EAF2' }}>
-              <th style={{ ...th, textAlign: 'left' }}>Etapa</th>
-              <th style={{ ...th, textAlign: 'right' }}>Hoje</th>
-              <th style={{ ...th, textAlign: 'right' }}>Conv.</th>
-              <th style={{ ...th, textAlign: 'right' }}>Ontem</th>
-              <th style={{ ...th, textAlign: 'right' }}>Conv.</th>
-              <th style={{ ...th, textAlign: 'right' }}>30D</th>
-              <th style={{ ...th, textAlign: 'right' }}>Conv. 30D</th>
-            </tr>
-          </thead>
+          <FunnelHead />
           <tbody>
-            {steps.map((s, i) => {
-              const prev = i > 0 ? steps[i - 1] : null
+            {rows.map((s, i) => {
               const hi = !!s.main
               return (
                 <tr key={s.key} style={{ borderBottom: '1px solid #F7F2F8', background: hi ? '#FDF2F6' : '#fff' }}>
@@ -129,24 +138,71 @@ function FunnelTable({ steps, metaOk }: { steps: any[]; metaOk: boolean }) {
                     </div>
                     {s.sub && <div style={{ fontSize: 11, color: gray, marginTop: 1 }}>{s.sub}</div>}
                   </td>
-                  <td style={{ ...num(s.today), color: hi ? accent : '#2A1E2C' }}>{s.today.toLocaleString('pt-BR')}</td>
-                  <td style={conv}>{prev ? pct(s.today, prev.today) : '—'}</td>
-                  <td style={{ ...num(s.yesterday), fontWeight: 600 }}>{s.yesterday.toLocaleString('pt-BR')}</td>
-                  <td style={conv}>{prev ? pct(s.yesterday, prev.yesterday) : '—'}</td>
-                  <td style={{ ...num(s.d30), fontWeight: 600 }}>{s.d30.toLocaleString('pt-BR')}</td>
-                  <td style={conv}>{prev ? pct(s.d30, prev.d30) : '—'}</td>
+                  <td style={{ ...num(), color: hi ? accent : '#2A1E2C' }}>{s.today.toLocaleString('pt-BR')}</td>
+                  <td style={convCell}>{rowConv(i, 'today')}</td>
+                  <td style={{ ...num(), fontWeight: 600 }}>{s.yesterday.toLocaleString('pt-BR')}</td>
+                  <td style={convCell}>{rowConv(i, 'yesterday')}</td>
+                  <td style={{ ...num(), fontWeight: 600 }}>{s.d30.toLocaleString('pt-BR')}</td>
+                  <td style={convCell}>{rowConv(i, 'd30')}</td>
                 </tr>
               )
             })}
-            <tr style={{ background: '#FBF6EC' }}>
-              <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 700, color: gold }}>◎ Conversão geral (lead ÷ {base?.key === 'cliques' ? 'clique' : 'acesso'})</td>
-              <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 14, fontWeight: 800, color: gold }}>{pct(lead.today, base?.today ?? 0)}</td>
-              <td />
-              <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 14, fontWeight: 800, color: gold }}>{pct(lead.yesterday, base?.yesterday ?? 0)}</td>
-              <td />
-              <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 14, fontWeight: 800, color: gold }}>{pct(lead.d30, base?.d30 ?? 0)}</td>
-              <td />
-            </tr>
+            {/* Duas conversões: sobre o clique pago e sobre o acesso ao site */}
+            {[
+              { label: '◎ Conversão paga (lead ÷ clique Meta)', base: cliques },
+              { label: '◎ Conversão do site (lead ÷ acesso)', base: acessos },
+            ].map(rowc => (
+              <tr key={rowc.label} style={{ background: '#FBF6EC' }}>
+                <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 700, color: gold }}>{rowc.label}</td>
+                <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 14, fontWeight: 800, color: gold }}>{pctStr(lead.today, rowc.base?.today ?? 0)}</td>
+                <td />
+                <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 14, fontWeight: 800, color: gold }}>{pctStr(lead.yesterday, rowc.base?.yesterday ?? 0)}</td>
+                <td />
+                <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 14, fontWeight: 800, color: gold }}>{pctStr(lead.d30, rowc.base?.d30 ?? 0)}</td>
+                <td />
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+// ── Funil POR ETAPA do quiz (medição iniciada 03/08) ──
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function StageFunnel({ stages, hasData }: { stages: any[]; hasData: boolean }) {
+  const num = (): React.CSSProperties => ({ padding: '11px 16px', fontSize: 14, textAlign: 'right', fontWeight: 700, color: '#2A1E2C' })
+  return (
+    <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', marginBottom: 24, overflow: 'hidden' }}>
+      <div style={{ padding: '16px 18px 4px' }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C' }}>🔎 Funil por etapa do quiz — onde a pessoa para</div>
+        <div style={{ fontSize: 11.5, color: gray, marginTop: 2 }}>% = quem avança da etapa anterior (base: Etapa 1). Mostra em qual página as pessoas desistem.</div>
+        <div style={{ fontSize: 11, color: '#B8860B', marginTop: 4 }}>
+          ⚠️ Medição iniciada em 03/08 — {hasData ? 'ainda acumulando. Não compare com os leads históricos do funil acima (base de dados diferente).' : 'ainda sem dados; as linhas se preenchem conforme as pessoas passam pelo quiz.'}
+        </div>
+      </div>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 680 }}>
+          <FunnelHead />
+          <tbody>
+            {stages.map((s, i) => {
+              const prev = i > 0 ? stages[i - 1] : null
+              return (
+                <tr key={s.key} style={{ borderBottom: '1px solid #F7F2F8' }}>
+                  <td style={{ padding: '11px 16px' }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 700, color: '#2A1E2C' }}>{s.label}</div>
+                    {s.sub && <div style={{ fontSize: 11, color: gray, marginTop: 1 }}>{s.sub}</div>}
+                  </td>
+                  <td style={num()}>{s.today.toLocaleString('pt-BR')}</td>
+                  <td style={convCell}>{prev ? pctStr(s.today, prev.today) : '—'}</td>
+                  <td style={{ ...num(), fontWeight: 600 }}>{s.yesterday.toLocaleString('pt-BR')}</td>
+                  <td style={convCell}>{prev ? pctStr(s.yesterday, prev.yesterday) : '—'}</td>
+                  <td style={{ ...num(), fontWeight: 600 }}>{s.d30.toLocaleString('pt-BR')}</td>
+                  <td style={convCell}>{prev ? pctStr(s.d30, prev.d30) : '—'}</td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
@@ -198,8 +254,11 @@ export default function FashionGoldClient({ data }: { data: any }) {
         />
       </div>
 
-      {/* ── Funil página por página — Cliques (Meta) → Etapas → Lead ── */}
-      <FunnelTable steps={data.funnelSteps} metaOk={data.metaOk} />
+      {/* ── Funil principal — Cliques (Meta) → Visualização → Acessos → Lead ── */}
+      <MainFunnel rows={data.funnelMain} metaOk={data.metaOk} />
+
+      {/* ── Funil por etapa do quiz (medição iniciada 03/08) ── */}
+      <StageFunnel stages={data.funnelStages} hasData={data.stagesHaveData} />
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 20, marginBottom: 24 }}>
         {/* Gráfico de leads por dia */}

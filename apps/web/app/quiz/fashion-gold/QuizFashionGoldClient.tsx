@@ -217,7 +217,6 @@ function StepShell({ step, total, children, footer }: {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <Progress step={step} total={total} />
-          <div style={{ fontSize: 11, color: T.muted, fontVariantNumeric: 'tabular-nums', minWidth: 28 }}>{step}/{total}</div>
         </div>
       </div>
       {/* Body — padding-bottom deixa espaço para o footer fixo */}
@@ -261,7 +260,7 @@ function Field({ label, value, onChange, placeholder, type = 'text' }: {
 // ═══════════════════════════════════════════════════════════
 function Step1({ onNext, toastPeople }: { onNext: () => void; toastPeople: Testimonial[] }) {
   return (
-    <StepShell step={1} total={6} footer={
+    <StepShell step={1} total={7} footer={
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <CTA onClick={onNext}>Quero entrar no grupo VIP do WhatsApp</CTA>
         <div style={{ textAlign: 'center', fontSize: 11, color: T.muted }}>Grátis · Desconto adicional · Desconto exclusivo pra quem está no grupo</div>
@@ -317,9 +316,9 @@ function Step2({ onNext }: { onNext: () => void }) {
     { n: '03', t: 'Compra direto no site oficial', d: 'Mesma garantia da Ybera Paris, com frete e devolução tradicionais.' },
   ]
   return (
-    <StepShell step={2} total={6} footer={<CTA onClick={onNext}>Continuar</CTA>}>
+    <StepShell step={2} total={7} footer={<CTA onClick={onNext}>Continuar</CTA>}>
       <div style={{ paddingTop: 8 }}>
-        <div style={{ fontSize: 11, letterSpacing: 3, color: T.goldDeep, fontWeight: 600, textTransform: 'uppercase' }}>Etapa 02 · Funcionamento</div>
+        <div style={{ fontSize: 11, letterSpacing: 3, color: T.goldDeep, fontWeight: 600, textTransform: 'uppercase' }}>Como funciona</div>
         <h2 style={{ fontFamily: fonts.display, fontWeight: 500, fontSize: 30, lineHeight: 1.1, margin: '6px 0 22px', letterSpacing: -0.4 }}>
           Como funciona o <em style={{ color: T.goldDeep }}>grupo VIP</em>?
         </h2>
@@ -353,9 +352,9 @@ function Step3({ onNext, winner }: { onNext: () => void; winner: Testimonial }) 
     { tier: '3º prêmio', label: 'Óleo de Mirra 90ml', val: 'R$ 189', accent: T.muted, big: false },
   ]
   return (
-    <StepShell step={3} total={6} footer={<CTA onClick={onNext}>Quero participar dos sorteios</CTA>}>
+    <StepShell step={3} total={7} footer={<CTA onClick={onNext}>Quero participar dos sorteios</CTA>}>
       <div style={{ paddingTop: 4 }}>
-        <div style={{ fontSize: 11, letterSpacing: 3, color: T.goldDeep, fontWeight: 600, textTransform: 'uppercase' }}>Etapa 03 · Bônus exclusivo</div>
+        <div style={{ fontSize: 11, letterSpacing: 3, color: T.goldDeep, fontWeight: 600, textTransform: 'uppercase' }}>Bônus exclusivo</div>
         <h2 style={{ fontFamily: fonts.display, fontWeight: 500, fontSize: 28, lineHeight: 1.1, margin: '6px 0 14px', letterSpacing: -0.4 }}>
           E ainda concorre a <em style={{ color: T.goldDeep }}>kits completos</em> todo mês
         </h2>
@@ -394,9 +393,9 @@ function Step3({ onNext, winner }: { onNext: () => void; winner: Testimonial }) 
 // ═══════════════════════════════════════════════════════════
 function Step4({ onNext, reviews }: { onNext: () => void; reviews: Testimonial[] }) {
   return (
-    <StepShell step={4} total={6} footer={<CTA onClick={onNext}>Quero meu acesso</CTA>}>
+    <StepShell step={4} total={7} footer={<CTA onClick={onNext}>Quero meu acesso</CTA>}>
       <div style={{ paddingTop: 4 }}>
-        <div style={{ fontSize: 11, letterSpacing: 3, color: T.goldDeep, fontWeight: 600, textTransform: 'uppercase' }}>Etapa 04 · Avaliações</div>
+        <div style={{ fontSize: 11, letterSpacing: 3, color: T.goldDeep, fontWeight: 600, textTransform: 'uppercase' }}>Avaliações</div>
         <h2 style={{ fontFamily: fonts.display, fontWeight: 500, fontSize: 28, lineHeight: 1.1, margin: '6px 0 14px', letterSpacing: -0.4 }}>
           O que dizem as <em style={{ color: T.goldDeep }}>+12 mil membras</em>
         </h2>
@@ -435,19 +434,19 @@ function Step4({ onNext, reviews }: { onNext: () => void; reviews: Testimonial[]
 // ═══════════════════════════════════════════════════════════
 // STEP 5 — PHONE
 // ═══════════════════════════════════════════════════════════
-function Step5({ onNext, phone, setPhone }: { onNext: () => void; phone: string; setPhone: (v: string) => void }) {
+function Step5({ onNext, phone, setPhone, toastPeople }: { onNext: () => void; phone: string; setPhone: (v: string) => void; toastPeople: Testimonial[] }) {
   const digits = phone.replace(/\D/g, '').slice(0, 11)
   const display = digits.length > 6 ? `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}` : digits.length > 2 ? `(${digits.slice(0,2)}) ${digits.slice(2)}` : digits
   const valid = digits.length >= 10
   return (
-    <StepShell step={5} total={6} footer={
+    <StepShell step={5} total={7} footer={
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <CTA onClick={onNext} disabled={!valid}>Continuar</CTA>
         <div style={{ textAlign: 'center', fontSize: 10.5, color: T.muted }}>🔒 Seus dados estão protegidos. Não fazemos spam.</div>
       </div>
     }>
       <div style={{ paddingTop: 8 }}>
-        <div style={{ fontSize: 11, letterSpacing: 3, color: T.goldDeep, fontWeight: 600, textTransform: 'uppercase' }}>Etapa 05 · WhatsApp</div>
+        <div style={{ fontSize: 11, letterSpacing: 3, color: T.goldDeep, fontWeight: 600, textTransform: 'uppercase' }}>WhatsApp</div>
         <h2 style={{ fontFamily: fonts.display, fontWeight: 500, fontSize: 28, lineHeight: 1.1, margin: '6px 0 12px', letterSpacing: -0.4 }}>
           Qual é o seu <em style={{ color: T.goldDeep }}>WhatsApp</em>?
         </h2>
@@ -466,9 +465,12 @@ function Step5({ onNext, phone, setPhone }: { onNext: () => void; phone: string;
         </label>
         <div style={{ marginTop: 22, padding: 14, background: T.paper, border: `1px solid ${T.line}`, borderRadius: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ display: 'flex' }}>
-            {[T.gold, T.goldDeep, T.champagne, T.green].map((c, i) => (
-              <div key={i} style={{ width: 26, height: 26, borderRadius: 999, background: c, border: '2px solid #fff', marginLeft: i > 0 ? -8 : 0, fontSize: 11, color: T.ink, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600 }}>{['F','C','L','+'][i]}</div>
+            {toastPeople.slice(0, 3).map((p, i) => (
+              <div key={p.id ?? i} style={{ marginLeft: i > 0 ? -10 : 0, border: '2px solid #fff', borderRadius: '50%', display: 'flex' }}>
+                <Avatar url={p.photo_url} name={p.name} size={28} />
+              </div>
             ))}
+            <div style={{ width: 28, height: 28, borderRadius: 999, background: T.ink, color: '#fff', border: '2px solid #fff', marginLeft: -10, fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>+240</div>
           </div>
           <div style={{ flex: 1, fontSize: 12, color: T.ink, lineHeight: 1.4 }}><strong>247 pessoas</strong> entraram nas últimas 24h</div>
         </div>
@@ -487,45 +489,56 @@ function Step5({ onNext, phone, setPhone }: { onNext: () => void; phone: string;
 }
 
 // ═══════════════════════════════════════════════════════════
-// STEP 6 — NAME + EMAIL → redirect direto ao grupo
+// STEP 6 — NAME (uma info por página)
 // ═══════════════════════════════════════════════════════════
-function Step6({ onSubmit, name, setName, email, setEmail, loading }: {
-  onSubmit: () => void; name: string; setName: (v: string) => void
-  email: string; setEmail: (v: string) => void; loading: boolean
-}) {
-  const valid = name.trim().length >= 2 && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)
+function Step6({ onNext, name, setName }: { onNext: () => void; name: string; setName: (v: string) => void }) {
+  const valid = name.trim().length >= 2
   return (
-    <StepShell step={6} total={6} footer={
+    <StepShell step={6} total={7} footer={
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <CTA onClick={onNext} disabled={!valid}>Continuar</CTA>
+        <div style={{ textAlign: 'center', fontSize: 10.5, color: T.muted }}>🔒 Seus dados estão protegidos. Não fazemos spam.</div>
+      </div>
+    }>
+      <div style={{ paddingTop: 8 }}>
+        <div style={{ fontSize: 11, letterSpacing: 3, color: T.goldDeep, fontWeight: 600, textTransform: 'uppercase' }}>Quase lá</div>
+        <h2 style={{ fontFamily: fonts.display, fontWeight: 500, fontSize: 28, lineHeight: 1.1, margin: '6px 0 12px', letterSpacing: -0.4 }}>
+          Como podemos te <em style={{ color: T.goldDeep }}>chamar</em>?
+        </h2>
+        <p style={{ fontSize: 13.5, color: T.muted, lineHeight: 1.5, marginBottom: 22 }}>Personalizamos as ofertas e mensagens com seu nome.</p>
+        <Field label="Seu nome" placeholder="Como prefere ser chamada" value={name} onChange={setName} />
+      </div>
+    </StepShell>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════
+// STEP 7 — EMAIL → entra no grupo do WhatsApp
+// ═══════════════════════════════════════════════════════════
+function Step7({ onSubmit, email, setEmail, loading }: {
+  onSubmit: () => void; email: string; setEmail: (v: string) => void; loading: boolean
+}) {
+  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)
+  return (
+    <StepShell step={7} total={7} footer={
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <CTA onClick={onSubmit} disabled={!valid} loading={loading} icon={
           <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff">
             <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0012.04 2zm0 18.15h-.01a8.2 8.2 0 01-4.18-1.15l-.3-.18-3.11.82.83-3.04-.2-.31a8.18 8.18 0 01-1.26-4.38c0-4.54 3.7-8.23 8.24-8.23 2.2 0 4.27.86 5.83 2.42a8.183 8.183 0 012.41 5.83c0 4.54-3.7 8.24-8.25 8.24z" />
           </svg>
         }>
-          Falar com a Ju no WhatsApp
+          Entrar no grupo do WhatsApp
         </CTA>
         <div style={{ textAlign: 'center', fontSize: 10.5, color: T.muted }}>Ao continuar você concorda com os termos e a política de privacidade.</div>
       </div>
     }>
       <div style={{ paddingTop: 8 }}>
-        <div style={{ fontSize: 11, letterSpacing: 3, color: T.goldDeep, fontWeight: 600, textTransform: 'uppercase' }}>Etapa 06 · Quase lá</div>
+        <div style={{ fontSize: 11, letterSpacing: 3, color: T.goldDeep, fontWeight: 600, textTransform: 'uppercase' }}>Último passo</div>
         <h2 style={{ fontFamily: fonts.display, fontWeight: 500, fontSize: 28, lineHeight: 1.1, margin: '6px 0 12px', letterSpacing: -0.4 }}>
-          Como podemos te <em style={{ color: T.goldDeep }}>chamar</em>?
+          Qual é o seu <em style={{ color: T.goldDeep }}>melhor e-mail</em>?
         </h2>
-        <p style={{ fontSize: 13.5, color: T.muted, lineHeight: 1.5, marginBottom: 22 }}>Personalizamos as ofertas e mensagens com seu nome.</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <Field label="Seu nome" placeholder="Como prefere ser chamada" value={name} onChange={setName} />
-          <Field label="E-mail" placeholder="seu@email.com" type="email" value={email} onChange={setEmail} />
-        </div>
-        <div style={{ marginTop: 22, padding: 16, background: `linear-gradient(180deg, ${T.ink} 0%, #1f1f1f 100%)`, color: '#fff', borderRadius: 16, border: `1px solid ${T.gold}44` }}>
-          <div style={{ fontSize: 10, letterSpacing: 2, color: T.gold, marginBottom: 12, fontWeight: 600 }}>✨ VOCÊ ESTÁ A 1 PASSO DE</div>
-          {['Acesso ao grupo VIP de promoções', 'Descontos abaixo do site oficial', 'Sorteios mensais de kits Ybera', 'Novidades em primeira mão'].map((b, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', fontSize: 13 }}>
-              <svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="8" fill={T.gold} /><path d="M4 8.5L7 11l5-6" stroke={T.ink} strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
-              {b}
-            </div>
-          ))}
-        </div>
+        <p style={{ fontSize: 13.5, color: T.muted, lineHeight: 1.5, marginBottom: 22 }}>É por onde enviamos as promoções e o aviso dos sorteios.</p>
+        <Field label="E-mail" placeholder="seu@email.com" type="email" value={email} onChange={setEmail} />
       </div>
     </StepShell>
   )
@@ -575,7 +588,7 @@ export default function QuizFashionGoldClient() {
   // Funil por ETAPA: dispara "viewed" a cada passo (pra medir onde a pessoa para).
   useEffect(() => {
     if (!sessionId) return
-    const ids: Record<number, string> = { 1: 'hero', 2: 'como_funciona', 3: 'sorteios', 4: 'depoimentos', 5: 'telefone', 6: 'nome_email' }
+    const ids: Record<number, string> = { 1: 'hero', 2: 'como_funciona', 3: 'sorteios', 4: 'depoimentos', 5: 'telefone', 6: 'nome', 7: 'email' }
     fetch('/api/quiz/step-event', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -662,8 +675,9 @@ export default function QuizFashionGoldClient() {
       {step === 2 && <Step2 onNext={next} />}
       {step === 3 && <Step3 onNext={next} winner={winner} />}
       {step === 4 && <Step4 onNext={next} reviews={reviews} />}
-      {step === 5 && <Step5 onNext={next} phone={phone} setPhone={setPhone} />}
-      {step === 6 && <Step6 onSubmit={handleSubmit} name={name} setName={setName} email={email} setEmail={setEmail} loading={loading} />}
+      {step === 5 && <Step5 onNext={next} phone={phone} setPhone={setPhone} toastPeople={toastPeople} />}
+      {step === 6 && <Step6 onNext={next} name={name} setName={setName} />}
+      {step === 7 && <Step7 onSubmit={handleSubmit} email={email} setEmail={setEmail} loading={loading} />}
     </>
   )
 }

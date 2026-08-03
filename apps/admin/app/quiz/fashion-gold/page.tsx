@@ -60,22 +60,28 @@ async function getData() {
     stepSessions(since30),
   ])
 
-  // Funil ordenado: Cliques (Meta) → Visualização → Acessos → Etapa 1..6 → Lead
+  // ── Funil PRINCIPAL (confiável): Cliques (Meta) → Visualização → Acessos → Lead
+  const lead = { today: todayLeads.count ?? 0, yesterday: leadsYest.count ?? 0, d30: leads30.count ?? 0 }
+  const acessos = { today: viewsToday.count ?? 0, yesterday: viewsYest.count ?? 0, d30: viewsMonth.count ?? 0 }
+  const funnelMain = [
+    { key: 'cliques', label: 'Cliques no link (Meta)', sub: 'clicou no anúncio', source: 'meta', today: fg?.funnelToday.link_clicks ?? 0, yesterday: fg?.funnelYesterday.link_clicks ?? 0, d30: fg?.funnel30d.link_clicks ?? 0 },
+    { key: 'lpv', label: 'Visualização de página (Meta)', sub: 'abriu a landing', source: 'meta', today: fg?.funnelToday.landing_page_views ?? 0, yesterday: fg?.funnelYesterday.landing_page_views ?? 0, d30: fg?.funnel30d.landing_page_views ?? 0 },
+    { key: 'acessos', label: 'Acessos ao quiz', sub: 'todo o tráfego (inclui orgânico/direto)', source: 'quiz', noChain: true, today: acessos.today, yesterday: acessos.yesterday, d30: acessos.d30 },
+    { key: 'lead', label: 'Completou (Lead)', sub: 'deixou nome + contato', source: 'lead', main: true, today: lead.today, yesterday: lead.yesterday, d30: lead.d30 },
+  ]
+
+  // ── Funil POR ETAPA do quiz (medição iniciada em 03/08; base = etapa 1)
   const STEP_META = [
     { i: 1, label: 'Etapa 1 · Oferta', sub: 'viu a progressiva' },
     { i: 2, label: 'Etapa 2 · Como funciona', sub: 'entendeu o grupo' },
     { i: 3, label: 'Etapa 3 · Sorteios', sub: 'viu os prêmios' },
     { i: 4, label: 'Etapa 4 · Depoimentos', sub: 'prova social' },
     { i: 5, label: 'Etapa 5 · Telefone', sub: 'informou o WhatsApp' },
-    { i: 6, label: 'Etapa 6 · Nome + e-mail', sub: 'reta final' },
+    { i: 6, label: 'Etapa 6 · Nome', sub: 'informou o nome' },
+    { i: 7, label: 'Etapa 7 · E-mail', sub: 'reta final' },
   ]
-  const funnelSteps = [
-    { key: 'cliques', label: 'Cliques no link (Meta)', sub: 'clicou no anúncio', source: 'meta', today: fg?.funnelToday.link_clicks ?? 0, yesterday: fg?.funnelYesterday.link_clicks ?? 0, d30: fg?.funnel30d.link_clicks ?? 0 },
-    { key: 'lpv', label: 'Visualização de página (Meta)', sub: 'abriu a landing', source: 'meta', today: fg?.funnelToday.landing_page_views ?? 0, yesterday: fg?.funnelYesterday.landing_page_views ?? 0, d30: fg?.funnel30d.landing_page_views ?? 0 },
-    { key: 'acessos', label: 'Acessos ao quiz', sub: 'carregou a página', source: 'quiz', today: viewsToday.count ?? 0, yesterday: viewsYest.count ?? 0, d30: viewsMonth.count ?? 0 },
-    ...STEP_META.map(s => ({ key: `s${s.i}`, label: s.label, sub: s.sub, source: 'step', today: stToday[s.i] ?? 0, yesterday: stYest[s.i] ?? 0, d30: st30[s.i] ?? 0 })),
-    { key: 'lead', label: 'Completou (Lead)', sub: 'deixou nome + contato', source: 'lead', main: true, today: todayLeads.count ?? 0, yesterday: leadsYest.count ?? 0, d30: leads30.count ?? 0 },
-  ]
+  const funnelStages = STEP_META.map(s => ({ key: `s${s.i}`, label: s.label, sub: s.sub, today: stToday[s.i] ?? 0, yesterday: stYest[s.i] ?? 0, d30: st30[s.i] ?? 0 }))
+  const stagesHaveData = funnelStages.reduce((n, s) => n + s.today + s.yesterday + s.d30, 0) > 0
   const metaOk = metaAds?.status === 'ok'
 
   // Série diária
@@ -117,7 +123,9 @@ async function getData() {
       viewsMonth: viewsMonth.count ?? 0,
       conversion: views > 0 ? Math.round((total / views) * 100) : null,
     },
-    funnelSteps,
+    funnelMain,
+    funnelStages,
+    stagesHaveData,
     metaOk,
     dailySeries,
     utmBreakdown,
