@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase'
 import Link from 'next/link'
 import FashionGoldClient from './FashionGoldClient'
+import { getQuizAdSpend } from '@/lib/meta-ads-quiz'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,6 +34,49 @@ async function getData() {
     V(q => q.gte('created_at', today.toISOString())),
     V(q => q.gte('created_at', yesterday.toISOString()).lt('created_at', today.toISOString())),
   ])
+
+  // Meta ads — o tráfego do fashion-gold roda nas campanhas de "grupos" (Ybera VIP)
+  const metaAds = await getQuizAdSpend().catch(() => null)
+  const fg = metaAds?.grupos ?? null
+
+  // Funil por ETAPA (viewed) — sessões únicas por step_index, por período.
+  // (Dado só existe a partir de 03/08, quando o quiz passou a emitir eventos.)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const stepSessions = async (gte?: string, lt?: string): Promise<Record<number, number>> => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let q = (sb.from('wg_quiz_step_events' as any) as any).select('session_id, step_index').eq('quiz_slug', 'fashion-gold').eq('event_type', 'viewed').limit(50000)
+    if (gte) q = q.gte('created_at', gte)
+    if (lt) q = q.lt('created_at', lt)
+    const { data } = await q
+    const bySt: Record<number, Set<string>> = {}
+    for (const r of ((data ?? []) as any[])) { const i = r.step_index as number; if (!bySt[i]) bySt[i] = new Set(); if (r.session_id) bySt[i].add(r.session_id) }
+    const out: Record<number, number> = {}
+    for (const k of Object.keys(bySt)) out[+k] = bySt[+k].size
+    return out
+  }
+  const [stToday, stYest, st30] = await Promise.all([
+    stepSessions(today.toISOString()),
+    stepSessions(yesterday.toISOString(), today.toISOString()),
+    stepSessions(since30),
+  ])
+
+  // Funil ordenado: Cliques (Meta) → Visualização → Acessos → Etapa 1..6 → Lead
+  const STEP_META = [
+    { i: 1, label: 'Etapa 1 · Oferta', sub: 'viu a progressiva' },
+    { i: 2, label: 'Etapa 2 · Como funciona', sub: 'entendeu o grupo' },
+    { i: 3, label: 'Etapa 3 · Sorteios', sub: 'viu os prêmios' },
+    { i: 4, label: 'Etapa 4 · Depoimentos', sub: 'prova social' },
+    { i: 5, label: 'Etapa 5 · Telefone', sub: 'informou o WhatsApp' },
+    { i: 6, label: 'Etapa 6 · Nome + e-mail', sub: 'reta final' },
+  ]
+  const funnelSteps = [
+    { key: 'cliques', label: 'Cliques no link (Meta)', sub: 'clicou no anúncio', source: 'meta', today: fg?.funnelToday.link_clicks ?? 0, yesterday: fg?.funnelYesterday.link_clicks ?? 0, d30: fg?.funnel30d.link_clicks ?? 0 },
+    { key: 'lpv', label: 'Visualização de página (Meta)', sub: 'abriu a landing', source: 'meta', today: fg?.funnelToday.landing_page_views ?? 0, yesterday: fg?.funnelYesterday.landing_page_views ?? 0, d30: fg?.funnel30d.landing_page_views ?? 0 },
+    { key: 'acessos', label: 'Acessos ao quiz', sub: 'carregou a página', source: 'quiz', today: viewsToday.count ?? 0, yesterday: viewsYest.count ?? 0, d30: viewsMonth.count ?? 0 },
+    ...STEP_META.map(s => ({ key: `s${s.i}`, label: s.label, sub: s.sub, source: 'step', today: stToday[s.i] ?? 0, yesterday: stYest[s.i] ?? 0, d30: st30[s.i] ?? 0 })),
+    { key: 'lead', label: 'Completou (Lead)', sub: 'deixou nome + contato', source: 'lead', main: true, today: todayLeads.count ?? 0, yesterday: leadsYest.count ?? 0, d30: leads30.count ?? 0 },
+  ]
+  const metaOk = metaAds?.status === 'ok'
 
   // Série diária
   const days = Array.from({ length: 30 }, (_, i) => {
@@ -73,10 +117,8 @@ async function getData() {
       viewsMonth: viewsMonth.count ?? 0,
       conversion: views > 0 ? Math.round((total / views) * 100) : null,
     },
-    funnel: {
-      acessos: { today: viewsToday.count ?? 0, yesterday: viewsYest.count ?? 0, d30: viewsMonth.count ?? 0 },
-      leads:   { today: todayLeads.count ?? 0, yesterday: leadsYest.count ?? 0, d30: leads30.count ?? 0 },
-    },
+    funnelSteps,
+    metaOk,
     dailySeries,
     utmBreakdown,
     leads: (leadsList.data ?? []) as any[],
