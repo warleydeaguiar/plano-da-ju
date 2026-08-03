@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { newEventId, sendServerEvent } from '../../../lib/tracking-client'
 
@@ -547,18 +547,41 @@ export default function QuizFashionGoldClient() {
   const [toastPeople, setToastPeople] = useState<Testimonial[]>(DEFAULT_TOAST)
   const [winner, setWinner] = useState<Testimonial>(DEFAULT_WINNER)
 
-  // Rastrear view na montagem
+  // Session id estável por visita (pra contar pessoas únicas e o funil por etapa).
+  const sessionId = useMemo(() => {
+    if (typeof window === 'undefined') return ''
+    try {
+      const k = 'fg_session_id'
+      let s = sessionStorage.getItem(k)
+      if (!s) { s = (crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`); sessionStorage.setItem(k, s) }
+      return s
+    } catch { return `${Date.now()}-${Math.random().toString(36).slice(2)}` }
+  }, [])
+
+  // Rastrear view na montagem (com session_id → dá pra contar pessoas únicas)
   useEffect(() => {
     fetch('/api/quiz/view', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         quiz_slug: 'fashion-gold',
+        session_id: sessionId,
         utm_source: searchParams.get('utm_source'),
         utm_campaign: searchParams.get('utm_campaign'),
       }),
     }).catch(() => {})
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Funil por ETAPA: dispara "viewed" a cada passo (pra medir onde a pessoa para).
+  useEffect(() => {
+    if (!sessionId) return
+    const ids: Record<number, string> = { 1: 'hero', 2: 'como_funciona', 3: 'sorteios', 4: 'depoimentos', 5: 'telefone', 6: 'nome_email' }
+    fetch('/api/quiz/step-event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId, quiz_slug: 'fashion-gold', step_index: step, step_id: ids[step] ?? `step_${step}`, event_type: 'viewed' }),
+    }).catch(() => {})
+  }, [step, sessionId])
 
   useEffect(() => {
     fetch('/api/quiz/testimonials?slug=fashion-gold')
