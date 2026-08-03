@@ -347,9 +347,9 @@ function Step2({ onNext }: { onNext: () => void }) {
 // ═══════════════════════════════════════════════════════════
 function Step3({ onNext, winner }: { onNext: () => void; winner: Testimonial }) {
   const prizes = [
-    { tier: '1º prêmio', label: 'Kit Completo Fashion Gold', val: 'R$ 1.298', accent: T.gold, big: true },
-    { tier: '2º prêmio', label: 'Combo Progressiva + Manutenção', val: 'R$ 689', accent: T.goldDeep, big: false },
-    { tier: '3º prêmio', label: 'Óleo de Mirra 90ml', val: 'R$ 189', accent: T.muted, big: false },
+    { tier: '1º prêmio', label: 'Kit Completo Fashion Gold', val: 'R$ 1.298', accent: T.gold, big: true, img: '/quiz/progressiva.png' },
+    { tier: '2º prêmio', label: 'Combo Progressiva + Manutenção', val: 'R$ 689', accent: T.goldDeep, big: false, img: '/quiz/progressiva.png' },
+    { tier: '3º prêmio', label: 'Óleo de Mirra 90ml', val: 'R$ 189', accent: T.muted, big: false, img: '' },
   ]
   return (
     <StepShell step={3} total={7} footer={<CTA onClick={onNext}>Quero participar dos sorteios</CTA>}>
@@ -360,19 +360,28 @@ function Step3({ onNext, winner }: { onNext: () => void; winner: Testimonial }) 
         </h2>
         <p style={{ fontSize: 14, color: T.muted, lineHeight: 1.5, marginBottom: 20 }}>Membros do grupo participam <strong>automaticamente</strong> dos sorteios mensais.</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {prizes.map(p => (
-            <div key={p.tier} style={{ padding: p.big ? '18px 16px' : '14px 16px', borderRadius: 14, background: p.big ? T.ink : T.paper, color: p.big ? '#fff' : T.ink, border: p.big ? 'none' : `1px solid ${T.line}`, display: 'flex', alignItems: 'center', gap: 12, position: 'relative', overflow: 'hidden' }}>
+          {prizes.map(p => {
+            const thumb = p.big ? 60 : 48
+            return (
+            <div key={p.tier} style={{ padding: p.big ? '16px' : '12px 14px', borderRadius: 14, background: p.big ? T.ink : T.paper, color: p.big ? '#fff' : T.ink, border: p.big ? 'none' : `1px solid ${T.line}`, display: 'flex', alignItems: 'center', gap: 12, position: 'relative', overflow: 'hidden' }}>
               {p.big && <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(120% 120% at 100% 0%, ${T.gold}33 0%, transparent 50%)`, pointerEvents: 'none' }} />}
-              <div style={{ fontFamily: fonts.display, fontSize: p.big ? 22 : 18, color: p.accent, fontWeight: 500, width: 44, flexShrink: 0, position: 'relative' }}>
-                {p.tier.split('º')[0]}<span style={{ fontSize: 12, verticalAlign: 'super' }}>º</span>
+              <div style={{ fontFamily: fonts.display, fontSize: p.big ? 20 : 16, color: p.accent, fontWeight: 500, width: 26, flexShrink: 0, position: 'relative', textAlign: 'center' }}>
+                {p.tier.split('º')[0]}<span style={{ fontSize: 10, verticalAlign: 'super' }}>º</span>
               </div>
-              <div style={{ flex: 1, position: 'relative' }}>
-                <div style={{ fontSize: p.big ? 15 : 14, fontWeight: 600, marginBottom: 2 }}>{p.label}</div>
+              {/* Capa do produto */}
+              <div style={{ width: thumb, height: thumb, flexShrink: 0, borderRadius: 12, background: p.big ? 'rgba(255,255,255,0.06)' : T.bg, border: `1px solid ${p.big ? 'rgba(255,255,255,0.12)' : T.line}`, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
+                {p.img
+                  // eslint-disable-next-line @next/next/no-img-element
+                  ? <img src={p.img} alt={p.label} style={{ width: '100%', height: '100%', objectFit: 'contain', mixBlendMode: p.big ? 'normal' : 'multiply' }} />
+                  : <span style={{ fontSize: 22 }}>🧴</span>}
+              </div>
+              <div style={{ flex: 1, position: 'relative', minWidth: 0 }}>
+                <div style={{ fontSize: p.big ? 15 : 13.5, fontWeight: 600, marginBottom: 2 }}>{p.label}</div>
                 <div style={{ fontSize: 11, opacity: 0.7 }}>Avaliado em {p.val}</div>
               </div>
               {p.big && <div style={{ fontSize: 22, position: 'relative' }}>🏆</div>}
             </div>
-          ))}
+          )})}
         </div>
         {/* Last winner */}
         <div style={{ marginTop: 18, padding: '12px 14px', background: T.paper, borderRadius: 12, border: `1px solid ${T.line}`, display: 'flex', alignItems: 'center', gap: 12 }}>
