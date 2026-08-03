@@ -293,7 +293,7 @@ export async function getQuizAdSpend(): Promise<QuizAdsResult> {
 
     // Buscar tudo em paralelo
     const [todayRows, yestRows, monthRows, lastMonthRows, last7Rows, last30Rows] = await Promise.all([
-      fetchInsights({ level: 'campaign', fields, time_range: JSON.stringify({ since: todayStr,       until: todayStr      }) }),
+      fetchInsights({ level: 'campaign', fields, time_range: JSON.stringify({ since: todayStr,       until: todayStr      }) }, 300),
       fetchInsights({ level: 'campaign', fields, time_range: JSON.stringify({ since: yestStr,        until: yestStr       }) }),
       fetchInsights({ level: 'campaign', fields, time_range: JSON.stringify({ since: monthStart,     until: todayStr      }) }),
       fetchInsights({ level: 'campaign', fields, time_range: JSON.stringify({ since: lastMonthStart, until: lastMonthEnd }) }),
