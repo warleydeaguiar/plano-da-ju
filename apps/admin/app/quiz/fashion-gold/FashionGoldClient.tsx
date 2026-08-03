@@ -87,67 +87,88 @@ const pctStr = (a: number, b: number) => (b > 0 ? `${Math.round((a / b) * 100)}%
 const thCell: React.CSSProperties = { padding: '11px 16px', fontSize: 11, color: gray, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4 }
 const convCell: React.CSSProperties = { padding: '11px 16px', fontSize: 12.5, textAlign: 'right', color: green, fontWeight: 600 }
 
-function FunnelHead() {
-  return (
-    <thead>
-      <tr style={{ background: '#FFF7EE', borderBottom: '1px solid #F0EAF2' }}>
-        <th style={{ ...thCell, textAlign: 'left' }}>Etapa</th>
-        <th style={{ ...thCell, textAlign: 'right' }}>Hoje</th>
-        <th style={{ ...thCell, textAlign: 'right' }}>Conv.</th>
-        <th style={{ ...thCell, textAlign: 'right' }}>Ontem</th>
-        <th style={{ ...thCell, textAlign: 'right' }}>Conv.</th>
-        <th style={{ ...thCell, textAlign: 'right' }}>30D</th>
-        <th style={{ ...thCell, textAlign: 'right' }}>Conv. 30D</th>
-      </tr>
-    </thead>
-  )
-}
-
-// ── Funil PRINCIPAL: Cliques (Meta) → Visualização → Acessos → Lead ──
+// ── FUNIL UNIFICADO: Cliques (Meta) → Visualização → Acessos → Etapa 1..7 → Lead ──
+const UNIVERSE_LABEL: Record<string, string> = { meta: 'ANÚNCIO (META)', views: 'SITE', step: 'DENTRO DO QUIZ', lead: 'RESULTADO' }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function MainFunnel({ rows, metaOk }: { rows: any[]; metaOk: boolean }) {
+function UnifiedFunnel({ rows, metaOk, hasStepData }: { rows: any[]; metaOk: boolean; hasStepData: boolean }) {
   const num = (): React.CSSProperties => ({ padding: '11px 16px', fontSize: 14, textAlign: 'right', fontWeight: 700, color: '#2A1E2C' })
   const cliques = rows.find(r => r.key === 'cliques')
   const acessos = rows.find(r => r.key === 'acessos')
   const lead = rows.find(r => r.key === 'lead')
-  // conversão de uma linha em relação à anterior; linhas noChain não puxam % (evita >100%)
-  const rowConv = (i: number, field: 'today' | 'yesterday' | 'd30') => {
-    const s = rows[i]; const prev = i > 0 ? rows[i - 1] : null
-    if (!prev || s.noChain) return '—'
-    return pctStr(s[field], prev[field])
+  // "Seguem →" = % que avança para a PRÓXIMA linha, SÓ quando as duas linhas vêm
+  // da mesma base de medição (mesmo universe). Nas fronteiras mostramos "—".
+  const ret = (i: number, field: 'today' | 'yesterday' | 'd30') => {
+    const s = rows[i]; const next = i < rows.length - 1 ? rows[i + 1] : null
+    if (!next || next.universe !== s.universe || s[field] <= 0) return '—'
+    return `${Math.round((next[field] / s[field]) * 100)}%`
+  }
+  // Maior desistência DENTRO do quiz (universe step), no período 30d.
+  const stepIdx = rows.map((r, i) => ({ r, i })).filter(x => x.r.universe === 'step').map(x => x.i)
+  let worstIdx = -1, worstRet = 1.01
+  for (const i of stepIdx) {
+    const next = rows[i + 1]
+    if (next && next.universe === 'step' && rows[i].d30 >= 3) {
+      const r = next.d30 / rows[i].d30
+      if (r < worstRet) { worstRet = r; worstIdx = i }
+    }
   }
   return (
     <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', marginBottom: 24, overflow: 'hidden' }}>
       <div style={{ padding: '16px 18px 4px' }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C' }}>🎯 Funil principal — Anúncio → Lead</div>
-        <div style={{ fontSize: 11.5, color: gray, marginTop: 2 }}>Do clique no anúncio até virar lead. Lead é a métrica principal.</div>
-        {!metaOk && <div style={{ fontSize: 11, color: '#B8860B', marginTop: 4 }}>⚠️ Dados do Meta indisponíveis no momento — as linhas de Cliques/Visualização podem estar zeradas.</div>}
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C' }}>🎯 Funil completo — Anúncio → Lead</div>
+        <div style={{ fontSize: 11.5, color: gray, marginTop: 2 }}>Do clique no anúncio até virar lead. <strong>Seguem →</strong> = % que avança para a etapa seguinte (dentro da mesma medição). Lead é a métrica principal.</div>
+        {worstIdx >= 0 && (
+          <div style={{ fontSize: 12, color: red, marginTop: 6, fontWeight: 600 }}>
+            🔴 Maior desistência dentro do quiz: <strong>{rows[worstIdx].label}</strong> — só {ret(worstIdx, 'd30')} seguem para a próxima etapa.
+          </div>
+        )}
+        {!metaOk && <div style={{ fontSize: 11, color: '#B8860B', marginTop: 4 }}>⚠️ Dados do Meta indisponíveis no momento — Cliques/Visualização podem estar zerados.</div>}
+        <div style={{ fontSize: 11, color: '#B8860B', marginTop: 4 }}>
+          ⚠️ As linhas <strong>Etapa 1…7</strong> têm rastreamento próprio, iniciado em <strong>03/08 às 13:25</strong>. Por isso <strong>hoje</strong> elas mostram só quem entrou depois desse horário (ainda não refletem o dia inteiro). A partir de amanhã a Etapa 1 passa a bater com os Acessos.
+        </div>
       </div>
       <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 680 }}>
-          <FunnelHead />
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
+          <thead>
+            <tr style={{ background: '#FFF7EE', borderBottom: '1px solid #F0EAF2' }}>
+              <th style={{ ...thCell, textAlign: 'left' }}>Etapa</th>
+              <th style={{ ...thCell, textAlign: 'right' }}>Hoje</th>
+              <th style={{ ...thCell, textAlign: 'right' }}>Seguem →</th>
+              <th style={{ ...thCell, textAlign: 'right' }}>Ontem</th>
+              <th style={{ ...thCell, textAlign: 'right' }}>Seguem →</th>
+              <th style={{ ...thCell, textAlign: 'right' }}>30D</th>
+              <th style={{ ...thCell, textAlign: 'right' }}>Seguem →</th>
+            </tr>
+          </thead>
           <tbody>
             {rows.map((s, i) => {
               const hi = !!s.main
+              const isWorst = i === worstIdx
+              const prevUniverse = i > 0 ? rows[i - 1].universe : null
+              const newBlock = s.universe !== prevUniverse
+              const bg = hi ? '#FDF2F6' : isWorst ? '#FEF2F2' : '#fff'
+              const rCell = (isW: boolean): React.CSSProperties => ({ ...convCell, color: isW ? red : green, fontWeight: isW ? 800 : 600 })
               return (
-                <tr key={s.key} style={{ borderBottom: '1px solid #F7F2F8', background: hi ? '#FDF2F6' : '#fff' }}>
+                <tr key={s.key} style={{ borderBottom: '1px solid #F7F2F8', background: bg, borderTop: newBlock && i > 0 ? '2px solid #EDE4EF' : undefined }}>
                   <td style={{ padding: '11px 16px' }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 700, color: hi ? accent : '#2A1E2C', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {newBlock && <div style={{ fontSize: 9, fontWeight: 700, color: gray, letterSpacing: 0.5, marginBottom: 3 }}>{UNIVERSE_LABEL[s.universe]}</div>}
+                    <div style={{ fontSize: 13.5, fontWeight: 700, color: hi ? accent : isWorst ? red : '#2A1E2C', display: 'flex', alignItems: 'center', gap: 6 }}>
                       {s.label}
-                      {s.source === 'meta' && <span style={{ fontSize: 9, fontWeight: 700, color: '#2563EB', background: '#EFF6FF', borderRadius: 4, padding: '1px 5px', letterSpacing: 0.3 }}>META</span>}
+                      {s.badge === 'META' && <span style={{ fontSize: 9, fontWeight: 700, color: '#2563EB', background: '#EFF6FF', borderRadius: 4, padding: '1px 5px', letterSpacing: 0.3 }}>META</span>}
+                      {isWorst && <span style={{ fontSize: 9, fontWeight: 700, color: red, background: '#FEE2E2', borderRadius: 4, padding: '1px 5px' }}>MAIOR SAÍDA</span>}
                     </div>
                     {s.sub && <div style={{ fontSize: 11, color: gray, marginTop: 1 }}>{s.sub}</div>}
                   </td>
                   <td style={{ ...num(), color: hi ? accent : '#2A1E2C' }}>{s.today.toLocaleString('pt-BR')}</td>
-                  <td style={convCell}>{rowConv(i, 'today')}</td>
+                  <td style={rCell(isWorst)}>{ret(i, 'today')}</td>
                   <td style={{ ...num(), fontWeight: 600 }}>{s.yesterday.toLocaleString('pt-BR')}</td>
-                  <td style={convCell}>{rowConv(i, 'yesterday')}</td>
+                  <td style={rCell(isWorst)}>{ret(i, 'yesterday')}</td>
                   <td style={{ ...num(), fontWeight: 600 }}>{s.d30.toLocaleString('pt-BR')}</td>
-                  <td style={convCell}>{rowConv(i, 'd30')}</td>
+                  <td style={rCell(isWorst)}>{ret(i, 'd30')}</td>
                 </tr>
               )
             })}
-            {/* Duas conversões: sobre o clique pago e sobre o acesso ao site */}
+            {/* Conversões finais: sobre o clique pago e sobre o acesso ao site */}
             {[
               { label: '◎ Conversão paga (lead ÷ clique Meta)', base: cliques },
               { label: '◎ Conversão do site (lead ÷ acesso)', base: acessos },
@@ -162,77 +183,6 @@ function MainFunnel({ rows, metaOk }: { rows: any[]; metaOk: boolean }) {
                 <td />
               </tr>
             ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
-// ── Funil POR ETAPA do quiz (medição iniciada 03/08) ──
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function StageFunnel({ stages, hasData }: { stages: any[]; hasData: boolean }) {
-  const num = (): React.CSSProperties => ({ padding: '11px 16px', fontSize: 14, textAlign: 'right', fontWeight: 700, color: '#2A1E2C' })
-  // Retenção = % que SEGUE desta etapa para a PRÓXIMA (fica na linha de origem).
-  // Assim o % baixo aparece exatamente na página onde a pessoa desiste.
-  const retStr = (cur: number, next: number | null) => (cur > 0 && next != null ? `${Math.round((next / cur) * 100)}%` : '—')
-  const retNum = (cur: number, next: number | null) => (cur > 0 && next != null ? next / cur : null)
-  // Maior vazamento (menor retenção) no período 30d — para destacar a etapa-problema.
-  let worstIdx = -1, worstRet = 1.01
-  for (let i = 0; i < stages.length - 1; i++) {
-    const r = retNum(stages[i].d30, stages[i + 1].d30)
-    if (r != null && stages[i].d30 >= 3 && r < worstRet) { worstRet = r; worstIdx = i }
-  }
-  return (
-    <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', marginBottom: 24, overflow: 'hidden' }}>
-      <div style={{ padding: '16px 18px 4px' }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C' }}>🔎 Funil por etapa do quiz — onde a pessoa para</div>
-        <div style={{ fontSize: 11.5, color: gray, marginTop: 2 }}>% = quanto <strong>segue para a próxima etapa</strong>. O % baixo fica na própria página onde as pessoas desistem.</div>
-        {worstIdx >= 0 && (
-          <div style={{ fontSize: 12, color: red, marginTop: 6, fontWeight: 600 }}>
-            🔴 Maior desistência: <strong>{stages[worstIdx].label}</strong> — só {retStr(stages[worstIdx].d30, stages[worstIdx + 1].d30)} seguem para a próxima etapa.
-          </div>
-        )}
-        <div style={{ fontSize: 11, color: '#B8860B', marginTop: 4 }}>
-          ⚠️ Medição iniciada em 03/08 — {hasData ? 'ainda acumulando. Não compare com os leads históricos do funil acima (base de dados diferente).' : 'ainda sem dados; as linhas se preenchem conforme as pessoas passam pelo quiz.'}
-        </div>
-      </div>
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 680 }}>
-          <thead>
-            <tr style={{ background: '#FFF7EE', borderBottom: '1px solid #F0EAF2' }}>
-              <th style={{ ...thCell, textAlign: 'left' }}>Etapa</th>
-              <th style={{ ...thCell, textAlign: 'right' }}>Hoje</th>
-              <th style={{ ...thCell, textAlign: 'right' }}>Seguem →</th>
-              <th style={{ ...thCell, textAlign: 'right' }}>Ontem</th>
-              <th style={{ ...thCell, textAlign: 'right' }}>Seguem →</th>
-              <th style={{ ...thCell, textAlign: 'right' }}>30D</th>
-              <th style={{ ...thCell, textAlign: 'right' }}>Seguem →</th>
-            </tr>
-          </thead>
-          <tbody>
-            {stages.map((s, i) => {
-              const next = i < stages.length - 1 ? stages[i + 1] : null
-              const isWorst = i === worstIdx
-              const rCell = (isW: boolean): React.CSSProperties => ({ ...convCell, color: isW ? red : green, fontWeight: isW ? 800 : 600 })
-              return (
-                <tr key={s.key} style={{ borderBottom: '1px solid #F7F2F8', background: isWorst ? '#FEF2F2' : '#fff' }}>
-                  <td style={{ padding: '11px 16px' }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 700, color: isWorst ? red : '#2A1E2C', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      {s.label}
-                      {isWorst && <span style={{ fontSize: 9, fontWeight: 700, color: red, background: '#FEE2E2', borderRadius: 4, padding: '1px 5px' }}>MAIOR SAÍDA</span>}
-                    </div>
-                    {s.sub && <div style={{ fontSize: 11, color: gray, marginTop: 1 }}>{s.sub}</div>}
-                  </td>
-                  <td style={num()}>{s.today.toLocaleString('pt-BR')}</td>
-                  <td style={rCell(isWorst)}>{next ? retStr(s.today, next.today) : '—'}</td>
-                  <td style={{ ...num(), fontWeight: 600 }}>{s.yesterday.toLocaleString('pt-BR')}</td>
-                  <td style={rCell(isWorst)}>{next ? retStr(s.yesterday, next.yesterday) : '—'}</td>
-                  <td style={{ ...num(), fontWeight: 600 }}>{s.d30.toLocaleString('pt-BR')}</td>
-                  <td style={rCell(isWorst)}>{next ? retStr(s.d30, next.d30) : '—'}</td>
-                </tr>
-              )
-            })}
           </tbody>
         </table>
       </div>
@@ -365,14 +315,11 @@ export default function FashionGoldClient({ data }: { data: any }) {
         />
       </div>
 
-      {/* ── Funil principal — Cliques (Meta) → Visualização → Acessos → Lead ── */}
-      <MainFunnel rows={data.funnelMain} metaOk={data.metaOk} />
+      {/* ── Funil unificado — Anúncio → Etapas do quiz → Lead ── */}
+      <UnifiedFunnel rows={data.funnelUnified} metaOk={data.metaOk} hasStepData={data.stagesHaveData} />
 
       {/* ── Custo por lead × taxa de conversão (7 dias) ── */}
       <CostPerLeadChart series={data.cplSeries} stats={data.cplStats} />
-
-      {/* ── Funil por etapa do quiz (medição iniciada 03/08) ── */}
-      <StageFunnel stages={data.funnelStages} hasData={data.stagesHaveData} />
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 20, marginBottom: 24 }}>
         {/* Gráfico de leads por dia */}
