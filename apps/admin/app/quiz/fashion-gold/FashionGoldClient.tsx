@@ -173,33 +173,63 @@ function MainFunnel({ rows, metaOk }: { rows: any[]; metaOk: boolean }) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function StageFunnel({ stages, hasData }: { stages: any[]; hasData: boolean }) {
   const num = (): React.CSSProperties => ({ padding: '11px 16px', fontSize: 14, textAlign: 'right', fontWeight: 700, color: '#2A1E2C' })
+  // Retenção = % que SEGUE desta etapa para a PRÓXIMA (fica na linha de origem).
+  // Assim o % baixo aparece exatamente na página onde a pessoa desiste.
+  const retStr = (cur: number, next: number | null) => (cur > 0 && next != null ? `${Math.round((next / cur) * 100)}%` : '—')
+  const retNum = (cur: number, next: number | null) => (cur > 0 && next != null ? next / cur : null)
+  // Maior vazamento (menor retenção) no período 30d — para destacar a etapa-problema.
+  let worstIdx = -1, worstRet = 1.01
+  for (let i = 0; i < stages.length - 1; i++) {
+    const r = retNum(stages[i].d30, stages[i + 1].d30)
+    if (r != null && stages[i].d30 >= 3 && r < worstRet) { worstRet = r; worstIdx = i }
+  }
   return (
     <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', marginBottom: 24, overflow: 'hidden' }}>
       <div style={{ padding: '16px 18px 4px' }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C' }}>🔎 Funil por etapa do quiz — onde a pessoa para</div>
-        <div style={{ fontSize: 11.5, color: gray, marginTop: 2 }}>% = quem avança da etapa anterior (base: Etapa 1). Mostra em qual página as pessoas desistem.</div>
+        <div style={{ fontSize: 11.5, color: gray, marginTop: 2 }}>% = quanto <strong>segue para a próxima etapa</strong>. O % baixo fica na própria página onde as pessoas desistem.</div>
+        {worstIdx >= 0 && (
+          <div style={{ fontSize: 12, color: red, marginTop: 6, fontWeight: 600 }}>
+            🔴 Maior desistência: <strong>{stages[worstIdx].label}</strong> — só {retStr(stages[worstIdx].d30, stages[worstIdx + 1].d30)} seguem para a próxima etapa.
+          </div>
+        )}
         <div style={{ fontSize: 11, color: '#B8860B', marginTop: 4 }}>
           ⚠️ Medição iniciada em 03/08 — {hasData ? 'ainda acumulando. Não compare com os leads históricos do funil acima (base de dados diferente).' : 'ainda sem dados; as linhas se preenchem conforme as pessoas passam pelo quiz.'}
         </div>
       </div>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 680 }}>
-          <FunnelHead />
+          <thead>
+            <tr style={{ background: '#FFF7EE', borderBottom: '1px solid #F0EAF2' }}>
+              <th style={{ ...thCell, textAlign: 'left' }}>Etapa</th>
+              <th style={{ ...thCell, textAlign: 'right' }}>Hoje</th>
+              <th style={{ ...thCell, textAlign: 'right' }}>Seguem →</th>
+              <th style={{ ...thCell, textAlign: 'right' }}>Ontem</th>
+              <th style={{ ...thCell, textAlign: 'right' }}>Seguem →</th>
+              <th style={{ ...thCell, textAlign: 'right' }}>30D</th>
+              <th style={{ ...thCell, textAlign: 'right' }}>Seguem →</th>
+            </tr>
+          </thead>
           <tbody>
             {stages.map((s, i) => {
-              const prev = i > 0 ? stages[i - 1] : null
+              const next = i < stages.length - 1 ? stages[i + 1] : null
+              const isWorst = i === worstIdx
+              const rCell = (isW: boolean): React.CSSProperties => ({ ...convCell, color: isW ? red : green, fontWeight: isW ? 800 : 600 })
               return (
-                <tr key={s.key} style={{ borderBottom: '1px solid #F7F2F8' }}>
+                <tr key={s.key} style={{ borderBottom: '1px solid #F7F2F8', background: isWorst ? '#FEF2F2' : '#fff' }}>
                   <td style={{ padding: '11px 16px' }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 700, color: '#2A1E2C' }}>{s.label}</div>
+                    <div style={{ fontSize: 13.5, fontWeight: 700, color: isWorst ? red : '#2A1E2C', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {s.label}
+                      {isWorst && <span style={{ fontSize: 9, fontWeight: 700, color: red, background: '#FEE2E2', borderRadius: 4, padding: '1px 5px' }}>MAIOR SAÍDA</span>}
+                    </div>
                     {s.sub && <div style={{ fontSize: 11, color: gray, marginTop: 1 }}>{s.sub}</div>}
                   </td>
                   <td style={num()}>{s.today.toLocaleString('pt-BR')}</td>
-                  <td style={convCell}>{prev ? pctStr(s.today, prev.today) : '—'}</td>
+                  <td style={rCell(isWorst)}>{next ? retStr(s.today, next.today) : '—'}</td>
                   <td style={{ ...num(), fontWeight: 600 }}>{s.yesterday.toLocaleString('pt-BR')}</td>
-                  <td style={convCell}>{prev ? pctStr(s.yesterday, prev.yesterday) : '—'}</td>
+                  <td style={rCell(isWorst)}>{next ? retStr(s.yesterday, next.yesterday) : '—'}</td>
                   <td style={{ ...num(), fontWeight: 600 }}>{s.d30.toLocaleString('pt-BR')}</td>
-                  <td style={convCell}>{prev ? pctStr(s.d30, prev.d30) : '—'}</td>
+                  <td style={rCell(isWorst)}>{next ? retStr(s.d30, next.d30) : '—'}</td>
                 </tr>
               )
             })}
