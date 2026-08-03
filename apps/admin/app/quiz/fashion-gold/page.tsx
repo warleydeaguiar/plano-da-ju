@@ -19,7 +19,7 @@ async function getData() {
 
   const [
     allLeads, todayLeads, weekLeads, viewsAll, viewsMonth, dailyLeads, utmData, leadsList,
-    leadsYest, leads30, viewsToday, viewsYest,
+    leadsYest, leads30, viewsToday, viewsYest, dailyViews,
   ] = await Promise.all([
     L(),
     L(q => q.gte('created_at', today.toISOString())),
@@ -33,6 +33,7 @@ async function getData() {
     L(q => q.gte('created_at', since30)),
     V(q => q.gte('created_at', today.toISOString())),
     V(q => q.gte('created_at', yesterday.toISOString()).lt('created_at', today.toISOString())),
+    sb.from('wg_quiz_views' as any).select('created_at').eq('quiz_slug', 'fashion-gold').gte('created_at', since30).order('created_at', { ascending: true }),
   ])
 
   // Meta ads — o tráfego do fashion-gold roda nas campanhas de "grupos" (Ybera VIP)
@@ -100,6 +101,38 @@ async function getData() {
     return { date: d, label: `${date.getDate()}/${date.getMonth() + 1}`, leads: dayMap[d] }
   })
 
+  // ── Custo por lead × taxa de conversão (últimos 7 dias — alcance do gasto diário Meta)
+  const viewDayMap: Record<string, number> = {}
+  for (const row of (dailyViews.data ?? []) as any[]) {
+    const k = (row.created_at as string).slice(0, 10)
+    viewDayMap[k] = (viewDayMap[k] ?? 0) + 1
+  }
+  const spendDayMap: Record<string, number> = {}
+  for (const row of (fg?.daily ?? []) as any[]) spendDayMap[row.date] = row.spend
+  const last7 = days.slice(-7)
+  const cplSeries = last7.map(d => {
+    const date = new Date(d + 'T12:00:00')
+    const leads = dayMap[d] ?? 0
+    const views = viewDayMap[d] ?? 0
+    const spend = spendDayMap[d] ?? 0
+    return {
+      date: d,
+      label: `${date.getDate()}/${date.getMonth() + 1}`,
+      leads, views, spend,
+      cpl:  leads > 0 ? spend / leads : null,          // R$ por lead
+      conv: views > 0 ? (leads / views) * 100 : null,  // % de acessos que viraram lead
+    }
+  })
+  const spend7  = cplSeries.reduce((s, d) => s + d.spend, 0)
+  const leads7  = cplSeries.reduce((s, d) => s + d.leads, 0)
+  const views7  = cplSeries.reduce((s, d) => s + d.views, 0)
+  const cplStats = {
+    spend: spend7, leads: leads7, views: views7,
+    avgCpl:  leads7 > 0 ? spend7 / leads7 : null,
+    avgConv: views7 > 0 ? (leads7 / views7) * 100 : null,
+    hasSpend: spend7 > 0,
+  }
+
   // UTM breakdown
   const utmMap: Record<string, number> = {}
   for (const row of (utmData.data ?? []) as any[]) {
@@ -127,6 +160,8 @@ async function getData() {
     funnelStages,
     stagesHaveData,
     metaOk,
+    cplSeries,
+    cplStats,
     dailySeries,
     utmBreakdown,
     leads: (leadsList.data ?? []) as any[],

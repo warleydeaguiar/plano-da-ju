@@ -210,6 +210,87 @@ function StageFunnel({ stages, hasData }: { stages: any[]; hasData: boolean }) {
   )
 }
 
+// ── Custo por lead × Taxa de conversão (7 dias) ──
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function CostPerLeadChart({ series, stats }: { series: any[]; stats: any }) {
+  const brl = (n: number | null) => (n == null ? '—' : `R$ ${n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
+  const maxCpl = Math.max(...series.map(d => d.cpl ?? 0), 1)
+  const maxConv = Math.max(...series.map(d => d.conv ?? 0), 1)
+  // geometria do SVG
+  const W = 720, H = 220, padX = 44, padY = 20, padBottom = 34
+  const innerW = W - padX * 2, innerH = H - padY - padBottom
+  const n = series.length
+  const bw = (innerW / n) * 0.5
+  const x = (i: number) => padX + (innerW / n) * (i + 0.5)
+  const yCpl = (v: number) => padY + innerH - (v / maxCpl) * innerH
+  const yConv = (v: number) => padY + innerH - (v / maxConv) * innerH
+  const linePts = series.map((d, i) => (d.conv == null ? null : `${x(i)},${yConv(d.conv)}`)).filter(Boolean).join(' ')
+
+  const Stat = ({ label, value, color }: { label: string; value: string; color?: string }) => (
+    <div style={{ flex: 1 }}>
+      <div style={{ fontSize: 11, color: gray, fontWeight: 600, marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 19, fontWeight: 700, color: color ?? '#2A1E2C' }}>{value}</div>
+    </div>
+  )
+
+  return (
+    <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(0,0,0,0.06)', marginBottom: 24, padding: '20px 24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C' }}>💰 Custo por lead × Taxa de conversão</div>
+        <div style={{ fontSize: 12, color: gray }}>Últimos 7 dias</div>
+      </div>
+      <div style={{ fontSize: 11.5, color: gray, marginBottom: 16 }}>Barras = custo por lead (investimento ÷ leads). Linha = % dos acessos que viraram lead.</div>
+
+      {!stats.hasSpend ? (
+        <div style={{ padding: '20px 0', fontSize: 12.5, color: '#B8860B' }}>
+          ⚠️ Sem investimento do Meta registrado nos últimos 7 dias para as campanhas de grupo — o custo por lead aparece quando houver gasto atribuído.
+        </div>
+      ) : (
+        <>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
+            <Stat label="INVESTIMENTO (7D)" value={brl(stats.spend)} />
+            <Stat label="LEADS (7D)" value={stats.leads.toLocaleString('pt-BR')} color={green} />
+            <Stat label="CUSTO/LEAD MÉDIO" value={brl(stats.avgCpl)} color={gold} />
+            <Stat label="CONVERSÃO MÉDIA" value={stats.avgConv == null ? '—' : `${stats.avgConv.toFixed(1)}%`} color={accent} />
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', minWidth: 560, display: 'block' }}>
+              {/* grid horizontal */}
+              {[0, 0.5, 1].map((f, i) => (
+                <g key={i}>
+                  <line x1={padX} y1={padY + innerH * (1 - f)} x2={W - padX} y2={padY + innerH * (1 - f)} stroke="#F0EAF2" strokeWidth={1} />
+                  <text x={padX - 8} y={padY + innerH * (1 - f) + 3} textAnchor="end" fontSize={9} fill={gray}>{brl(maxCpl * f).replace('R$ ', '')}</text>
+                  <text x={W - padX + 8} y={padY + innerH * (1 - f) + 3} textAnchor="start" fontSize={9} fill={accent}>{Math.round(maxConv * f)}%</text>
+                </g>
+              ))}
+              {/* barras de CPL */}
+              {series.map((d, i) => d.cpl != null && (
+                <g key={i}>
+                  <rect x={x(i) - bw / 2} y={yCpl(d.cpl)} width={bw} height={padY + innerH - yCpl(d.cpl)} rx={3} fill={gold} opacity={0.9} />
+                  <text x={x(i)} y={yCpl(d.cpl) - 5} textAnchor="middle" fontSize={9} fontWeight={700} fill="#8a6d2f">{brl(d.cpl).replace('R$ ', '')}</text>
+                </g>
+              ))}
+              {/* linha de conversão */}
+              {linePts && <polyline points={linePts} fill="none" stroke={accent} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />}
+              {series.map((d, i) => d.conv != null && (
+                <circle key={`c${i}`} cx={x(i)} cy={yConv(d.conv)} r={3} fill="#fff" stroke={accent} strokeWidth={2} />
+              ))}
+              {/* labels do eixo X */}
+              {series.map((d, i) => (
+                <text key={`l${i}`} x={x(i)} y={H - 14} textAnchor="middle" fontSize={10} fill={gray}>{d.label}</text>
+              ))}
+            </svg>
+          </div>
+          <div style={{ display: 'flex', gap: 18, marginTop: 12, fontSize: 11, color: gray }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 12, height: 8, background: gold, borderRadius: 2, display: 'inline-block' }} />Custo por lead (R$)</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 12, height: 2, background: accent, display: 'inline-block' }} />Taxa de conversão (%)</span>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 export default function FashionGoldClient({ data }: { data: any }) {
   const { kpis, dailySeries, utmBreakdown, leads } = data
   const totalUtm = utmBreakdown.reduce((s: number, u: any) => s + u.count, 0) || 1
@@ -256,6 +337,9 @@ export default function FashionGoldClient({ data }: { data: any }) {
 
       {/* ── Funil principal — Cliques (Meta) → Visualização → Acessos → Lead ── */}
       <MainFunnel rows={data.funnelMain} metaOk={data.metaOk} />
+
+      {/* ── Custo por lead × taxa de conversão (7 dias) ── */}
+      <CostPerLeadChart series={data.cplSeries} stats={data.cplStats} />
 
       {/* ── Funil por etapa do quiz (medição iniciada 03/08) ── */}
       <StageFunnel stages={data.funnelStages} hasData={data.stagesHaveData} />
