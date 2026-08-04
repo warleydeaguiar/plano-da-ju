@@ -12,6 +12,7 @@ import { juWhatsappLink } from '../../../lib/contact';
 import { normalizeTasks } from '../plan-helpers';
 import { PlanoLoading } from '../Loading';
 import PlanFeedback from './PlanFeedback';
+import GuiaCompleto from './GuiaCompleto';
 import { DICAS_UNIVERSAIS } from '@/lib/dicas-universais';
 import GroupInvite from '../GroupInvite';
 import Consulta from '../Consulta';
@@ -110,6 +111,14 @@ function pretty(v?: string | null): string {
 function porosityLabel(v?: string | null): string {
   if (!v) return '—';
   return POROSITY_LABELS[v.toLowerCase()] ?? pretty(v);
+}
+// Oleosidade do couro (do quiz) → oleoso | normal | seco, pra personalizar a
+// frequência de lavagem no Guia completo.
+function couroTipo(quiz?: Record<string, unknown> | null): string {
+  const v = String((quiz?.oleosidade ?? '') as string).toLowerCase();
+  if (v === 'oleosa' || v === 'oleoso') return 'oleoso';
+  if (v === 'seca' || v === 'seco') return 'seco';
+  return 'normal';
 }
 
 // Junta TODOS os textos da nossa análise das fotos (avaliação + observações),
@@ -897,6 +906,12 @@ export default function PlanoPage() {
                   </ul>
                 </div>
               ))}
+            </div>
+
+            {/* Guia completo de cuidados capilares — todo o conteúdo educativo do PDF */}
+            <SectionLabel>Guia completo · aprenda com a Ju</SectionLabel>
+            <div style={{ padding: '0 16px 24px' }}>
+              <GuiaCompleto couro={couroTipo(profile?.quiz_answers)} />
             </div>
           </>
         )}
