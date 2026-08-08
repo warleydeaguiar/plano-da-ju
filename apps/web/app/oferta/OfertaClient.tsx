@@ -4,9 +4,10 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { enrichIdentity, newEventId, sendServerEvent } from '@/lib/tracking-client';
 import { pixelMatchingPayload, pixelPhone } from '@/lib/pixel-pii';
-import { installmentInfo, brlCents, MAX_INSTALLMENTS } from '@/lib/pricing';
+import { installmentInfo, brlCents, MAX_INSTALLMENTS, PLAN_BASE_CENTS } from '@/lib/pricing';
 import { getFunilCopy } from '@/lib/hair-copy';
 import { buildConsultaData } from '@/lib/consulta';
+import ApplePayButton from './ApplePayButton';
 
 // ╔══════════════════════════════════════════════════════════╗
 // ║  V2 — Página de oferta moderna feminina                  ║
@@ -1251,6 +1252,26 @@ export default function OfertaClient() {
                 </div>
               </div>
             </div>
+
+            {/* ── Apple Pay / Google Pay (Stripe) — pagamento em 1 toque (some se o aparelho não suportar) ── */}
+            <ApplePayButton
+              amountCents={PLAN_BASE_CENTS}
+              getPayer={() => ({
+                email: email.trim(),
+                name: name.trim(),
+                phone: (quizAnswers?.phone ?? '').toString().replace(/\D/g, ''),
+                cpf: cpf.replace(/\D/g, ''),
+                sessionId: getSessionId(),
+                quizAnswers,
+              })}
+              canPay={() => name.trim().length >= 2 && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())}
+              onNeedInfo={() => { setTouched(t => ({ ...t, cpf: true })); setError('Preencha seu nome e e-mail para pagar com Apple Pay.'); }}
+              onSuccess={() => {
+                try { localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now(), gateway: 'stripe_wallet' })); } catch { /* ok */ }
+                router.push('/obrigado');
+              }}
+              onError={(msg) => setError(msg)}
+            />
 
             {/* ── Forma de pagamento ── */}
             <div style={sectionCard}>

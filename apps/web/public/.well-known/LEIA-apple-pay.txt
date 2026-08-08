@@ -1,0 +1,5 @@
+Coloque AQUI o arquivo de verificação do Apple Pay:
+  apple-developer-merchantid-domain-association
+Baixe ele no Stripe: Dashboard > Settings > Payment methods > Apple Pay > Add domain
+(planodaju.julianecost.com). O arquivo fica acessível em
+/.well-known/apple-developer-merchantid-domain-association
