@@ -210,11 +210,8 @@ function StepShell({ step, total, children, footer }: {
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100svh', background: T.bg, fontFamily: fonts.ui, color: T.ink }}>
-      {/* Header */}
-      <div style={{ padding: '40px 24px 0', display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <YberaLogo height={30} />
-        </div>
+      {/* Header — só a barra de progresso (logo Ybera removida) */}
+      <div style={{ padding: '28px 24px 0', display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <Progress step={step} total={total} />
         </div>
@@ -262,28 +259,14 @@ function Step1({ onNext, toastPeople }: { onNext: () => void; toastPeople: Testi
   return (
     <StepShell step={1} total={7} footer={
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <CTA onClick={onNext}>Quero entrar no grupo VIP do WhatsApp</CTA>
+        <CTA onClick={onNext}>Continuar</CTA>
         <div style={{ textAlign: 'center', fontSize: 11, color: T.muted }}>Grátis · Desconto adicional · Desconto exclusivo pra quem está no grupo</div>
       </div>
     }>
-      {/* Product image */}
-      <div style={{ position: 'relative', width: '100%', aspectRatio: '4/3', borderRadius: 22, overflow: 'hidden', background: `radial-gradient(120% 80% at 50% 30%, #fff 0%, ${T.bg} 60%, #ede4d2 100%)`, border: `1px solid ${T.line}` }}>
+      {/* Hero (a imagem já traz selo, título e chamada — não repetimos em texto) */}
+      <div style={{ width: '100%', borderRadius: 22, overflow: 'hidden', border: `1px solid ${T.line}`, background: T.paper }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/quiz/progressiva.png" alt="Progressiva Fashion Gold" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', mixBlendMode: 'multiply' }} />
-        <div style={{ position: 'absolute', top: 16, right: 16, padding: '6px 10px', background: T.ink, color: T.gold, fontFamily: fonts.ui, fontSize: 10, fontWeight: 600, letterSpacing: 2, textTransform: 'uppercase', borderRadius: 999, border: `1px solid ${T.gold}` }}>PROMOÇÃO LIMITADA</div>
-      </div>
-
-      <div style={{ marginTop: 22, textAlign: 'center' }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', background: T.ink, color: T.gold, borderRadius: 999, fontSize: 10, letterSpacing: 3, fontWeight: 600 }}>
-          <span style={{ width: 6, height: 6, background: T.gold, borderRadius: 999 }} />
-          YBERA PARIS OFICIAL
-        </div>
-        <h1 style={{ fontFamily: fonts.display, fontWeight: 500, fontSize: 30, lineHeight: 1.05, margin: '14px 0 10px', letterSpacing: -0.5 }}>
-          Progressiva <em style={{ color: T.goldDeep }}>Fashion Gold</em><br />com até <strong>62% off</strong>
-        </h1>
-        <p style={{ fontSize: 14, color: T.muted, lineHeight: 1.5, maxWidth: 320, margin: '0 auto' }}>
-Acesso ao grupo VIP de promoções <strong>no WhatsApp</strong> + sorteios mensais de kits completos.
-        </p>
+        <img src="/quiz/fashion-gold-hero.png" alt="Progressiva Fashion Gold com até 62% OFF — entre no grupo VIP do WhatsApp" style={{ width: '100%', height: 'auto', display: 'block' }} />
       </div>
 
       <div style={{ marginTop: 22, padding: 14, background: T.paper, borderRadius: 16, border: `1px solid ${T.line}` }}>
