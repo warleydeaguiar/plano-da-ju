@@ -157,6 +157,11 @@ async function getData() {
       views,
       viewsMonth: viewsMonth.count ?? 0,
       conversion: views > 0 ? Math.round((total / views) * 100) : null,
+      // Conversão do SITE (lead ÷ acesso) — hoje e 30 dias, pro destaque no topo.
+      convToday: (viewsToday.count ?? 0) > 0 ? Math.round(((todayLeads.count ?? 0) / (viewsToday.count ?? 1)) * 100) : null,
+      conv30d:   (viewsMonth.count ?? 0) > 0 ? Math.round(((leads30.count ?? 0) / (viewsMonth.count ?? 1)) * 100) : null,
+      leadsToday: todayLeads.count ?? 0,
+      viewsToday: viewsToday.count ?? 0,
     },
     funnelUnified,
     stagesHaveData,

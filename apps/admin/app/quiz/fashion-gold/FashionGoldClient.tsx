@@ -308,10 +308,10 @@ export default function FashionGoldClient({ data }: { data: any }) {
         <StatCard label="ESTA SEMANA" value={kpis.week} sub="últimos 7 dias" color={kpis.week > 0 ? green : '#2A1E2C'} />
         <StatCard label="CLIQUES (TOTAL)" value={kpis.views.toLocaleString('pt-BR')} sub="visitas ao quiz" />
         <StatCard
-          label="TAXA DE CONVERSÃO"
-          value={kpis.conversion != null ? `${kpis.conversion}%` : '—'}
-          sub="leads / cliques"
-          color={kpis.conversion != null ? (kpis.conversion >= 15 ? green : kpis.conversion >= 5 ? accent : red) : '#2A1E2C'}
+          label="CONVERSÃO HOJE"
+          value={kpis.convToday != null ? `${kpis.convToday}%` : '—'}
+          sub={`lead ÷ acesso · ${kpis.leadsToday}/${kpis.viewsToday} hoje · 30d: ${kpis.conv30d != null ? kpis.conv30d + '%' : '—'}`}
+          color={kpis.convToday != null ? (kpis.convToday >= 15 ? green : kpis.convToday >= 5 ? accent : red) : '#2A1E2C'}
         />
       </div>
 
