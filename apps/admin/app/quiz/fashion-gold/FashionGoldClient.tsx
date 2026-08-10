@@ -219,7 +219,7 @@ function CostPerLeadChart({ series, stats }: { series: any[]; stats: any }) {
         <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1E2C' }}>💰 Custo por lead × Taxa de conversão</div>
         <div style={{ fontSize: 12, color: gray }}>Últimos 7 dias</div>
       </div>
-      <div style={{ fontSize: 11.5, color: gray, marginBottom: 16 }}>Barras = custo por lead (investimento ÷ leads). Linha = % dos acessos que viraram lead.</div>
+      <div style={{ fontSize: 11.5, color: gray, marginBottom: 16 }}>Barras = custo por lead (investimento ÷ leads). Linha = % dos acessos que viraram lead. O dia de <strong>hoje</strong> pode aparecer sem barra até o Meta consolidar o investimento (algumas horas de atraso).</div>
 
       {!stats.hasSpend ? (
         <div style={{ padding: '20px 0', fontSize: 12.5, color: '#B8860B' }}>

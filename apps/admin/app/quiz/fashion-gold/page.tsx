@@ -121,8 +121,11 @@ async function getData() {
       date: d,
       label: `${date.getDate()}/${date.getMonth() + 1}`,
       leads, views, spend,
-      cpl:  leads > 0 ? spend / leads : null,          // R$ por lead
-      conv: views > 0 ? (leads / views) * 100 : null,  // % de acessos que viraram lead
+      // Só calcula CPL quando HÁ investimento reportado. O Meta consolida o gasto
+      // do dia com algumas horas de atraso → sem isso, o dia atual mostrava
+      // "R$ 0,00" (0 ÷ leads), como se os leads tivessem sido de graça.
+      cpl:  spend > 0 && leads > 0 ? spend / leads : null,  // R$ por lead
+      conv: views > 0 ? (leads / views) * 100 : null,       // % de acessos que viraram lead
     }
   })
   const spend7  = cplSeries.reduce((s, d) => s + d.spend, 0)
