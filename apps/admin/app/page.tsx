@@ -490,10 +490,16 @@ export default async function DashboardPage() {
       const since = `${yyyy}-${mm}-01`;
       const until = `${yyyy}-${mm}-${dd}`;
       const live = await fetchYberaOrders(since, until);
+      // O gráfico cobre 14 dias, que no começo do mês pega o mês anterior — então
+      // buscamos do MENOR entre (início do mês) e (14 dias atrás). O total do MÊS
+      // é filtrado depois, pra não somar dias do mês anterior.
+      const day14 = new Date(todayStartBR.getTime() - 13 * 86400_000);
+      const since14 = `${day14.getUTCFullYear()}-${String(day14.getUTCMonth() + 1).padStart(2, '0')}-${String(day14.getUTCDate()).padStart(2, '0')}`;
+      const sinceFetch = since14 < since ? since14 : since;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: dbRows } = await (sb.from('ybera_orders') as any)
         .select('id, subtotal, total, register_date')
-        .gte('register_date', `${since}T00:00:00-03:00`)
+        .gte('register_date', `${sinceFetch}T00:00:00-03:00`)
         .limit(5000);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const byId = new Map<string, any>();
@@ -600,7 +606,14 @@ export default async function DashboardPage() {
 
   const yberaSalesToday     = salesOnDateBR(yberaOrders, todayBR);
   const yberaSalesYesterday = salesOnDateBR(yberaOrders, yesterdayBR);
-  const yberaSalesMonth     = salesTotal(yberaOrders);
+  // Só os pedidos do MÊS corrente (a lista pode conter dias do mês anterior por
+  // causa da janela de 14 dias do gráfico).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const yberaMonthOnly = yberaOrders.filter((o: any) => {
+    const br = new Date(new Date(o.registerDate).getTime() - 3 * 3600_000).toISOString().slice(0, 7);
+    return br === `${yyyy}-${mm}`;
+  });
+  const yberaSalesMonth     = salesTotal(yberaMonthOnly);
 
   // Vendas Ybera por dia (últimos 14 dias BR) — pro gráfico do dashboard
   const yberaByDay = Array.from({ length: 14 }, (_, i) => {
