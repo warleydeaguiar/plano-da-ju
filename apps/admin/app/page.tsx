@@ -481,11 +481,34 @@ export default async function DashboardPage() {
     (sb.from('check_ins') as any).select('*', { count: 'exact', head: true }).gte('checked_at', day30agoBR.toISOString()),
     // Meta Ads
     getQuizAdSpend(),
-    // Vendas Ybera do mês até hoje
+    // Vendas Ybera do mês até hoje.
+    // ⚠️ A API da Ybera só devolve ~os últimos 7 dias — por isso o cron diário
+    // sincroniza tudo em ybera_orders. Ler SÓ da API zerava o começo do mês no
+    // gráfico (sumiam ~60 pedidos). Então: base = nosso banco (histórico completo)
+    // + merge com a API ao vivo (pega os pedidos de hoje ainda não sincronizados).
     (async () => {
       const since = `${yyyy}-${mm}-01`;
       const until = `${yyyy}-${mm}-${dd}`;
-      return await fetchYberaOrders(since, until);
+      const live = await fetchYberaOrders(since, until);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: dbRows } = await (sb.from('ybera_orders') as any)
+        .select('id, subtotal, total, register_date')
+        .gte('register_date', `${since}T00:00:00-03:00`)
+        .limit(5000);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const byId = new Map<string, any>();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const r of ((dbRows ?? []) as any[])) {
+        byId.set(String(r.id), { registerDate: r.register_date, subtotal: Number(r.subtotal ?? 0), total: Number(r.total ?? 0) });
+      }
+      // A API ao vivo tem prioridade (dado mais fresco) e adiciona o que faltar.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const o of ((live.orders ?? []) as any[])) byId.set(String(o.id), o);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const merged = Array.from(byId.values()) as any[];
+      // Se o banco falhar E a API falhar, propaga o status de erro pro painel.
+      const status = (dbRows && dbRows.length > 0) ? 'ok' : live.status;
+      return { status, orders: merged };
     })(),
   ]);
 
