@@ -74,19 +74,6 @@ function Avatar({ url, name, size = 36 }: { url: string | null; name: string; si
   )
 }
 
-// ─── Ybera Logo ──────────────────────────────────────────────
-function YberaLogo({ height = 34 }: { height?: number; color?: string }) {
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src="/quiz/logo-ybera.png"
-      alt="Ybera Paris"
-      height={height}
-      style={{ display: 'block', height, width: 'auto' }}
-    />
-  )
-}
-
 // ─── Progress bar ────────────────────────────────────────────
 function Progress({ step, total }: { step: number; total: number }) {
   return (
@@ -266,7 +253,17 @@ function Step1({ onNext, toastPeople }: { onNext: () => void; toastPeople: Testi
       {/* Hero (a imagem já traz selo, título e chamada — não repetimos em texto) */}
       <div style={{ width: '100%', borderRadius: 22, overflow: 'hidden', border: `1px solid ${T.line}`, background: T.paper }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/quiz/fashion-gold-hero.png" alt="Progressiva Fashion Gold com até 62% OFF — entre no grupo VIP do WhatsApp" style={{ width: '100%', height: 'auto', display: 'block' }} />
+        {/* WebP (87 KB) no lugar do PNG de 1,1 MB. width/height evitam o "pulo" do
+            layout enquanto carrega; fetchPriority alta porque é a imagem da 1ª dobra. */}
+        <img
+          src="/quiz/fashion-gold-hero.webp"
+          alt="Progressiva Fashion Gold com até 62% OFF — entre no grupo VIP do WhatsApp"
+          width={936}
+          height={812}
+          fetchPriority="high"
+          decoding="async"
+          style={{ width: '100%', height: 'auto', display: 'block' }}
+        />
       </div>
 
       <div style={{ marginTop: 22, padding: 14, background: T.paper, borderRadius: 16, border: `1px solid ${T.line}` }}>
@@ -330,8 +327,8 @@ function Step2({ onNext }: { onNext: () => void }) {
 // ═══════════════════════════════════════════════════════════
 function Step3({ onNext, winner }: { onNext: () => void; winner: Testimonial }) {
   const prizes = [
-    { tier: '1º prêmio', label: 'Kit Completo Fashion Gold', val: 'R$ 1.298', accent: T.gold, big: true, img: '/quiz/progressiva.png' },
-    { tier: '2º prêmio', label: 'Combo Progressiva + Manutenção', val: 'R$ 689', accent: T.goldDeep, big: false, img: '/quiz/progressiva.png' },
+    { tier: '1º prêmio', label: 'Kit Completo Fashion Gold', val: 'R$ 1.298', accent: T.gold, big: true, img: '/quiz/progressiva.webp' },
+    { tier: '2º prêmio', label: 'Combo Progressiva + Manutenção', val: 'R$ 689', accent: T.goldDeep, big: false, img: '/quiz/progressiva.webp' },
     { tier: '3º prêmio', label: 'Óleo de Mirra 90ml', val: 'R$ 189', accent: T.muted, big: false, img: '' },
   ]
   return (
