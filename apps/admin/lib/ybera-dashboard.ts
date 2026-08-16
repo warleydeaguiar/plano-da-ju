@@ -23,8 +23,10 @@ async function loadAllOrders(sb: ReturnType<typeof createAdminClient>): Promise<
   return out;
 }
 
-export interface YberaTrendPoint { ym: string; label: string; buyers: number; conversion: number; revenue: number; }
+export interface YberaTrendPoint { ym: string; label: string; buyers: number; conversion: number; revenue: number; base: number; }
 export interface ClickFunnelDay { day: string; clickers: number; buyers: number; clicks: number; }
+/** Vendas na Ybera feitas por clientes do plano capilar, por dia. */
+export interface StudentSalesDay { day: string; revenue: number; orders: number; buyers: number; }
 export interface YberaDashboardData {
   trend: YberaTrendPoint[];       // conversão de alunas por mês (últimos 12)
   activeCount: number;
@@ -33,6 +35,9 @@ export interface YberaDashboardData {
   totalBuyers: number;            // desses, quantos compraram na Ybera
   buyRate: number;                // totalBuyers / totalClickers
   totalClicks: number;
+  studentSales: StudentSalesDay[];   // faturamento/dia só das alunas do plano (14d)
+  studentSalesTotal: number;         // soma do período
+  studentOrdersTotal: number;        // nº de pedidos no período
 }
 
 /**
@@ -45,21 +50,75 @@ export async function getYberaDashboard(): Promise<YberaDashboardData> {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: profRows } = await (sb.from('profiles') as any)
-    .select('id, email, phone, full_name, subscription_status, created_at').limit(100000);
-  const allProfiles = (profRows ?? []) as MatchProfile[];
+    .select('id, email, phone, full_name, subscription_status, created_at, subscription_activated_at').limit(100000);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const allProfiles = (profRows ?? []) as (MatchProfile & { subscription_activated_at: string | null })[];
   const activeProfiles = allProfiles.filter(p => p.subscription_status === 'active');
   const activeCount = activeProfiles.length;
 
-  // ── Tendência mensal: conversão das alunas ativas (compraram no mês ÷ base ativa) ──
+  // Quantas alunas JÁ EXISTIAM em cada mês (ativações acumuladas até o fim do mês).
+  // Antes dividíamos todo mês pela base de HOJE — o que achatava os meses antigos
+  // (jun/26 tinha 757 alunas, não 2.9k) e criava meses "0%" de quando o produto
+  // nem existia. A base do mês é o denominador correto.
+  const activationMonths = activeProfiles
+    .map(p => (p.subscription_activated_at ? p.subscription_activated_at.slice(0, 7) : null))
+    .filter((k): k is string => !!k)
+    .sort();
+  const baseAtMonth = (k: string) => activationMonths.filter(m => m <= k).length;
+
+  // ── Tendência mensal: conversão das alunas ativas (compraram no mês ÷ base do mês) ──
   const monthSet = Array.from(new Set(orders.map(o => ym(o.register_date)).filter(k => k !== '—'))).sort();
   const ordersByMonth = new Map<string, MatchOrder[]>();
   for (const o of orders) { const k = ym(o.register_date); if (k === '—') continue; const arr = ordersByMonth.get(k) ?? []; arr.push(o); ordersByMonth.set(k, arr); }
-  const trend: YberaTrendPoint[] = monthSet.map(k => {
-    const matches = matchOrdersToProfiles(ordersByMonth.get(k) ?? [], activeProfiles);
-    const buyers = matches.filter(m => m.bought);
-    const revenue = buyers.reduce((s, m) => s + m.totalSpent, 0);
-    return { ym: k, label: ymLabel(k), buyers: buyers.length, conversion: activeCount ? buyers.length / activeCount : 0, revenue };
-  }).slice(-12);
+  const trend: YberaTrendPoint[] = monthSet
+    // Sem base naquele mês = o produto ainda não existia → não é "0% de conversão",
+    // é "não se aplica". Mostrar esses meses só polui o gráfico.
+    .filter(k => baseAtMonth(k) > 0)
+    .map(k => {
+      const base = baseAtMonth(k);
+      const matches = matchOrdersToProfiles(ordersByMonth.get(k) ?? [], activeProfiles);
+      const buyers = matches.filter(m => m.bought);
+      const revenue = buyers.reduce((s, m) => s + m.totalSpent, 0);
+      return { ym: k, label: ymLabel(k), buyers: buyers.length, conversion: base ? buyers.length / base : 0, revenue, base };
+    }).slice(-12);
+
+  // ── Vendas por dia FEITAS PELAS ALUNAS do plano (últimos 14 dias) ──
+  // Índice inverso: chave (email/telefone) da aluna → serve pra dizer se um pedido
+  // da Ybera veio de alguém que é cliente do plano capilar.
+  const studentKeys = new Set<string>();
+  for (const p of activeProfiles) {
+    const e = normEmail(p.email); if (e) studentKeys.add(e);
+    const ph = normPhoneKey(p.phone); if (ph) studentKeys.add('tel:' + ph);
+  }
+  const isStudentOrder = (o: MatchOrder): boolean => {
+    const e = normEmail(o.customer_email); if (e && studentKeys.has(e)) return true;
+    const ph = normPhoneKey(o.customer_phone); if (ph && studentKeys.has('tel:' + ph)) return true;
+    return false;
+  };
+  const brDayOf = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso));
+  const salesByDay = new Map<string, { revenue: number; orders: number; buyers: Set<string> }>();
+  const since14ms = Date.now() - 14 * 86400000;
+  for (const o of orders) {
+    if (!o.register_date) continue;
+    if (new Date(o.register_date).getTime() < since14ms) continue;
+    if (!isStudentOrder(o)) continue;
+    const d = brDayOf(o.register_date);
+    const rec = salesByDay.get(d) ?? { revenue: 0, orders: 0, buyers: new Set<string>() };
+    rec.revenue += Number(o.subtotal ?? 0);
+    rec.orders += 1;
+    const key = normEmail(o.customer_email) || 'tel:' + normPhoneKey(o.customer_phone);
+    if (key) rec.buyers.add(key);
+    salesByDay.set(d, rec);
+  }
+  const studentSales: StudentSalesDay[] = Array.from({ length: 14 }, (_, i) => {
+    const dt = new Date(Date.now() - (13 - i) * 86400000);
+    const key = brDayOf(dt.toISOString());
+    const rec = salesByDay.get(key);
+    const [, m, dd] = key.split('-');
+    return { day: `${dd}/${m}`, revenue: rec?.revenue ?? 0, orders: rec?.orders ?? 0, buyers: rec?.buyers.size ?? 0 };
+  });
+  const studentSalesTotal = studentSales.reduce((s, d) => s + d.revenue, 0);
+  const studentOrdersTotal = studentSales.reduce((s, d) => s + d.orders, 0);
 
   // ── Funil diário: cliques em produto do plano × quem comprou na Ybera ──
   // Conjunto de "chaves compradoras" (email/telefone que aparece em algum pedido Ybera).
@@ -118,5 +177,6 @@ export async function getYberaDashboard(): Promise<YberaDashboardData> {
     totalBuyers: allBuyerClickers.size,
     buyRate: allClickers.size ? allBuyerClickers.size / allClickers.size : 0,
     totalClicks,
+    studentSales, studentSalesTotal, studentOrdersTotal,
   };
 }

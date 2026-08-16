@@ -248,7 +248,7 @@ function YberaDailyChart({ data }: {
 }
 
 function YberaConversionTrend({ data, activeCount }: {
-  data: Array<{ ym: string; label: string; buyers: number; conversion: number; revenue: number }>;
+  data: Array<{ ym: string; label: string; buyers: number; conversion: number; revenue: number; base: number }>;
   activeCount: number;
 }) {
   const maxConv = Math.max(0.0001, ...data.map(d => d.conversion));
@@ -258,15 +258,62 @@ function YberaConversionTrend({ data, activeCount }: {
         📈 Conversão das alunas por mês — está subindo?
       </div>
       <div style={{ fontSize: 11.5, color: T.inkMuted, marginBottom: 16 }}>
-        % da base de {activeCount.toLocaleString('pt-BR')} alunas ativas que comprou na Ybera no mês
+        % das alunas que já existiam naquele mês e compraram na Ybera (hoje a base é de {activeCount.toLocaleString('pt-BR')})
       </div>
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 130 }}>
         {data.map(t => (
           <div key={t.ym} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, height: '100%', justifyContent: 'flex-end' }}
-            title={`${t.label}: ${(t.conversion * 100).toFixed(1)}% · ${t.buyers} alunas · ${brl(t.revenue)}`}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: T.pinkDeep }}>{(t.conversion * 100).toFixed(0)}%</div>
+            title={`${t.label}: ${(t.conversion * 100).toFixed(2)}% · ${t.buyers} de ${t.base.toLocaleString('pt-BR')} alunas · ${brl(t.revenue)}`}>
+            {/* 1 casa decimal: com conversão abaixo de 1%, arredondar pra inteiro
+                mostrava "0%" em meses que tiveram venda — parecia que nada acontecia. */}
+            <div style={{ fontSize: 11, fontWeight: 700, color: T.pinkDeep }}>{(t.conversion * 100).toFixed(1)}%</div>
             <div style={{ width: '100%', maxWidth: 46, height: Math.max((t.conversion / maxConv) * 90, t.conversion > 0 ? 4 : 2), borderRadius: '5px 5px 0 0', background: `linear-gradient(180deg, ${T.pinkDeep}, ${T.pink})` }} />
             <div style={{ fontSize: 10, color: T.inkMuted }}>{t.label}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Faturamento por dia vindo SÓ das clientes do plano capilar (pedidos na Ybera
+// cujo e-mail/telefone bate com uma aluna ativa). Mostra quanto esse público
+// específico compra por dia — separado do faturamento Ybera total.
+function StudentSalesChart({ data, total, orders }: {
+  data: Array<{ day: string; revenue: number; orders: number; buyers: number }>;
+  total: number; orders: number;
+}) {
+  const max = Math.max(1, ...data.map(d => d.revenue));
+  const fmtK = (v: number) => (v >= 1000 ? `R$${(v / 1000).toFixed(1)}k` : `R$${Math.round(v)}`);
+  const media = data.length ? total / data.length : 0;
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 2, flexWrap: 'wrap', gap: 8 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: T.ink, fontFamily: fonts.ui }}>
+          💰 Vendas por dia — só clientes do plano capilar
+        </div>
+        <div style={{ fontSize: 12, color: T.inkMuted }}>
+          14 dias: <strong style={{ color: T.green }}>{brl(total)}</strong> ·{' '}
+          <strong style={{ color: T.ink }}>{orders}</strong> pedidos · média <strong style={{ color: T.ink }}>{brl(media)}</strong>/dia
+        </div>
+      </div>
+      <div style={{ fontSize: 11.5, color: T.inkMuted, marginBottom: 16 }}>
+        Quanto as alunas do plano compraram na Ybera por dia (subtotal dos produtos).
+      </div>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 130 }}>
+        {data.map(d => (
+          <div key={d.day} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, height: '100%', justifyContent: 'flex-end' }}
+            title={`${d.day}: ${brl(d.revenue)} · ${d.orders} pedido(s) · ${d.buyers} aluna(s)`}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: d.revenue > 0 ? T.green : T.inkMuted }}>
+              {d.revenue > 0 ? fmtK(d.revenue) : '—'}
+            </div>
+            <div style={{
+              width: '100%', maxWidth: 46,
+              height: Math.max((d.revenue / max) * 90, d.revenue > 0 ? 4 : 2),
+              borderRadius: '5px 5px 0 0',
+              background: d.revenue > 0 ? `linear-gradient(180deg, ${T.green}, #7BC9A4)` : '#EDE8EF',
+            }} />
+            <div style={{ fontSize: 10, color: T.inkMuted }}>{d.day}</div>
           </div>
         ))}
       </div>
@@ -1157,6 +1204,13 @@ export default async function DashboardPage() {
           </div>
           <div style={{ ...card, padding: '22px 24px' }}>
             <YberaConversionTrend data={yberaDash.trend} activeCount={yberaDash.activeCount} />
+          </div>
+          <div style={{ ...card, padding: '22px 24px' }}>
+            <StudentSalesChart
+              data={yberaDash.studentSales}
+              total={yberaDash.studentSalesTotal}
+              orders={yberaDash.studentOrdersTotal}
+            />
           </div>
         </div>
 
