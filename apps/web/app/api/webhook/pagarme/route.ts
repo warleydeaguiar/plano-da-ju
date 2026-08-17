@@ -5,6 +5,7 @@ import { getTrackingIdentity } from '@/lib/tracking-server';
 import { notifyNewSale } from '@/lib/discord';
 import { logCheckoutError } from '@/lib/checkout-log';
 import { sendWhatsAppTemplate } from '@/lib/whatsapp';
+import { PLAN_BASE_CENTS } from '@/lib/pricing';
 
 // Eventos do PagarMe que tratamos
 // IMPORTANTE: NÃO ativar perfil em 'subscription.created' — esse evento dispara
@@ -151,7 +152,7 @@ export async function POST(req: NextRequest) {
             event_type: 'payment_confirmed',
             email,
             payment_type: subType === 'annual_card' ? 'card' : 'pix',
-            amount_cents: data.amount ?? 4700,
+            amount_cents: data.amount ?? PLAN_BASE_CENTS,
             order_id: data.id,
             metadata: { webhook_event: eventType },
           });
@@ -201,7 +202,7 @@ export async function POST(req: NextRequest) {
             cpf: trk.cpf,
           },
           customData: {
-            value: (data.amount ?? 4700) / 100,
+            value: (data.amount ?? PLAN_BASE_CENTS) / 100,
             currency: 'BRL',
             content_name: 'Plano Capilar Personalizado',
             order_id: data.id,
@@ -223,7 +224,7 @@ export async function POST(req: NextRequest) {
             ?? (ans.objetivo as string)
             ?? null,
           paymentMethod: subType === 'annual_card' ? 'card' : 'pix',
-          amountCents: data.amount ?? 4700,
+          amountCents: data.amount ?? PLAN_BASE_CENTS,
         }).catch(err => console.error('[discord notify]', err));
 
         // Boas-vindas no WhatsApp (número oficial) — template acesso_plano com

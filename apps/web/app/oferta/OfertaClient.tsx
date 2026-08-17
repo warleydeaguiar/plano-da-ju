@@ -170,7 +170,7 @@ function useOfferCountdown() {
 }
 
 // ─── Cálculo de parcelas (cartão: até 3x COM juros 2,99% a.m.) ───
-// À vista (1x) e PIX = R$47 sem juros. Fonte única em lib/pricing.
+// À vista (1x) e PIX = R$39,90 sem juros. Fonte única em lib/pricing.
 function installPerStr(n: number): string {
   const info = installmentInfo(n);
   return `${info.n}x de ${brlCents(info.perCents)}`;
@@ -403,7 +403,7 @@ function OfferCard({ countdown, name, onBuy }: { countdown: string; name: string
               lineHeight: 1.05, letterSpacing: -0.5,
             }}>{installPerStr(MAX_INSTALLMENTS)}</div>
             <div style={{ fontSize: 9, color: T.inkSoft, marginTop: 3, fontFamily: fonts.ui }}>
-              ou à vista <strong style={{ color: T.ink }}>R$47</strong>
+              ou à vista <strong style={{ color: T.ink }}>R$39,90</strong>
             </div>
           </div>
         </div>
@@ -571,7 +571,7 @@ export default function OfertaClient() {
         const data = await res.json();
         if (data.paid) {
           localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now(), orderId: cardOrderId }));
-          await logEvent({ event_type: 'payment_confirmed', email, payment_type: 'card', amount_cents: 4700 });
+          await logEvent({ event_type: 'payment_confirmed', email, payment_type: 'card', amount_cents: PLAN_BASE_CENTS });
           router.push('/obrigado');
         } else if (data.failed) {
           setCardPolling(false);
@@ -876,7 +876,7 @@ export default function OfertaClient() {
       // Cobrança aprovada imediatamente?
       if (data.paid) {
         localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now(), orderId: data.order_id }));
-        await logEvent({ event_type: 'payment_confirmed', email, payment_type: 'card', amount_cents: 4700 });
+        await logEvent({ event_type: 'payment_confirmed', email, payment_type: 'card', amount_cents: PLAN_BASE_CENTS });
         router.push('/obrigado');
       } else {
         // Order criado mas cobrança ainda pendente — inicia polling
@@ -904,7 +904,7 @@ export default function OfertaClient() {
 
   const onBuy = () => {
     // Log evento de checkout iniciado
-    logEvent({ event_type: 'checkout_initiated', email, payment_type: payType, amount_cents: 4700 });
+    logEvent({ event_type: 'checkout_initiated', email, payment_type: payType, amount_cents: PLAN_BASE_CENTS });
 
     // Pixel Meta — InitiateCheckout com Advanced Matching
     // eventID compartilhado entre Pixel e CAPI → deduplicação no Meta.
@@ -1201,7 +1201,7 @@ export default function OfertaClient() {
                       }}>{installPerStr(MAX_INSTALLMENTS)}</span>
                       <span style={{ fontSize: 10, color: T.inkSoft, fontFamily: fonts.ui }}>no cartão</span>
                     </div>
-                    <div style={{ fontSize: 10, color: T.inkSoft, marginTop: 2 }}>ou à vista R$47</div>
+                    <div style={{ fontSize: 10, color: T.inkSoft, marginTop: 2 }}>ou à vista R$39,90</div>
                   </div>
                 </div>
               </div>
@@ -1306,7 +1306,7 @@ export default function OfertaClient() {
                     }}>MAIS RÁPIDO</span>
                   </div>
                   <div style={{ fontSize: 12, color: T.inkSoft, marginTop: 2 }}>
-                    Aprovação instantânea · R$47 à vista
+                    Aprovação instantânea · R$39,90 à vista
                   </div>
                 </div>
               </button>
@@ -1479,19 +1479,19 @@ export default function OfertaClient() {
                 <span style={{ fontSize: 15, lineHeight: 1 }}>🎟️</span>
                 <div style={{ fontSize: 12.5, color: '#166534', lineHeight: 1.35 }}>
                   <strong>Cupom de aniversário aplicado!</strong>{' '}
-                  <span style={{ fontFamily: 'ui-monospace, monospace', background: '#fff', borderRadius: 5, padding: '1px 6px', fontWeight: 700, letterSpacing: 0.3 }}>ANIVERSARIO47</span>
+                  <span style={{ fontFamily: 'ui-monospace, monospace', background: '#fff', borderRadius: 5, padding: '1px 6px', fontWeight: 700, letterSpacing: 0.3 }}>ANIVERSARIO39</span>
                 </div>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
                 <span style={{ fontSize: 13, color: T.inkSoft }}>Plano Capilar Personalizado</span>
                 <span style={{ fontSize: 13, color: T.ink, fontWeight: 600 }}>
-                  <span style={{ color: T.inkMuted, textDecoration: 'line-through', fontWeight: 400, marginRight: 6 }}>R$ 149,90</span>R$47
+                  <span style={{ color: T.inkMuted, textDecoration: 'line-through', fontWeight: 400, marginRight: 6 }}>R$ 149,90</span>R$39,90
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                 <span style={{ fontSize: 12.5, color: '#166534' }}>🎂 Desconto de aniversário</span>
-                <span style={{ fontSize: 12.5, color: '#166534', fontWeight: 700 }}>− R$ 102,90</span>
+                <span style={{ fontSize: 12.5, color: '#166534', fontWeight: 700 }}>− R$ 110,00</span>
               </div>
               <div style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -1500,7 +1500,7 @@ export default function OfertaClient() {
                 <span style={{ fontSize: 15, fontWeight: 700, color: T.ink }}>Total</span>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: 20, fontWeight: 800, color: T.pinkDeep, fontFamily: fonts.display }}>
-                    {payType === 'card' && installments > 1 ? installAmt : 'R$47'}
+                    {payType === 'card' && installments > 1 ? installAmt : 'R$39,90'}
                   </div>
                   {payType === 'card' && installments > 1 && (
                     <div style={{ fontSize: 11, color: T.inkSoft }}>
@@ -1536,7 +1536,7 @@ export default function OfertaClient() {
               {isSubmitting
                 ? '⏳ Processando…'
                 : payType === 'pix'
-                  ? '🔒 Gerar PIX — R$47'
+                  ? '🔒 Gerar PIX — R$39,90'
                   : `🔒 Pagar ${installAmt}`}
             </GreenButton>
 
@@ -1781,7 +1781,7 @@ export default function OfertaClient() {
               <div style={{ flex: 1, background: `linear-gradient(135deg, ${T.pinkDeep}, ${T.pink})`, borderRadius: 12, padding: '12px 10px', textAlign: 'center', boxShadow: `0 6px 16px ${T.pink}44` }}>
                 <div style={{ fontSize: 10.5, fontWeight: 700, color: 'rgba(255,255,255,0.85)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4, fontFamily: fonts.ui }}>Plano da Ju</div>
                 <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.75)', textDecoration: 'line-through', lineHeight: 1, marginBottom: 2, fontFamily: fonts.ui }}>de R$ 149,90</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', fontFamily: fonts.display, lineHeight: 1 }}>R$47<span style={{ fontSize: 12 }}> uma vez</span></div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', fontFamily: fonts.display, lineHeight: 1 }}>R$39,90<span style={{ fontSize: 12 }}> uma vez</span></div>
                 <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', marginTop: 4, lineHeight: 1.35, fontFamily: fonts.ui }}>feito exatamente pro seu cabelo</div>
               </div>
             </div>
@@ -1794,7 +1794,7 @@ export default function OfertaClient() {
             <div style={{ display: 'flex', gap: 10, background: '#EAF7EE', border: '1px solid #BFE8CC', borderRadius: 12, padding: '13px 15px' }}>
               <span style={{ fontSize: 18, lineHeight: 1.2, flexShrink: 0 }}>💸</span>
               <div style={{ fontSize: 13.5, color: '#166534', lineHeight: 1.55, fontFamily: fonts.ui }}>
-                E o melhor: <strong>o valor volta rápido.</strong> Só com os <strong>descontos exclusivos da Ju nos produtos capilares</strong> e no <strong>grupo fechado de promoções</strong>, você já recupera os R$47 nas primeiras compras. 💚
+                E o melhor: <strong>o valor volta rápido.</strong> Só com os <strong>descontos exclusivos da Ju nos produtos capilares</strong> e no <strong>grupo fechado de promoções</strong>, você já recupera os R$39,90 nas primeiras compras. 💚
               </div>
             </div>
           </div>
@@ -1888,7 +1888,7 @@ export default function OfertaClient() {
               { q: 'É confiável? Não é golpe?', a: 'Entendo total a desconfiança, tem muita coisa ruim na internet. Eu sou tricologista, tenho meu Instagram com milhares de mulheres acompanhando, mostro meu próprio cabelo desde a raiz (não uso mega hair) e tenho +3.500 alunas. Pagamento é feito em ambiente seguro e, se você não gostar, tem garantia — devolvo 100% do seu dinheiro, sem perguntas.' },
               { q: 'E se eu tiver dúvidas depois?', a: 'Você não fica sozinha. Tem suporte por WhatsApp pra tirar dúvidas ao longo do caminho — se ficar na dúvida de algum passo ou produto, é só me chamar que eu te ajudo. 💗' },
               { q: 'Os produtos são difíceis de achar?', a: 'Não! São produtos que você encontra com facilidade, e os que eu indico ficam disponíveis no meu grupo de promoções com preço especial. Nada de fórmula secreta impossível de comprar.' },
-              { q: 'É pagamento único ou cobra todo mês?', a: 'Pagamento único, uma vez só. São R$ 47 e pronto — nada de mensalidade, nada de cobrança recorrente te pegando de surpresa depois. Você paga uma vez e tem acesso ao seu plano.' },
+              { q: 'É pagamento único ou cobra todo mês?', a: 'Pagamento único, uma vez só. São R$ 39,90 e pronto — nada de mensalidade, nada de cobrança recorrente te pegando de surpresa depois. Você paga uma vez e tem acesso ao seu plano.' },
             ].map((f, i, arrF) => (
               <div key={i} style={{ borderBottom: i < arrF.length - 1 ? `1px solid ${T.border}` : 'none' }}>
                 <button

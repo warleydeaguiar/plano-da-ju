@@ -3,6 +3,7 @@ import type Stripe from 'stripe';
 import { getStripe } from '@/lib/stripe/client';
 import { createServiceClient } from '@/lib/supabase/server';
 import { sendCapiEvent } from '@/lib/meta/capi';
+import { PLAN_BASE_CENTS } from '@/lib/pricing';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -88,7 +89,7 @@ export async function POST(req: NextRequest) {
         event_type: 'payment_confirmed',
         email,
         payment_type: 'card',
-        amount_cents: pi.amount_received || pi.amount || 4700,
+        amount_cents: pi.amount_received || pi.amount || PLAN_BASE_CENTS,
         order_id: pi.id,
         metadata: { gateway: 'stripe', source: md.source ?? 'stripe_wallet' },
       });
@@ -103,7 +104,7 @@ export async function POST(req: NextRequest) {
         eventId: pi.id,
         eventSourceUrl: 'https://planodaju.julianecost.com/oferta',
         user: { email, phone: phoneE164, cpf: String(md.cpf ?? '').replace(/\D/g, '') || undefined },
-        customData: { value: (pi.amount_received || pi.amount || 4700) / 100, currency: 'BRL', content_name: 'Plano Capilar' },
+        customData: { value: (pi.amount_received || pi.amount || PLAN_BASE_CENTS) / 100, currency: 'BRL', content_name: 'Plano Capilar' },
       });
     } catch (e) {
       console.error('[stripe webhook] CAPI Purchase falhou', e);

@@ -165,7 +165,7 @@ export default function PerfilScreen() {
               Próxima renovação: {formatBrl(profile?.subscription_expires_at ?? null)}
             </Text>
             <Text style={s.subPrice}>
-              R$47 <Text style={s.subPeriod}>· pagamento único</Text>
+              R$39,90 <Text style={s.subPeriod}>· pagamento único</Text>
             </Text>
             <TouchableOpacity
               style={s.subBtn}

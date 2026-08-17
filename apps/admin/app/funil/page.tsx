@@ -46,7 +46,7 @@ const PLANO_CAPILAR: Funnel = {
       { channel: 'sistema',  title: 'Cria o lead', detail: 'Salva em wg_quiz_leads (nome/e-mail/telefone/UTM) e escolhe o grupo de WhatsApp', timing: 'imediato', status: 'ativo' },
     ]}},
     { kind: 'stage', stage: { n: '2', title: 'Checkout — Oferta', subtitle: 'Vê a oferta e gera o pagamento', accent: T.pink, steps: [
-      { channel: 'pagina',   title: 'Oferta + roleta de desconto', detail: 'Página /oferta · plano por R$47', timing: 'Dia 0 · imediato', status: 'ativo' },
+      { channel: 'pagina',   title: 'Oferta + roleta de desconto', detail: 'Página /oferta · plano por R$39,90', timing: 'Dia 0 · imediato', status: 'ativo' },
       { channel: 'rastreio', title: 'InitiateCheckout / AddPaymentInfo', detail: 'Eventos no Pixel + CAPI ao iniciar o pagamento', timing: 'ao iniciar pagamento', status: 'ativo' },
       { channel: 'sistema',  title: 'Gera PIX ou cobra cartão', detail: 'PIX expira em 1h · cria o perfil como “pendente”', timing: 'imediato', status: 'ativo' },
     ]}},

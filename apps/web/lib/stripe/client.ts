@@ -2,7 +2,7 @@ import Stripe from 'stripe';
 
 // Cliente Stripe do lado servidor. A chave secreta vem SEMPRE do ambiente
 // (STRIPE_SECRET_KEY) — nunca hardcode. Usada pra criar PaymentIntents (Apple
-// Pay / Google Pay) e validar webhooks. Pagamento único (R$47), não recorrente.
+// Pay / Google Pay) e validar webhooks. Pagamento único (R$39,90), não recorrente.
 let _stripe: Stripe | null = null;
 
 export function getStripe(): Stripe | null {

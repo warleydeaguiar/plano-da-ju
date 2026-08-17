@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 
 /**
  * POST /api/checkout/stripe/intent
- * Cria um PaymentIntent do Stripe pro pagamento único do plano (R$47) via
+ * Cria um PaymentIntent do Stripe pro pagamento único do plano (R$39,90) via
  * Apple Pay / Google Pay. Devolve o client_secret pro front confirmar no próprio
  * checkout (sem redirect). A ativação real acontece no webhook do Stripe
  * (payment_intent.succeeded), nunca aqui — o cliente não deve "se ativar" sozinho.
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
       console.error('[stripe intent] pre-perfil falhou', e);
     }
 
-    // Pagamento único, à vista (Apple Pay não parcela): R$47.
+    // Pagamento único, à vista (Apple Pay não parcela): R$39,90.
     const amount = PLAN_BASE_CENTS;
 
     const intent = await stripe.paymentIntents.create({

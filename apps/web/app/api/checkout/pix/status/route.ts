@@ -5,6 +5,7 @@ import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { sendCapiEvent } from '@/lib/meta/capi';
 import { getTrackingIdentity } from '@/lib/tracking-server';
 import { logCheckoutError } from '@/lib/checkout-log';
+import { PLAN_BASE_CENTS } from '@/lib/pricing';
 
 // GET /api/checkout/pix/status?order_id=xxx&email=yyy
 // Polling do PIX — chamado a cada 5s pelo frontend.
@@ -77,7 +78,7 @@ export async function GET(req: NextRequest) {
           event_type: 'payment_confirmed',
           email,
           payment_type: 'pix',
-          amount_cents: order.amount ?? 4700,
+          amount_cents: order.amount ?? PLAN_BASE_CENTS,
           order_id: orderId,
           metadata: { source: 'pix_polling' },
         });
@@ -114,7 +115,7 @@ export async function GET(req: NextRequest) {
             cpf: trk.cpf,
           },
           customData: {
-            value: (order.amount ?? 4700) / 100,
+            value: (order.amount ?? PLAN_BASE_CENTS) / 100,
             currency: 'BRL',
             content_name: 'Plano Capilar Personalizado',
             order_id: orderId,

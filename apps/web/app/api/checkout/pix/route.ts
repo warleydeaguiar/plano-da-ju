@@ -9,8 +9,11 @@ import { extractFieldsFromQuiz } from '@/lib/quiz-to-profile';
 import type { PagarMeOrder } from '@/lib/pagarme/types';
 import { logCheckoutError } from '@/lib/checkout-log';
 import { normalizeEmail, isValidEmailFormat } from '@/lib/normalize-email';
+import { PLAN_BASE_CENTS } from '@/lib/pricing';
 
-const PRICE_CENTS = 4700; // R$47,00 (pagamento único)
+// Preço vem da fonte única (lib/pricing) — nunca hardcode aqui, senão o valor
+// cobrado diverge do que a cliente vê na página.
+const PRICE_CENTS = PLAN_BASE_CENTS; // R$39,90 (pagamento único)
 
 export const runtime = 'nodejs';
 // Headroom pro retry do QR (a PagarMe às vezes demora pra popular o copia-e-cola).

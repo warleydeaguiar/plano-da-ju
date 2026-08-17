@@ -34,7 +34,7 @@ const R       = 136
 const INNER_R = 36
 
 const SEGMENTS = [
-  { label: '68% OFF', sublabel: 'R$47', win: true },
+  { label: '73% OFF', sublabel: 'R$39,90', win: true },
   { label: '5%',      sublabel: 'PIX' },
   { label: '10%',     sublabel: 'CARTÃO' },
   { label: '5%',      sublabel: 'CARTÃO' },
@@ -66,7 +66,7 @@ function segPath(i: number): string {
 //   R = (-90 - (-67,5)) + 6×360 = -22,5 + 2160 = 2137,5°
 const SPIN_TOTAL_DEG = 2137.5
 // Fase 1 para ~36° antes do prêmio: o ponteiro "quase para" no 5% vizinho
-// (segmento 7). Depois um creep lento leva até o 68% (segmento 0). Mais emoção.
+// (segmento 7). Depois um creep lento leva até o 73% (segmento 0). Mais emoção.
 const PHASE1_DEG = SPIN_TOTAL_DEG - 36
 
 // ─── Countdown helper ─────────────────────────────────────────
@@ -160,7 +160,7 @@ export default function RoletaPage() {
     setSpinTransition('transform 3.3s cubic-bezier(0.13, 0.85, 0.18, 1)')
     setRotation(PHASE1_DEG)
 
-    // FASE 2 — creep lento: sai do 5% e cai no prêmio maior (68%).
+    // FASE 2 — creep lento: sai do 5% e cai no prêmio maior (73%).
     spinTimerRef.current = setTimeout(() => {
       setSpinTransition('transform 2.1s cubic-bezier(0.45, 0.05, 0.35, 1)')
       setRotation(SPIN_TOTAL_DEG)
@@ -501,7 +501,7 @@ export default function RoletaPage() {
                 backgroundClip: 'text',
                 marginBottom: 4,
               }}>
-                68% OFF
+                73% OFF
               </div>
               <p style={{
                 fontSize: 11, fontWeight: 700,
@@ -530,7 +530,7 @@ export default function RoletaPage() {
                 <div style={{ textAlign: 'center' }}>
                   <span style={{ fontSize: 11, color: T.pinkDeep, fontWeight: 600, display: 'block' }}>por apenas</span>
                   <span style={{ fontSize: 34, fontWeight: 800, color: T.ink, fontFamily: fonts.ui, lineHeight: 1.1 }}>
-                    R$47
+                    R$39,90
                   </span>
                 </div>
               </div>
