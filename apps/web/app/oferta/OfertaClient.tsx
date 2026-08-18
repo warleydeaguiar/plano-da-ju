@@ -1470,54 +1470,6 @@ export default function OfertaClient() {
               )}
             </div>
 
-            {/* ── Resumo ── */}
-            <div style={{ ...sectionCard, marginBottom: 14 }}>
-              <div style={sectionTitle}>Resumo do pedido</div>
-
-              {/* Cupom de aniversário aplicado */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#EAF7EE', border: '1px solid #BFE8CC', borderRadius: 10, padding: '9px 12px', marginBottom: 12 }}>
-                <span style={{ fontSize: 15, lineHeight: 1 }}>🎟️</span>
-                <div style={{ fontSize: 12.5, color: '#166534', lineHeight: 1.35 }}>
-                  <strong>Cupom de aniversário aplicado!</strong>{' '}
-                  <span style={{ fontFamily: 'ui-monospace, monospace', background: '#fff', borderRadius: 5, padding: '1px 6px', fontWeight: 700, letterSpacing: 0.3 }}>ANIVERSARIO39</span>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
-                <span style={{ fontSize: 13, color: T.inkSoft }}>Plano Capilar Personalizado</span>
-                <span style={{ fontSize: 13, color: T.ink, fontWeight: 600 }}>
-                  <span style={{ color: T.inkMuted, textDecoration: 'line-through', fontWeight: 400, marginRight: 6 }}>R$ 149,90</span>R$39,90
-                </span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                <span style={{ fontSize: 12.5, color: '#166534' }}>🎂 Desconto de aniversário</span>
-                <span style={{ fontSize: 12.5, color: '#166534', fontWeight: 700 }}>− R$ 110,00</span>
-              </div>
-              <div style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                paddingTop: 10, borderTop: '1px solid #F0EAF5',
-              }}>
-                <span style={{ fontSize: 15, fontWeight: 700, color: T.ink }}>Total</span>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: T.pinkDeep, fontFamily: fonts.display }}>
-                    {payType === 'card' && installments > 1 ? installAmt : 'R$39,90'}
-                  </div>
-                  {payType === 'card' && installments > 1 && (
-                    <div style={{ fontSize: 11, color: T.inkSoft }}>
-                      total {brlCents(installmentInfo(installments).totalCents)} · pagamento único
-                    </div>
-                  )}
-                  {payType === 'pix' && (
-                    <div style={{ fontSize: 11, color: T.greenDeep, fontWeight: 600 }}>⚡ Aprovação instantânea</div>
-                  )}
-                </div>
-              </div>
-              {/* Pagamento único — sem recorrência */}
-              <div style={{ fontSize: 10.5, color: T.inkSoft, marginTop: 10, paddingTop: 10, borderTop: '1px solid #F0EAF5', lineHeight: 1.4 }}>
-                Pagamento único — você paga uma vez só. Sem mensalidade e sem cobrança recorrente.
-              </div>
-            </div>
-
             {/* Error */}
             {error && (
               <p style={{ color: T.red, fontSize: 13, padding: '12px 16px', background: '#FEF2F2', borderRadius: 12, border: '1px solid #FECACA', marginBottom: 12 }}>
@@ -1595,12 +1547,6 @@ export default function OfertaClient() {
               <path d="M14 4l-7 7 7 7" />
             </svg>
           </button>
-
-          {/* Antes/Depois — foto real dinâmica pelo perfil (fonte única: hair-copy.ts) */}
-          <div style={{ marginBottom: 18, borderRadius: 16, overflow: 'hidden', boxShadow: '0 10px 28px -14px rgba(0,0,0,0.22)', border: `1px solid ${T.border}`, animation: 'cardIn 0.6s cubic-bezier(.2,.85,.25,1)' }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={getFunilCopy(quizAnswers).beforeAfterSrc} alt="Antes e depois do seu tipo de cabelo com o Plano da Ju" style={{ width: '100%', height: 'auto', display: 'block' }} />
-          </div>
 
           {/* Plano completo + grupo */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 22 }}>

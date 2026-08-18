@@ -14,14 +14,13 @@ export interface FunilCopy {
   promessa: string;       // transformação prometida
   provaSocial: string;    // "+3.500 mulheres cacheadas..."
   argumento: string;      // o "específico > genérico"
-  beforeAfterSrc: string; // /images/ba-*.jpg
 }
 
 const s = (v: unknown) => String(v ?? '').toLowerCase();
 const arr = (v: unknown) => Array.isArray(v) ? v.map(x => s(x)) : (v != null && v !== '' ? [s(v)] : []);
 
 // ── Copy por TIPO (edite as frases aqui) ─────────────────────────────────────
-const PORTIPO: Record<string, Omit<FunilCopy, 'beforeAfterSrc' | 'perfil'>> = {
+const PORTIPO: Record<string, Omit<FunilCopy, 'perfil'>> = {
   crespo: {
     tipoLabel: 'cabelo crespo',
     planoNome: 'Plano Crespo dos Sonhos',
@@ -70,7 +69,7 @@ const PORTIPO: Record<string, Omit<FunilCopy, 'beforeAfterSrc' | 'perfil'>> = {
   },
 };
 
-const DEFAULT: Omit<FunilCopy, 'beforeAfterSrc' | 'perfil'> = {
+const DEFAULT: Omit<FunilCopy, 'perfil'> = {
   tipoLabel: 'seu cabelo',
   planoNome: 'Plano dos Sonhos',
   kicker: 'Seu plano personalizado',
@@ -80,28 +79,15 @@ const DEFAULT: Omit<FunilCopy, 'beforeAfterSrc' | 'perfil'> = {
   argumento: 'Isso é pro SEU cabelo — não uma solução genérica igual pra todo mundo.',
 };
 
-// Imagem Antes/Depois pelo maior incômodo/situação.
-function pickImg(cor: string, inc: string[], qui: string[], corte: string): string {
-  if (cor.includes('loiro')) return '/images/ba-loira.jpg';
-  if (inc.includes('queda')) return '/images/ba-queda.jpg';
-  if (qui.some(q => q.includes('progressiva') || q.includes('relax') || q.includes('botox'))) return '/images/ba-progressiva.jpg';
-  if (corte.includes('sim') || qui.some(q => q.includes('descolor') || q.includes('mechas') || q.includes('tintura') || q.includes('decap'))) return '/images/ba-quimica.jpg';
-  if (inc.includes('cresc')) return '/images/ba-densidade.jpg';
-  return '/images/ba-progressiva.jpg';
-}
-
 export function getFunilCopy(qa: Record<string, unknown> | null | undefined): FunilCopy {
   const q = qa ?? {};
   const cor = s(q.cor);
   const tipo = s(q.tipo);
-  const inc = arr(q.incomoda);
-  const qui = arr(q.quimica);
-  const corte = s(q.corte_quimico);
 
   // Loira ganha de tudo (dor mais forte); senão, pelo tipo; senão, default.
   const perfil = cor.includes('loiro') ? 'loira'
     : (['crespo', 'cacheado', 'ondulado', 'liso'].includes(tipo) ? tipo : 'default');
   const base = PORTIPO[perfil] ?? DEFAULT;
 
-  return { perfil, ...base, beforeAfterSrc: pickImg(cor, inc, qui, corte) };
+  return { perfil, ...base };
 }
