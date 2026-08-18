@@ -124,8 +124,11 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Faturamento + trilha de auditoria ──
+    // ⚠️ Sem `await` de verdade o insert NÃO roda: o builder do Supabase é lazy
+    // (só executa no then/await). E o erro precisa ser inspecionado — senão a
+    // venda some dos relatórios sem ninguém perceber.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from('checkout_events') as any).insert({
+    const { error: evErr } = await (supabase.from('checkout_events') as any).insert({
       session_id: sessionId || `pix-manual-${Date.now()}`,
       event_type: 'payment_confirmed',
       email,
@@ -133,7 +136,8 @@ export async function POST(req: NextRequest) {
       amount_cents: PLAN_BASE_CENTS,
       order_id: orderId || `pix-manual-${Date.now()}`,
       metadata: { gateway: 'pix_manual', comprovante_path: path, needs_review: true },
-    }).catch?.(() => {});
+    });
+    if (evErr) console.error('[pix comprovante] checkout_events', evErr);
 
     // ── Aviso pra conferência humana (não bloqueia a resposta) ──
     sendDiscord([{
