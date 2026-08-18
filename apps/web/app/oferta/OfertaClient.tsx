@@ -535,6 +535,20 @@ export default function OfertaClient() {
           `/api/checkout/pix/status?order_id=${encodeURIComponent(pixOrderId)}&email=${encodeURIComponent(email)}`
         );
         const data = await res.json();
+        // QR que demorou pra nascer: assim que a PagarMe devolve, preenchemos a
+        // tela (ela está mostrando "gerando seu código" até aqui).
+        if (!pixQrCode && data.pix_qr_code) {
+          setPixQrCode(data.pix_qr_code);
+          setPixQrCodeUrl(data.pix_qr_code_url ?? '');
+          if (data.expires_at) setPixExpiresAt(new Date(data.expires_at).getTime());
+          try {
+            localStorage.setItem('pix_pending', JSON.stringify({
+              orderId: pixOrderId, qrCode: data.pix_qr_code, qrCodeUrl: data.pix_qr_code_url,
+              expiresAt: data.expires_at ? new Date(data.expires_at).getTime() : Date.now() + 3600_000,
+              email, name,
+            }));
+          } catch {}
+        }
         if (data.paid) {
           localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now(), orderId: pixOrderId }));
           localStorage.removeItem('pix_pending');
@@ -546,10 +560,10 @@ export default function OfertaClient() {
       } catch {
         setPixPollCount(c => c + 1);
       }
-    }, 5000);
+    }, pixQrCode ? 5000 : 2000);
 
     return () => clearTimeout(timer);
-  }, [step, pixOrderId, pixPollCount, pixExpiresAt, email, name, router]);
+  }, [step, pixOrderId, pixPollCount, pixExpiresAt, email, name, router, pixQrCode]);
 
   // ── Polling do cartão (order ainda processando) ──
   useEffect(() => {
@@ -724,8 +738,8 @@ export default function OfertaClient() {
 
       const expiresAtMs = data.expires_at ? new Date(data.expires_at).getTime() : Date.now() + 3600_000;
 
-      setPixQrCode(data.pix_qr_code);
-      setPixQrCodeUrl(data.pix_qr_code_url);
+      setPixQrCode(data.pix_qr_code ?? '');
+      setPixQrCodeUrl(data.pix_qr_code_url ?? '');
       setPixOrderId(data.order_id);
       setPixExpiresAt(expiresAtMs);
       setPixPollCount(0);
@@ -745,7 +759,8 @@ export default function OfertaClient() {
       setStep('pix_qr');
     } catch (err) {
       clearInterval(interval);
-      setError(err instanceof Error ? err.message : 'Erro ao gerar PIX');
+      // Mensagem humana — nunca jogar erro técnico da PagarMe na cara da cliente.
+      setError('Não consegui gerar seu PIX agora. Tenta de novo em instantes ou escolhe o cartão — seus dados continuam preenchidos. 💛');
       setStep('card_form');
     } finally {
       setIsSubmitting(false);
@@ -1028,7 +1043,32 @@ export default function OfertaClient() {
               fontSize: 26, fontWeight: 600, color: T.ink, marginBottom: 8,
               fontFamily: fonts.display, letterSpacing: -0.4,
             }}>Pague via PIX</h1>
-            <p style={{ color: T.inkSoft, fontSize: 14, marginBottom: 24 }}>Escaneie o QR Code ou copie o código abaixo</p>
+            <p style={{ color: T.inkSoft, fontSize: 14, marginBottom: 24 }}>
+              {pixQrCode ? 'Escaneie o QR Code ou copie o código abaixo' : 'Só um instante — estamos gerando seu código'}
+            </p>
+
+            {/* QR ainda nascendo: a cobrança JÁ existe, o código chega em segundos.
+                Antes isso virava tela de erro e a cliente ia embora. */}
+            {!pixQrCode && (
+              <div style={{
+                background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(12px)',
+                borderRadius: 18, padding: '28px 20px', marginBottom: 20,
+                border: `1px solid ${T.border}`, display: 'flex', flexDirection: 'column',
+                alignItems: 'center', gap: 14,
+              }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: '50%',
+                  border: `3px solid ${T.pinkSoft}`, borderTopColor: T.pinkDeep,
+                  animation: 'spin 0.8s linear infinite',
+                }} />
+                <div style={{ fontSize: 14, fontWeight: 700, color: T.ink }}>Gerando seu PIX…</div>
+                <div style={{ fontSize: 12.5, color: T.inkSoft, lineHeight: 1.5, maxWidth: 300 }}>
+                  Às vezes o banco demora alguns segundos. Pode deixar essa tela aberta —
+                  o código aparece aqui sozinho. Também vamos te enviar por <strong>e-mail</strong>. 💛
+                </div>
+              </div>
+            )}
+
             {pixQrCodeUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={pixQrCodeUrl} alt="QR Code PIX" style={{
@@ -1036,7 +1076,7 @@ export default function OfertaClient() {
                 border: `4px solid #fff`, boxShadow: `0 16px 36px ${T.pinkDeep}1A`,
               }} />
             )}
-            <div style={{
+            {pixQrCode && (<div style={{
               background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(12px)',
               borderRadius: 18, padding: 16, marginBottom: 20, border: `1px solid ${T.border}`,
             }}>
@@ -1044,8 +1084,8 @@ export default function OfertaClient() {
               <p style={{ color: T.ink, fontSize: 11, wordBreak: 'break-all', lineHeight: 1.6, fontFamily: 'ui-monospace, monospace' }}>
                 {pixQrCode.slice(0, 80)}…
               </p>
-            </div>
-            <button
+            </div>)}
+            {pixQrCode && (<button
               onClick={() => { navigator.clipboard.writeText(pixQrCode); setPixCopied(true); }}
               style={{
                 width: '100%',
@@ -1059,7 +1099,7 @@ export default function OfertaClient() {
               }}
             >
               {pixCopied ? '✓ Código copiado!' : '📋 Copiar código PIX'}
-            </button>
+            </button>)}
 
             {/* Status: polling + countdown real */}
             {!isExpired ? (

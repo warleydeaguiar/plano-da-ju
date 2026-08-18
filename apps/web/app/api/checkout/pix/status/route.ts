@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
       status: string;
       amount?: number;
       customer?: { email?: string };
-      charges?: { status: string; last_transaction?: { qr_code?: string } }[];
+      charges?: { status: string; last_transaction?: { qr_code?: string; qr_code_url?: string; expires_at?: string } }[];
     }>(`/orders/${orderId}`);
 
     // ── Validação de segurança: email do request DEVE bater com o do PagarMe ──
@@ -124,7 +124,17 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ paid: isPaid, order_status: order.status });
+    // Devolve o QR quando ele já existir. A tela do PIX chama este endpoint
+    // enquanto mostra "gerando seu código" — assim um QR que demorou aparece
+    // sozinho, sem erro e sem a cliente precisar refazer o checkout.
+    const tx = order.charges?.[0]?.last_transaction;
+    return NextResponse.json({
+      paid: isPaid,
+      order_status: order.status,
+      pix_qr_code: tx?.qr_code ?? null,
+      pix_qr_code_url: tx?.qr_code_url ?? null,
+      expires_at: tx?.expires_at ?? null,
+    });
   } catch (err) {
     console.error('[pix/status]', err);
     await logCheckoutError({

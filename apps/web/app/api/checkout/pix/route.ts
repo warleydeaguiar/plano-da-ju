@@ -202,9 +202,13 @@ export async function POST(req: NextRequest) {
       pixData = await waitForQrCode(order.id, pixData);
     }
 
-    if (!pixData?.qr_code) {
-      throw new Error('QR Code PIX não retornado pelo PagarMe');
-    }
+    // ⚠️ NÃO desistimos se o QR ainda não veio. A ordem JÁ foi criada na PagarMe
+    // e o código nasce alguns segundos depois — antes a gente lançava erro aqui e
+    // a cliente via uma mensagem técnica e ia embora, com a cobrança já criada.
+    // Agora seguimos o fluxo normal (perfil + evento) e devolvemos `pix_pending`:
+    // a tela do PIX mostra "gerando" e busca o código pelo /status. Em paralelo,
+    // um job em background espera o QR e manda por e-mail + SMS.
+    const qrPending = !pixData?.qr_code;
 
     // Extrai campos do quiz pras colunas individuais (hair_type, porosity, etc.)
     const extracted = extractFieldsFromQuiz(quiz_answers);
@@ -263,11 +267,29 @@ export async function POST(req: NextRequest) {
 
     // ⚡ Toque imediato: e-mail com o copia-e-cola (paga de qualquer lugar depois)
     // + SMS de aviso. Roda DEPOIS da resposta (after) pra não atrasar o checkout.
+    // Se o QR ainda não estava pronto, o job espera ele nascer e SÓ ENTÃO envia —
+    // assim a cliente recebe o código mesmo que feche a página.
     const _first = firstNameOf(name);
-    const _code = pixData.qr_code as string;
-    const _qrImg = pixData.qr_code_url as string | undefined;
     const _phoneIntl = toIntlPhone(profilePhone);
+    const _orderId = order.id;
+    let _code = pixData?.qr_code as string | undefined;
+    let _qrImg = pixData?.qr_code_url as string | undefined;
     after(async () => {
+      if (!_code) {
+        // Segue esperando bem além do tempo do checkout (a resposta já foi enviada).
+        const late = await waitForQrCode(_orderId, null);
+        _code = late?.qr_code;
+        _qrImg = late?.qr_code_url;
+        if (!_code) {
+          await logCheckoutError({
+            route: 'checkout/pix', email: logEmail, payment_type: 'pix', session_id: logSession,
+            kind: 'exception',
+            err: new Error('QR do PIX não ficou pronto nem no retry em background'),
+            context: { order_id: _orderId },
+          }).catch(() => {});
+          return;
+        }
+      }
       try {
         await sendEmail({
           to: email,
@@ -285,10 +307,13 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       order_id: order.id,
-      pix_qr_code: pixData.qr_code,
-      pix_qr_code_url: pixData.qr_code_url,
-      expires_at: pixData.expires_at,
+      pix_qr_code: pixData?.qr_code ?? null,
+      pix_qr_code_url: pixData?.qr_code_url ?? null,
+      expires_at: pixData?.expires_at ?? null,
       amount: PRICE_CENTS,
+      // O front usa isso pra abrir a tela do PIX em "gerando seu código" e ficar
+      // buscando pelo /status — em vez de mostrar erro.
+      pix_pending: qrPending,
     });
   } catch (err) {
     console.error('[checkout/pix]', err);
