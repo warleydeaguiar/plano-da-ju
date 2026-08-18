@@ -455,6 +455,12 @@ export default function OfertaClient() {
   const [pixExpiresAt, setPixExpiresAt] = useState<number>(0); // unix ms
   const [pixCopied, setPixCopied] = useState(false);
   const [pixPollCount, setPixPollCount] = useState(0);
+  // PIX manual (plano B): aparece quando o QR não nasce. A cliente paga na chave
+  // da Ju e anexa o comprovante — acesso liberado na hora.
+  const [compFile, setCompFile] = useState<File | null>(null);
+  const [compSending, setCompSending] = useState(false);
+  const [compError, setCompError] = useState('');
+  const [cpfCopied, setCpfCopied] = useState(false);
   const [pixExpired, setPixExpired] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [payType, setPayType] = useState<'card' | 'pix'>('pix');
@@ -760,10 +766,38 @@ export default function OfertaClient() {
     } catch (err) {
       clearInterval(interval);
       // Mensagem humana — nunca jogar erro técnico da PagarMe na cara da cliente.
-      setError('Não consegui gerar seu PIX agora. Tenta de novo em instantes ou escolhe o cartão — seus dados continuam preenchidos. 💛');
+      setError('Não consegui gerar seu PIX agora. Tenta de novo — seus dados continuam preenchidos. Se persistir, aparece aqui a opção de pagar direto na chave PIX da Ju. 💛');
       setStep('card_form');
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  // Envia o comprovante do PIX manual → libera o acesso.
+  async function handleComprovante() {
+    if (!compFile || compSending) return;
+    setCompError('');
+    setCompSending(true);
+    try {
+      const fd = new FormData();
+      fd.append('comprovante', compFile);
+      fd.append('email', email);
+      fd.append('name', name);
+      fd.append('order_id', pixOrderId ?? '');
+      fd.append('session_id', getSessionId());
+      fd.append('quiz_answers', JSON.stringify(quizAnswers ?? {}));
+      const res = await fetch('/api/checkout/pix/comprovante', { method: 'POST', body: fd });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Não consegui enviar o comprovante.');
+      try {
+        localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now(), orderId: pixOrderId, gateway: 'pix_manual' }));
+        localStorage.removeItem('pix_pending');
+      } catch { /* ok */ }
+      router.push('/obrigado');
+    } catch (err) {
+      setCompError(err instanceof Error ? err.message : 'Erro ao enviar. Tente de novo.');
+    } finally {
+      setCompSending(false);
     }
   }
 
@@ -1066,6 +1100,76 @@ export default function OfertaClient() {
                   Às vezes o banco demora alguns segundos. Pode deixar essa tela aberta —
                   o código aparece aqui sozinho. Também vamos te enviar por <strong>e-mail</strong>. 💛
                 </div>
+              </div>
+            )}
+
+            {/* PLANO B — PIX manual na chave da Ju. Só aparece se o QR realmente
+                não vier (~20s de tentativa). A cliente paga e anexa o comprovante;
+                o acesso é liberado na hora. */}
+            {!pixQrCode && pixPollCount >= 8 && (
+              <div style={{
+                background: '#FFF8E7', border: '1px solid #F5D98B', borderRadius: 18,
+                padding: '18px 16px', marginBottom: 20, textAlign: 'left',
+              }}>
+                <div style={{ fontSize: 13.5, fontWeight: 800, color: '#8A5A00', marginBottom: 6 }}>
+                  ⏳ O banco está demorando — pague por aqui, é mais rápido
+                </div>
+                <p style={{ fontSize: 12.5, color: '#6B4A00', lineHeight: 1.5, margin: '0 0 14px' }}>
+                  Faça um PIX de <strong>{brlCents(PLAN_BASE_CENTS)}</strong> para a chave abaixo
+                  e anexe o comprovante. Seu acesso libera na hora. 💛
+                </p>
+
+                <div style={{ background: '#fff', borderRadius: 12, padding: '12px 14px', border: '1px solid #F0E2B8', marginBottom: 10 }}>
+                  <div style={{ fontSize: 10.5, letterSpacing: 1, textTransform: 'uppercase', color: T.inkSoft, fontWeight: 700, marginBottom: 4 }}>Chave PIX (CPF)</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: T.ink, fontFamily: 'ui-monospace, monospace', letterSpacing: 0.5 }}>019.591.736-77</div>
+                  <div style={{ fontSize: 11.5, color: T.inkSoft, marginTop: 3 }}>Juliane Cost</div>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', borderRadius: 12, padding: '10px 14px', border: '1px solid #F0E2B8', marginBottom: 12 }}>
+                  <span style={{ fontSize: 12.5, color: T.inkSoft }}>Valor a enviar</span>
+                  <strong style={{ fontSize: 17, color: T.pinkDeep, fontFamily: fonts.display }}>{brlCents(PLAN_BASE_CENTS)}</strong>
+                </div>
+
+                <button
+                  onClick={() => { navigator.clipboard.writeText('01959173677'); setCpfCopied(true); }}
+                  style={{
+                    width: '100%', border: 'none', borderRadius: 12, padding: 14, cursor: 'pointer',
+                    background: cpfCopied ? `linear-gradient(135deg, ${T.green}, ${T.greenDeep})` : '#8A5A00',
+                    color: '#fff', fontSize: 14, fontWeight: 700, fontFamily: fonts.ui, marginBottom: 14,
+                  }}
+                >
+                  {cpfCopied ? '✓ Chave copiada!' : '📋 Copiar chave PIX'}
+                </button>
+
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: '#6B4A00', marginBottom: 8 }}>
+                  Já pagou? Anexe o comprovante:
+                </div>
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  onChange={e => { setCompFile(e.target.files?.[0] ?? null); setCompError(''); }}
+                  style={{
+                    width: '100%', fontSize: 12.5, color: T.ink, background: '#fff',
+                    border: '1px dashed #D9B45A', borderRadius: 12, padding: 12, marginBottom: 10,
+                  }}
+                />
+                {compError && (
+                  <p style={{ color: T.red, fontSize: 12, margin: '0 0 10px' }}>{compError}</p>
+                )}
+                <button
+                  onClick={handleComprovante}
+                  disabled={!compFile || compSending}
+                  style={{
+                    width: '100%', border: 'none', borderRadius: 14, padding: 16, fontSize: 15, fontWeight: 800,
+                    fontFamily: fonts.ui, color: '#fff',
+                    background: (!compFile || compSending) ? '#CFCFCF' : `linear-gradient(135deg, ${T.green}, ${T.greenDeep})`,
+                    cursor: (!compFile || compSending) ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {compSending ? 'Enviando…' : '✅ Enviei o PIX — liberar meu acesso'}
+                </button>
+                <p style={{ fontSize: 11, color: T.inkSoft, lineHeight: 1.45, margin: '10px 0 0' }}>
+                  Conferimos todos os comprovantes. Envie o comprovante real do pagamento. 🙏
+                </p>
               </div>
             )}
 
