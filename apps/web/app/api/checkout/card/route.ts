@@ -92,11 +92,41 @@ export async function POST(req: NextRequest) {
     // Antes era uma subscription trimestral (renovava). Agora é um /orders comum:
     // cobra uma vez só. Parcelas (1–3x) continuam sendo UMA compra parcelada, não
     // mensalidade. billing_address já vai dentro do card_token (tokenizado no front).
+    // Endereço de cobrança na ORDEM. A conta antiga da PagarMe aceitava só o
+    // billing_address que vai dentro do card_token; a conta nova (migração de
+    // 31/07) valida no gateway e devolve 400 "validation_error | billing |
+    // 'value' is required" — o que derrubou 100% dos pagamentos no cartão.
+    // Enviamos o endereço real que o formulário coleta (nunca inventar dado:
+    // endereço falso queima o antifraude).
+    const billingLine1 = typeof billing_address?.line_1 === 'string' ? billing_address.line_1.trim() : '';
+    const billingCity  = typeof billing_address?.city   === 'string' ? billing_address.city.trim()   : '';
+    const billingState = typeof billing_address?.state  === 'string' ? billing_address.state.trim().toUpperCase() : '';
+    const hasBilling = !!(billingLine1 && billingCity && billingState && cleanCep.length === 8);
+    if (!hasBilling) {
+      await logCheckoutError({
+        route: 'checkout/card', email: logEmail, session_id: logSession,
+        payment_type: 'card', kind: 'block',
+        err: new Error('Bloqueio no cartão — endereço de cobrança incompleto (CEP/cidade/UF/rua)'),
+      }).catch(() => {});
+      return NextResponse.json(
+        { error: 'Confira o CEP e o endereço de cobrança — o banco exige esses dados pra aprovar o cartão.' },
+        { status: 400 },
+      );
+    }
+    const customerAddress = {
+      line_1: billingLine1,
+      zip_code: cleanCep,
+      city: billingCity,
+      state: billingState,
+      country: 'BR',
+    };
+
     const order = await pagarme.post<PagarMeOrder>('/orders', {
       customer: {
         name,
         email,
         type: 'individual',
+        address: customerAddress,
         ...(cleanCpf.length === 11
           ? { document: cleanCpf, document_type: 'CPF' }
           : {}),
@@ -122,6 +152,14 @@ export async function POST(req: NextRequest) {
             installments: n,
             statement_descriptor: 'PLANODAJU',
             card_token,
+            // ⚠️ O endereço PRECISA vir aqui. A API de tokens da PagarMe DESCARTA
+            // o billing_address (a resposta do token nem devolve o campo), então
+            // a ordem chegava sem billing e o gateway respondia 400
+            // "validation_error | billing | 'value' is required" — o que zerou os
+            // pagamentos no cartão desde a migração de conta (31/07).
+            // Verificado contra a API: com este bloco a ordem passa a validação
+            // e chega no banco emissor.
+            card: { billing_address: customerAddress },
           },
         },
       ],
