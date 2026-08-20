@@ -3,6 +3,14 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { QUIZ_STEPS, QuizAnswers, QuizStep } from '../../lib/quiz-questions'
+import { USA_QUIZ_STEPS, USA_QUIZ_SLUG } from '../../lib/quiz-questions-usa'
+
+// Config do mercado. O quiz dos EUA reusa este mesmo componente passando outras
+// perguntas/slug/oferta — por isso slug e passos ficam em variáveis de módulo em
+// vez de hardcode. Default = Brasil (nada muda pro funil atual).
+let QUIZ_SLUG = 'plano-capilar'
+let STEPS: QuizStep[] = QUIZ_STEPS
+let OFFER_PATH = '/roleta'
 import { buildConsultaData } from '../../lib/consulta'
 import { enrichIdentity, newEventId, sendServerEvent } from '../../lib/tracking-client'
 import { pixelMatchingPayload, pixelPhone } from '../../lib/pixel-pii'
@@ -163,7 +171,7 @@ function trackView(sessionId: string, abVariant: string | null) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       session_id:   sessionId,
-      quiz_slug:    'plano-capilar',
+      quiz_slug:    QUIZ_SLUG,
       utm_source:   params.get('utm_source'),
       utm_campaign: params.get('utm_campaign'),
       ab_variant:   abVariant,
@@ -178,7 +186,7 @@ function trackAnswers(answersData: QuizAnswers) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       session_id:   getOrCreateSessionId(),
-      quiz_slug:    'plano-capilar',
+      quiz_slug:    QUIZ_SLUG,
       answers:      answersData,
       utm_source:   params.get('utm_source'),
       utm_campaign: params.get('utm_campaign'),
@@ -198,7 +206,7 @@ function trackStepEvent(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       session_id: sessionId,
-      quiz_slug:  'plano-capilar',
+      quiz_slug:  QUIZ_SLUG,
       step_index: stepIndex,
       step_id:    stepId,
       event_type: eventType,
@@ -1949,7 +1957,28 @@ function MiniTestiScreen({ q, name, onContinue }: { q: QuizStep; name: string; o
 // ╔═══════════════════════════════════════════════════════════╗
 // ║                Main component                             ║
 // ╚═══════════════════════════════════════════════════════════╝
-export default function QuizClient({ experiments = [] }: { experiments?: ActiveExperiment[] }) {
+export default function QuizClient({
+  experiments = [],
+  market = 'br',
+}: {
+  experiments?: ActiveExperiment[]
+  /**
+   * Mercado do funil. Só uma string — os PASSOS não podem vir por prop porque
+   * carregam funções (showIf), que o Next não consegue serializar de Server pra
+   * Client Component. Então o cliente escolhe as perguntas aqui dentro.
+   */
+  market?: 'br' | 'usa'
+}) {
+  // Aplica a config ANTES de qualquer render/efeito usar as variáveis.
+  if (market === 'usa') {
+    STEPS = USA_QUIZ_STEPS
+    QUIZ_SLUG = USA_QUIZ_SLUG
+    OFFER_PATH = '/oferta/eua'
+  } else {
+    STEPS = QUIZ_STEPS
+    QUIZ_SLUG = 'plano-capilar'
+    OFFER_PATH = '/roleta'
+  }
   const router = useRouter()
   // Prévia (admin): ?preview=1&step=<id> abre direto naquele passo, sem tracking.
   const preview = useMemo(() => isPreview(), [])
@@ -1957,7 +1986,7 @@ export default function QuizClient({ experiments = [] }: { experiments?: ActiveE
     if (typeof window === 'undefined') return 0
     const sid = new URLSearchParams(window.location.search).get('step')
     if (sid) {
-      const i = QUIZ_STEPS.findIndex(s => s.id === sid)
+      const i = STEPS.findIndex(s => s.id === sid)
       if (i >= 0) return i
     }
     return 0
@@ -1969,8 +1998,8 @@ export default function QuizClient({ experiments = [] }: { experiments?: ActiveE
   const [textInput, setTextInput] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [images, setImages] = useState<Record<string, string>>({})
-  const total = QUIZ_STEPS.length
-  const step = QUIZ_STEPS[stepIndex]
+  const total = STEPS.length
+  const step = STEPS[stepIndex]
   const pct = useFakeProgress(stepIndex, total)
   const trackedRef = useRef(false)
 
@@ -1990,13 +2019,13 @@ export default function QuizClient({ experiments = [] }: { experiments?: ActiveE
   const nextVisible = useCallback((from: number) => {
     let n = from + 1
     const a = answersRef.current
-    while (n < QUIZ_STEPS.length && QUIZ_STEPS[n].showIf && !QUIZ_STEPS[n].showIf!(a)) n++
-    return Math.min(QUIZ_STEPS.length - 1, n)
+    while (n < STEPS.length && STEPS[n].showIf && !STEPS[n].showIf!(a)) n++
+    return Math.min(STEPS.length - 1, n)
   }, [])
   const prevVisible = useCallback((from: number) => {
     let p = from - 1
     const a = answersRef.current
-    while (p > 0 && QUIZ_STEPS[p].showIf && !QUIZ_STEPS[p].showIf!(a)) p--
+    while (p > 0 && STEPS[p].showIf && !STEPS[p].showIf!(a)) p--
     return Math.max(0, p)
   }, [])
 
@@ -2133,7 +2162,7 @@ export default function QuizClient({ experiments = [] }: { experiments?: ActiveE
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          quiz_slug: 'plano-capilar',
+          quiz_slug: QUIZ_SLUG,
           name: nameInput.trim(),
           email: emailInput.trim(),
           phone: phoneInput.replace(/\D/g, ''),
@@ -2170,7 +2199,7 @@ export default function QuizClient({ experiments = [] }: { experiments?: ActiveE
         // ajudar o ROAS (Meta pediu p/ remover). O valor real vai no Purchase.
         ;(window as any).fbq('track', 'Lead', {
           content_name: 'Quiz Plano Capilar',
-          content_category: 'plano-capilar',
+          content_category: QUIZ_SLUG,
           currency: 'BRL',
         }, { eventID: leadEventId })
       }
@@ -2184,7 +2213,7 @@ export default function QuizClient({ experiments = [] }: { experiments?: ActiveE
       email: leadEmail,
       phone: leadPhoneE164,
       contentName: 'Quiz Plano Capilar',
-      contentCategory: 'plano-capilar',
+      contentCategory: QUIZ_SLUG,
     })
 
     setSubmitting(false)
@@ -2233,7 +2262,7 @@ export default function QuizClient({ experiments = [] }: { experiments?: ActiveE
           return
         }
       } catch {}
-      router.push('/roleta')
+      router.push(OFFER_PATH)
     } else {
       setStepIndex(nextVisible)
     }

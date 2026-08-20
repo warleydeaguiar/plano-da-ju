@@ -51,3 +51,13 @@ export function installmentLabel(n: number): string {
   const info = installmentInfo(n);
   return `${info.n}x de ${brlCents(info.perCents)}`;
 }
+
+// ── Mercado EUA (brasileiras morando nos Estados Unidos) ──────────────
+// Cobrado em DÓLAR via Stripe — a PagarMe só opera em BRL ("The gateway
+// Pagar.me just supports currency BRL"), então o funil dos EUA não usa PIX.
+export const PLAN_USD_CENTS = 990;            // US$ 9,90 (preço de entrada)
+export const PLAN_USD_ANCHOR_CENTS = 4900;    // US$ 49 — âncora (consulta)
+/** Formata centavos de dólar: 990 → "$9.90" */
+export function usd(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
+}

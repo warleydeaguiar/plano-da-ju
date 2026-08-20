@@ -32,14 +32,36 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invalid_signature' }, { status: 400 });
   }
 
-  if (event.type !== 'payment_intent.succeeded') {
+  // payment_intent.succeeded → wallets (Apple/Google Pay) do funil BR
+  // checkout.session.completed → Stripe Checkout do funil EUA (US$)
+  const HANDLED = ['payment_intent.succeeded', 'checkout.session.completed'];
+  if (!HANDLED.includes(event.type)) {
     return NextResponse.json({ ok: true, ignored: true });
   }
 
   try {
-    const pi = event.data.object as Stripe.PaymentIntent;
-    const md = pi.metadata ?? {};
-    const email = (md.email ?? pi.receipt_email ?? '').toLowerCase().trim();
+    // Normaliza os dois formatos num só conjunto de campos.
+    let md: Record<string, string> = {};
+    let email = '';
+    let paidCents = 0;
+    let refId = '';
+    let currency = 'brl';
+    if (event.type === 'checkout.session.completed') {
+      const cs = event.data.object as Stripe.Checkout.Session;
+      if (cs.payment_status !== 'paid') return NextResponse.json({ ok: true, not_paid: true });
+      md = (cs.metadata ?? {}) as Record<string, string>;
+      email = (md.email ?? cs.customer_email ?? cs.customer_details?.email ?? '').toLowerCase().trim();
+      paidCents = cs.amount_total ?? 0;
+      currency = cs.currency ?? 'usd';
+      refId = cs.id;
+    } else {
+      const pi = event.data.object as Stripe.PaymentIntent;
+      md = (pi.metadata ?? {}) as Record<string, string>;
+      email = (md.email ?? pi.receipt_email ?? '').toLowerCase().trim();
+      paidCents = pi.amount_received || pi.amount || PLAN_BASE_CENTS;
+      currency = pi.currency ?? 'brl';
+      refId = pi.id;
+    }
     if (!email) return NextResponse.json({ ok: true, no_email: true });
 
     const supabase = await createServiceClient();
@@ -81,17 +103,17 @@ export async function POST(req: NextRequest) {
     // Faturamento — 1 evento por venda (idempotente por order_id = payment_intent).
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: existingEvent } = await (supabase.from('checkout_events') as any)
-      .select('id').eq('order_id', pi.id).eq('event_type', 'payment_confirmed').maybeSingle();
+      .select('id').eq('order_id', refId).eq('event_type', 'payment_confirmed').maybeSingle();
     if (!existingEvent) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase.from('checkout_events') as any).insert({
-        session_id: quizSessionId ?? md.session_id ?? `stripe-${pi.id}`,
+        session_id: quizSessionId ?? md.session_id ?? `stripe-${refId}`,
         event_type: 'payment_confirmed',
         email,
         payment_type: 'card',
-        amount_cents: pi.amount_received || pi.amount || PLAN_BASE_CENTS,
-        order_id: pi.id,
-        metadata: { gateway: 'stripe', source: md.source ?? 'stripe_wallet' },
+        amount_cents: paidCents,
+        order_id: refId,
+        metadata: { gateway: 'stripe', source: md.source ?? 'stripe_wallet', market: md.market ?? 'br', currency },
       });
     }
 
@@ -101,10 +123,10 @@ export async function POST(req: NextRequest) {
     try {
       await sendCapiEvent({
         eventName: 'Purchase',
-        eventId: pi.id,
+        eventId: refId,
         eventSourceUrl: 'https://planodaju.julianecost.com/oferta',
         user: { email, phone: phoneE164, cpf: String(md.cpf ?? '').replace(/\D/g, '') || undefined },
-        customData: { value: (pi.amount_received || pi.amount || PLAN_BASE_CENTS) / 100, currency: 'BRL', content_name: 'Plano Capilar' },
+        customData: { value: paidCents / 100, currency: currency.toUpperCase(), content_name: 'Plano Capilar' },
       });
     } catch (e) {
       console.error('[stripe webhook] CAPI Purchase falhou', e);

@@ -62,6 +62,7 @@ const NAV: NavItem[] = [
     children: [
       { label: 'Fashion Gold', href: '/quiz/fashion-gold' },
       { label: 'Plano Capilar', href: '/quiz/plano-capilar' },
+      { label: '🇺🇸 Brasileiras nos EUA', href: '/quiz/eua' },
       { label: 'Imagens & Mídia', href: '/quiz/imagens' },
       { label: 'Depoimentos & Fotos', href: '/quiz/configuracoes' },
     ],
