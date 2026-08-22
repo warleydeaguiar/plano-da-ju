@@ -27,10 +27,18 @@ const QUESTION_LABELS: Record<string, string> = {
   produtos_casa:        'Produtos que tem em casa',
   cortes:               'Frequência de cortes',
   areas:                'Áreas que mais preocupam',
+  e_mae:                'É mãe?',
+  tempo_gravidez:       'Tempo desde a gravidez',
+  caneta_emagrecedora:  'Usa caneta emagrecedora?',
+  caneta_queda:         'Sentiu queda após a caneta?',
 }
 
 const OPTION_LABELS: Record<string, Record<string, string>> = {
   tipo:                 { crespo: 'Crespo', cacheado: 'Cacheado', ondulado: 'Ondulado', liso: 'Liso' },
+  e_mae:                { sim: 'Sim', nao: 'Não' },
+  tempo_gravidez:       { recente: 'Menos de 1 ano', ate_2: 'Menos de 2 anos', mais_2: 'Mais de 2 anos' },
+  caneta_emagrecedora:  { sim: 'Sim, usando', ja_usei: 'Já usou, parou', nao: 'Não' },
+  caneta_queda:         { sim_muita: 'Sim, bastante', sim_pouca: 'Sim, um pouco', nao: 'Não senti', nao_sei: 'Não sei' },
   cor:                  { preto: 'Preto', castanho_claro: 'Castanho claro', castanho_esc: 'Castanho Escuro', ruivo: 'Ruivo', loiro: 'Loiro' },
   idade:                { '13_18': '13–18 anos', '19_30': '19–30 anos', '31_50': '31–50 anos', '51': '+51 anos' },
   incomoda:             { pontas: 'Pontas Ralas', frizz: 'Frizz', cresc: 'Falta de crescimento', queda: 'Queda de cabelo', volume: 'Muito Volume', quebra: 'Quebradiços' },

@@ -27,6 +27,13 @@ const USA_OVERRIDES: Record<string, Partial<QuizStep>> = {
     title: 'Quem vai cuidar do seu cabelo daí',
     body: 'Tricologista, com anos de experiência e mais de 2.800 mulheres atendidas — muitas delas morando fora do Brasil.\n\nEu monto o seu plano olhando a sua foto e as suas respostas, e indico o que comprar **aí nos Estados Unidos**, com opção mais em conta.',
   },
+  // Nos EUA as canetas são MUITO mais difundidas e as marcas são outras
+  // (Wegovy e Zepbound quase não existem no Brasil). Compound/telehealth também
+  // é comum lá, então entra como opção.
+  caneta_emagrecedora: {
+    title: 'Você está usando alguma caneta emagrecedora?',
+    subtitle: 'Como Ozempic, Wegovy, Mounjaro, Zepbound ou compounded. Fica entre nós — é só pra eu entender o seu caso. 💗',
+  },
   info_depoimentos: {
     title: 'Brasileiras nos EUA que recuperaram o cabelo',
     body: '"Me mudei pra Flórida e meu cabelo virou palha. Produto barato aí tem de monte, mas eu não sabia o que comprar — e ninguém fala da água. Depois do plano da Ju mudou tudo. Agora as americanas e as latinas do trabalho vivem me perguntando qual produto eu uso." — **Camila, Orlando/FL**\n\n"Passei um ano comprando errado no Target e jogando dinheiro fora. A Ju me disse exatamente o que pegar e como resolver a questão da água. Meu cabelo voltou a ter brilho." — **Fernanda, Boston/MA**',

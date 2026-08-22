@@ -220,7 +220,19 @@ function buildQuizBlock(quizAnswers: Record<string, unknown> | null): string {
   const destaque = incList.length
     ? `\n\n⚠️ O QUE MAIS INCOMODA ELA (EIXO DO PLANO — em ordem de prioridade): ${incList.join(', ')}\nO primeiro item (${incList[0]}) é o foco nº1 e define o produto-âncora e o cronograma.`
     : '';
-  return `${destaque}\n\nRESPOSTAS DO QUIZ (completo):\n${JSON.stringify(quizAnswers, null, 2)}`;
+  // Caneta emagrecedora (GLP-1): a perda de peso rápida costuma disparar queda
+  // difusa alguns meses depois. Se não for dito de forma explícita, o plano trata
+  // só o fio e ignora a causa — por isso vai destacado, não só no JSON cru.
+  const caneta = String(quizAnswers['caneta_emagrecedora'] ?? '');
+  const canetaQueda = String(quizAnswers['caneta_queda'] ?? '');
+  const usaCaneta = caneta === 'sim' || caneta === 'ja_usei';
+  const blocoCaneta = usaCaneta
+    ? `\n\n💉 CANETA EMAGRECEDORA: ela ${caneta === 'sim' ? 'ESTÁ USANDO' : 'JÁ USOU'} (Ozempic/Mounjaro/similares).` +
+      (canetaQueda.startsWith('sim')
+        ? ` E RELATA QUEDA (${canetaQueda === 'sim_muita' ? 'bastante' : 'um pouco'}) depois de começar.\nTrate como queda por perda de peso rápida: reforce raiz/couro e proteína no cronograma, e explique com acolhimento que costuma ser passageiro e reversível quando o corpo estabiliza. NÃO dê conselho médico nem sugira parar o medicamento.`
+        : `\nAtenção preventiva: a queda costuma aparecer alguns meses depois. Reforce raiz e proteína. NÃO dê conselho médico.`)
+    : '';
+  return `${destaque}${blocoCaneta}\n\nRESPOSTAS DO QUIZ (completo):\n${JSON.stringify(quizAnswers, null, 2)}`;
 }
 
 /**

@@ -321,6 +321,33 @@ export const QUIZ_STEPS: QuizStep[] = [
       { id: 'mais_2',  label: 'Mais de 2 anos' },
     ],
   },
+  // Canetas emagrecedoras — a perda de peso rápida é causa MUITO comum de queda
+  // (eflúvio telógeno). Sem isso o plano trata só o fio e ignora a causa.
+  {
+    id: 'caneta_emagrecedora',
+    kind: 'single',
+    title: 'Você está usando alguma caneta emagrecedora?',
+    subtitle: 'Como Ozempic, Mounjaro, Saxenda ou retatrutida. Fica entre nós — é só pra eu entender o seu caso. 💗',
+    options: [
+      { id: 'sim',      label: 'Sim, estou usando' },
+      { id: 'ja_usei',  label: 'Já usei, mas parei' },
+      { id: 'nao',      label: 'Não' },
+    ],
+  },
+  // Condicional: só pra quem usa ou já usou.
+  {
+    id: 'caneta_queda',
+    kind: 'single',
+    title: 'Você sentiu queda de cabelo depois que começou a usar?',
+    subtitle: 'É mais comum do que parece — e tem como tratar. 💗',
+    showIf: (a) => a['caneta_emagrecedora'] === 'sim' || a['caneta_emagrecedora'] === 'ja_usei',
+    options: [
+      { id: 'sim_muita',  label: 'Sim, bastante' },
+      { id: 'sim_pouca',  label: 'Sim, um pouco' },
+      { id: 'nao',        label: 'Não senti diferença' },
+      { id: 'nao_sei',    label: 'Não sei dizer' },
+    ],
+  },
   // ── 24 — info bio Juliane
   {
     id: 'info_bio',
