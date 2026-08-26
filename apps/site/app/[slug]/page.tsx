@@ -3,10 +3,12 @@ import type { Metadata } from 'next';
 import JsonLd from '../components/JsonLd';
 import Indice from '../components/Indice';
 import Trilha from '../components/Trilha';
+import Faq from '../components/Faq';
 import BoxAutora from '../components/BoxAutora';
+import CabecalhoPost from '../components/CabecalhoPost';
 import { ChamadaPlano, ChamadaGrupos } from '../components/Chamadas';
 import { Grade } from '../components/CardPost';
-import { porPath, todosOsPaths, relacionados } from '@/lib/conteudo';
+import { porPath, todosOsPaths, relacionados, faqDoPost } from '@/lib/conteudo';
 import { metaDoConteudo, schemaDoPost } from '@/lib/seo';
 import { extrairIndice, tempoDeLeitura, dividirPorSecoes } from '@/lib/artigo';
 
@@ -44,17 +46,16 @@ export default async function Pagina({ params }: Props) {
   if (!item) notFound();
 
   const ehPost = item.kind === 'post';
-  const publicado = dataBr(item.published_at);
-  const atualizado = dataBr(item.modified_at);
   const indice = ehPost ? extrairIndice(item.content_clean) : [];
-  const minutos = tempoDeLeitura(item.word_count);
-  const sugestoes = ehPost ? await relacionados(item.path) : [];
+  const [sugestoes, faq] = ehPost
+    ? await Promise.all([relacionados(item.path), faqDoPost(item.id)])
+    : [[], []];
 
   // Chamada no meio do texto, não empilhada no fim: a leitora chega aqui com
   // uma dúvida específica e o plano responde justamente a ela. O corte cai
   // sempre antes de um H2, então nunca parte um parágrafo.
-  const cortePlano = indice.length >= 5 ? Math.ceil(indice.length / 2) : 0;
-  const blocos = ehPost && cortePlano
+  const cortePlano = ehPost && indice.length >= 5 ? Math.ceil(indice.length / 2) : 0;
+  const blocos = cortePlano
     ? dividirPorSecoes(item.content_clean, [cortePlano])
     : [item.content_clean || ''];
 
@@ -74,28 +75,21 @@ export default async function Pagina({ params }: Props) {
         <h1
           style={{
             fontSize: 'clamp(1.7rem, 4.6vw, 2.4rem)',
-            fontWeight: 800,
-            lineHeight: 1.16,
-            letterSpacing: '-0.018em',
-            marginTop: '1.1rem',
+            fontWeight: 800, lineHeight: 1.16,
+            letterSpacing: '-0.018em', marginTop: '1.1rem',
           }}
         >
           {item.title}
         </h1>
 
-        {ehPost && publicado && (
-          <div
-            style={{
-              marginTop: '1rem', display: 'flex', flexWrap: 'wrap', gap: '0.4rem 1rem',
-              fontSize: '0.875rem', color: 'var(--tinta-suave)',
-              paddingBottom: '1.25rem', borderBottom: '1px solid var(--borda)',
-            }}
-          >
-            <BoxAutora compacto />
-            <span>{publicado}</span>
-            {atualizado && atualizado !== publicado && <span>Atualizado em {atualizado}</span>}
-            <span>{minutos} min de leitura</span>
-          </div>
+        {ehPost && (
+          <CabecalhoPost
+            publicado={dataBr(item.published_at)}
+            atualizado={dataBr(item.modified_at)}
+            minutos={tempoDeLeitura(item.word_count)}
+            capaAvif={item.og_image || item.featured_image_url}
+            titulo={item.title}
+          />
         )}
 
         {indice.length > 0 && <Indice itens={indice} />}
@@ -111,6 +105,7 @@ export default async function Pagina({ params }: Props) {
 
         {ehPost && (
           <>
+            <Faq itens={faq} />
             {blocos.length === 1 && <ChamadaPlano utm="fim-artigo" />}
             <ChamadaGrupos utm="fim-artigo" />
             <BoxAutora />

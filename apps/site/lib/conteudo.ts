@@ -152,3 +152,24 @@ export async function redirects(): Promise<Redirect[]> {
     'site_redirects?enabled=is.true&select=from_path,to_url,status_code&limit=2000',
   );
 }
+
+export interface Pergunta {
+  pergunta: string;
+  resposta: string;
+}
+
+/**
+ * FAQ do artigo.
+ *
+ * Enquanto o site está fora do índice (staging), mostra tudo — é o ambiente
+ * onde a Juliane lê e aprova. Em produção, só o que ela já revisou vai ao ar:
+ * a resposta é redigida a partir do próprio artigo, mas trata de química
+ * capilar, e quem assina isso é a tricologista.
+ */
+export async function faqDoPost(contentId: number): Promise<Pergunta[]> {
+  const exigeRevisao = process.env.SITE_PERMITIR_INDEXACAO === 'sim';
+  const filtro = exigeRevisao ? '&revisado=is.true' : '';
+  return consulta<Pergunta>(
+    `site_faq?content_id=eq.${contentId}${filtro}&select=pergunta,resposta&order=ordem`,
+  );
+}

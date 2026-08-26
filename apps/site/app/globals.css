@@ -93,3 +93,13 @@ body {
 /* Sobras de estilo do Elementor que não fazem sentido fora do WordPress. */
 .artigo [class*="elementor-"] { all: unset; display: revert; }
 .artigo [class*="elementor-"] img { max-width: 100%; height: auto; }
+
+/* Box da autora: foto ao lado do texto quando há largura para isso. */
+@media (min-width: 640px) {
+  .box-autora { grid-template-columns: 168px minmax(0, 1fr) !important; }
+}
+
+/* O marcador padrão do <details> aparece duplicado ao lado do nosso "+". */
+details > summary::-webkit-details-marker { display: none; }
+details[open] > summary span[aria-hidden] { transform: rotate(45deg); }
+details > summary span[aria-hidden] { display: inline-block; transition: transform 0.15s; }

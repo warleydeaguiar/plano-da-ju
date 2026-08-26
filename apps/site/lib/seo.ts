@@ -80,10 +80,18 @@ function autora() {
     '@id': ID_AUTORA,
     name: 'Juliane Cost',
     url: `${SITE}/`,
-    jobTitle: 'Especialista em cuidados capilares',
+    jobTitle: 'Tricologista',
+    image: 'https://db.planodaju.julianecost.com/storage/v1/object/public/site-conteudo/autora/juliane-cost.webp',
     description:
-      'Especialista em cuidados capilares. Testa os produtos antes de indicar e atende ' +
-      'mulheres diariamente montando plano capilar personalizado.',
+      'Tricologista formada e especializada em tratamentos capilares. Testa os produtos ' +
+      'antes de recomendar e atende mulheres diariamente montando plano capilar personalizado.',
+    // sameAs liga a pessoa aos perfis verificáveis dela. É como o Google
+    // confirma que a autora existe fora do site e não é um nome inventado.
+    sameAs: [
+      'https://www.instagram.com/julianecost',
+      'https://www.tiktok.com/@julianecost',
+      'https://www.youtube.com/@julianecost',
+    ],
     knowsAbout: [
       'Cuidados capilares', 'Progressiva', 'Cronograma capilar',
       'Tratamento capilar', 'Coloração de cabelo',
