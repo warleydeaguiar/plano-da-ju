@@ -83,7 +83,8 @@ Regra: reconstrução (R) NUNCA em excesso (proteína demais endurece); a semana
 - NÚCLEO OBRIGATÓRIO (sempre inclua, além do âncora): (a) o KIT do cronograma / máscara de tratamento; (b) um SHAMPOO de limpeza; (c) o ÓLEO de finalização (Óleo de Mirra); (d) um LEAVE-IN de finalização — "Leave-in Universal" no geral, "Leave-In Loiro Perfeito" se a cor for loira, "Leave-in Cacho Perfeito" se cacheada/crespa; (e) o TÔNICO VELLO ("Soro Vello Alfa-Lactobaby") pro couro cabeludo e fortalecimento da raiz — vale pra todas, e é essencial quando o incômodo é queda/crescimento.
 - REGRA DA MARCA: todo "produto_id" (principal) é OBRIGATORIAMENTE Ybera (is_ybera=true). Marca de fora só em "alternativa_id" (2ª opção mais barata), ou null.
 - SHAMPOO: no máximo 1 na lista; nunca é o âncora.
-- RELEVÂNCIA POR COR: produto de loiro/matizador só pra loira/descolorida (veja "cor"). Crespo/cacheado → "Cacho Perfeito"; liso → "Liso Perfeito".
+- RELEVÂNCIA POR COR: produto de loiro/matizador só pra loira/descolorida OU GRISALHA (veja "cor") — fio branco/grisalho também amarela com sol, água e poluição, e o matizador devolve o tom prateado. Crespo/cacheado → "Cacho Perfeito"; liso → "Liso Perfeito".
+- SE FOR GRISALHA: o fio branco costuma ser mais grosso, poroso e ressecado (perde melanina e retém menos água) — reforce HIDRATAÇÃO e NUTRIÇÃO, e fale do cabelo grisalho com naturalidade, valorizando o brilho e o tom prateado. Nunca sugira cobrir os brancos.
 - "motivo": 1 frase em 2ª pessoa ligando ao caso dela.
 
 ═══ ITENS DE TODO DIA ═══

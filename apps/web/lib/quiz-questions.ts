@@ -65,6 +65,7 @@ export const QUIZ_STEPS: QuizStep[] = [
       { id: 'castanho_esc',   label: 'Castanho Escuro', color: '#4a2f1f' },
       { id: 'ruivo',          label: 'Ruivo',           color: '#b04a2a' },
       { id: 'loiro',          label: 'Loiro',           color: '#d8b878' },
+      { id: 'grisalho',       label: 'Grisalho',        color: '#b9b6b2' },
     ],
   },
   // ── 2
