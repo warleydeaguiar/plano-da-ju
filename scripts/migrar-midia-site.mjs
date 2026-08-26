@@ -47,6 +47,14 @@ carregarEnv();
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+/**
+ * Base das URLs públicas gravadas no banco. NÃO usar SUPA_URL aqui: no
+ * .env.local ele aponta para http://187.77.43.98:8000, e uma página servida em
+ * HTTPS recusa imagem em HTTP (mixed content) — as fotos sumiriam em produção.
+ * Este host resolve para o mesmo servidor, com certificado.
+ */
+const BASE_PUBLICA = (process.env.SITE_MIDIA_BASE_URL || 'https://db.planodaju.julianecost.com').replace(/\/$/, '');
+
 async function supa(caminho, opcoes = {}) {
   const r = await fetch(`${SUPA_URL}/rest/v1/${caminho}`, {
     ...opcoes,
@@ -70,7 +78,7 @@ async function subir(chave, buffer, mime) {
     body: buffer,
   });
   if (!r.ok) throw new Error(`upload ${chave}: ${r.status} ${(await r.text()).slice(0, 200)}`);
-  return `${SUPA_URL}/storage/v1/object/public/${BUCKET}/${chave}`;
+  return `${BASE_PUBLICA}/storage/v1/object/public/${BUCKET}/${chave}`;
 }
 
 /**
