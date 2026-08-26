@@ -1,0 +1,236 @@
+[
+ {
+  "id": 1,
+  "url": "/grupos-juliane",
+  "match_url": "/grupos-juliane",
+  "match_data": {
+   "source": {
+    "flag_query": "exact",
+    "flag_case": true,
+    "flag_trailing": true,
+    "flag_regex": false
+   }
+  },
+  "action_code": 301,
+  "action_type": "url",
+  "action_data": {
+   "url": "https://planodaju.julianecost.com/quiz/fashion-gold"
+  },
+  "match_type": "url",
+  "title": "",
+  "hits": 0,
+  "regex": false,
+  "group_id": 1,
+  "position": 0,
+  "last_access": "-",
+  "enabled": true
+ },
+ {
+  "id": 2,
+  "url": "/produto/progressiva-fashion-gold-500-gramas/",
+  "match_url": "/produto/progressiva-fashion-gold-500-gramas",
+  "match_data": {
+   "source": {
+    "flag_query": "exact",
+    "flag_case": true,
+    "flag_trailing": true,
+    "flag_regex": false
+   }
+  },
+  "action_code": 301,
+  "action_type": "url",
+  "action_data": {
+   "url": "https://julianecost.com/produto/progressiva-fashion-gold/"
+  },
+  "match_type": "url",
+  "title": "",
+  "hits": 1,
+  "regex": false,
+  "group_id": 1,
+  "position": 1,
+  "last_access": "julho 5, 2026",
+  "enabled": true
+ },
+ {
+  "id": 3,
+  "url": "/produto/progressiva-fashion-gold-1kg/",
+  "match_url": "/produto/progressiva-fashion-gold-1kg",
+  "match_data": {
+   "source": {
+    "flag_query": "exact",
+    "flag_case": true,
+    "flag_trailing": true,
+    "flag_regex": false
+   }
+  },
+  "action_code": 301,
+  "action_type": "url",
+  "action_data": {
+   "url": "https://julianecost.com/produto/progressiva-fashion-gold-1-litro/"
+  },
+  "match_type": "url",
+  "title": "",
+  "hits": 261,
+  "regex": false,
+  "group_id": 1,
+  "position": 2,
+  "last_access": "agosto 26, 2026",
+  "enabled": true
+ },
+ {
+  "id": 4,
+  "url": "/ybera-fashion-gold",
+  "match_url": "/ybera-fashion-gold",
+  "match_data": {
+   "source": {
+    "flag_query": "exact",
+    "flag_case": true,
+    "flag_trailing": true,
+    "flag_regex": false
+   }
+  },
+  "action_code": 301,
+  "action_type": "url",
+  "action_data": {
+   "url": "https://julianecost.com/"
+  },
+  "match_type": "url",
+  "title": "",
+  "hits": 0,
+  "regex": false,
+  "group_id": 1,
+  "position": 3,
+  "last_access": "-",
+  "enabled": true
+ },
+ {
+  "id": 5,
+  "url": "/progressiva-fashion-gold-mascara-educadora-capilar-300g",
+  "match_url": "/progressiva-fashion-gold-mascara-educadora-capilar-300g",
+  "match_data": {
+   "source": {
+    "flag_query": "exact",
+    "flag_case": true,
+    "flag_trailing": true,
+    "flag_regex": false
+   }
+  },
+  "action_code": 301,
+  "action_type": "url",
+  "action_data": {
+   "url": "https://julianecost.com/produto/progressiva-fashion-gold/"
+  },
+  "match_type": "url",
+  "title": "",
+  "hits": 0,
+  "regex": false,
+  "group_id": 1,
+  "position": 4,
+  "last_access": "-",
+  "enabled": true
+ },
+ {
+  "id": 6,
+  "url": "/quizz",
+  "match_url": "/quizz",
+  "match_data": {
+   "source": {
+    "flag_query": "exact",
+    "flag_case": true,
+    "flag_trailing": true,
+    "flag_regex": false
+   }
+  },
+  "action_code": 301,
+  "action_type": "url",
+  "action_data": {
+   "url": "https://planodaju.julianecost.com/quiz"
+  },
+  "match_type": "url",
+  "title": "",
+  "hits": 45,
+  "regex": false,
+  "group_id": 1,
+  "position": 5,
+  "last_access": "agosto 24, 2026",
+  "enabled": true
+ },
+ {
+  "id": 7,
+  "url": "/en",
+  "match_url": "/en",
+  "match_data": {
+   "source": {
+    "flag_query": "exact",
+    "flag_case": true,
+    "flag_trailing": true,
+    "flag_regex": false
+   }
+  },
+  "action_code": 301,
+  "action_type": "url",
+  "action_data": {
+   "url": "https://julianecost.com/"
+  },
+  "match_type": "url",
+  "title": "",
+  "hits": 711,
+  "regex": false,
+  "group_id": 1,
+  "position": 6,
+  "last_access": "agosto 26, 2026",
+  "enabled": true
+ },
+ {
+  "id": 8,
+  "url": "/ybera-fashion-gold-english",
+  "match_url": "/ybera-fashion-gold-english",
+  "match_data": {
+   "source": {
+    "flag_query": "exact",
+    "flag_case": true,
+    "flag_trailing": true,
+    "flag_regex": false
+   }
+  },
+  "action_code": 301,
+  "action_type": "url",
+  "action_data": {
+   "url": "https://julianecost.com/"
+  },
+  "match_type": "url",
+  "title": "",
+  "hits": 289,
+  "regex": false,
+  "group_id": 1,
+  "position": 7,
+  "last_access": "agosto 26, 2026",
+  "enabled": true
+ },
+ {
+  "id": 9,
+  "url": "/manage-profile",
+  "match_url": "/manage-profile",
+  "match_data": {
+   "source": {
+    "flag_query": "exact",
+    "flag_case": true,
+    "flag_trailing": true,
+    "flag_regex": false
+   }
+  },
+  "action_code": 301,
+  "action_type": "url",
+  "action_data": {
+   "url": "https://julianecost.com/minha-conta/"
+  },
+  "match_type": "url",
+  "title": "",
+  "hits": 462,
+  "regex": false,
+  "group_id": 1,
+  "position": 8,
+  "last_access": "agosto 26, 2026",
+  "enabled": true
+ }
+]
