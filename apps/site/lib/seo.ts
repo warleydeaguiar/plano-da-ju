@@ -64,6 +64,43 @@ export function metaDaCategoria(cat: Categoria): Metadata {
 
 // ------------------------------------------------------------------- JSON-LD
 
+export const ID_AUTORA = `${SITE}/#juliane`;
+export const ID_ORG = `${SITE}/#organizacao`;
+
+/**
+ * A autora como entidade única do site.
+ *
+ * Repetida por referência (@id) em todo post, ela diz ao Google que existe uma
+ * pessoa real e identificável por trás de 185 artigos sobre química capilar —
+ * que é o sinal de E-E-A-T que o site nunca teve.
+ */
+function autora() {
+  return {
+    '@type': 'Person',
+    '@id': ID_AUTORA,
+    name: 'Juliane Cost',
+    url: `${SITE}/`,
+    jobTitle: 'Especialista em cuidados capilares',
+    description:
+      'Especialista em cuidados capilares. Testa os produtos antes de indicar e atende ' +
+      'mulheres diariamente montando plano capilar personalizado.',
+    knowsAbout: [
+      'Cuidados capilares', 'Progressiva', 'Cronograma capilar',
+      'Tratamento capilar', 'Coloração de cabelo',
+    ],
+  };
+}
+
+function organizacao() {
+  return {
+    '@type': 'Organization',
+    '@id': ID_ORG,
+    name: NOME_SITE,
+    url: `${SITE}/`,
+    founder: { '@id': ID_AUTORA },
+  };
+}
+
 function trilha(itens: { nome: string; path: string }[]) {
   return {
     '@type': 'BreadcrumbList',
@@ -83,6 +120,8 @@ function trilha(itens: { nome: string; path: string }[]) {
  */
 export function schemaDoPost(c: Conteudo) {
   const imagem = c.og_image || c.featured_image_url;
+  const idPagina = `${abs(c.path)}#webpage`;
+
   return {
     '@context': 'https://schema.org',
     '@graph': [
@@ -93,14 +132,38 @@ export function schemaDoPost(c: Conteudo) {
         description: c.seo_description || undefined,
         datePublished: c.published_at || undefined,
         dateModified: c.modified_at || c.published_at || undefined,
-        author: { '@type': 'Person', name: 'Juliane Cost', url: `${SITE}/` },
-        publisher: { '@type': 'Organization', name: NOME_SITE, url: `${SITE}/` },
-        mainEntityOfPage: { '@type': 'WebPage', '@id': abs(c.path) },
-        image: imagem ? [imagem] : undefined,
+        // Referência por @id em vez de objeto repetido: o Google resolve o
+        // grafo e assim autora e publicadora são a mesma entidade em todas as
+        // páginas, o que é o ponto de um sinal de autoridade.
+        author: { '@id': ID_AUTORA },
+        publisher: { '@id': ID_ORG },
+        isPartOf: { '@id': idPagina },
+        mainEntityOfPage: { '@id': idPagina },
+        image: imagem ? { '@id': `${abs(c.path)}#imagem` } : undefined,
         inLanguage: 'pt-BR',
         wordCount: c.word_count || undefined,
       },
-      trilha([{ nome: 'Início', path: '/' }, { nome: c.title, path: c.path }]),
+      {
+        '@type': 'WebPage',
+        '@id': idPagina,
+        url: abs(c.path),
+        name: c.seo_title || c.title,
+        description: c.seo_description || undefined,
+        datePublished: c.published_at || undefined,
+        dateModified: c.modified_at || c.published_at || undefined,
+        isPartOf: { '@id': `${SITE}/#website` },
+        inLanguage: 'pt-BR',
+        breadcrumb: { '@id': `${abs(c.path)}#trilha` },
+        ...(imagem ? { primaryImageOfPage: { '@id': `${abs(c.path)}#imagem` } } : {}),
+      },
+      ...(imagem
+        ? [{ '@type': 'ImageObject', '@id': `${abs(c.path)}#imagem`, url: imagem, contentUrl: imagem }]
+        : []),
+      { ...trilha([{ nome: 'Início', path: '/' }, { nome: 'Blog', path: '/blog/' }, { nome: c.title, path: c.path }]),
+        '@id': `${abs(c.path)}#trilha` },
+      // autora() e organizacao() NÃO entram aqui: o layout já as emite em toda
+      // página pelo schemaDoSite, e os @id acima apontam para elas. Repetir só
+      // engordaria o HTML de 185 posts sem dizer nada novo ao Google.
     ],
   };
 }
@@ -161,11 +224,17 @@ export function schemaDoProduto(c: Conteudo) {
 export function schemaDoSite() {
   return {
     '@context': 'https://schema.org',
-    '@type': 'WebSite',
-    '@id': `${SITE}/#website`,
-    url: `${SITE}/`,
-    name: NOME_SITE,
-    inLanguage: 'pt-BR',
-    publisher: { '@type': 'Organization', name: NOME_SITE, url: `${SITE}/` },
+    '@graph': [
+      {
+        '@type': 'WebSite',
+        '@id': `${SITE}/#website`,
+        url: `${SITE}/`,
+        name: NOME_SITE,
+        inLanguage: 'pt-BR',
+        publisher: { '@id': ID_ORG },
+      },
+      autora(),
+      organizacao(),
+    ],
   };
 }

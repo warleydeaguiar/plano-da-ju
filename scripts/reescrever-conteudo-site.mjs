@@ -79,6 +79,44 @@ function montarPicture(avifUrl, tagOriginal) {
     `</picture>`;
 }
 
+/** Slug estável para âncora de heading. */
+function slugAncora(texto, usados) {
+  const base = texto
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60) || 'secao';
+  let slug = base;
+  let n = 2;
+  while (usados.has(slug)) slug = `${base}-${n++}`;
+  usados.add(slug);
+  return slug;
+}
+
+/**
+ * Põe `id` em cada H2 do conteúdo.
+ *
+ * É o que permite o índice no topo do post — e, num site cujo conteúdo é
+ * "Top 10 melhores X", é também o que dá ao Google âncoras para exibir como
+ * sublinks do resultado. Precisa estar no HTML estático, não montado por
+ * script no navegador.
+ */
+function ancorarHeadings(html) {
+  const usados = new Set();
+  return String(html || '').replace(
+    /<h2\b([^>]*)>([\s\S]*?)<\/h2>/gi,
+    (inteiro, attrs, miolo) => {
+      if (/\bid=/.test(attrs)) return inteiro;
+      const texto = miolo.replace(/<[^>]+>/g, ' ').trim();
+      if (!texto) return inteiro;
+      return `<h2${attrs} id="${slugAncora(texto, usados)}">${miolo}</h2>`;
+    },
+  );
+}
+
 function limpar(html, mapa, contador) {
   let saida = html || '';
 
@@ -101,6 +139,8 @@ function limpar(html, mapa, contador) {
     contador.trocadas++;
     return montarPicture(nova, tag);
   });
+
+  saida = ancorarHeadings(saida);
 
   return saida.trim();
 }
