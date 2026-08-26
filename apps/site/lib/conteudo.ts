@@ -159,17 +159,17 @@ export interface Pergunta {
 }
 
 /**
- * FAQ do artigo.
+ * FAQ do artigo. Só o que passou na revisão aparece, em qualquer ambiente.
  *
- * Enquanto o site está fora do índice (staging), mostra tudo — é o ambiente
- * onde a Juliane lê e aprova. Em produção, só o que ela já revisou vai ao ar:
- * a resposta é redigida a partir do próprio artigo, mas trata de química
- * capilar, e quem assina isso é a tricologista.
+ * Isto já foi condicional ("staging mostra tudo") por um motivo que deixou de
+ * valer: naquele momento nada tinha sido revisado ainda e a alternativa era
+ * não mostrar nada. Depois da auditoria, 109 respostas estão marcadas como
+ * reprovadas — a maioria por afirmar coisa que o artigo não sustenta — e a
+ * regra antiga passaria justamente essas ao ar em staging.
  */
 export async function faqDoPost(contentId: number): Promise<Pergunta[]> {
-  const exigeRevisao = process.env.SITE_PERMITIR_INDEXACAO === 'sim';
-  const filtro = exigeRevisao ? '&revisado=is.true' : '';
   return consulta<Pergunta>(
-    `site_faq?content_id=eq.${contentId}${filtro}&select=pergunta,resposta&order=ordem`,
+    `site_faq?content_id=eq.${contentId}&revisao_status=eq.aprovada` +
+      '&select=pergunta,resposta&order=ordem',
   );
 }
