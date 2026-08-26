@@ -16,7 +16,7 @@ function stripeJs() {
 }
 
 interface Props {
-  amountCents: number;             // valor à vista (R$39,90 = 3990)
+  amountCents: number;             // valor à vista (R$34,90 = 3490)
   getPayer: () => { email: string; name: string; phone: string; cpf: string; sessionId: string; quizAnswers: Record<string, unknown> };
   canPay: () => boolean;           // ex.: email/nome válidos no formulário
   onNeedInfo?: () => void;         // avisa o pai quando falta email/nome

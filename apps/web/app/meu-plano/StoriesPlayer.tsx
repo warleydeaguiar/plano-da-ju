@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { T, fonts } from './theme';
 import { IconClose, IconChevronLeft, IconChevronRight } from './icons';
+import Picture from '@/app/components/Picture';
 
 export interface Story {
   id: string;
@@ -222,7 +223,7 @@ export default function StoriesPlayer({
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             overflow: 'hidden',
           }}>
-            <img src="/images/ju-depois.png" alt="Juliane" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <Picture src="/images/ju-depois.png" alt="Juliane" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>

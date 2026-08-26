@@ -7,6 +7,7 @@ import { pixelMatchingPayload, pixelPhone } from '@/lib/pixel-pii';
 import { installmentInfo, brlCents, MAX_INSTALLMENTS, PLAN_BASE_CENTS } from '@/lib/pricing';
 import { getFunilCopy } from '@/lib/hair-copy';
 import { buildConsultaData } from '@/lib/consulta';
+import Picture from '@/app/components/Picture';
 import ApplePayButton from './ApplePayButton';
 
 // ╔══════════════════════════════════════════════════════════╗
@@ -170,7 +171,7 @@ function useOfferCountdown() {
 }
 
 // ─── Cálculo de parcelas (cartão: até 3x COM juros 2,99% a.m.) ───
-// À vista (1x) e PIX = R$39,90 sem juros. Fonte única em lib/pricing.
+// À vista (1x) e PIX = R$34,90 sem juros. Fonte única em lib/pricing.
 function installPerStr(n: number): string {
   const info = installmentInfo(n);
   return `${info.n}x de ${brlCents(info.perCents)}`;
@@ -403,7 +404,7 @@ function OfferCard({ countdown, name, onBuy }: { countdown: string; name: string
               lineHeight: 1.05, letterSpacing: -0.5,
             }}>{installPerStr(MAX_INSTALLMENTS)}</div>
             <div style={{ fontSize: 9, color: T.inkSoft, marginTop: 3, fontFamily: fonts.ui }}>
-              ou à vista <strong style={{ color: T.ink }}>R$39,90</strong>
+              ou à vista <strong style={{ color: T.ink }}>R$34,90</strong>
             </div>
           </div>
         </div>
@@ -1310,22 +1311,22 @@ export default function OfertaClient() {
 
             {/* ── Product header ── */}
             <div style={{ ...sectionCard, marginBottom: 14 }}>
+              {/* Foto da Juliane no consultório — banner de largura total, imagem
+                  INTEIRA (sem corte). Antes era uma miniatura vertical de 78px, que
+                  esmagava uma foto em paisagem. No momento do pagamento é o que dá
+                  credibilidade: mostra quem vai montar o plano. */}
+              <Picture
+                src="/images/juliane-consultorio.jpg"
+                alt="Juliane Cost no consultório"
+                width={860}
+                height={573}
+                style={{
+                  width: '100%', height: 'auto', display: 'block',
+                  borderRadius: 12, marginBottom: 14,
+                  border: `1px solid ${T.pinkSoft}`, background: T.cream,
+                }}
+              />
               <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-                {/* Foto da Juliane */}
-                {images['plano_capilar_juliane_bio'] ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={images['plano_capilar_juliane_bio']}
-                    alt="Juliane Cost"
-                    style={{ width: 78, height: 104, borderRadius: 12, flexShrink: 0, objectFit: 'contain', background: T.cream, border: `2px solid ${T.pinkSoft}` }}
-                  />
-                ) : (
-                  <div style={{
-                    width: 78, height: 104, borderRadius: 12, flexShrink: 0,
-                    background: `linear-gradient(135deg, ${T.pink}, ${T.pinkDeep})`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24,
-                  }}>🌿</div>
-                )}
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 15, fontWeight: 700, color: T.ink, lineHeight: 1.3 }}>
                     Plano Capilar Personalizado
@@ -1345,7 +1346,7 @@ export default function OfertaClient() {
                       }}>{installPerStr(MAX_INSTALLMENTS)}</span>
                       <span style={{ fontSize: 10, color: T.inkSoft, fontFamily: fonts.ui }}>no cartão</span>
                     </div>
-                    <div style={{ fontSize: 10, color: T.inkSoft, marginTop: 2 }}>ou à vista R$39,90</div>
+                    <div style={{ fontSize: 10, color: T.inkSoft, marginTop: 2 }}>ou à vista R$34,90</div>
                   </div>
                 </div>
               </div>
@@ -1450,7 +1451,7 @@ export default function OfertaClient() {
                     }}>MAIS RÁPIDO</span>
                   </div>
                   <div style={{ fontSize: 12, color: T.inkSoft, marginTop: 2 }}>
-                    Aprovação instantânea · R$39,90 à vista
+                    Aprovação instantânea · R$34,90 à vista
                   </div>
                 </div>
               </button>
@@ -1632,7 +1633,7 @@ export default function OfertaClient() {
               {isSubmitting
                 ? '⏳ Processando…'
                 : payType === 'pix'
-                  ? '🔒 Gerar PIX — R$39,90'
+                  ? '🔒 Gerar PIX — R$34,90'
                   : `🔒 Pagar ${installAmt}`}
             </GreenButton>
 
@@ -1871,7 +1872,7 @@ export default function OfertaClient() {
               <div style={{ flex: 1, background: `linear-gradient(135deg, ${T.pinkDeep}, ${T.pink})`, borderRadius: 12, padding: '12px 10px', textAlign: 'center', boxShadow: `0 6px 16px ${T.pink}44` }}>
                 <div style={{ fontSize: 10.5, fontWeight: 700, color: 'rgba(255,255,255,0.85)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4, fontFamily: fonts.ui }}>Plano da Ju</div>
                 <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.75)', textDecoration: 'line-through', lineHeight: 1, marginBottom: 2, fontFamily: fonts.ui }}>de R$ 149,90</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', fontFamily: fonts.display, lineHeight: 1 }}>R$39,90<span style={{ fontSize: 12 }}> uma vez</span></div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', fontFamily: fonts.display, lineHeight: 1 }}>R$34,90<span style={{ fontSize: 12 }}> uma vez</span></div>
                 <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', marginTop: 4, lineHeight: 1.35, fontFamily: fonts.ui }}>feito exatamente pro seu cabelo</div>
               </div>
             </div>
@@ -1884,7 +1885,7 @@ export default function OfertaClient() {
             <div style={{ display: 'flex', gap: 10, background: '#EAF7EE', border: '1px solid #BFE8CC', borderRadius: 12, padding: '13px 15px' }}>
               <span style={{ fontSize: 18, lineHeight: 1.2, flexShrink: 0 }}>💸</span>
               <div style={{ fontSize: 13.5, color: '#166534', lineHeight: 1.55, fontFamily: fonts.ui }}>
-                E o melhor: <strong>o valor volta rápido.</strong> Só com os <strong>descontos exclusivos da Ju nos produtos capilares</strong> e no <strong>grupo fechado de promoções</strong>, você já recupera os R$39,90 nas primeiras compras. 💚
+                E o melhor: <strong>o valor volta rápido.</strong> Só com os <strong>descontos exclusivos da Ju nos produtos capilares</strong> e no <strong>grupo fechado de promoções</strong>, você já recupera os R$34,90 nas primeiras compras. 💚
               </div>
             </div>
           </div>
@@ -1978,7 +1979,7 @@ export default function OfertaClient() {
               { q: 'É confiável? Não é golpe?', a: 'Entendo total a desconfiança, tem muita coisa ruim na internet. Eu sou tricologista, tenho meu Instagram com milhares de mulheres acompanhando, mostro meu próprio cabelo desde a raiz (não uso mega hair) e tenho +3.500 alunas. Pagamento é feito em ambiente seguro e, se você não gostar, tem garantia — devolvo 100% do seu dinheiro, sem perguntas.' },
               { q: 'E se eu tiver dúvidas depois?', a: 'Você não fica sozinha. Tem suporte por WhatsApp pra tirar dúvidas ao longo do caminho — se ficar na dúvida de algum passo ou produto, é só me chamar que eu te ajudo. 💗' },
               { q: 'Os produtos são difíceis de achar?', a: 'Não! São produtos que você encontra com facilidade, e os que eu indico ficam disponíveis no meu grupo de promoções com preço especial. Nada de fórmula secreta impossível de comprar.' },
-              { q: 'É pagamento único ou cobra todo mês?', a: 'Pagamento único, uma vez só. São R$ 39,90 e pronto — nada de mensalidade, nada de cobrança recorrente te pegando de surpresa depois. Você paga uma vez e tem acesso ao seu plano.' },
+              { q: 'É pagamento único ou cobra todo mês?', a: 'Pagamento único, uma vez só. São R$ 34,90 e pronto — nada de mensalidade, nada de cobrança recorrente te pegando de surpresa depois. Você paga uma vez e tem acesso ao seu plano.' },
             ].map((f, i, arrF) => (
               <div key={i} style={{ borderBottom: i < arrF.length - 1 ? `1px solid ${T.border}` : 'none' }}>
                 <button

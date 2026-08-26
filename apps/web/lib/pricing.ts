@@ -3,16 +3,16 @@
  * Fonte única usada tanto no front (exibição) quanto no back (valor cobrado),
  * pra nunca divergir o que a cliente vê do que é cobrado.
  *
- * - À vista (1x) e PIX: R$39,90, SEM juros.
+ * - À vista (1x) e PIX: R$34,90, SEM juros.
  * - Cartão 2x/3x: COM juros de 2,99% ao mês (parcelamento com juros pro cliente).
  * - Máximo de 3 parcelas.
  * PAGAMENTO ÚNICO (sem mensalidade/recorrência).
  */
-export const PLAN_BASE_CENTS = 3990;            // R$39,90 — preço à vista / PIX (pagamento único)
+export const PLAN_BASE_CENTS = 3490;            // R$34,90 — preço à vista / PIX (pagamento único)
 /** Preço "cheio" usado como âncora (riscado) na oferta. */
 export const PLAN_ANCHOR_CENTS = 14990;         // R$149,90
 /** % de desconto da âncora → preço atual (arredondado). Usado na roleta/oferta. */
-export const PLAN_DISCOUNT_PCT = Math.round((1 - PLAN_BASE_CENTS / PLAN_ANCHOR_CENTS) * 100); // 73
+export const PLAN_DISCOUNT_PCT = Math.round((1 - PLAN_BASE_CENTS / PLAN_ANCHOR_CENTS) * 100); // 77
 export const INSTALLMENT_MONTHLY_RATE = 0.0299; // 2,99% a.m.
 export const MAX_INSTALLMENTS = 3;
 

@@ -97,7 +97,7 @@ export default async function AssinaturasPage() {
         {/* Header */}
         <div style={{ marginBottom: 28 }}>
           <div style={{ fontSize: 22, fontWeight: 700, color: '#2A1E2C' }}>Assinaturas</div>
-          <div style={{ fontSize: 13, color: gray, marginTop: 4 }}>Plano capilar — R$ 39,90 · pagamento único</div>
+          <div style={{ fontSize: 13, color: gray, marginTop: 4 }}>Plano capilar — R$ 34,90 · pagamento único</div>
         </div>
 
         {/* KPIs */}

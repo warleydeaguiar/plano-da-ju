@@ -8,6 +8,7 @@
 import { Component, useEffect, useRef, type ReactNode } from 'react';
 import type { ConsultaData } from '../../lib/consulta';
 import { CONSULTA_AVG_MIN } from '../../lib/consulta';
+import Picture from '@/app/components/Picture';
 
 const CSS = `
 .cns{ --bg:#150810; --bg2:#1E0B16; --raise:#2A1120; --raise2:#361628;
@@ -332,7 +333,7 @@ function ConsultaInner({ data, startMs, endMs, minutes }: {
     <div className="cns" ref={rootRef}>
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
       <div className="hero">
-        <img src="/images/consulta-hero.jpg" alt="Juliane Cost analisando o seu caso" />
+        <Picture src="/images/consulta-hero.jpg" alt="Juliane Cost analisando o seu caso" />
         <div className="hero-grad" />
         <div className="hero-top">
           <span className="live"><i /> Com você agora</span>
@@ -351,7 +352,7 @@ function ConsultaInner({ data, startMs, endMs, minutes }: {
           <div className="ey" id="cns-ey">oi, chegou aqui 💛</div>
           <h2 id="cns-title">Deixa eu começar a olhar seu cabelo</h2>
           <div className="attnw" id="cns-attn" />
-          <div className="speaker"><img className="qav" src="/images/consulta-face.jpg" alt="Juliane" /><span>Juliane</span></div>
+          <div className="speaker"><Picture className="qav" src="/images/consulta-face.jpg" alt="Juliane" /><span>Juliane</span></div>
           <div className="quote" id="cns-quote" />
           <div className="widget" id="cns-widget" />
         </div>
@@ -362,7 +363,7 @@ function ConsultaInner({ data, startMs, endMs, minutes }: {
       </div>
 
       <div className="wait" id="cns-wait">
-        <img className="wait-bg" src="/images/consulta-hero.jpg" alt="" />
+        <Picture className="wait-bg" src="/images/consulta-hero.jpg" alt="" />
         <div className="wait-scrim" />
         <div className="wait-inner">
           <span className="wait-live"><i /> Consulta ao vivo</span>

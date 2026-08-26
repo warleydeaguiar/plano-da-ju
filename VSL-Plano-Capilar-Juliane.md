@@ -1,6 +1,6 @@
 # VSL — Plano Capilar Personalizado da Juliane Cost
 ### Roteiro (voz da Juliane, 1ª pessoa). Estrutura e extensão espelhadas na VSL Protocolo Restart.
-> Oferta: Plano Capilar Personalizado — R$39,90 (à vista/PIX ou 3x no cartão). Garantia 7 dias. Acesso ao app na hora.
+> Oferta: Plano Capilar Personalizado — R$34,90 (à vista/PIX ou 3x no cartão). Garantia 7 dias. Acesso ao app na hora.
 > Ângulo (validado pelos dados das clientes): a causa é a CUTÍCULA ABERTA, e a solução NÃO é gastar uma fortuna em produtos.
 
 ---
@@ -591,9 +591,9 @@ E nem mesmo cento e cinquenta reais.
 
 Olha só, seu dia de sorte.
 
-Na verdade, pra ter acesso ao Plano Capilar Personalizado, com a minha análise das suas fotos e o cronograma completo dos noventa dias, você vai precisar fazer um investimento simbólico de apenas trinta e nove e noventa.
+Na verdade, pra ter acesso ao Plano Capilar Personalizado, com a minha análise das suas fotos e o cronograma completo dos noventa dias, você vai precisar fazer um investimento simbólico de apenas trinta e quatro e noventa.
 
-Isso mesmo, eu não tô brincando, trinta e nove e noventa, menos que uma única máscara boa de salão e menos do que o seu iFood de um domingo.
+Isso mesmo, eu não tô brincando, trinta e quatro e noventa, menos que uma única máscara boa de salão e menos do que o seu iFood de um domingo.
 
 Então, pra garantir a sua vaga agora, sabe o que você precisa fazer? Clicar no botão verde aqui embaixo, antes que a oferta acabe, porque eu preciso ser sincera com você e te dizer que vai ser inviável eu manter esse valor pra sempre, montar cada plano à mão dá trabalho.
 
@@ -711,7 +711,7 @@ Você tem noção que só os bônus juntos já passariam de duzentos e noventa r
 
 ## PARTE 5 | CLOSE: URGÊNCIA, DECISÃO E CTA FINAL
 
-Mas como eu te prometi e eu tenho palavra, só hoje você vai estar investindo apenas trinta e nove e noventa no Pix ou parcelado no cartão.
+Mas como eu te prometi e eu tenho palavra, só hoje você vai estar investindo apenas trinta e quatro e noventa no Pix ou parcelado no cartão.
 
 Sinceramente, é a melhor proposta que eu tenho pra você hoje.
 

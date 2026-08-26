@@ -187,7 +187,7 @@ function OfferCard({ countdown, name, onBuy }: { countdown: string; name: string
           </div>
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
             <div style={{ fontSize: 11, color: T.inkSoft, textDecoration: 'line-through' }}>R$ 99,90</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: T.pinkDeep, lineHeight: 1 }}>R$ 39,90</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: T.pinkDeep, lineHeight: 1 }}>R$ 34,90</div>
             <div style={{ fontSize: 9, color: T.inkSoft, marginTop: 2 }}>pagamento único</div>
           </div>
         </div>
@@ -421,7 +421,7 @@ export default function OfertaClient() {
           <h1 style={{ fontSize: 22, fontWeight: 800, color: T.ink, marginBottom: 6 }}>
             {payType === 'card' ? 'Dados do cartão' : 'Pagar com PIX'}
           </h1>
-          <p style={{ color: T.inkSoft, fontSize: 14, marginBottom: 24 }}>R$39,90 — pagamento único</p>
+          <p style={{ color: T.inkSoft, fontSize: 14, marginBottom: 24 }}>R$34,90 — pagamento único</p>
 
           {payType === 'card' ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -453,7 +453,7 @@ export default function OfertaClient() {
               onClick={payType === 'card' ? handleCard : handlePix}
               disabled={payType === 'card' ? !isCardComplete : cpf.replace(/\D/g, '').length < 11}
             >
-              🔒 {payType === 'card' ? 'PAGAR R$39,90' : 'GERAR PIX — R$39,90'}
+              🔒 {payType === 'card' ? 'PAGAR R$34,90' : 'GERAR PIX — R$34,90'}
             </GreenButton>
           </div>
           <p style={{ textAlign: 'center', marginTop: 12, fontSize: 11, color: T.inkSoft }}>
