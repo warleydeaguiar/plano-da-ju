@@ -112,25 +112,42 @@ function limpar(html, mapa, contador) {
   const mapa = new Map(midia.map((m) => [m.original_url, m.public_url]));
   console.log(`  imagens disponíveis no storage: ${mapa.size}`);
 
-  const conteudo = await supa('site_content?select=id,kind,path,content_html&limit=1000');
+  const conteudo = await supa(
+    'site_content?select=id,kind,path,content_html,og_image,featured_image_url&limit=1000',
+  );
   console.log(`  conteúdos a processar: ${conteudo.length}\n`);
 
   const contador = { trocadas: 0, semSrc: 0, naoAchou: new Set() };
+  let capasTrocadas = 0;
   const atualizacoes = [];
   for (const c of conteudo) {
     const limpo = limpar(c.content_html, mapa, contador);
-    atualizacoes.push({ id: c.id, content_clean: limpo });
+
+    // og:image e imagem de destaque não estão no corpo do texto, mas são o que
+    // aparece no compartilhamento, no Article.image do schema e na miniatura
+    // das listagens. Sem trocar aqui, continuariam apontando para o WordPress
+    // e ficariam quebradas no dia em que ele sair do ar.
+    const capa = c.og_image ? mapa.get(c.og_image) || null : null;
+    if (capa) capasTrocadas++;
+
+    atualizacoes.push({
+      id: c.id,
+      content_clean: limpo,
+      ...(capa ? { og_image: capa, featured_image_url: capa } : {}),
+    });
   }
 
   if (!DRY) {
     for (const a of atualizacoes) {
-      await supa(`site_content?id=eq.${a.id}`, {
+      const { id, ...campos } = a;
+      await supa(`site_content?id=eq.${id}`, {
         method: 'PATCH',
         headers: { Prefer: 'return=minimal' },
-        body: JSON.stringify({ content_clean: a.content_clean }),
+        body: JSON.stringify(campos),
       });
     }
   }
+  console.log(`  capas (og:image) apontando para o storage: ${capasTrocadas}`);
 
   console.log(`  <img> trocadas por <picture>: ${contador.trocadas}`);
   console.log(`  <img> sem src reconhecível:   ${contador.semSrc}`);

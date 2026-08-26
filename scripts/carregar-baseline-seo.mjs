@@ -145,11 +145,22 @@ const ler = (arquivo) => JSON.parse(fs.readFileSync(path.join(DADOS, arquivo), '
   const noSite = new Set(porPath.keys());
   for (const [p, g] of gsc) {
     if (noSite.has(p)) continue;
-    const limpo = p.replace(/(?:%22|%27|[)"'])+\/$/, '/');
+    // Tira a pontuação que grudou no fim da URL e normaliza a barra. O
+    // `\/{2,}` no fim é obrigatório: sem ele "/artigo/)/" virava "/artigo//",
+    // que não casa com página nenhuma — e todas as 18 URLs malformadas caíam
+    // na home em vez de voltar para o próprio artigo. Uma delas é a variante
+    // do post de 11.202 cliques.
+    const limpo = p
+      .replace(/(?:%22|%27|%29|["')\]])+\/?$/, '/')
+      .replace(/\/{2,}$/, '/');
     const malformada = limpo !== p;
+    const destino = noSite.has(limpo) ? limpo : `${WP}/`;
+    if (malformada && destino === `${WP}/`) {
+      console.log(`    ⚠️  ${p} não tem versão limpa conhecida — vai para a home`);
+    }
     reds.push({
       from_path: p,
-      to_url: noSite.has(limpo) ? limpo : `${WP}/`,
+      to_url: destino,
       status_code: 301,
       origem: malformada ? 'url_malformada' : 'slug_removido',
       note: `${g.cliques} cliques e ${g.impressoes} impressões em 16 meses`,

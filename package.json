@@ -2,12 +2,16 @@
   "name": "plano-da-ju",
   "private": true,
   "version": "0.0.1",
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev:web": "npm run dev --workspace=apps/web",
     "dev:admin": "npm run dev --workspace=apps/admin",
     "dev:app": "npm run start --workspace=apps/app",
     "build:web": "npm run build --workspace=apps/web",
-    "build:admin": "npm run build --workspace=apps/admin"
+    "build:admin": "npm run build --workspace=apps/admin",
+    "site:sincronizar": "node scripts/importar-wordpress.mjs && node scripts/migrar-midia-site.mjs && node scripts/reescrever-conteudo-site.mjs && node scripts/carregar-baseline-seo.mjs"
   }
 }
