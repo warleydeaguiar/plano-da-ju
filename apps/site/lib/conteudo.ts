@@ -191,3 +191,39 @@ export async function dimensaoDaImagem(
   );
   return m?.width && m?.height ? { width: m.width, height: m.height } : null;
 }
+
+export interface Avaliacao {
+  id: number;
+  autora: string;
+  nota: number;
+  texto: string;
+  data: string;
+}
+
+export interface ResumoAvaliacoes {
+  total: number;
+  media: number;
+}
+
+/**
+ * Avaliações do produto e o resumo delas.
+ *
+ * As duas coisas saem da MESMA fonte de propósito: o `aggregateRating` do
+ * schema precisa corresponder exatamente ao que a visitante vê na tela. Nota
+ * marcada sem avaliação visível é violação de política do Google e rende ação
+ * manual — some com a estrela do site inteiro, não só da página.
+ */
+export async function avaliacoesDoProduto(
+  contentId: number,
+): Promise<{ itens: Avaliacao[]; resumo: ResumoAvaliacoes | null }> {
+  const [itens, resumo] = await Promise.all([
+    consulta<Avaliacao>(
+      `site_avaliacoes?content_id=eq.${contentId}&publicada=is.true` +
+        '&select=id,autora,nota,texto,data&order=data.desc&limit=50',
+    ),
+    consulta<{ total: number; media: number }>(
+      `site_avaliacoes_resumo?content_id=eq.${contentId}&select=total,media&limit=1`,
+    ),
+  ]);
+  return { itens, resumo: resumo[0] ?? null };
+}

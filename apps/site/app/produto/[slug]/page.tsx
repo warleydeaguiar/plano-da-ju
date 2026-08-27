@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import JsonLd from '../../components/JsonLd';
-import { porPath, todosOsPaths, dimensaoDaImagem } from '@/lib/conteudo';
+import Avaliacoes from '../../components/Avaliacoes';
+import { porPath, todosOsPaths, dimensaoDaImagem, avaliacoesDoProduto } from '@/lib/conteudo';
 import { metaDoConteudo, schemaDoProduto } from '@/lib/seo';
 
 export const revalidate = 3600; // literal: o Next analisa este export estaticamente
@@ -34,11 +35,14 @@ export default async function PaginaProduto({ params }: Props) {
   const temPreco = typeof item.price_cents === 'number' && item.price_cents > 0;
   // Foto de produto tem proporção variável, então `aspect-ratio` fixo
   // distorceria. A dimensão real vem do banco.
-  const tamanho = await dimensaoDaImagem(imagemAvif);
+  const [tamanho, avaliacoes] = await Promise.all([
+    dimensaoDaImagem(imagemAvif),
+    avaliacoesDoProduto(item.id),
+  ]);
 
   return (
     <>
-      <JsonLd dados={schemaDoProduto(item)} />
+      <JsonLd dados={schemaDoProduto(item, avaliacoes)} />
 
       <article style={{ maxWidth: '68rem', margin: '0 auto', padding: '2.5rem 1.25rem 0' }}>
         <div style={{ display: 'grid', gap: '2rem', gridTemplateColumns: 'repeat(auto-fit, minmax(18rem, 1fr))', alignItems: 'start' }}>
@@ -101,6 +105,10 @@ export default async function PaginaProduto({ params }: Props) {
           style={{ marginTop: '3rem', maxWidth: 'var(--largura)' }}
           dangerouslySetInnerHTML={{ __html: item.content_clean || '' }}
         />
+
+        <div style={{ maxWidth: 'var(--largura)' }}>
+          <Avaliacoes itens={avaliacoes.itens} resumo={avaliacoes.resumo} />
+        </div>
       </article>
     </>
   );

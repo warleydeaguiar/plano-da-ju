@@ -184,10 +184,17 @@ export function schemaDoPost(c: Conteudo) {
  * afiliado, e declarar preço que não existe é motivo de penalidade de rich
  * result. Mesma regra para `aggregateRating`: sem avaliação real, sem estrela.
  */
-export function schemaDoProduto(c: Conteudo) {
+export function schemaDoProduto(
+  c: Conteudo,
+  avaliacoes?: { itens: { autora: string; nota: number; texto: string; data: string }[]; resumo: { total: number; media: number } | null },
+) {
   const imagem = c.og_image || c.featured_image_url;
   const temPreco = typeof c.price_cents === 'number' && c.price_cents > 0;
-  const temNota = typeof c.rating_value === 'number' && (c.rating_count || 0) > 0;
+  // A nota vem das avaliações que estão VISÍVEIS na página, nunca de um campo
+  // herdado do WooCommerce. Se o bloco de avaliações não renderiza, não há
+  // aggregateRating — é a regra que impede marcar estrela sem prova na tela.
+  const resumo = avaliacoes?.resumo ?? null;
+  const temNota = !!resumo && resumo.total > 0;
 
   // O Google EXIGE offers, review ou aggregateRating para aceitar um Product.
   // Sem nenhum dos três ele invalida o item inteiro e ainda marca a página como
@@ -233,9 +240,25 @@ export function schemaDoProduto(c: Conteudo) {
           ? {
               aggregateRating: {
                 '@type': 'AggregateRating',
-                ratingValue: c.rating_value,
-                reviewCount: c.rating_count,
+                ratingValue: resumo!.media,
+                reviewCount: resumo!.total,
+                bestRating: 5,
+                worstRating: 1,
               },
+              // As avaliações individuais também entram: dão ao Google o texto
+              // que sustenta a nota, e são exatamente as que aparecem na tela.
+              review: (avaliacoes?.itens ?? []).slice(0, 20).map((a) => ({
+                '@type': 'Review',
+                author: { '@type': 'Person', name: a.autora },
+                datePublished: a.data,
+                reviewBody: a.texto,
+                reviewRating: {
+                  '@type': 'Rating',
+                  ratingValue: a.nota,
+                  bestRating: 5,
+                  worstRating: 1,
+                },
+              })),
             }
           : {}),
       },

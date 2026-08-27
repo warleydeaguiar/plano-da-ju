@@ -58,6 +58,7 @@ const NAV: NavItem[] = [
     children: [
       { label: 'Conteúdo', href: '/site' },
       { label: 'Perguntas frequentes', href: '/site/faq' },
+      { label: 'Avaliações', href: '/site/avaliacoes' },
     ],
   },
   { icon: SbFollowup, label: 'Followup', href: '/followup' },
