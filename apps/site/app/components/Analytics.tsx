@@ -77,6 +77,14 @@ export default function Analytics() {
         content_category: 'whatsapp',
         source_url: location.pathname,
       });
+
+      // Registro próprio, para o painel da Juliane. `sendBeacon` porque o
+      // clique navega para o WhatsApp no instante seguinte: um fetch comum
+      // seria cancelado pela saída da página e o clique não seria contado.
+      try {
+        const corpo = JSON.stringify({ path: location.pathname, produto, rotulo });
+        navigator.sendBeacon?.('/api/clique-whatsapp', new Blob([corpo], { type: 'application/json' }));
+      } catch { /* medir nunca atrapalha o clique */ }
     }
 
     document.addEventListener('click', aoClicar, { capture: true });

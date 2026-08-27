@@ -59,6 +59,7 @@ const NAV: NavItem[] = [
       { label: 'Conteúdo', href: '/site' },
       { label: 'Perguntas frequentes', href: '/site/faq' },
       { label: 'Avaliações', href: '/site/avaliacoes' },
+      { label: 'Cliques no WhatsApp', href: '/site/whatsapp' },
     ],
   },
   { icon: SbFollowup, label: 'Followup', href: '/followup' },
