@@ -96,7 +96,9 @@ export default function BoxAutora() {
               href={r.url}
               target="_blank"
               rel="me noopener noreferrer"
-              style={{ fontSize: '0.9rem', color: 'var(--rosa)', fontWeight: 600 }}
+              // padding vertical para o dedo acertar: sem ele o link tem a
+              // altura da linha (~20px) e erra no celular
+              style={{ fontSize: '0.9rem', color: 'var(--rosa)', fontWeight: 600, padding: '0.6rem 0', display: 'inline-block' }}
             >
               {r.nome}
             </a>
