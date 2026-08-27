@@ -14,7 +14,10 @@ export default function Trilha({ itens }: { itens: { nome: string; href?: string
           // linhas e deixa o "›" órfão — sem contar que a leitora já está
           // olhando o mesmo título logo abaixo, em corpo 32. Fica só no
           // desktop; o schema BreadcrumbList continua completo nos dois.
-          <li key={i.nome} className={i.href ? undefined : 'trilha-atual'} style={{ display: 'flex', gap: '0.45rem', alignItems: 'center' }}>
+          // O `display` fica no CSS, não aqui: style inline vence qualquer
+          // folha de estilo, e um `display:flex` embutido anulava em silêncio
+          // a regra que esconde este item no celular.
+          <li key={i.nome} className={`trilha-item${i.href ? '' : ' trilha-atual'}`} style={{ gap: '0.45rem' }}>
             {n > 0 && <span aria-hidden style={{ opacity: 0.5 }}>›</span>}
             {i.href ? (
               <Link href={i.href} style={{ color: 'var(--tinta-suave)', padding: '0.35rem 0' }}>{i.nome}</Link>

@@ -112,6 +112,7 @@ details > summary span[aria-hidden] { display: inline-block; transition: transfo
 
 /* O título do artigo dentro da trilha quebra em duas linhas no celular e
    repete o H1 que está logo abaixo. Some no estreito, volta no largo. */
+.trilha-item { display: flex; align-items: center; }
 .trilha-atual { display: none; }
 
 @media (min-width: 700px) {
