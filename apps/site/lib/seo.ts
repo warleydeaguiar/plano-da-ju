@@ -189,6 +189,25 @@ export function schemaDoProduto(c: Conteudo) {
   const temPreco = typeof c.price_cents === 'number' && c.price_cents > 0;
   const temNota = typeof c.rating_value === 'number' && (c.rating_count || 0) > 0;
 
+  // O Google EXIGE offers, review ou aggregateRating para aceitar um Product.
+  // Sem nenhum dos três ele invalida o item inteiro e ainda marca a página como
+  // problemática no Search Console — foi o que aconteceu: 40 dos 47 produtos
+  // não publicam preço (quem cobra é o parceiro) nem têm avaliação, e o
+  // "Product" deles estava sendo descartado.
+  // Não emitir é melhor que emitir inválido: a trilha continua valendo e a
+  // página deixa de acusar erro.
+  const podeSerProduto = temPreco || temNota;
+
+  const trilhaProduto = trilha([
+    { nome: 'Início', path: '/' },
+    { nome: 'Loja', path: '/loja/' },
+    { nome: c.title, path: c.path },
+  ]);
+
+  if (!podeSerProduto) {
+    return { '@context': 'https://schema.org', '@graph': [trilhaProduto] };
+  }
+
   return {
     '@context': 'https://schema.org',
     '@graph': [
@@ -220,11 +239,7 @@ export function schemaDoProduto(c: Conteudo) {
             }
           : {}),
       },
-      trilha([
-        { nome: 'Início', path: '/' },
-        { nome: 'Loja', path: '/loja/' },
-        { nome: c.title, path: c.path },
-      ]),
+      trilhaProduto,
     ],
   };
 }
