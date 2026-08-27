@@ -75,10 +75,14 @@ function auditarPagina(caminho, html) {
   const semAlt = imgs.filter((t) => !/\balt=/.test(t)).length;
   // alt="" é legítimo (imagem decorativa); alt ausente não é.
   if (semAlt) add('aviso', `${semAlt} de ${imgs.length} imagens sem atributo alt`);
-  // Sem width/height o navegador não reserva espaço e a página "pula" ao
-  // carregar — é o que o Google mede como CLS.
-  const semDimensao = imgs.filter((t) => !/\bwidth=/.test(t) || !/\bheight=/.test(t)).length;
-  if (semDimensao > 2) add('aviso', `${semDimensao} imagens sem width/height (risco de CLS)`);
+  // Sem espaço reservado a página "pula" quando a imagem carrega — é o que o
+  // Google mede como CLS. width/height resolve, mas `aspect-ratio` no CSS
+  // resolve igual: a primeira versão desta regra ignorava isso e acusava 195
+  // páginas que estavam corretas.
+  const semReserva = imgs.filter(
+    (t) => (!/\bwidth=/.test(t) || !/\bheight=/.test(t)) && !/aspect-ratio/.test(t),
+  ).length;
+  if (semReserva) add('aviso', `${semReserva} imagens sem espaço reservado (risco de CLS)`);
 
   // --- o conteúdo existe sem JavaScript?
   const corpo = html.replace(/<script[\s\S]*?<\/script>/g, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
