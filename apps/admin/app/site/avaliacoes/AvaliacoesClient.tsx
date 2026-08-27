@@ -91,7 +91,7 @@ export default function AvaliacoesClient({
   }
 
   return (
-    <main style={{ flex: 1, overflowY: 'auto', padding: '2rem 2.5rem 4rem' }}>
+    <main className="dash-main" style={{ marginLeft: 234, flex: 1, overflowY: 'auto', padding: '2rem 2.5rem 4rem' }}>
       <h1 style={{ fontSize: '1.7rem', fontWeight: 800, color: T.ink }}>Avaliações</h1>
       <p style={{ color: T.inkSoft, marginTop: '0.35rem', maxWidth: '58rem' }}>
         O que as clientes te contam no WhatsApp entra aqui. Cada avaliação aparece na página do

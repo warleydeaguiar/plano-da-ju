@@ -137,7 +137,7 @@ export default function EditorClient({
   }
 
   return (
-    <main style={{ flex: 1, overflowY: 'auto', padding: '2rem 2.5rem 4rem' }}>
+    <main className="dash-main" style={{ marginLeft: 234, flex: 1, overflowY: 'auto', padding: '2rem 2.5rem 4rem' }}>
       <Link href="/site" style={{ color: T.inkSoft, fontSize: '0.88rem' }}>← voltar</Link>
 
       <header style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1.5rem', flexWrap: 'wrap' }}>

@@ -76,7 +76,7 @@ export default function SiteClient({
   }
 
   return (
-    <main style={{ flex: 1, overflowY: 'auto', padding: '2rem 2.5rem' }}>
+    <main className="dash-main" style={{ marginLeft: 234, flex: 1, overflowY: 'auto', padding: '2rem 2.5rem' }}>
       <header style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1.5rem', flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: '1.7rem', fontWeight: 800, color: T.ink }}>Site</h1>

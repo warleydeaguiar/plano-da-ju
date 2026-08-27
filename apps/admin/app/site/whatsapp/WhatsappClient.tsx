@@ -69,7 +69,7 @@ export default function WhatsappClient({ cliques }: { cliques: Clique[] }) {
   }, [doPeriodo])
 
   return (
-    <main style={{ flex: 1, overflowY: 'auto', padding: '2rem 2.5rem 4rem' }}>
+    <main className="dash-main" style={{ marginLeft: 234, flex: 1, overflowY: 'auto', padding: '2rem 2.5rem 4rem' }}>
       <h1 style={{ fontSize: '1.7rem', fontWeight: 800, color: T.ink }}>Cliques no WhatsApp</h1>
       <p style={{ color: T.inkSoft, marginTop: '0.35rem', maxWidth: '56rem' }}>
         Toda vez que alguém clica num link que leva à sua conversa — o botão do produto ou os

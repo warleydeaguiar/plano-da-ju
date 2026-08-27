@@ -52,7 +52,7 @@ export default function FaqClient({ itens }: { itens: Item[] }) {
   }
 
   return (
-    <main style={{ flex: 1, overflowY: 'auto', padding: '2rem 2.5rem 4rem' }}>
+    <main className="dash-main" style={{ marginLeft: 234, flex: 1, overflowY: 'auto', padding: '2rem 2.5rem 4rem' }}>
       <h1 style={{ fontSize: '1.7rem', fontWeight: 800, color: T.ink }}>FAQ do site</h1>
       <p style={{ color: T.inkSoft, marginTop: '0.35rem', maxWidth: '54rem' }}>
         As perguntas foram escritas a partir do texto de cada artigo e passaram por duas revisões
