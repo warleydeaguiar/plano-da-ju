@@ -83,7 +83,9 @@ export default function Analytics() {
       // seria cancelado pela saída da página e o clique não seria contado.
       try {
         const corpo = JSON.stringify({ path: location.pathname, produto, rotulo });
-        navigator.sendBeacon?.('/api/clique-whatsapp', new Blob([corpo], { type: 'application/json' }));
+        // A barra final é obrigatória: `trailingSlash: true` vale também para
+        // as rotas de API, e sem ela o beacon bate num 308 antes de chegar.
+        navigator.sendBeacon?.('/api/clique-whatsapp/', new Blob([corpo], { type: 'application/json' }));
       } catch { /* medir nunca atrapalha o clique */ }
     }
 
