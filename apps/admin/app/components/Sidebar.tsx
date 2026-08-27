@@ -53,6 +53,13 @@ const NAV: NavItem[] = [
       { label: 'Conexões Evolution', href: '/grupos/conexao' },
     ],
   },
+  {
+    icon: SbProdutos, label: 'Site (blog)', href: '/site',
+    children: [
+      { label: 'Conteúdo', href: '/site' },
+      { label: 'Perguntas frequentes', href: '/site/faq' },
+    ],
+  },
   { icon: SbFollowup, label: 'Followup', href: '/followup' },
   { icon: SbAnuncios, label: 'Anúncios', href: '/anuncios' },
   { icon: SbAnalytics, label: 'Google Analytics', href: '/analytics' },
