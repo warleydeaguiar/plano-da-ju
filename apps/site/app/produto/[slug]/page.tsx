@@ -5,6 +5,7 @@ import Avaliacoes from '../../components/Avaliacoes';
 import { porPath, todosOsPaths, dimensaoDaImagem, avaliacoesDoProduto } from '@/lib/conteudo';
 import { metaDoConteudo, schemaDoProduto } from '@/lib/seo';
 import { linkDoProduto } from '@/lib/whatsapp';
+import IconeWhatsapp from '../../components/IconeWhatsapp';
 
 export const revalidate = 3600; // literal: o Next analisa este export estaticamente
 export const dynamicParams = true;
@@ -90,12 +91,13 @@ export default async function PaginaProduto({ params }: Props) {
               rel="noopener noreferrer"
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem',
-                marginTop: '1.5rem', background: '#25D366', color: '#0b3d20', fontWeight: 800,
-                padding: '1rem 1.5rem', borderRadius: 999, fontSize: '1.05rem', lineHeight: 1.2,
+                marginTop: '1.5rem', background: '#25D366', color: '#0a2e17', fontWeight: 800,
+                padding: '1rem 1.35rem', borderRadius: 999, fontSize: '1.02rem', lineHeight: 1.25,
+                textAlign: 'center',
               }}
             >
-              <span aria-hidden style={{ fontSize: '1.2rem' }}>💬</span>
-              Falar com a Juliane e comprar
+              <IconeWhatsapp />
+              Pegar link com desconto adicional
             </a>
 
             <p style={{ marginTop: '0.85rem', fontSize: '0.85rem', color: 'var(--tinta-suave)', textAlign: 'center', lineHeight: 1.5 }}>
