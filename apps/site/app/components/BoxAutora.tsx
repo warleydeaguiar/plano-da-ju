@@ -9,7 +9,17 @@ export const REDES = [
 ];
 
 /** Foto da autora em <picture>, no tamanho pedido. */
-export function FotoAutora({ tamanho = 56, quadrada = false }: { tamanho?: number; quadrada?: boolean }) {
+export function FotoAutora({
+  tamanho = 56,
+  quadrada = false,
+  prioritaria = false,
+}: {
+  tamanho?: number;
+  quadrada?: boolean;
+  /** No link da bio a foto é o maior elemento da primeira tela: nela o lazy
+   *  atrasaria justamente o que define o LCP. */
+  prioritaria?: boolean;
+}) {
   return (
     <picture>
       <source srcSet={`${FOTO}.avif`} type="image/avif" />
@@ -20,7 +30,8 @@ export function FotoAutora({ tamanho = 56, quadrada = false }: { tamanho?: numbe
         alt="Juliane Cost, tricologista"
         width={tamanho}
         height={tamanho}
-        loading="lazy"
+        loading={prioritaria ? 'eager' : 'lazy'}
+        fetchPriority={prioritaria ? 'high' : undefined}
         decoding="async"
         style={{
           width: tamanho, height: tamanho, objectFit: 'cover', display: 'block', flexShrink: 0,
