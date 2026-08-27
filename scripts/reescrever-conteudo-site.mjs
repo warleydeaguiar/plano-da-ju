@@ -61,15 +61,18 @@ function atributo(tag, nome) {
  * <picture> com AVIF primeiro e WebP como fallback. O <img> final aponta para
  * o WebP: navegador antigo que ignora <source> ainda mostra a imagem.
  */
-function montarPicture(avifUrl, tagOriginal) {
+function montarPicture(avifUrl, tagOriginal, tamanho) {
   const webpUrl = avifUrl.replace(/\.avif$/, '.webp');
   const alt = escapar(atributo(tagOriginal, 'alt') || '');
-  const largura = atributo(tagOriginal, 'width');
-  const altura = atributo(tagOriginal, 'height');
+  // Prioriza a dimensão real do arquivo (vinda do banco) sobre a que estava no
+  // HTML do WordPress: o `width` escrito à mão no editor às vezes era o tamanho
+  // exibido, não o do arquivo, e aí a proporção reservada sai errada.
+  const largura = tamanho?.width || atributo(tagOriginal, 'width');
+  const altura = tamanho?.height || atributo(tagOriginal, 'height');
   const classe = atributo(tagOriginal, 'class');
   const dim = [
-    largura && /^\d+$/.test(largura) ? ` width="${largura}"` : '',
-    altura && /^\d+$/.test(altura) ? ` height="${altura}"` : '',
+    largura && /^\d+$/.test(String(largura)) ? ` width="${largura}"` : '',
+    altura && /^\d+$/.test(String(altura)) ? ` height="${altura}"` : '',
   ].join('');
   const cls = classe ? ` class="${escapar(classe)}"` : '';
   return `<picture>` +
@@ -117,7 +120,7 @@ function ancorarHeadings(html) {
   );
 }
 
-function limpar(html, mapa, contador) {
+function limpar(html, mapa, dimensoes, contador) {
   let saida = html || '';
 
   // O lazy-load do WP duplica cada imagem dentro de <noscript>. Manter os dois
@@ -134,11 +137,20 @@ function limpar(html, mapa, contador) {
     const src = atributo(tag, 'src') || atributo(tag, 'data-src') || atributo(tag, 'data-lazy-src');
     if (!src) { contador.semSrc++; return tag; }
     const abs = src.startsWith('//') ? `https:${src}` : src;
-    const nova = mapa.get(abs) || mapa.get(abs.replace(/^http:/, 'https:')) || mapa.get(abs.split('?')[0]);
+    const chave = mapa.has(abs) ? abs : mapa.has(abs.replace(/^http:/, 'https:')) ? abs.replace(/^http:/, 'https:') : abs.split('?')[0];
+    const nova = mapa.get(chave);
     if (!nova) { contador.naoAchou.add(src); return tag; }
     contador.trocadas++;
-    return montarPicture(nova, tag);
+    const tamanho = dimensoes.get(chave);
+    if (!tamanho) contador.semDimensao++;
+    return montarPicture(nova, tag, tamanho);
   });
+
+  // O corpo vindo do WordPress às vezes traz um <h1> próprio, e a página passa
+  // a ter dois: o do template e o do conteúdo. Dois H1 confundem o Google sobre
+  // qual é o assunto da página. Rebaixar para H2 preserva a hierarquia e ainda
+  // ganha âncora no índice.
+  saida = saida.replace(/<(\/?)h1\b/gi, '<$1h2');
 
   saida = ancorarHeadings(saida);
 
@@ -148,20 +160,24 @@ function limpar(html, mapa, contador) {
 (async () => {
   console.log(`\nReescrevendo conteúdo${DRY ? '  [DRY-RUN]' : ''}\n`);
 
-  const midia = await supa('site_media?public_url=not.is.null&select=original_url,public_url&limit=5000');
+  const midia = await supa('site_media?public_url=not.is.null&select=original_url,public_url,width,height&limit=5000');
   const mapa = new Map(midia.map((m) => [m.original_url, m.public_url]));
+  const dimensoes = new Map(
+    midia.filter((m) => m.width && m.height).map((m) => [m.original_url, { width: m.width, height: m.height }]),
+  );
   console.log(`  imagens disponíveis no storage: ${mapa.size}`);
+  console.log(`  com dimensão conhecida: ${dimensoes.size}`);
 
   const conteudo = await supa(
     'site_content?select=id,kind,path,content_html,og_image,featured_image_url&limit=1000',
   );
   console.log(`  conteúdos a processar: ${conteudo.length}\n`);
 
-  const contador = { trocadas: 0, semSrc: 0, naoAchou: new Set() };
+  const contador = { trocadas: 0, semSrc: 0, semDimensao: 0, naoAchou: new Set() };
   let capasTrocadas = 0;
   const atualizacoes = [];
   for (const c of conteudo) {
-    const limpo = limpar(c.content_html, mapa, contador);
+    const limpo = limpar(c.content_html, mapa, dimensoes, contador);
 
     // og:image e imagem de destaque não estão no corpo do texto, mas são o que
     // aparece no compartilhamento, no Article.image do schema e na miniatura
@@ -191,6 +207,7 @@ function limpar(html, mapa, contador) {
 
   console.log(`  <img> trocadas por <picture>: ${contador.trocadas}`);
   console.log(`  <img> sem src reconhecível:   ${contador.semSrc}`);
+  console.log(`  <img> sem dimensão (risco CLS): ${contador.semDimensao}`);
   console.log(`  URLs sem correspondência:     ${contador.naoAchou.size}`);
   for (const u of [...contador.naoAchou].slice(0, 12)) console.log(`      ${u.slice(0, 96)}`);
   if (contador.naoAchou.size > 12) console.log(`      ... e mais ${contador.naoAchou.size - 12}`);

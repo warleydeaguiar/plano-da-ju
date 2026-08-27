@@ -1,8 +1,18 @@
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import { Grade } from './components/CardPost';
 import { listar } from '@/lib/conteudo';
+import { SITE, BLOQUEAR_INDEXACAO } from '@/lib/seo';
 
 export const revalidate = 3600; // literal: o Next analisa este export estaticamente
+
+// A home herdava só o metadata do layout, que não tem canonical. Sem ele o
+// Google escolhe sozinho qual endereço da home é o oficial — e com apex, www e
+// variações com parâmetro, ele erra.
+export const metadata: Metadata = {
+  alternates: { canonical: `${SITE}/` },
+  robots: BLOQUEAR_INDEXACAO ? { index: false, follow: false } : { index: true, follow: true },
+};
 
 export default async function Home() {
   const [posts, produtos] = await Promise.all([
