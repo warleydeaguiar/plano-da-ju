@@ -59,7 +59,19 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   images: { formats: ['image/avif', 'image/webp'] },
   async redirects() {
-    return redirectsDoBanco();
+    return [
+      // Subdomínio de um funil antigo. O DNS ainda aponta pra Vercel e o
+      // Google continua rastreando — sem dono, dava erro de conexão. Vai pro
+      // artigo do Fashion Gold, que é o assunto que o nome promete e a página
+      // de maior tráfego do site.
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'progressivafashiongold.julianecost.com' }],
+        destination: 'https://julianecost.com/progressiva-fashion-gold-e-boa-atualizado/',
+        permanent: true,
+      },
+      ...(await redirectsDoBanco()),
+    ];
   },
 };
 

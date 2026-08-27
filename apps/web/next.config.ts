@@ -16,6 +16,15 @@ const nextConfig: NextConfig = {
         destination: 'https://planodaju.julianecost.com/quiz/fashion-gold',
         permanent: true,
       },
+      // plano.julianecost.com é um subdomínio de funil antigo. O Google ainda
+      // o rastreia e recebia 404 — manda pra home do funil, que é o destino
+      // que a pessoa procurava.
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'plano.julianecost.com' }],
+        destination: 'https://planodaju.julianecost.com/',
+        permanent: true,
+      },
     ];
   },
 };

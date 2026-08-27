@@ -97,8 +97,13 @@ export async function listar(
   const ordem = por === 'trafego'
     ? 'gsc_clicks.desc,gsc_impressions.desc'
     : 'published_at.desc.nullslast';
+  // Publicado e indexável, igual ao que `contar()` mede: se as duas consultas
+  // divergirem, a última página do blog fica vazia ou some do fim da lista.
+  // A view de tráfego também expõe `status` e `noindex`, então a regra é a
+  // mesma nos dois caminhos.
   return consulta<Conteudo>(
-    `${tabela}?kind=eq.${kind}&select=${LISTA}&order=${ordem}&limit=${limite}&offset=${offset}`,
+    `${tabela}?kind=eq.${kind}&status=eq.publish&noindex=is.false` +
+      `&select=${LISTA}&order=${ordem}&limit=${limite}&offset=${offset}`,
   );
 }
 
@@ -134,11 +139,95 @@ export async function postsDaCategoria(categoriaId: number, limite = 50): Promis
 }
 
 /** Sugestões no fim do post: mais lidos que não sejam o atual. */
-export async function relacionados(pathAtual: string, limite = 6): Promise<Conteudo[]> {
-  const itens = await consulta<Conteudo>(
-    `site_content?kind=eq.post&select=${LISTA}&order=word_count.desc&limit=${limite + 1}`,
+/**
+ * Palavras que aparecem em quase todo título do site e por isso não dizem nada
+ * sobre o assunto: se "cabelo" pesasse, todo artigo seria parecido com todo
+ * artigo. Ficam de fora do cálculo de afinidade.
+ */
+const VAZIAS = new Set([
+  'a','o','as','os','de','da','do','das','dos','e','em','no','na','nos','nas','um','uma','uns','umas',
+  'para','por','com','sem','que','qual','quais','como','onde','quando','se','ao','aos','à','às','ou',
+  'top','melhores','melhor','guia','completo','veja','saiba','tudo','sobre','atualizado','vale','pena',
+  'e-boa','boa','bom','dicas','passo','2024','2025','2026','cabelo','cabelos','fios',
+]);
+
+const palavrasDoTitulo = (titulo: string): string[] =>
+  titulo
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .split(/[^a-z0-9]+/)
+    .filter((p) => p.length > 2 && !VAZIAS.has(p));
+
+/** Só os posts que podem receber visita do Google, com o título para comparar. */
+async function postsParaRelacionar(): Promise<Conteudo[]> {
+  return consulta<Conteudo>(
+    `site_content?kind=eq.post&status=eq.publish&noindex=is.false&select=${LISTA}&limit=2000`,
   );
-  return itens.filter((i) => i.path !== pathAtual).slice(0, limite);
+}
+
+/**
+ * Posts relacionados a este, por afinidade de assunto no título.
+ *
+ * A versão anterior ordenava por `word_count` sem nenhum filtro, então os 185
+ * artigos exibiam exatamente os MESMOS 6 posts. Além de inútil para a leitora,
+ * isso concentrava todo o link interno do site em 6 páginas — o Search Console
+ * mostrava 71 páginas sem nenhum link interno vindo de outro conteúdo, e o
+ * Google respondia com 364 URLs "rastreadas, mas não indexadas".
+ *
+ * O peso de cada palavra é inversamente proporcional a quantos títulos a usam
+ * (ideia do IDF): "progressiva" aparece em dezenas de artigos e vale pouco;
+ * "melasma" aparece em um punhado e vale muito. Assim o bloco puxa o vizinho
+ * temático de verdade, e o link interno se espalha por todo o site.
+ */
+export async function relacionados(pathAtual: string, limite = 6): Promise<Conteudo[]> {
+  const todos = await postsParaRelacionar();
+  const atual = todos.find((i) => i.path === pathAtual);
+  const candidatos = todos.filter((i) => i.path !== pathAtual);
+  // Sem o post atual na lista (noindex, por exemplo) não há como comparar:
+  // devolve os mais recentes em vez de devolver nada.
+  if (!atual) return candidatos.slice(0, limite);
+
+  const emQuantosTitulos = new Map<string, number>();
+  for (const i of todos) {
+    for (const p of new Set(palavrasDoTitulo(i.title))) {
+      emQuantosTitulos.set(p, (emQuantosTitulos.get(p) ?? 0) + 1);
+    }
+  }
+  const peso = (p: string) => Math.log(todos.length / (emQuantosTitulos.get(p) ?? 1));
+
+  const minhas = new Set(palavrasDoTitulo(atual.title));
+  const pontuado = candidatos.map((i) => {
+    const dele = new Set(palavrasDoTitulo(i.title));
+    let nota = 0;
+    for (const p of dele) if (minhas.has(p)) nota += peso(p);
+    return { item: i, nota };
+  });
+
+  pontuado.sort(
+    (a, b) =>
+      b.nota - a.nota ||
+      // Empate resolvido pelo texto mais completo, e depois pelo caminho, para
+      // que o resultado seja o mesmo em todo build (páginas estáticas).
+      (b.item.word_count ?? 0) - (a.item.word_count ?? 0) ||
+      a.item.path.localeCompare(b.item.path),
+  );
+  return pontuado.slice(0, limite).map((x) => x.item);
+}
+
+/** Quantos itens publicados e indexáveis existem deste tipo (para paginar). */
+export async function contar(kind: Tipo): Promise<number> {
+  if (!BASE || !CHAVE) return 0;
+  const r = await fetch(
+    `${BASE}/rest/v1/site_content?kind=eq.${kind}&status=eq.publish&noindex=is.false&select=id`,
+    {
+      headers: { apikey: CHAVE, Authorization: `Bearer ${CHAVE}`, Prefer: 'count=exact', Range: '0-0' },
+      next: { revalidate: REVALIDA },
+    },
+  );
+  // O total vem no cabeçalho `content-range`, no formato "0-0/185".
+  const total = Number(r.headers.get('content-range')?.split('/')[1]);
+  return Number.isFinite(total) ? total : 0;
 }
 
 export async function tudoParaSitemap(): Promise<
