@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next';
-import { tudoParaSitemap, contar } from '@/lib/conteudo';
+import { tudoParaSitemap, contar, dataDeAtualizacao } from '@/lib/conteudo';
 import { POR_PAGINA, caminhoDaPagina } from './blog/ListaBlog';
 import { SITE } from '@/lib/seo';
 
@@ -31,7 +31,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     .filter((i) => !['/', '/blog/', '/loja/'].includes(i.path))
     .map((i) => ({
       url: `${SITE}${i.path}`,
-      lastModified: i.modified_at ? new Date(i.modified_at) : undefined,
+      // A revisão manual manda no lastmod: é o sinal que diz ao Google que
+      // vale a pena reler a página.
+      lastModified: (() => { const d = dataDeAtualizacao(i); return d ? new Date(d) : undefined; })(),
       changeFrequency: i.kind === 'post' ? ('weekly' as const) : ('monthly' as const),
       priority: PESO[i.kind] ?? 0.5,
     }));

@@ -8,7 +8,7 @@ import BoxAutora from '../components/BoxAutora';
 import CabecalhoPost from '../components/CabecalhoPost';
 import { ChamadaPlano, ChamadaGrupos } from '../components/Chamadas';
 import { Grade } from '../components/CardPost';
-import { porPath, todosOsPaths, relacionados, faqDoPost } from '@/lib/conteudo';
+import { porPath, todosOsPaths, relacionados, faqDoPost, dataDeAtualizacao } from '@/lib/conteudo';
 import { metaDoConteudo, schemaDoPost } from '@/lib/seo';
 import { extrairIndice, tempoDeLeitura, dividirPorSecoes } from '@/lib/artigo';
 
@@ -85,7 +85,7 @@ export default async function Pagina({ params }: Props) {
         {ehPost && (
           <CabecalhoPost
             publicado={dataBr(item.published_at)}
-            atualizado={dataBr(item.modified_at)}
+            atualizado={dataBr(dataDeAtualizacao(item))}
             minutos={tempoDeLeitura(item.word_count)}
             capaAvif={item.og_image || item.featured_image_url}
             titulo={item.title}

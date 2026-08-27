@@ -13,7 +13,7 @@ export default async function EditarPage({ params }: { params: Promise<{ id: str
   /* eslint-disable @typescript-eslint/no-explicit-any */
   const [conteudo, faq, baseline] = await Promise.all([
     (supabase as any).from('site_content')
-      .select('id,kind,slug,path,title,content_clean,excerpt_html,seo_title,seo_description,og_image,status,noindex,published_at,modified_at,word_count,affiliate_url,price_cents,price_original_cents')
+      .select('id,kind,slug,path,title,content_clean,excerpt_html,seo_title,seo_description,og_image,status,noindex,published_at,modified_at,revisado_em,word_count,affiliate_url,price_cents,price_original_cents')
       .eq('id', id).maybeSingle(),
     (supabase as any).from('site_faq')
       .select('id,pergunta,resposta,revisao_status,revisao_motivo,ordem')

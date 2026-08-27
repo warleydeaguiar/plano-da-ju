@@ -18,6 +18,7 @@ interface Item {
   noindex: boolean
   published_at: string | null
   modified_at: string | null
+  revisado_em: string | null
   word_count: number | null
   affiliate_url: string | null
   price_cents: number | null
@@ -68,6 +69,7 @@ export default function EditorClient({
   const [seoDesc, setSeoDesc] = useState(item.seo_description ?? '')
   const [conteudo, setConteudo] = useState(item.content_clean ?? '')
   const [status, setStatus] = useState(item.status)
+  const [revisadoEm, setRevisadoEm] = useState<string | null>(item.revisado_em)
   const [salvando, setSalvando] = useState(false)
   const [aviso, setAviso] = useState('')
 
@@ -77,6 +79,29 @@ export default function EditorClient({
     seoDesc !== (item.seo_description ?? '') ||
     conteudo !== (item.content_clean ?? '') ||
     status !== item.status
+
+  async function marcarRevisado() {
+    setSalvando(true)
+    setAviso('')
+    try {
+      const r = await fetch('/api/site/conteudo', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: item.id, marcar_revisado: !revisadoEm }),
+      })
+      const d = await r.json()
+      if (!r.ok) { setAviso(d.error || 'Não consegui marcar.'); return }
+      const agora = revisadoEm ? null : new Date().toISOString()
+      setRevisadoEm(agora)
+      setAviso(
+        agora
+          ? 'Marcado como revisado hoje. O Google vê essa data como a atualização do conteúdo.'
+          : 'Marca de revisão removida.',
+      )
+    } finally {
+      setSalvando(false)
+    }
+  }
 
   async function salvar(novoStatus?: string) {
     setSalvando(true)
@@ -128,6 +153,29 @@ export default function EditorClient({
         </div>
 
         <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+          {/* Reler um artigo e confirmar que continua valendo É uma atualização
+              de conteúdo, mesmo sem trocar uma vírgula. Este botão conta isso
+              ao Google sem exigir uma edição de fachada. */}
+          <button
+            onClick={marcarRevisado}
+            disabled={salvando}
+            title={
+              revisadoEm
+                ? `Revisado em ${new Date(revisadoEm).toLocaleDateString('pt-BR')}. Clique para desfazer.`
+                : 'Marca a data de hoje como a revisão deste conteúdo'
+            }
+            style={{
+              background: revisadoEm ? T.pinkSoft : T.surface,
+              color: revisadoEm ? T.pinkDeep : T.inkSoft,
+              fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem',
+              border: `1px solid ${revisadoEm ? T.pink : T.champagne}`,
+              padding: '0.7rem 1.1rem', borderRadius: 10,
+            }}
+          >
+            {revisadoEm
+              ? `✓ Revisado ${new Date(revisadoEm).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`
+              : 'Marcar como revisado'}
+          </button>
           <button
             onClick={() => salvar()}
             disabled={salvando || !sujo}

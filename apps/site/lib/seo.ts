@@ -1,3 +1,4 @@
+import { dataDeAtualizacao } from './conteudo';
 import type { Metadata } from 'next';
 import type { Conteudo, Categoria } from './conteudo';
 
@@ -40,7 +41,7 @@ export function metaDoConteudo(c: Conteudo): Metadata {
       type: c.kind === 'post' ? 'article' : 'website',
       images: imagem ? [imagem] : undefined,
       ...(c.kind === 'post' && c.published_at
-        ? { publishedTime: c.published_at, modifiedTime: c.modified_at || c.published_at }
+        ? { publishedTime: c.published_at, modifiedTime: dataDeAtualizacao(c) || undefined }
         : {}),
     },
     twitter: {
@@ -139,7 +140,7 @@ export function schemaDoPost(c: Conteudo) {
         headline: (c.seo_title || c.title).slice(0, 110),
         description: c.seo_description || undefined,
         datePublished: c.published_at || undefined,
-        dateModified: c.modified_at || c.published_at || undefined,
+        dateModified: dataDeAtualizacao(c) || undefined,
         // Referência por @id em vez de objeto repetido: o Google resolve o
         // grafo e assim autora e publicadora são a mesma entidade em todas as
         // páginas, o que é o ponto de um sinal de autoridade.
@@ -158,7 +159,7 @@ export function schemaDoPost(c: Conteudo) {
         name: c.seo_title || c.title,
         description: c.seo_description || undefined,
         datePublished: c.published_at || undefined,
-        dateModified: c.modified_at || c.published_at || undefined,
+        dateModified: dataDeAtualizacao(c) || undefined,
         isPartOf: { '@id': `${SITE}/#website` },
         inLanguage: 'pt-BR',
         breadcrumb: { '@id': `${abs(c.path)}#trilha` },

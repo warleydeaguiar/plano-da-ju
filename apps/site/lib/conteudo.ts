@@ -15,6 +15,22 @@ export const REVALIDA = 3600;
 
 export type Tipo = 'post' | 'page' | 'product';
 
+/**
+ * Data que o site publica como "atualizado em".
+ *
+ * A revisão manual vem primeiro: quando a Juliane relê um artigo e confirma
+ * que continua valendo, isso é informação melhor do que o carimbo que o
+ * WordPress deixou. `modified_at` fica de reserva, e `published_at` por
+ * último — nunca devolve vazio numa página que existe.
+ */
+export function dataDeAtualizacao(c: {
+  revisado_em?: string | null;
+  modified_at?: string | null;
+  published_at?: string | null;
+}): string | null {
+  return c.revisado_em || c.modified_at || c.published_at || null;
+}
+
 export interface Conteudo {
   id: number;
   kind: Tipo;
@@ -26,6 +42,8 @@ export interface Conteudo {
   featured_image_url: string | null;
   published_at: string | null;
   modified_at: string | null;
+  /** Revisão manual da Juliane. Tem precedência sobre `modified_at`. */
+  revisado_em: string | null;
   author_name: string | null;
   word_count: number | null;
   seo_title: string | null;
@@ -66,11 +84,11 @@ async function consulta<T>(caminho: string, revalidate = REVALIDA): Promise<T[]>
 
 const CAMPOS =
   'id,kind,slug,path,title,excerpt_html,content_clean,featured_image_url,published_at,' +
-  'modified_at,author_name,word_count,seo_title,seo_description,canonical,og_image,noindex,' +
+  'modified_at,revisado_em,author_name,word_count,seo_title,seo_description,canonical,og_image,noindex,' +
   'affiliate_url,price_cents,price_original_cents,currency,rating_value,rating_count,brand';
 
 const LISTA =
-  'id,kind,slug,path,title,excerpt_html,featured_image_url,published_at,modified_at,' +
+  'id,kind,slug,path,title,excerpt_html,featured_image_url,published_at,modified_at,revisado_em,' +
   'word_count,seo_description,og_image,price_cents,rating_value';
 
 export async function porPath(path: string): Promise<Conteudo | null> {
@@ -231,15 +249,15 @@ export async function contar(kind: Tipo): Promise<number> {
 }
 
 export async function tudoParaSitemap(): Promise<
-  { path: string; modified_at: string | null; kind: string }[]
+  { path: string; modified_at: string | null; revisado_em: string | null; kind: string }[]
 > {
   const [conteudo, cats] = await Promise.all([
-    consulta<{ path: string; modified_at: string | null; kind: string }>(
-      'site_content?noindex=is.false&select=path,modified_at,kind&limit=2000',
+    consulta<{ path: string; modified_at: string | null; revisado_em: string | null; kind: string }>(
+      'site_content?noindex=is.false&select=path,modified_at,revisado_em,kind&limit=2000',
     ),
     consulta<{ path: string; kind: string }>('site_categories?select=path,kind&limit=200'),
   ]);
-  return [...conteudo, ...cats.map((c) => ({ ...c, modified_at: null }))];
+  return [...conteudo, ...cats.map((c) => ({ ...c, modified_at: null, revisado_em: null }))];
 }
 
 export interface Redirect {

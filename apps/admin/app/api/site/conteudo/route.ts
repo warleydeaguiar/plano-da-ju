@@ -25,6 +25,13 @@ export async function PATCH(req: NextRequest) {
   for (const k of EDITAVEIS) {
     if (k in body) campos[k] = body[k];
   }
+
+  // "Revisei este conteúdo hoje" é um carimbo, não um campo de texto: quem
+  // decide o valor é o servidor. O site publica isto como dateModified e como
+  // lastmod no sitemap, com precedência sobre a data que veio do WordPress —
+  // que o importador reescreve a cada sincronização.
+  if (body.marcar_revisado === true) campos.revisado_em = new Date().toISOString();
+  if (body.marcar_revisado === false) campos.revisado_em = null;
   if (!Object.keys(campos).length) {
     return NextResponse.json({ error: 'Nada para salvar.' }, { status: 400 });
   }
