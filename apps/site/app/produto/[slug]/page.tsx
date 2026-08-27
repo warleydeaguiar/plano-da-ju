@@ -4,6 +4,7 @@ import JsonLd from '../../components/JsonLd';
 import Avaliacoes from '../../components/Avaliacoes';
 import { porPath, todosOsPaths, dimensaoDaImagem, avaliacoesDoProduto } from '@/lib/conteudo';
 import { metaDoConteudo, schemaDoProduto } from '@/lib/seo';
+import { linkDoProduto } from '@/lib/whatsapp';
 
 export const revalidate = 3600; // literal: o Next analisa este export estaticamente
 export const dynamicParams = true;
@@ -79,23 +80,27 @@ export default async function PaginaProduto({ params }: Props) {
               </p>
             )}
 
-            {item.affiliate_url && (
-              <a
-                href={item.affiliate_url}
-                target="_blank"
-                rel="sponsored noopener noreferrer"
-                style={{
-                  display: 'block', textAlign: 'center', marginTop: '1.5rem',
-                  background: 'var(--rosa)', color: '#fff', fontWeight: 700,
-                  padding: '0.95rem 1.5rem', borderRadius: 999, fontSize: '1.02rem',
-                }}
-              >
-                Ver na loja oficial
-              </a>
-            )}
+            {/* A compra passa pelo WhatsApp da Juliane, não pelo link de
+                afiliado direto: ela atende, entende o cabelo da pessoa e manda
+                o link com desconto adicional. Num produto de química capilar
+                isso evita que a cliente compre o item errado para o fio dela. */}
+            <a
+              href={linkDoProduto(item.title)}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem',
+                marginTop: '1.5rem', background: '#25D366', color: '#0b3d20', fontWeight: 800,
+                padding: '1rem 1.5rem', borderRadius: 999, fontSize: '1.05rem', lineHeight: 1.2,
+              }}
+            >
+              <span aria-hidden style={{ fontSize: '1.2rem' }}>💬</span>
+              Falar com a Juliane e comprar
+            </a>
 
-            <p style={{ marginTop: '0.85rem', fontSize: '0.8rem', color: 'var(--tinta-suave)', textAlign: 'center' }}>
-              Você é levada ao site do parceiro para finalizar a compra.
+            <p style={{ marginTop: '0.85rem', fontSize: '0.85rem', color: 'var(--tinta-suave)', textAlign: 'center', lineHeight: 1.5 }}>
+              Ela te manda o link com <strong style={{ color: 'var(--tinta)' }}>desconto adicional</strong> e
+              tira suas dúvidas antes de você comprar.
             </p>
           </div>
         </div>

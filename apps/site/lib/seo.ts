@@ -232,7 +232,9 @@ export function schemaDoProduto(
                 price: (c.price_cents! / 100).toFixed(2),
                 priceCurrency: c.currency || 'BRL',
                 availability: 'https://schema.org/InStock',
-                url: c.affiliate_url || abs(c.path),
+                // A própria página, não o link de afiliado: é aqui que a
+                // jornada de compra começa agora (a conversa sai daqui).
+                url: abs(c.path),
               },
             }
           : {}),

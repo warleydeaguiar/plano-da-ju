@@ -82,6 +82,78 @@ function montarPicture(avifUrl, tagOriginal, tamanho) {
     `</picture>`;
 }
 
+const WHATSAPP_NUMERO = '5531999994001';
+
+/**
+ * Todo caminho que levava a Juliane por WhatsApp, e que hoje está quebrado.
+ *
+ * Os encurtadores foram conferidos um a um: `abrir.link`, `wa.link`,
+ * `curtlink.com` e `curt.link` TODOS redirecionam para os números
+ * `553171445597` e `5531971445597`, que ela não atende mais. `shre.ink` já
+ * devolve 404. São 104 páginas com pelo menos um desses links — ou seja, a
+ * maior parte das chamadas de compra do site estava morta.
+ */
+const ENCURTADORES = /https?:\/\/(?:abrir\.link|wa\.link|curtlink\.com|curt\.link|shre\.ink)\/[A-Za-z0-9_-]+/gi;
+const WHATSAPP_DIRETO = /https?:\/\/(?:api\.whatsapp\.com\/send\?[^"'\s<]*|wa\.me\/[^"'\s<]*)/gi;
+
+const semTagsCurto = (html) =>
+  String(html || '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+function linkWhats({ produto, artigo }) {
+  const mensagem = produto
+    ? `Oi, tudo bem? Estou interessada no produto ${produto}. Você poderia me enviar o link para comprar com desconto adicional?`
+    : artigo
+      ? `Oi, tudo bem? Vim pelo artigo "${artigo}" e queria o link para comprar com desconto adicional.`
+      : 'Oi, tudo bem? Vim pelo site e queria tirar uma dúvida sobre os produtos.';
+  return `https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(mensagem)}`;
+}
+
+/**
+ * Troca todo link de WhatsApp quebrado pelo número atual, com a mensagem já
+ * dizendo o que a pessoa estava vendo.
+ *
+ * Num post "Top 10 melhores progressivas" existem dez links diferentes, e cada
+ * um está logo abaixo do título da sua seção. Por isso o assunto vem do H2/H3
+ * mais próximo ACIMA do link, e não do título do artigo: assim quem clica no
+ * item 5 chega no WhatsApp dizendo "Escova Progressiva Bio Lizz", não "Top 10
+ * melhores progressivas". Em página de produto o assunto é o próprio produto.
+ */
+function corrigirWhatsapp(html, item, contador) {
+  const ehProduto = item?.kind === 'product';
+  let produtoDaSecao = ehProduto ? item.title : null;
+
+  return String(html || '').replace(
+    /<h[23]\b[^>]*>([\s\S]*?)<\/h[23]>|https?:\/\/[^"'\s<]+/gi,
+    (trecho, mioloHeading) => {
+      if (mioloHeading !== undefined) {
+        if (!ehProduto) {
+          // Só título NUMERADO vira nome de produto. Num "Top 10", os itens da
+          // lista são justamente as seções numeradas — e essa é a única pista
+          // confiável. Sem esse filtro, a mensagem saía com "Estou interessada
+          // no produto Conclusão Melhor shampoo para cabelo loiro".
+          const texto = semTagsCurto(mioloHeading);
+          const numerado = texto.match(/^\s*\d+\s*[.)-]\s*(.{4,80})$/);
+          produtoDaSecao = numerado ? numerado[1].trim() : null;
+        }
+        return trecho;
+      }
+      ENCURTADORES.lastIndex = 0;
+      WHATSAPP_DIRETO.lastIndex = 0;
+      if (!ENCURTADORES.test(trecho) && !WHATSAPP_DIRETO.test(trecho)) return trecho;
+      contador.whatsappCorrigidos++;
+      // Sem produto identificado, a mensagem cita o artigo: a Juliane continua
+      // sabendo o que a pessoa estava lendo, que é o que ela precisa para
+      // atender bem.
+      return linkWhats({ produto: produtoDaSecao, artigo: item?.title });
+    },
+  );
+}
+
 /** Slug estável para âncora de heading. */
 function slugAncora(texto, usados) {
   const base = texto
@@ -120,8 +192,10 @@ function ancorarHeadings(html) {
   );
 }
 
-function limpar(html, mapa, dimensoes, contador) {
+function limpar(html, mapa, dimensoes, contador, item) {
   let saida = html || '';
+
+  saida = corrigirWhatsapp(saida, item, contador);
 
   // O lazy-load do WP duplica cada imagem dentro de <noscript>. Manter os dois
   // faria a imagem contar duas vezes no HTML final.
@@ -169,15 +243,15 @@ function limpar(html, mapa, dimensoes, contador) {
   console.log(`  com dimensão conhecida: ${dimensoes.size}`);
 
   const conteudo = await supa(
-    'site_content?select=id,kind,path,content_html,og_image,featured_image_url&limit=1000',
+    'site_content?select=id,kind,path,title,content_html,og_image,featured_image_url&limit=1000',
   );
   console.log(`  conteúdos a processar: ${conteudo.length}\n`);
 
-  const contador = { trocadas: 0, semSrc: 0, semDimensao: 0, naoAchou: new Set() };
+  const contador = { trocadas: 0, semSrc: 0, semDimensao: 0, whatsappCorrigidos: 0, naoAchou: new Set() };
   let capasTrocadas = 0;
   const atualizacoes = [];
   for (const c of conteudo) {
-    const limpo = limpar(c.content_html, mapa, dimensoes, contador);
+    const limpo = limpar(c.content_html, mapa, dimensoes, contador, c);
 
     // og:image e imagem de destaque não estão no corpo do texto, mas são o que
     // aparece no compartilhamento, no Article.image do schema e na miniatura
@@ -208,6 +282,7 @@ function limpar(html, mapa, dimensoes, contador) {
   console.log(`  <img> trocadas por <picture>: ${contador.trocadas}`);
   console.log(`  <img> sem src reconhecível:   ${contador.semSrc}`);
   console.log(`  <img> sem dimensão (risco CLS): ${contador.semDimensao}`);
+  console.log(`  links de WhatsApp corrigidos:  ${contador.whatsappCorrigidos}`);
   console.log(`  URLs sem correspondência:     ${contador.naoAchou.size}`);
   for (const u of [...contador.naoAchou].slice(0, 12)) console.log(`      ${u.slice(0, 96)}`);
   if (contador.naoAchou.size > 12) console.log(`      ... e mais ${contador.naoAchou.size - 12}`);
