@@ -173,3 +173,21 @@ export async function faqDoPost(contentId: number): Promise<Pergunta[]> {
       '&select=pergunta,resposta&order=ordem',
   );
 }
+
+/**
+ * Dimensão real de uma imagem já migrada.
+ *
+ * Usada onde a proporção varia de item para item (foto de produto, por
+ * exemplo) e por isso não dá para fixar `aspect-ratio` no CSS sem distorcer.
+ * Sem largura e altura o navegador não reserva espaço e a página pula quando a
+ * imagem chega — que é o CLS medido pelo Google.
+ */
+export async function dimensaoDaImagem(
+  publicUrl: string | null,
+): Promise<{ width: number; height: number } | null> {
+  if (!publicUrl) return null;
+  const [m] = await consulta<{ width: number | null; height: number | null }>(
+    `site_media?public_url=eq.${encodeURIComponent(publicUrl)}&select=width,height&limit=1`,
+  );
+  return m?.width && m?.height ? { width: m.width, height: m.height } : null;
+}

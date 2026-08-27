@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import JsonLd from '../../components/JsonLd';
-import { porPath, todosOsPaths } from '@/lib/conteudo';
+import { porPath, todosOsPaths, dimensaoDaImagem } from '@/lib/conteudo';
 import { metaDoConteudo, schemaDoProduto } from '@/lib/seo';
 
 export const revalidate = 3600; // literal: o Next analisa este export estaticamente
@@ -30,8 +30,11 @@ export default async function PaginaProduto({ params }: Props) {
   if (!item) notFound();
 
   const imagemAvif = item.og_image || item.featured_image_url;
-  const imagemWebp = imagemAvif?.endsWith(".avif") ? imagemAvif.replace(/\.avif$/, ".webp") : (imagemAvif ?? undefined);
+  const imagemWebp = imagemAvif?.endsWith('.avif') ? imagemAvif.replace(/\.avif$/, '.webp') : (imagemAvif ?? undefined);
   const temPreco = typeof item.price_cents === 'number' && item.price_cents > 0;
+  // Foto de produto tem proporção variável, então `aspect-ratio` fixo
+  // distorceria. A dimensão real vem do banco.
+  const tamanho = await dimensaoDaImagem(imagemAvif);
 
   return (
     <>
@@ -45,10 +48,11 @@ export default async function PaginaProduto({ params }: Props) {
               <source srcSet={imagemWebp} type="image/webp" />
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={imagemWebp ?? ""}
+                src={imagemWebp ?? ''}
                 alt={item.title}
                 decoding="async"
-                style={{ width: '100%', borderRadius: 14, border: '1px solid var(--borda)', display: 'block' }}
+                {...(tamanho ? { width: tamanho.width, height: tamanho.height } : {})}
+                style={{ width: '100%', height: 'auto', borderRadius: 14, border: '1px solid var(--borda)', display: 'block' }}
               />
             </picture>
           )}
