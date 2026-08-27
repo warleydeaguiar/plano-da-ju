@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import './globals.css';
 import JsonLd from './components/JsonLd';
+import Analytics from './components/Analytics';
 import { SITE, NOME_SITE, BLOQUEAR_INDEXACAO, schemaDoSite } from '@/lib/seo';
 
 export const metadata: Metadata = {
@@ -27,6 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="pt-BR">
       <body>
         <JsonLd dados={schemaDoSite()} />
+        <Analytics />
 
         <header
           style={{
