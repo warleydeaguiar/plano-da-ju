@@ -8,12 +8,16 @@ import Link from 'next/link';
 export default function Trilha({ itens }: { itens: { nome: string; href?: string }[] }) {
   return (
     <nav aria-label="Você está aqui" style={{ fontSize: '0.85rem', color: 'var(--tinta-suave)' }}>
-      <ol style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', listStyle: 'none' }}>
+      <ol style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.45rem', listStyle: 'none', alignItems: 'center' }}>
         {itens.map((i, n) => (
-          <li key={i.nome} style={{ display: 'flex', gap: '0.4rem' }}>
-            {n > 0 && <span aria-hidden>›</span>}
+          // O último item é o título do artigo, que no celular quebra em duas
+          // linhas e deixa o "›" órfão — sem contar que a leitora já está
+          // olhando o mesmo título logo abaixo, em corpo 32. Fica só no
+          // desktop; o schema BreadcrumbList continua completo nos dois.
+          <li key={i.nome} className={i.href ? undefined : 'trilha-atual'} style={{ display: 'flex', gap: '0.45rem', alignItems: 'center' }}>
+            {n > 0 && <span aria-hidden style={{ opacity: 0.5 }}>›</span>}
             {i.href ? (
-              <Link href={i.href} style={{ color: 'var(--tinta-suave)' }}>{i.nome}</Link>
+              <Link href={i.href} style={{ color: 'var(--tinta-suave)', padding: '0.35rem 0' }}>{i.nome}</Link>
             ) : (
               <span style={{ color: 'var(--tinta)' }}>{i.nome}</span>
             )}

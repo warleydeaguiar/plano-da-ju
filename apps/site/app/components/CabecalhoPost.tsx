@@ -42,7 +42,10 @@ export default function CabecalhoPost({
           </div>
         </div>
 
-        <div style={{ fontSize: '0.85rem', color: 'var(--tinta-suave)', textAlign: 'right', lineHeight: 1.7 }}>
+        {/* No celular esta coluna cai embaixo do autor; alinhada à direita ela
+            ficava solta no meio da tela. A classe deixa o CSS resolver por
+            viewport em vez de fixar `right` aqui. */}
+        <div className="post-meta" style={{ fontSize: '0.85rem', color: 'var(--tinta-suave)', lineHeight: 1.7 }}>
           {publicado && <div>{publicado}</div>}
           {atualizado && atualizado !== publicado && <div>Atualizado em {atualizado}</div>}
           <div>{minutos} min de leitura</div>
