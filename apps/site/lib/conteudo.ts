@@ -80,13 +80,25 @@ export async function porPath(path: string): Promise<Conteudo | null> {
   return item ?? null;
 }
 
+/**
+ * Lista conteúdo.
+ *
+ * `por: 'trafego'` ordena pelo que a leitora realmente procura, usando os
+ * cliques de 16 meses do Search Console. É o padrão certo para vitrine de
+ * produto: por data, a home destacava a geleia nutritiva (0 cliques) e
+ * escondia o óleo de mirra (925). Para blog, `'data'` continua fazendo
+ * sentido — ali a novidade é o valor.
+ */
 export async function listar(
   kind: Tipo,
-  { limite = 24, offset = 0 }: { limite?: number; offset?: number } = {},
+  { limite = 24, offset = 0, por = 'data' }: { limite?: number; offset?: number; por?: 'data' | 'trafego' } = {},
 ): Promise<Conteudo[]> {
+  const tabela = por === 'trafego' ? 'site_conteudo_trafego' : 'site_content';
+  const ordem = por === 'trafego'
+    ? 'gsc_clicks.desc,gsc_impressions.desc'
+    : 'published_at.desc.nullslast';
   return consulta<Conteudo>(
-    `site_content?kind=eq.${kind}&select=${LISTA}` +
-      `&order=published_at.desc.nullslast&limit=${limite}&offset=${offset}`,
+    `${tabela}?kind=eq.${kind}&select=${LISTA}&order=${ordem}&limit=${limite}&offset=${offset}`,
   );
 }
 

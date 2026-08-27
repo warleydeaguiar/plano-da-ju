@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 };
 
 export default async function Loja() {
-  const produtos = await listar('product', { limite: 100 });
+  const produtos = await listar('product', { limite: 100, por: 'trafego' });
   return (
     <section style={{ maxWidth: '68rem', margin: '0 auto', padding: '2.5rem 1.25rem 0' }}>
       <h1 style={{ fontSize: 'clamp(1.5rem, 4vw, 2.1rem)', fontWeight: 800 }}>Produtos que eu indico</h1>

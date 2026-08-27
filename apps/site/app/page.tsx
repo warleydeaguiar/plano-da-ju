@@ -17,7 +17,9 @@ export const metadata: Metadata = {
 export default async function Home() {
   const [posts, produtos] = await Promise.all([
     listar('post', { limite: 12 }),
-    listar('product', { limite: 8 }),
+    // Por tráfego, não por data: a vitrine tem que mostrar o que a leitora
+    // procura, e não o último produto cadastrado.
+    listar('product', { limite: 8, por: 'trafego' }),
   ]);
 
   return (
@@ -42,7 +44,7 @@ export default async function Home() {
 
       <section style={{ maxWidth: '68rem', margin: '3.5rem auto 0', padding: '0 1.25rem' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-          <h2 style={{ fontSize: '1.3rem', fontWeight: 700 }}>Produtos que eu indico</h2>
+          <h2 style={{ fontSize: '1.3rem', fontWeight: 700 }}>Os mais procurados</h2>
           <Link href="/loja/" style={{ color: 'var(--rosa)', fontSize: '0.9rem' }}>ver todos</Link>
         </div>
         <Grade itens={produtos} />
