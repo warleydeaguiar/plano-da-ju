@@ -14,6 +14,7 @@ interface Linha {
   word_count: number | null
   published_at: string | null
   modified_at: string | null
+  revisado_em: string | null
   seo_description: string | null
   og_image: string | null
   cliques: number
@@ -46,7 +47,8 @@ export default function SiteClient({
       if (q && !l.title.toLowerCase().includes(q) && !l.path.toLowerCase().includes(q)) return false
       // "com problema" = o que o Google penaliza calado: sem descrição ou nunca atualizado
       if (soProblema) {
-        const velho = !l.modified_at || new Date(l.modified_at) < new Date('2025-01-01')
+        const atualizadoEm = l.revisado_em || l.modified_at
+    const velho = !atualizadoEm || new Date(atualizadoEm) < new Date('2025-01-01')
         if (l.seo_description && !velho) return false
       }
       return true
@@ -204,7 +206,12 @@ export default function SiteClient({
                   {l.cliques ? l.cliques.toLocaleString('pt-BR') : '—'}
                 </td>
                 <td style={{ padding: '0.7rem 1rem', color: T.inkSoft }}>{l.word_count ?? '—'}</td>
-                <td style={{ padding: '0.7rem 1rem', color: T.inkSoft }}>{data(l.modified_at)}</td>
+                <td style={{ padding: '0.7rem 1rem', color: T.inkSoft }}>
+                  {data(l.revisado_em || l.modified_at)}
+                  {l.revisado_em && (
+                    <span title="Você marcou este conteúdo como revisado" style={{ color: T.pinkDeep, marginLeft: '0.35rem' }}>✓</span>
+                  )}
+                </td>
                 <td style={{ padding: '0.7rem 1rem' }}>
                   {l.status !== 'publish' ? (
                     <span style={{ color: T.inkSoft, fontWeight: 600 }}>rascunho</span>

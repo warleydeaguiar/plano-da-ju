@@ -14,6 +14,7 @@ export interface LinhaConteudo {
   word_count: number | null
   published_at: string | null
   modified_at: string | null
+  revisado_em: string | null
   seo_description: string | null
   og_image: string | null
 }
@@ -23,7 +24,7 @@ async function carregar() {
   /* eslint-disable @typescript-eslint/no-explicit-any */
   const [conteudo, faq, baseline] = await Promise.all([
     (supabase as any).from('site_content')
-      .select('id,kind,path,title,status,word_count,published_at,modified_at,seo_description,og_image')
+      .select('id,kind,path,title,status,word_count,published_at,modified_at,revisado_em,seo_description,og_image')
       .order('published_at', { ascending: false, nullsFirst: false }).limit(500),
     (supabase as any).from('site_faq').select('revisao_status'),
     (supabase as any).from('site_seo_baseline').select('path,gsc_clicks,is_top50'),
