@@ -149,6 +149,12 @@ export default function PlanoPage() {
   const [cartaOpen, setCartaOpen] = useState(true);   // carta da Ju pode minimizar
   const [userId, setUserId] = useState<string | null>(null);
   const [isPreview, setIsPreview] = useState(false);
+  // Lido do window e não de um hook porque este componente já resolve o resto
+  // dos parâmetros assim (ver o efeito do preview mais abaixo).
+  const [revisarConsulta, setRevisarConsulta] = useState(false);
+  useEffect(() => {
+    setRevisarConsulta(new URLSearchParams(window.location.search).get('revisar_consulta') === '1');
+  }, []);
 
   // Troca de aba SEMPRE ancora a barra de abas no topo (não sobe pra carta) — senão
   // dá a impressão de que clicar num produto "volta pra mensagem da Ju".
@@ -294,6 +300,14 @@ export default function PlanoPage() {
   // admin vê o plano sem esperar a liberação de 30min — mas só se ele existir.
   const hasPlan = plans.length > 0;
   const delivered = hasPlan && (isPreview || (!!releasedAtMs && Date.now() >= releasedAtMs));
+  // `?revisar_consulta=1` mostra a consulta pós-compra mesmo com o plano já
+  // liberado, e com controle manual das etapas. Existe porque a consulta é
+  // ancorada no relógio: fora da janela entre o pedido e a liberação ela
+  // simplesmente não aparece, e dentro dela avança rápido demais ou devagar
+  // demais para ser conferida.
+  if (revisarConsulta) {
+    return <PreparingState profile={profile} revisao />;
+  }
   if (!delivered) {
     return <PreparingState profile={profile} />;
   }
@@ -1154,7 +1168,7 @@ function EmptyState({ emoji, title, description }: { emoji: string; title: strin
 }
 
 // ── Preparando: contagem regressiva até a entrega (auto, sem aprovação) ────
-function PreparingState({ profile }: { profile: Profile | null }) {
+function PreparingState({ profile, revisao = false }: { profile: Profile | null; revisao?: boolean }) {
   const firstName = profile?.full_name?.split(' ')[0] ?? '';
   // Falta a FOTO? (não enviou ainda) — é o passo que trava o plano.
   const awaitingPhoto = profile?.plan_status === 'pending_photo';
@@ -1181,11 +1195,19 @@ function PreparingState({ profile }: { profile: Profile | null }) {
 
   // NOVA EXPERIÊNCIA pós-compra: foto já recebida → "Consulta com a Juliane"
   // (substitui o cronômetro). Se ainda falta a foto, segue o fluxo antigo abaixo.
-  if (!awaitingPhoto) {
+  if (!awaitingPhoto || revisao) {
     const startC = requestedMs ?? Date.now();
     const endC = releasedMs ?? (startC + computeConsultaMinutes(profile) * 60_000);
     const minutesC = Math.max(1, Math.round((endC - startC) / 60_000)); // deriva da janela real
-    return <Consulta data={buildConsultaData(profile)} startMs={startC} endMs={endC} minutes={minutesC} />;
+    return (
+      <Consulta
+        data={buildConsultaData(profile)}
+        startMs={startC}
+        endMs={endC}
+        minutes={minutesC}
+        revisao={revisao}
+      />
+    );
   }
 
   return (

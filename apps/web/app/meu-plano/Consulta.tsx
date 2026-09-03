@@ -245,8 +245,21 @@ function buildStages(d: ConsultaData, minutes: number): { stages: Stage[]; summa
   return { stages, summaryHTML };
 }
 
-function ConsultaInner({ data, startMs, endMs, minutes }: {
+function ConsultaInner({ data, startMs, endMs, minutes, revisao = false }: {
   data: ConsultaData; startMs: number; endMs: number; minutes: number;
+  /**
+   * Modo revisão (equipe). A consulta normal é ancorada em tempo real: as
+   * etapas avançam conforme o relógio caminha de plan_requested_at até
+   * plan_released_at. Isso torna a experiência impossível de revisar — janela
+   * curta passa voando, janela longa trava nas duas primeiras etapas e a
+   * pessoa nunca chega no fim.
+   *
+   * Com `revisao`, o relógio sai de cena: a fila é dispensada e as 11 etapas
+   * viram navegação manual, com passar/voltar e um play automático. Serve para
+   * conferir texto e layout de cada etapa sem depender de estar dentro da
+   * janela certa.
+   */
+  revisao?: boolean;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const reloadedRef = useRef(false);
@@ -285,6 +298,60 @@ function ConsultaInner({ data, startMs, endMs, minutes }: {
       set('#cns-widget', s.widget === '__SUMMARY__' ? summaryHTML : (s.widget || ''));
       const sn = q('#cns-stepn'); if (sn) sn.textContent = String(i + 1);
       const sl = q('#cns-steplabel'); if (sl) sl.textContent = s.label;
+    }
+
+    // ── Modo revisão: navegação manual pelas etapas ──────────────────
+    if (revisao) {
+      const wait = q('#cns-wait');
+      if (wait) wait.classList.add('hidden'); // sem fila: ela não é o objeto da revisão
+      let i = 0;
+      let tocando = true;
+      let timer = 0;
+
+      const pinta = () => {
+        // Refaz o log do zero para o índice atual, para que voltar também
+        // volte a lista de observações — senão ela só cresce.
+        const log = q('#cns-log');
+        if (log) log.innerHTML = '';
+        for (let k = 0; k <= i; k++) addObs(k);
+        renderStage(i);
+        const pf = q('#cns-pfill');
+        if (pf) pf.style.width = (((i + 1) / stages.length) * 100) + '%';
+        const ck = q('#cns-clock');
+        if (ck) ck.textContent = `${minutes}:00`;
+        const pos = q('#cns-rev-pos');
+        if (pos) pos.textContent = `${i + 1} / ${stages.length}`;
+        const btnPlay = q('#cns-rev-play');
+        if (btnPlay) btnPlay.textContent = tocando ? '⏸ pausar' : '▶ tocar';
+        const btn = q('#cns-planbtn') as HTMLButtonElement | null;
+        // No fim das etapas o botão do plano libera, igual à cliente vê.
+        if (btn) {
+          const fim = i === stages.length - 1;
+          btn.disabled = !fim;
+          btn.textContent = fim ? 'Ver meu plano →' : btn.textContent;
+        }
+      };
+
+      const agenda = () => {
+        clearTimeout(timer);
+        if (!tocando) return;
+        timer = window.setTimeout(() => {
+          if (i < stages.length - 1) { i++; pinta(); agenda(); }
+          else { tocando = false; pinta(); }
+        }, 5000);
+      };
+
+      const onRev = (e: Event) => {
+        const t = (e.target as HTMLElement)?.closest('button');
+        if (!t) return;
+        if (t.id === 'cns-rev-prev' && i > 0) { i--; tocando = false; pinta(); agenda(); }
+        if (t.id === 'cns-rev-next' && i < stages.length - 1) { i++; tocando = false; pinta(); agenda(); }
+        if (t.id === 'cns-rev-play') { tocando = !tocando; pinta(); agenda(); }
+      };
+      root.addEventListener('click', onRev);
+      pinta();
+      agenda();
+      return () => { clearTimeout(timer); root.removeEventListener('click', onRev); };
     }
 
     let raf = 0;
@@ -327,11 +394,29 @@ function ConsultaInner({ data, startMs, endMs, minutes }: {
     root.addEventListener('click', onClick);
     raf = requestAnimationFrame(tick);
     return () => { cancelAnimationFrame(raf); root.removeEventListener('click', onClick); };
-  }, [data, startMs, endMs, minutes]);
+  }, [data, startMs, endMs, minutes, revisao]);
 
   return (
     <div className="cns" ref={rootRef}>
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
+
+      {revisao && (
+        <div style={{
+          position: 'sticky', top: 0, zIndex: 50,
+          background: '#2A1E2C', color: '#fff',
+          padding: '10px 14px', display: 'flex', alignItems: 'center',
+          gap: 10, flexWrap: 'wrap', fontFamily: 'system-ui, sans-serif', fontSize: 13,
+        }}>
+          <strong style={{ letterSpacing: 0.4 }}>MODO REVISÃO</strong>
+          <span style={{ opacity: 0.7 }}>a cliente não vê esta barra</span>
+          <span style={{ flex: 1 }} />
+          <button id="cns-rev-prev" style={BTN_REV}>‹ voltar</button>
+          <span id="cns-rev-pos" style={{ minWidth: 52, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>1 / 11</span>
+          <button id="cns-rev-next" style={BTN_REV}>passar ›</button>
+          <button id="cns-rev-play" style={BTN_REV}>⏸ pausar</button>
+        </div>
+      )}
+
       <div className="hero">
         <Picture src="/images/consulta-hero.jpg" alt="Juliane Cost analisando o seu caso" />
         <div className="hero-grad" />
@@ -404,6 +489,15 @@ class ConsultaBoundary extends Component<{ children: ReactNode }, { err: boolean
   render() { return this.state.err ? <ConsultaFallback /> : this.props.children; }
 }
 
-export default function Consulta(props: { data: ConsultaData; startMs: number; endMs: number; minutes: number }) {
+const BTN_REV: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.14)', color: '#fff',
+  border: '1px solid rgba(255,255,255,0.3)', borderRadius: 8,
+  padding: '6px 12px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+  fontFamily: 'inherit',
+};
+
+export default function Consulta(props: {
+  data: ConsultaData; startMs: number; endMs: number; minutes: number; revisao?: boolean;
+}) {
   return <ConsultaBoundary><ConsultaInner {...props} /></ConsultaBoundary>;
 }
