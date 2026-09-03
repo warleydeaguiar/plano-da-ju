@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import Reguas from './Reguas'
 
 // ─── Design tokens ───────────────────────────────────────────
 const T = {
@@ -40,8 +41,8 @@ const T = {
 }
 
 type Rule = 20 | 60 | 120
-type RuleFilter = 'todos' | 20 | 60 | 120
-type View = 'kanban' | 'history' | 'templates'
+type RuleFilter = 'todos' | number
+type View = 'kanban' | 'history' | 'templates' | 'reguas'
 
 const RULE_META: Record<Rule, { label: string; bg: string; text: string; dot: string }> = {
   20:  { label: '20 dias',  bg: T.yellowSoft, text: '#B45309', dot: T.yellow },
@@ -573,7 +574,24 @@ export default function FollowupClient() {
   }>({
     atrasados: 0, hoje: 0, amanha: 0, total: 0,
   })
-  const [ruleCounts, setRuleCounts] = useState<Record<string, number>>({ '20': 0, '60': 0, '120': 0 })
+  const [ruleCounts, setRuleCounts] = useState<Record<string, number>>({})
+  /** Réguas vindas do banco. Antes eram 20/60/120 fixos no código. */
+  const [reguas, setReguas] = useState<number[]>([])
+  /**
+   * Quantos cards já foram carregados por coluna.
+   *
+   * A fila real tem ~184 mil tarefas (97 mil atrasadas só na régua de 20 dias).
+   * Antes a tela pedia tudo de uma vez e travava; agora pede de 50 em 50 e a
+   * pessoa carrega mais se quiser.
+   */
+  const PAGINA = 50
+  const [carregados, setCarregados] = useState<{ atrasados: number; hoje: number; amanha: number }>({
+    atrasados: 0, hoje: 0, amanha: 0,
+  })
+  const [temMais, setTemMais] = useState<{ atrasados: boolean; hoje: boolean; amanha: boolean }>({
+    atrasados: false, hoje: false, amanha: false,
+  })
+  const [carregandoMais, setCarregandoMais] = useState<string | null>(null)
   const [history, setHistory] = useState<Lead[]>([])
   const [templates, setTemplates] = useState<Template[]>([])
   const [instances, setInstances] = useState<EvoInstance[]>([])
@@ -590,7 +608,7 @@ export default function FollowupClient() {
     setLoading(true)
     try {
       const ruleQuery = ruleFilter !== 'todos' ? `&rule=${ruleFilter}` : ''
-      const res = await fetch(`/api/followup?mode=kanban${ruleQuery}`)
+      const res = await fetch(`/api/followup?mode=kanban${ruleQuery}&limite=${PAGINA}&offset=0`)
       const data = await res.json()
       setKanban({
         atrasados: data.atrasados ?? [],
@@ -599,12 +617,36 @@ export default function FollowupClient() {
       })
       setCounts(data.counts ?? { atrasados: 0, hoje: 0, amanha: 0, total: 0 })
       setRuleCounts(data.ruleCounts ?? {})
+      setReguas(data.reguas ?? [])
+      setTemMais(data.temMais ?? { atrasados: false, hoje: false, amanha: false })
+      setCarregados({
+        atrasados: (data.atrasados ?? []).length,
+        hoje: (data.hoje ?? []).length,
+        amanha: (data.amanha ?? []).length,
+      })
     } catch {
       setKanban({ atrasados: [], hoje: [], amanha: [] })
     } finally {
       setLoading(false)
     }
   }, [ruleFilter])
+
+  /** Busca a próxima página de UMA coluna e emenda no que já está na tela. */
+  const carregarMais = useCallback(async (coluna: 'atrasados' | 'hoje' | 'amanha') => {
+    setCarregandoMais(coluna)
+    try {
+      const ruleQuery = ruleFilter !== 'todos' ? `&rule=${ruleFilter}` : ''
+      const offset = carregados[coluna]
+      const res = await fetch(`/api/followup?mode=kanban${ruleQuery}&limite=${PAGINA}&offset=${offset}`)
+      const data = await res.json()
+      const novos: Lead[] = data[coluna] ?? []
+      setKanban((k) => ({ ...k, [coluna]: [...k[coluna], ...novos] }))
+      setCarregados((c) => ({ ...c, [coluna]: c[coluna] + novos.length }))
+      setTemMais((t) => ({ ...t, [coluna]: !!data.temMais?.[coluna] }))
+    } finally {
+      setCarregandoMais(null)
+    }
+  }, [ruleFilter, carregados])
 
   const loadHistory = useCallback(async () => {
     setLoading(true)
@@ -646,7 +688,7 @@ export default function FollowupClient() {
   useEffect(() => {
     if (view === 'kanban') loadKanban()
     else if (view === 'history') loadHistory()
-    else loadTemplates()
+    else if (view === 'templates') loadTemplates()
   }, [view, loadKanban, loadHistory, loadTemplates])
   useEffect(() => {
     if (view === 'kanban') loadKanban()
@@ -702,7 +744,7 @@ export default function FollowupClient() {
   }, [loadTemplates])
 
   return (
-    <div style={{ padding: '32px 36px', maxWidth: 1320, minHeight: '100%', background: T.bg }}>
+    <div style={{ padding: '32px 36px', width: '100%', minHeight: '100%', background: T.bg }}>
       {/* Header */}
       <div style={{ marginBottom: 24, display: 'flex', alignItems: 'flex-start', gap: 16 }}>
         <div style={{ flex: 1 }}>
@@ -749,9 +791,16 @@ export default function FollowupClient() {
             background: T.graySoft, padding: 4, borderRadius: 12,
           }}>
             <FilterPill label="Todos" icon="🎯" active={ruleFilter === 'todos'} onClick={() => setRuleFilter('todos')} />
-            <FilterPill label="20 dias" active={ruleFilter === 20} onClick={() => setRuleFilter(20)} count={ruleCounts['20']} />
-            <FilterPill label="60 dias" active={ruleFilter === 60} onClick={() => setRuleFilter(60)} count={ruleCounts['60']} />
-            <FilterPill label="120 dias" active={ruleFilter === 120} onClick={() => setRuleFilter(120)} count={ruleCounts['120']} />
+            {/* Uma pílula por régua cadastrada — antes eram 20/60/120 escritos aqui. */}
+            {reguas.map((d) => (
+              <FilterPill
+                key={d}
+                label={`${d} dias`}
+                active={ruleFilter === d}
+                onClick={() => setRuleFilter(d)}
+                count={ruleCounts[String(d)]}
+              />
+            ))}
           </div>
         )}
 
@@ -764,14 +813,17 @@ export default function FollowupClient() {
           <FilterPill label="Kanban" icon="📋" active={view === 'kanban'} onClick={() => setView('kanban')} />
           <FilterPill label="Histórico" icon="🕓" active={view === 'history'} onClick={() => setView('history')} />
           <FilterPill label="Mensagens" icon="✏️" active={view === 'templates'} onClick={() => setView('templates')} />
+          <FilterPill label="Réguas" icon="⚙️" active={view === 'reguas'} onClick={() => setView('reguas')} />
         </div>
       </div>
 
       {/* Content */}
-      {loading && view !== 'templates' ? (
+      {loading && view !== 'templates' && view !== 'reguas' ? (
         <div style={{ padding: '60px 20px', textAlign: 'center', color: T.inkSoft }}>
           Carregando…
         </div>
+      ) : view === 'reguas' ? (
+        <Reguas />
       ) : view === 'templates' ? (
         <TemplatesPanel
           templates={templates}
@@ -807,7 +859,7 @@ export default function FollowupClient() {
           {/* Atrasados */}
           <KanbanColumn
             title="Atrasados"
-            count={kanban.atrasados.length}
+            count={counts.atrasados}
             icon="!"
             iconColor={T.red}
             iconBg={T.redSoft}
@@ -816,23 +868,32 @@ export default function FollowupClient() {
             {kanban.atrasados.length === 0 ? (
               <ColumnEmpty text="Nenhum atrasado ✨" />
             ) : (
-              kanban.atrasados.map(lead => (
-                <FollowupCard
-                  key={`${lead.id}-${lead.rule_days}`}
-                  lead={lead}
-                  template={templateMap.get(lead.rule_days)}
-                  instances={instances}
-                  onSend={handleSend}
-                  onMark={handleMark}
+              <>
+                {kanban.atrasados.map(lead => (
+                  <FollowupCard
+                    key={`${lead.id}-${lead.rule_days}`}
+                    lead={lead}
+                    template={templateMap.get(lead.rule_days)}
+                    instances={instances}
+                    onSend={handleSend}
+                    onMark={handleMark}
+                  />
+                ))}
+                <CarregarMais
+                  visivel={temMais.atrasados}
+                  carregando={carregandoMais === 'atrasados'}
+                  mostrando={kanban.atrasados.length}
+                  total={counts.atrasados}
+                  onClick={() => carregarMais('atrasados')}
                 />
-              ))
+              </>
             )}
           </KanbanColumn>
 
           {/* Hoje */}
           <KanbanColumn
             title="Hoje"
-            count={kanban.hoje.length}
+            count={counts.hoje}
             icon="📅"
             iconColor={T.orange}
             iconBg={T.orangeSoft}
@@ -841,23 +902,32 @@ export default function FollowupClient() {
             {kanban.hoje.length === 0 ? (
               <ColumnEmpty text="Nada pra hoje" />
             ) : (
-              kanban.hoje.map(lead => (
-                <FollowupCard
-                  key={`${lead.id}-${lead.rule_days}`}
-                  lead={lead}
-                  template={templateMap.get(lead.rule_days)}
-                  instances={instances}
-                  onSend={handleSend}
-                  onMark={handleMark}
+              <>
+                {kanban.hoje.map(lead => (
+                  <FollowupCard
+                    key={`${lead.id}-${lead.rule_days}`}
+                    lead={lead}
+                    template={templateMap.get(lead.rule_days)}
+                    instances={instances}
+                    onSend={handleSend}
+                    onMark={handleMark}
+                  />
+                ))}
+                <CarregarMais
+                  visivel={temMais.hoje}
+                  carregando={carregandoMais === 'hoje'}
+                  mostrando={kanban.hoje.length}
+                  total={counts.hoje}
+                  onClick={() => carregarMais('hoje')}
                 />
-              ))
+              </>
             )}
           </KanbanColumn>
 
           {/* Amanhã */}
           <KanbanColumn
             title="Amanhã"
-            count={kanban.amanha.length}
+            count={counts.amanha}
             icon={collapsedAmanha ? '▸' : '▾'}
             iconColor={T.blue}
             iconBg={T.blueSoft}
@@ -869,19 +939,61 @@ export default function FollowupClient() {
             {kanban.amanha.length === 0 ? (
               <ColumnEmpty text="Calmaria por aqui" />
             ) : (
-              kanban.amanha.map(lead => (
-                <FollowupCard
-                  key={`${lead.id}-${lead.rule_days}`}
-                  lead={lead}
-                  template={templateMap.get(lead.rule_days)}
-                  instances={instances}
-                  onSend={handleSend}
-                  onMark={handleMark}
+              <>
+                {kanban.amanha.map(lead => (
+                  <FollowupCard
+                    key={`${lead.id}-${lead.rule_days}`}
+                    lead={lead}
+                    template={templateMap.get(lead.rule_days)}
+                    instances={instances}
+                    onSend={handleSend}
+                    onMark={handleMark}
+                  />
+                ))}
+                <CarregarMais
+                  visivel={temMais.amanha}
+                  carregando={carregandoMais === 'amanha'}
+                  mostrando={kanban.amanha.length}
+                  total={counts.amanha}
+                  onClick={() => carregarMais('amanha')}
                 />
-              ))
+              </>
             )}
           </KanbanColumn>
         </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Rodapé de coluna: quantos estão à vista de quantos, e o botão de trazer mais.
+ *
+ * A fila real tem dezenas de milhares de tarefas. Mostrar "50 de 97.246" é mais
+ * honesto do que uma lista infinita que dá a impressão de já estar tudo ali.
+ */
+function CarregarMais({ visivel, carregando, mostrando, total, onClick }: {
+  visivel: boolean; carregando: boolean; mostrando: number; total: number; onClick: () => void
+}) {
+  if (!mostrando) return null
+  return (
+    <div style={{ padding: '10px 4px 4px', textAlign: 'center' }}>
+      <div style={{ fontSize: 11, color: T.inkSoft, marginBottom: visivel ? 8 : 0 }}>
+        {mostrando.toLocaleString('pt-BR')} de {total.toLocaleString('pt-BR')}
+      </div>
+      {visivel && (
+        <button
+          onClick={onClick}
+          disabled={carregando}
+          style={{
+            width: '100%', padding: '9px 12px', borderRadius: 9,
+            border: `1px solid ${T.border}`, background: '#fff',
+            color: T.ink, fontSize: 12.5, fontWeight: 600,
+            cursor: carregando ? 'default' : 'pointer', fontFamily: 'inherit',
+          }}
+        >
+          {carregando ? 'Carregando…' : 'Carregar mais 50'}
+        </button>
       )}
     </div>
   )
