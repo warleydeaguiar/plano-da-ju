@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { Grade } from './components/CardPost';
 import { FotoAutora, CARGO, REDES } from './components/BoxAutora';
 import IconeWhatsapp from './components/IconeWhatsapp';
-import { listar } from '@/lib/conteudo';
+import { listar, porPath } from '@/lib/conteudo';
 import { SITE, BLOQUEAR_INDEXACAO } from '@/lib/seo';
 
 export const revalidate = 3600; // literal: o Next analisa este export estaticamente
@@ -11,17 +11,34 @@ export const revalidate = 3600; // literal: o Next analisa este export estaticam
 const PLANO = 'https://planodaju.julianecost.com/quiz';
 const GRUPOS = 'https://grupos.julianecost.com/';
 
-// A home herdava só o metadata do layout, que não tem canonical. Sem ele o
-// Google escolhe sozinho qual endereço da home é o oficial — e com apex, www e
-// variações com parâmetro, ele erra.
-export const metadata: Metadata = {
-  title: 'Juliane Cost — tricologista: o que realmente funciona no seu cabelo',
-  description:
-    'Comparativos e avaliações honestas de progressivas, shampoos e tratamentos, testados por '
-    + 'uma tricologista. E um plano capilar montado para o seu cabelo.',
-  alternates: { canonical: `${SITE}/` },
-  robots: BLOQUEAR_INDEXACAO ? { index: false, follow: false } : { index: true, follow: true },
-};
+/**
+ * Título e descrição vêm do banco, como em todas as outras páginas.
+ *
+ * O canonical continua explícito: sem ele o Google escolhe sozinho qual
+ * endereço da home é o oficial e, com apex, www e variações com parâmetro,
+ * erra.
+ *
+ * A home era a única exceção: o título saía fixo do código, e o do banco —
+ * escrito mirando "Fashion Gold", que é o que o Google de fato manda pra cá —
+ * nunca chegava ao ar. O Search Console mostra o preço disso: "site da fashion
+ * gold" traz 303 impressões e ZERO clique, porque quem procura a marca lê um
+ * título que não fala dela.
+ *
+ * Com isto a Juliane passa a editar o título da home pelo admin, igual ao
+ * resto do site.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const home = await porPath('/');
+  return {
+    title: home?.seo_title || 'Juliane Cost — o que realmente funciona no seu cabelo',
+    description:
+      home?.seo_description
+      || 'Comparativos e avaliações honestas de progressivas, shampoos e tratamentos, '
+       + 'testados por uma tricologista.',
+    alternates: { canonical: `${SITE}/` },
+    robots: BLOQUEAR_INDEXACAO ? { index: false, follow: false } : { index: true, follow: true },
+  };
+}
 
 const FAIXA = { maxWidth: '68rem', margin: '0 auto', padding: '0 1.25rem' } as const;
 
