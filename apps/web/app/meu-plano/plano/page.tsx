@@ -1183,9 +1183,12 @@ function PreparingState({ profile, revisao = false }: { profile: Profile | null;
     return () => clearInterval(id);
   }, []);
   // Assim que liberar (released_at), recarrega pra mostrar o plano.
+  // Em modo revisão NÃO: o plano da conta de demonstração já está liberado, e
+  // este efeito recarregaria a página em laço, sem deixar a consulta na tela.
   useEffect(() => {
+    if (revisao) return;
     if (releasedMs && Date.now() >= releasedMs) window.location.reload();
-  }, [now, releasedMs]);
+  }, [now, releasedMs, revisao]);
 
   const remainingMs = deadlineMs ? Math.max(0, deadlineMs - now) : null;
   const hh = remainingMs != null ? Math.floor(remainingMs / 3600_000) : null;
