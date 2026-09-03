@@ -10,10 +10,11 @@ import type { PagarMeOrder } from '@/lib/pagarme/types';
 import { logCheckoutError } from '@/lib/checkout-log';
 import { normalizeEmail, isValidEmailFormat } from '@/lib/normalize-email';
 import { PLAN_BASE_CENTS } from '@/lib/pricing';
+import { precoParaCobrar } from '@/lib/cupom';
 
 // Preço vem da fonte única (lib/pricing) — nunca hardcode aqui, senão o valor
 // cobrado diverge do que a cliente vê na página.
-const PRICE_CENTS = PLAN_BASE_CENTS; // R$34,90 (pagamento único)
+const PRICE_PADRAO = PLAN_BASE_CENTS; // R$34,90 (pagamento único, sem cupom)
 
 export const runtime = 'nodejs';
 // Headroom pro retry do QR (a PagarMe às vezes demora pra popular o copia-e-cola).
@@ -95,7 +96,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     // Corrige typos óbvios do e-mail (vírgula, gmail.con, .co.br…) em vez de bloquear.
     if (body && typeof body.email === 'string') body.email = normalizeEmail(body.email).email;
-    const { name, email, cpf, phone, quiz_answers, session_id } = body;
+    const { name, email, cpf, phone, quiz_answers, session_id, cupom } = body;
     logEmail = email ?? null;
     logSession = typeof session_id === 'string' ? session_id : null;
 
@@ -110,6 +111,14 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
+
+    // O valor cobrado é decidido AQUI, no servidor, a partir do cupom no banco.
+    // O navegador manda só o código; nunca o preço. Cupom inválido ou esgotado
+    // cai no preço cheio em silêncio — recusar a compra por causa disso seria
+    // perder a venda por um detalhe.
+    const { precoCents: PRICE_CENTS, cupom: cupomAplicado } =
+      await precoParaCobrar(cupom, PRICE_PADRAO, email);
+    void cupomAplicado;
 
     const cleanCpf = (cpf ?? '').replace(/\D/g, '');
     if (cleanCpf.length !== 11) {

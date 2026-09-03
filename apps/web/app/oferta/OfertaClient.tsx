@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { enrichIdentity, newEventId, sendServerEvent } from '@/lib/tracking-client';
 import { pixelMatchingPayload, pixelPhone } from '@/lib/pixel-pii';
@@ -440,6 +440,45 @@ export default function OfertaClient() {
   const [error, setError] = useState('');
   const [loadingMsg, setLoadingMsg] = useState(LOADING_MESSAGES[0]);
 
+  /**
+   * Cupom de desconto.
+   *
+   * Vem de `?cupom=` na URL (é como a mensagem do WhatsApp entrega) ou é
+   * digitado na tela. O que guardamos aqui é só o CÓDIGO: o preço quem decide
+   * é o servidor, no momento de cobrar. Confiar num preço vindo do navegador
+   * seria deixar qualquer pessoa escolher quanto pagar.
+   */
+  const [cupom, setCupom] = useState('');
+  const [cupomInfo, setCupomInfo] = useState<{ preco_cents: number; descricao: string | null } | null>(null);
+  const [cupomErro, setCupomErro] = useState<string | null>(null);
+  const [conferindoCupom, setConferindoCupom] = useState(false);
+
+  const conferirCupom = useCallback(async (codigo: string) => {
+    const c = codigo.trim();
+    if (!c) { setCupomInfo(null); setCupomErro(null); return; }
+    setConferindoCupom(true);
+    try {
+      const r = await fetch(`/api/cupom?codigo=${encodeURIComponent(c)}`);
+      const d = await r.json();
+      if (d.valido) { setCupomInfo({ preco_cents: d.preco_cents, descricao: d.descricao }); setCupomErro(null); }
+      else { setCupomInfo(null); setCupomErro(d.erro ?? 'Cupom inválido.'); }
+    } catch {
+      setCupomInfo(null); setCupomErro('Não consegui conferir agora.');
+    } finally {
+      setConferindoCupom(false);
+    }
+  }, []);
+
+  // Cupom que veio no link já entra aplicado: quem clicou na mensagem não
+  // deveria ter que digitar nada.
+  useEffect(() => {
+    const daUrl = new URLSearchParams(window.location.search).get('cupom');
+    if (daUrl) { setCupom(daUrl); conferirCupom(daUrl); }
+  }, [conferirCupom]);
+
+  /** Preço que a cliente deve VER. Com cupom aplicado, é o do cupom. */
+  const precoAtual = cupomInfo?.preco_cents ?? PLAN_BASE_CENTS;
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [quizAnswers, setQuizAnswers] = useState<Record<string, unknown>>({});
@@ -737,6 +776,7 @@ export default function OfertaClient() {
           phone: (quizAnswers?.phone ?? '').toString().replace(/\D/g, ''),
           quiz_answers: quizAnswers,
           session_id: getSessionId(),
+          cupom: cupom || undefined,
         }),
       });
       const data = await res.json();
@@ -902,6 +942,7 @@ export default function OfertaClient() {
           card_token: tokenData.id,
           quiz_answers: quizAnswers,
           session_id: getSessionId(),
+          cupom: cupom || undefined,
           installments,
           billing_address: {
             city: billingCity,
@@ -1116,7 +1157,7 @@ export default function OfertaClient() {
                   ⏳ O banco está demorando — pague por aqui, é mais rápido
                 </div>
                 <p style={{ fontSize: 12.5, color: '#6B4A00', lineHeight: 1.5, margin: '0 0 14px' }}>
-                  Faça um PIX de <strong>{brlCents(PLAN_BASE_CENTS)}</strong> para a chave abaixo
+                  Faça um PIX de <strong>{brlCents(precoAtual)}</strong> para a chave abaixo
                   e anexe o comprovante. Seu acesso libera na hora. 💛
                 </p>
 
@@ -1127,7 +1168,7 @@ export default function OfertaClient() {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', borderRadius: 12, padding: '10px 14px', border: '1px solid #F0E2B8', marginBottom: 12 }}>
                   <span style={{ fontSize: 12.5, color: T.inkSoft }}>Valor a enviar</span>
-                  <strong style={{ fontSize: 17, color: T.pinkDeep, fontFamily: fonts.display }}>{brlCents(PLAN_BASE_CENTS)}</strong>
+                  <strong style={{ fontSize: 17, color: T.pinkDeep, fontFamily: fonts.display }}>{brlCents(precoAtual)}</strong>
                 </div>
 
                 <button
@@ -1393,6 +1434,44 @@ export default function OfertaClient() {
                   />
                   {touched.cpf && cardErrors.cpf && (
                     <p style={{ color: T.red, fontSize: 12, marginTop: 4 }}>{cardErrors.cpf}</p>
+                  )}
+                </div>
+
+                {/* Cupom. Quem chega pelo link da mensagem já encontra aplicado;
+                    o campo existe para quem recebeu o código por outro caminho. */}
+                <div>
+                  <label style={labelS}>Cupom de desconto <span style={{ fontWeight: 400, fontSize: 11, color: T.inkSoft }}>(opcional)</span></label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      className="co-input"
+                      style={{ ...inputS, textTransform: 'uppercase' }}
+                      placeholder="Digite o código"
+                      value={cupom}
+                      onChange={(e) => { setCupom(e.target.value); setCupomInfo(null); setCupomErro(null); }}
+                      onBlur={() => conferirCupom(cupom)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => conferirCupom(cupom)}
+                      disabled={conferindoCupom || !cupom.trim()}
+                      style={{
+                        padding: '0 16px', borderRadius: 10, border: `1px solid ${T.border}`,
+                        background: '#fff', color: T.ink, fontWeight: 700, fontSize: 13,
+                        cursor: conferindoCupom || !cupom.trim() ? 'default' : 'pointer',
+                        whiteSpace: 'nowrap', fontFamily: 'inherit',
+                      }}
+                    >
+                      {conferindoCupom ? '…' : 'Aplicar'}
+                    </button>
+                  </div>
+                  {cupomInfo && (
+                    <p style={{ color: T.greenDeep, fontSize: 12.5, marginTop: 6, fontWeight: 600 }}>
+                      ✓ Cupom aplicado — você paga {brlCents(cupomInfo.preco_cents)}
+                      {cupomInfo.descricao ? ` (${cupomInfo.descricao})` : ''}
+                    </p>
+                  )}
+                  {cupomErro && (
+                    <p style={{ color: T.red, fontSize: 12, marginTop: 6 }}>{cupomErro}</p>
                   )}
                 </div>
               </div>

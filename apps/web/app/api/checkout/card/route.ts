@@ -7,7 +7,8 @@ import { extractFieldsFromQuiz } from '@/lib/quiz-to-profile';
 import type { PagarMeOrder } from '@/lib/pagarme/types';
 import { logCheckoutError } from '@/lib/checkout-log';
 import { normalizeEmail, isValidEmailFormat } from '@/lib/normalize-email';
-import { installmentInfo, MAX_INSTALLMENTS } from '@/lib/pricing';
+import { installmentInfo, MAX_INSTALLMENTS, PLAN_BASE_CENTS } from '@/lib/pricing';
+import { precoParaCobrar } from '@/lib/cupom';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,6 +33,7 @@ export async function POST(req: NextRequest) {
       name, email, cpf, phone,
       card_token, quiz_answers, session_id, billing_address,
       installments: rawInstallments,
+      cupom,
     } = body;
     logEmail = email ?? null;
     logSession = typeof session_id === 'string' ? session_id : null;
@@ -54,8 +56,13 @@ export async function POST(req: NextRequest) {
     // Parcelas: 1..3 (2x/3x COM juros 2,99% a.m.) — validado server-side.
     const n = Math.max(1, Math.min(MAX_INSTALLMENTS, parseInt(String(rawInstallments ?? '1'), 10) || 1));
     logInstallments = n;
-    // Valor cobrado = total COM juros do parcelamento escolhido (mesmo do plano).
-    const PRICE_CENTS = installmentInfo(n).totalCents;
+
+    // O cupom muda a BASE do parcelamento, não o total final: os juros de 2,99%
+    // a.m. incidem sobre o valor já com desconto. Passar o desconto depois dos
+    // juros cobraria juros sobre dinheiro que a cliente não deve.
+    // O valor sai do banco, no servidor — o navegador manda só o código.
+    const { precoCents: baseComCupom } = await precoParaCobrar(cupom, PLAN_BASE_CENTS, email);
+    const PRICE_CENTS = installmentInfo(n, baseComCupom).totalCents;
 
     const cleanCpf   = typeof cpf   === 'string' ? cpf.replace(/\D/g, '')   : '';
     // Phone: prefere o que veio do form, fallback pra quiz_answers (já coletado no quiz)
