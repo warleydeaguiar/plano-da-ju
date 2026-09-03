@@ -351,7 +351,13 @@ function CrossItem({ children }: { children: React.ReactNode }) {
 }
 
 // ─── Card de oferta ──────────────────────────────────────────
-function OfferCard({ countdown, name, onBuy }: { countdown: string; name: string; onBuy: () => void }) {
+function OfferCard({ countdown, name, onBuy, precoCents = PLAN_BASE_CENTS }: {
+  countdown: string; name: string; onBuy: () => void;
+  /** Preço vigente. Com cupom no link, é o do cupom — senão a pessoa que
+   *  clicou na mensagem prometendo R$14,90 leria R$34,90 na oferta inteira e
+   *  só descobriria o desconto lá no fim do formulário. */
+  precoCents?: number;
+}) {
   return (
     <div style={{
       marginBottom: 28, position: 'relative',
@@ -402,9 +408,9 @@ function OfferCard({ countdown, name, onBuy }: { countdown: string; name: string
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
               lineHeight: 1.05, letterSpacing: -0.5,
-            }}>{installPerStr(MAX_INSTALLMENTS)}</div>
+            }}>{`${MAX_INSTALLMENTS}x de ${brlCents(installmentInfo(MAX_INSTALLMENTS, precoCents).perCents)}`}</div>
             <div style={{ fontSize: 9, color: T.inkSoft, marginTop: 3, fontFamily: fonts.ui }}>
-              ou à vista <strong style={{ color: T.ink }}>R$34,90</strong>
+              ou à vista <strong style={{ color: T.ink }}>{brlCents(precoCents)}</strong>
             </div>
           </div>
         </div>
@@ -1854,7 +1860,16 @@ export default function OfertaClient() {
           })()}
 
           {/* First offer */}
-          <OfferCard countdown={countdown} name={name} onBuy={onBuy} />
+          {cupomInfo && (
+            <div style={{
+              background: T.green, color: '#fff', borderRadius: 14,
+              padding: '12px 16px', marginBottom: 14, textAlign: 'center',
+              fontFamily: fonts.ui, fontSize: 14, fontWeight: 700,
+            }}>
+              ✓ Seu desconto está aplicado — o plano sai por {brlCents(cupomInfo.preco_cents)}
+            </div>
+          )}
+          <OfferCard countdown={countdown} name={name} onBuy={onBuy} precoCents={precoAtual} />
 
           {/* Social proof */}
           <div style={{
@@ -1970,7 +1985,7 @@ export default function OfertaClient() {
           </div>
 
           {/* Second offer */}
-          <OfferCard countdown={countdown} name={name} onBuy={onBuy} />
+          <OfferCard countdown={countdown} name={name} onBuy={onBuy} precoCents={precoAtual} />
 
           {/* O que você vai ter */}
           <div style={{
