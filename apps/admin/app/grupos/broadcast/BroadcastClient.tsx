@@ -65,13 +65,97 @@ function formatBytes(n: number) {
   return `${(n / (1024 * 1024)).toFixed(1)} MB`
 }
 
+/**
+ * Toda data desta tela é de Brasília, explicitamente.
+ *
+ * Antes o formato saía sem fuso: o servidor renderizava em UTC e o navegador
+ * em Brasília, três horas de diferença numa tela de AGENDAMENTO — além do erro
+ * de hidratação do React (#418) que isso gerava no console. Numa tela onde o
+ * horário é o dado principal, "12:51 ou 15:51?" não é detalhe.
+ *
+ * O Brasil não tem horário de verão desde 2019, então Brasília é um deslocamento
+ * fixo de -03:00 e a conversão pode ser feita sem biblioteca de fuso.
+ */
+const FUSO_BR = '-03:00'
+
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+  return new Date(iso).toLocaleString('pt-BR', {
+    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+    timeZone: 'America/Sao_Paulo',
+  })
 }
 
+/** Date → "AAAA-MM-DDTHH:MM" no horário de Brasília, igual no servidor e no cliente. */
 function toLocalDatetimeInput(date: Date) {
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+  // 'sv-SE' devolve "2026-09-03 13:00", que é o formato do input a menos do "T".
+  return new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  })
+    .format(date)
+    .replace(' ', 'T')
+}
+
+/** "AAAA-MM-DDTHH:MM" (Brasília, como a pessoa digitou) → ISO em UTC. */
+function doCampoParaIso(local: string) {
+  return new Date(`${local}:00${FUSO_BR}`).toISOString()
+}
+
+/**
+ * Interruptor de verdade.
+ *
+ * O que existia aqui era um <label> com `cursor: pointer` na linha inteira e o
+ * onClick só no quadradinho de 44×24. A linha ANUNCIAVA ser clicável — o cursor
+ * virava mãozinha sobre "Agendar envio" — e não fazia nada. Quem clicava na
+ * palavra concluía, com razão, que o agendamento estava quebrado. Era esse o
+ * "agendamento não funciona" que as meninas relatavam.
+ *
+ * Agora é um botão com role="switch": a linha toda alterna, funciona por
+ * teclado (Espaço/Enter) e leitor de tela anuncia o estado.
+ */
+function Interruptor({
+  ligado,
+  aoAlternar,
+  cor,
+  children,
+}: {
+  ligado: boolean
+  aoAlternar: () => void
+  cor: string
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={ligado}
+      onClick={aoAlternar}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+        background: 'none', border: 0, padding: 0, margin: 0,
+        font: 'inherit', color: 'inherit', textAlign: 'left', cursor: 'pointer',
+      }}
+    >
+      <span
+        aria-hidden
+        style={{
+          width: 44, height: 24, borderRadius: 12, flexShrink: 0,
+          transition: 'background .2s', background: ligado ? cor : '#D0D0D8',
+          position: 'relative', display: 'inline-block',
+        }}
+      >
+        <span
+          style={{
+            position: 'absolute', top: 3, left: ligado ? 22 : 3,
+            width: 18, height: 18, borderRadius: '50%', background: '#fff',
+            transition: 'left .2s', boxShadow: '0 1px 3px rgba(0,0,0,.2)',
+          }}
+        />
+      </span>
+      {children}
+    </button>
+  )
 }
 
 // ── Modal de mensagem completa ───────────────────────────────────────
@@ -235,6 +319,8 @@ export default function BroadcastClient({
 
   const activeGroups  = groups.filter(g => g.jid)
   const openInstances = instances.filter(i => i.connectionStatus === 'open')
+  /** Sem sessão de WhatsApp autenticada, nada que esta tela faça chega a alguém. */
+  const semNumero = openInstances.length === 0
 
   const defaultSchedule = () => {
     const d = new Date()
@@ -318,7 +404,7 @@ export default function BroadcastClient({
   async function send() {
     if (!message.trim()) return
     const actionLabel = scheduleMode
-      ? `Agendar para ${new Date(scheduledAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} para ${activeGroups.length} grupos?`
+      ? `Agendar para ${formatDate(doCampoParaIso(scheduledAt))} para ${activeGroups.length} grupos?`
       : `Enviar agora para ${activeGroups.length} grupos?`
     if (!confirm(actionLabel)) return
     setSending(true)
@@ -328,7 +414,7 @@ export default function BroadcastClient({
         title: title.trim() || undefined,
         message: message.trim(),
         instance_name: instanceName || undefined,
-        scheduled_at: scheduleMode && scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
+        scheduled_at: scheduleMode && scheduledAt ? doCampoParaIso(scheduledAt) : undefined,
         mention_all: mentionAll,
       }
       if (mediaTab === 'upload' && uploadedMedia) {
@@ -410,6 +496,45 @@ export default function BroadcastClient({
 
       <div style={{ fontSize: 22, fontWeight: 700, color: '#2A1E2C', marginBottom: 4 }}>Enviar mensagem nos grupos</div>
       <div style={{ fontSize: 14, color: gray, marginBottom: 28 }}>Envia ou agenda mensagem para todos os grupos ativos</div>
+
+      {semNumero && (
+        <div
+          role="alert"
+          style={{
+            background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 12,
+            padding: '16px 18px', marginBottom: 24, display: 'flex', gap: 14, alignItems: 'flex-start',
+          }}
+        >
+          <span style={{ fontSize: 22, lineHeight: 1 }}>🔌</span>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: '#991B1B', marginBottom: 4 }}>
+              Nenhum WhatsApp conectado — nada será enviado
+            </div>
+            <div style={{ fontSize: 13, color: '#7F1D1D', lineHeight: 1.5 }}>
+              A sessão do WhatsApp caiu, então mensagem enviada ou agendada agora não chega em
+              ninguém. É preciso ler o QR Code novamente com o celular da Juliane.
+              {instances.length > 0 && (
+                <>
+                  {' '}Situação de cada número:{' '}
+                  {instances
+                    .map((i) => `${i.profileName ?? i.name} (${i.connectionStatus === 'connecting' ? 'esperando o QR Code' : 'desconectado'})`)
+                    .join(' · ')}
+                  .
+                </>
+              )}
+            </div>
+            <a
+              href="/grupos/conexao"
+              style={{
+                display: 'inline-block', marginTop: 10, padding: '8px 14px', borderRadius: 8,
+                background: '#991B1B', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none',
+              }}
+            >
+              Conectar o WhatsApp →
+            </a>
+          </div>
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 330px', gap: 24, alignItems: 'start' }}>
         {/* ── Formulário ── */}
@@ -521,7 +646,9 @@ export default function BroadcastClient({
                 ))}
               </select>
               {openInstances.length === 0 && (
-                <div style={{ fontSize: 12, color: orange, marginTop: 6 }}>⚠️ Nenhum número conectado. Configure no Evolution Manager.</div>
+                <div style={{ fontSize: 12, color: orange, marginTop: 6 }}>
+                  Nenhum número conectado — veja o aviso no topo desta página.
+                </div>
               )}
             </div>
 
@@ -538,18 +665,14 @@ export default function BroadcastClient({
 
             {/* Também por email */}
             <div style={{ background: alsoEmail ? accent + '08' : '#F9F9FC', border: `1px solid ${alsoEmail ? accent + '30' : '#EDE0D2'}`, borderRadius: 12, padding: '14px 16px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
-                <div onClick={() => setAlsoEmail(v => !v)}
-                  style={{ width: 44, height: 24, borderRadius: 12, cursor: 'pointer', transition: 'background .2s', background: alsoEmail ? accent : '#D0D0D8', position: 'relative', flexShrink: 0 }}>
-                  <div style={{ position: 'absolute', top: 3, left: alsoEmail ? 22 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left .2s', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
-                </div>
+              <Interruptor ligado={alsoEmail} aoAlternar={() => setAlsoEmail(v => !v)} cor={accent}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: '#2A1E2C' }}>📧 Enviar também por email</div>
                   <div style={{ fontSize: 11, color: gray, marginTop: 2, lineHeight: 1.4 }}>
                     A mesma mensagem vira um email enviado pra toda a base (clientes + leads).
                   </div>
                 </div>
-              </label>
+              </Interruptor>
               {alsoEmail && (
                 <div style={{ marginTop: 12 }}>
                   <input
@@ -569,32 +692,54 @@ export default function BroadcastClient({
 
             {/* Agendamento */}
             <div style={{ background: scheduleMode ? accent + '08' : '#F9F9FC', border: `1px solid ${scheduleMode ? accent + '30' : '#EDE0D2'}`, borderRadius: 12, padding: '14px 16px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
-                <div onClick={() => { const n = !scheduleMode; setScheduleMode(n); if (n && !scheduledAt) setScheduledAt(defaultSchedule()) }}
-                  style={{ width: 44, height: 24, borderRadius: 12, cursor: 'pointer', transition: 'background .2s', background: scheduleMode ? accent : '#D0D0D8', position: 'relative', flexShrink: 0 }}>
-                  <div style={{ position: 'absolute', top: 3, left: scheduleMode ? 22 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left .2s', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
-                </div>
+              <Interruptor
+                ligado={scheduleMode}
+                cor={accent}
+                aoAlternar={() => {
+                  const n = !scheduleMode
+                  setScheduleMode(n)
+                  if (n && !scheduledAt) setScheduledAt(defaultSchedule())
+                }}
+              >
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 700, color: '#2A1E2C' }}>Agendar envio</div>
                   <div style={{ fontSize: 11, color: gray }}>Mensagem será enviada automaticamente no horário definido</div>
                 </div>
-              </label>
+              </Interruptor>
               {scheduleMode && (
                 <div style={{ marginTop: 14 }}>
                   <label style={{ fontSize: 12, fontWeight: 600, color: gray, display: 'block', marginBottom: 6 }}>DATA E HORA DE ENVIO</label>
                   <input type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} min={toLocalDatetimeInput(new Date())} style={{ ...inputStyle, width: 'auto' }} />
-                  {scheduledAt && <div style={{ fontSize: 12, color: accent, marginTop: 6, fontWeight: 500 }}>📅 Será enviado {formatDate(new Date(scheduledAt).toISOString())}</div>}
+                  {scheduledAt && <div style={{ fontSize: 12, color: accent, marginTop: 6, fontWeight: 500 }}>📅 Será enviado {formatDate(doCampoParaIso(scheduledAt))}</div>}
                 </div>
               )}
             </div>
 
-            {/* Botão enviar */}
+            {/* Botão enviar.
+                Sem número conectado o botão fica travado de propósito: antes ele
+                aceitava o agendamento, gravava no banco e a mensagem simplesmente
+                nunca saía — o que é indistinguível, para quem usa, de "o
+                agendamento não funciona". */}
             <button
               onClick={send}
-              disabled={sending || !message.trim() || activeGroups.length === 0 || (scheduleMode && !scheduledAt)}
-              style={{ background: accent, color: '#fff', border: 'none', cursor: sending || !message.trim() ? 'default' : 'pointer', padding: '13px 24px', borderRadius: 10, fontSize: 15, fontWeight: 700, opacity: sending || !message.trim() || activeGroups.length === 0 ? 0.6 : 1 }}
+              disabled={
+                semNumero || sending || !message.trim() ||
+                activeGroups.length === 0 || (scheduleMode && !scheduledAt)
+              }
+              style={{
+                background: accent, color: '#fff', border: 'none',
+                cursor: semNumero || sending || !message.trim() ? 'default' : 'pointer',
+                padding: '13px 24px', borderRadius: 10, fontSize: 15, fontWeight: 700,
+                opacity: semNumero || sending || !message.trim() || activeGroups.length === 0 ? 0.6 : 1,
+              }}
             >
-              {sending ? '⏳ Processando…' : scheduleMode ? `📅 Agendar para ${activeGroups.length} grupos` : `📢 Enviar agora para ${activeGroups.length} grupos`}
+              {semNumero
+                ? '🔌 Conecte um número para enviar'
+                : sending
+                  ? '⏳ Processando…'
+                  : scheduleMode
+                    ? `📅 Agendar para ${activeGroups.length} grupos`
+                    : `📢 Enviar agora para ${activeGroups.length} grupos`}
             </button>
           </div>
         </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import { PLAN_BASE_CENTS, PLAN_ANCHOR_CENTS, PLAN_DISCOUNT_PCT, brlCents } from '@/lib/pricing'
 
 // ─── Tema — idêntico ao quiz / oferta ─────────────────────────
 const T = {
@@ -34,7 +35,7 @@ const R       = 136
 const INNER_R = 36
 
 const SEGMENTS = [
-  { label: '77% OFF', sublabel: 'R$34,90', win: true },
+  { label: `${PLAN_DISCOUNT_PCT}% OFF`, sublabel: brlCents(PLAN_BASE_CENTS), win: true },
   { label: '5%',      sublabel: 'PIX' },
   { label: '10%',     sublabel: 'CARTÃO' },
   { label: '5%',      sublabel: 'CARTÃO' },
@@ -501,7 +502,7 @@ export default function RoletaPage() {
                 backgroundClip: 'text',
                 marginBottom: 4,
               }}>
-                77% OFF
+                {PLAN_DISCOUNT_PCT}% OFF
               </div>
               <p style={{
                 fontSize: 11, fontWeight: 700,
@@ -523,14 +524,14 @@ export default function RoletaPage() {
                 <div style={{ textAlign: 'center' }}>
                   <span style={{ fontSize: 11, color: T.inkMuted, display: 'block' }}>de</span>
                   <span style={{ fontSize: 17, color: T.inkMuted, textDecoration: 'line-through', fontFamily: fonts.ui }}>
-                    R$ 149,90
+                    {brlCents(PLAN_ANCHOR_CENTS)}
                   </span>
                 </div>
                 <span style={{ fontSize: 22, color: T.inkMuted }}>→</span>
                 <div style={{ textAlign: 'center' }}>
                   <span style={{ fontSize: 11, color: T.pinkDeep, fontWeight: 600, display: 'block' }}>por apenas</span>
                   <span style={{ fontSize: 34, fontWeight: 800, color: T.ink, fontFamily: fonts.ui, lineHeight: 1.1 }}>
-                    R$39,90
+                    {brlCents(PLAN_BASE_CENTS)}
                   </span>
                 </div>
               </div>
