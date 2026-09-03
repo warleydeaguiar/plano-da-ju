@@ -19,7 +19,14 @@ const MENU = [
  */
 const SEM_MOLDURA = ['/links/'];
 
-export default function Moldura({ children }: { children: React.ReactNode }) {
+export interface LinkRodape { href: string; rotulo: string }
+
+export default function Moldura({ children, atalhos = [], redes = [] }: {
+  children: React.ReactNode;
+  /** Os mesmos links do link da bio — vêm do conteúdo, editáveis no admin. */
+  atalhos?: LinkRodape[];
+  redes?: LinkRodape[];
+}) {
   const caminho = usePathname();
   if (SEM_MOLDURA.includes(caminho)) return <>{children}</>;
 
@@ -64,17 +71,69 @@ export default function Moldura({ children }: { children: React.ReactNode }) {
         style={{
           borderTop: '1px solid var(--borda)',
           marginTop: '4rem',
-          padding: '2rem 1.25rem',
+          padding: '2.5rem 1.25rem 2rem',
+          background: 'var(--creme)',
           color: 'var(--tinta-suave)',
           fontSize: '0.875rem',
         }}
       >
         <div style={{ maxWidth: '68rem', margin: '0 auto' }}>
-          <p style={{ marginBottom: '0.5rem' }}>© {new Date().getFullYear()} {NOME_SITE}</p>
-          <p>
-            Alguns links desta página são de parceiros. Se você comprar por eles, posso receber
-            uma comissão — sem custo nenhum para você.
-          </p>
+          <div style={{
+            display: 'grid', gap: '2rem',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(13rem, 1fr))',
+            marginBottom: '2rem',
+          }}>
+            <div>
+              <p style={{ fontWeight: 700, color: 'var(--tinta)', marginBottom: '0.7rem' }}>Navegar</p>
+              {MENU.map((m) => (
+                <Link key={m.href} href={m.href} style={{ display: 'block', color: 'var(--tinta-suave)', padding: '0.25rem 0' }}>
+                  {m.rotulo}
+                </Link>
+              ))}
+            </div>
+
+            {/* Os mesmos atalhos do link da bio do Instagram. Vêm do conteúdo,
+                então a Juliane muda no admin e o rodapé acompanha. */}
+            {atalhos.length > 0 && (
+              <div>
+                <p style={{ fontWeight: 700, color: 'var(--tinta)', marginBottom: '0.7rem' }}>Comigo</p>
+                {atalhos.map((l) => (
+                  <a
+                    key={l.href}
+                    href={l.href}
+                    style={{ display: 'block', color: 'var(--tinta-suave)', padding: '0.25rem 0' }}
+                  >
+                    {l.rotulo}
+                  </a>
+                ))}
+              </div>
+            )}
+
+            {redes.length > 0 && (
+              <div>
+                <p style={{ fontWeight: 700, color: 'var(--tinta)', marginBottom: '0.7rem' }}>Redes</p>
+                {redes.map((r) => (
+                  <a
+                    key={r.href}
+                    href={r.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ display: 'block', color: 'var(--tinta-suave)', padding: '0.25rem 0' }}
+                  >
+                    {r.rotulo}
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div style={{ borderTop: '1px solid var(--borda)', paddingTop: '1.25rem' }}>
+            <p style={{ marginBottom: '0.5rem' }}>© {new Date().getFullYear()} {NOME_SITE}</p>
+            <p>
+              Alguns links desta página são de parceiros. Se você comprar por eles, posso receber
+              uma comissão — sem custo nenhum para você.
+            </p>
+          </div>
         </div>
       </footer>
     </>
