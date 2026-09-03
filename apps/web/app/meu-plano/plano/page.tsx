@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { createBrowserClient } from '@supabase/ssr';
@@ -1179,9 +1179,12 @@ function PreparingState({ profile, revisao = false }: { profile: Profile | null;
 
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
+    // O relógio serve só à contagem regressiva. Em revisão ele não é usado, e
+    // re-renderizar a cada segundo remontava o efeito da consulta sem parar.
+    if (revisao) return;
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [revisao]);
   // Assim que liberar (released_at), recarrega pra mostrar o plano.
   // Em modo revisão NÃO: o plano da conta de demonstração já está liberado, e
   // este efeito recarregaria a página em laço, sem deixar a consulta na tela.
@@ -1189,6 +1192,10 @@ function PreparingState({ profile, revisao = false }: { profile: Profile | null;
     if (revisao) return;
     if (releasedMs && Date.now() >= releasedMs) window.location.reload();
   }, [now, releasedMs, revisao]);
+
+  // Memoizado: `buildConsultaData` devolve um objeto novo a cada chamada, e
+  // isso entra nas dependências do efeito da consulta lá dentro.
+  const dadosConsulta = useMemo(() => buildConsultaData(profile), [profile]);
 
   const remainingMs = deadlineMs ? Math.max(0, deadlineMs - now) : null;
   const hh = remainingMs != null ? Math.floor(remainingMs / 3600_000) : null;
@@ -1204,7 +1211,7 @@ function PreparingState({ profile, revisao = false }: { profile: Profile | null;
     const minutesC = Math.max(1, Math.round((endC - startC) / 60_000)); // deriva da janela real
     return (
       <Consulta
-        data={buildConsultaData(profile)}
+        data={dadosConsulta}
         startMs={startC}
         endMs={endC}
         minutes={minutesC}

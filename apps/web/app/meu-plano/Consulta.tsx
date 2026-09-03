@@ -263,6 +263,15 @@ function ConsultaInner({ data, startMs, endMs, minutes, revisao = false }: {
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const reloadedRef = useRef(false);
+  /**
+   * Etapa atual da revisão, em ref e não em variável local do efeito.
+   *
+   * O componente que nos renderiza atualiza um relógio a cada segundo, e
+   * `data` é um objeto novo em cada render — então este efeito remonta de
+   * segundo em segundo. Com o índice numa variável local ele voltava para
+   * zero a cada remontagem, e o play (5s) era cancelado antes de disparar.
+   */
+  const idxRef = useRef(0);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -304,7 +313,6 @@ function ConsultaInner({ data, startMs, endMs, minutes, revisao = false }: {
     if (revisao) {
       const wait = q('#cns-wait');
       if (wait) wait.classList.add('hidden'); // sem fila: ela não é o objeto da revisão
-      let i = 0;
       let tocando = true;
       let timer = 0;
 
@@ -313,6 +321,7 @@ function ConsultaInner({ data, startMs, endMs, minutes, revisao = false }: {
         // volte a lista de observações — senão ela só cresce.
         const log = q('#cns-log');
         if (log) log.innerHTML = '';
+        const i = idxRef.current;
         for (let k = 0; k <= i; k++) addObs(k);
         renderStage(i);
         const pf = q('#cns-pfill');
@@ -320,13 +329,13 @@ function ConsultaInner({ data, startMs, endMs, minutes, revisao = false }: {
         const ck = q('#cns-clock');
         if (ck) ck.textContent = `${minutes}:00`;
         const pos = q('#cns-rev-pos');
-        if (pos) pos.textContent = `${i + 1} / ${stages.length}`;
+        if (pos) pos.textContent = `${idxRef.current + 1} / ${stages.length}`;
         const btnPlay = q('#cns-rev-play');
         if (btnPlay) btnPlay.textContent = tocando ? '⏸ pausar' : '▶ tocar';
         const btn = q('#cns-planbtn') as HTMLButtonElement | null;
         // No fim das etapas o botão do plano libera, igual à cliente vê.
         if (btn) {
-          const fim = i === stages.length - 1;
+          const fim = idxRef.current === stages.length - 1;
           btn.disabled = !fim;
           btn.textContent = fim ? 'Ver meu plano →' : btn.textContent;
         }
@@ -336,7 +345,7 @@ function ConsultaInner({ data, startMs, endMs, minutes, revisao = false }: {
         clearTimeout(timer);
         if (!tocando) return;
         timer = window.setTimeout(() => {
-          if (i < stages.length - 1) { i++; pinta(); agenda(); }
+          if (idxRef.current < stages.length - 1) { idxRef.current++; pinta(); agenda(); }
           else { tocando = false; pinta(); }
         }, 5000);
       };
@@ -344,8 +353,8 @@ function ConsultaInner({ data, startMs, endMs, minutes, revisao = false }: {
       const onRev = (e: Event) => {
         const t = (e.target as HTMLElement)?.closest('button');
         if (!t) return;
-        if (t.id === 'cns-rev-prev' && i > 0) { i--; tocando = false; pinta(); agenda(); }
-        if (t.id === 'cns-rev-next' && i < stages.length - 1) { i++; tocando = false; pinta(); agenda(); }
+        if (t.id === 'cns-rev-prev' && idxRef.current > 0) { idxRef.current--; tocando = false; pinta(); agenda(); }
+        if (t.id === 'cns-rev-next' && idxRef.current < stages.length - 1) { idxRef.current++; tocando = false; pinta(); agenda(); }
         if (t.id === 'cns-rev-play') { tocando = !tocando; pinta(); agenda(); }
       };
       root.addEventListener('click', onRev);
