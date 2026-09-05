@@ -1488,7 +1488,20 @@ export default function OfertaClient() {
               </div>
             </div>
 
-            {/* ── Apple Pay / Google Pay (Stripe) — pagamento em 1 toque (some se o aparelho não suportar) ── */}
+            {/* ── Apple Pay / Google Pay (Stripe) ──
+                Escondido porque o Stripe NUNCA foi configurado: as três chaves
+                (secret, publishable, webhook) não existem no projeto, e a rota
+                do pagamento responde "Pagamento indisponível". O botão ficou no
+                ar de 19/05 até 05/09 sem produzir UMA venda — zero pagamentos
+                com id `pi_` no banco, contra 1.780 da PagarMe.
+
+                Deixar um botão que sempre falha no lugar mais nobre do checkout
+                é pior do que não ter: ocupa o espaço da decisão e gasta uma
+                chamada de rede a cada carregamento.
+
+                Para religar: cadastrar STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY
+                e STRIPE_WEBHOOK_SECRET, e definir NEXT_PUBLIC_CARTEIRAS=sim. */}
+            {process.env.NEXT_PUBLIC_CARTEIRAS === 'sim' && (
             <ApplePayButton
               amountCents={precoAtual}
               getPayer={() => ({
@@ -1508,6 +1521,7 @@ export default function OfertaClient() {
               }}
               onError={(msg) => setError(msg)}
             />
+            )}
 
             {/* ── Forma de pagamento ── */}
             <div style={sectionCard}>
