@@ -637,7 +637,7 @@ export default function OfertaClient() {
         const data = await res.json();
         if (data.paid) {
           localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now(), orderId: cardOrderId }));
-          await logEvent({ event_type: 'payment_confirmed', email, payment_type: 'card', amount_cents: PLAN_BASE_CENTS });
+          await logEvent({ event_type: 'payment_confirmed', email, payment_type: 'card', amount_cents: precoAtual });
           router.push('/obrigado');
         } else if (data.failed) {
           setCardPolling(false);
@@ -973,7 +973,7 @@ export default function OfertaClient() {
       // Cobrança aprovada imediatamente?
       if (data.paid) {
         localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now(), orderId: data.order_id }));
-        await logEvent({ event_type: 'payment_confirmed', email, payment_type: 'card', amount_cents: PLAN_BASE_CENTS });
+        await logEvent({ event_type: 'payment_confirmed', email, payment_type: 'card', amount_cents: precoAtual });
         router.push('/obrigado');
       } else {
         // Order criado mas cobrança ainda pendente — inicia polling
@@ -1001,7 +1001,7 @@ export default function OfertaClient() {
 
   const onBuy = () => {
     // Log evento de checkout iniciado
-    logEvent({ event_type: 'checkout_initiated', email, payment_type: payType, amount_cents: PLAN_BASE_CENTS });
+    logEvent({ event_type: 'checkout_initiated', email, payment_type: payType, amount_cents: precoAtual });
 
     // Pixel Meta — InitiateCheckout com Advanced Matching
     // eventID compartilhado entre Pixel e CAPI → deduplicação no Meta.
@@ -1020,7 +1020,10 @@ export default function OfertaClient() {
         }
         ;(window as any).fbq('track', 'InitiateCheckout', {
           content_name: 'Plano Capilar Personalizado',
-          value: 47,
+          // Valor REAL da compra. Estava cravado em 47 e o plano custa R$34,90
+          // — ou menos, com cupom. Informar valor inflado distorce o ROAS que
+          // a Meta mostra E o aprendizado da campanha, que otimiza por ele.
+          value: precoAtual / 100,
           currency: 'BRL',
         }, { eventID: icEventId });
       }
@@ -1029,7 +1032,9 @@ export default function OfertaClient() {
     // Espelha o InitiateCheckout no CAPI server-side (mesmo eventID → dedup)
     sendServerEvent('InitiateCheckout', {
       eventId: icEventId,
-      value: 47,
+      // Mesmo valor do pixel: se os dois divergirem, a deduplicação da Meta
+      // fica com um dos dois e o número passa a depender de qual chegou antes.
+      value: precoAtual / 100,
       currency: 'BRL',
       email: icEmail || undefined,
       phone: icPhoneE164 || undefined,
@@ -1485,7 +1490,7 @@ export default function OfertaClient() {
 
             {/* ── Apple Pay / Google Pay (Stripe) — pagamento em 1 toque (some se o aparelho não suportar) ── */}
             <ApplePayButton
-              amountCents={PLAN_BASE_CENTS}
+              amountCents={precoAtual}
               getPayer={() => ({
                 email: email.trim(),
                 name: name.trim(),
@@ -1493,6 +1498,7 @@ export default function OfertaClient() {
                 cpf: cpf.replace(/\D/g, ''),
                 sessionId: getSessionId(),
                 quizAnswers,
+                cupom: cupom || undefined,
               })}
               canPay={() => name.trim().length >= 2 && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())}
               onNeedInfo={() => { setTouched(t => ({ ...t, cpf: true })); setError('Preencha seu nome e e-mail para pagar com Apple Pay.'); }}

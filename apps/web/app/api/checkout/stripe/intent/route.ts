@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe/client';
 import { PLAN_BASE_CENTS } from '@/lib/pricing';
+import { precoParaCobrar } from '@/lib/cupom';
 import { normalizeEmail, isValidEmailFormat } from '@/lib/normalize-email';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { logCheckoutError } from '@/lib/checkout-log';
@@ -74,8 +75,11 @@ export async function POST(req: NextRequest) {
       console.error('[stripe intent] pre-perfil falhou', e);
     }
 
-    // Pagamento único, à vista (Apple Pay não parcela): R$34,90.
-    const amount = PLAN_BASE_CENTS;
+    // Pagamento único, à vista (Apple Pay não parcela).
+    // O valor sai do cupom, no servidor, igual ao PIX e ao cartão. Sem isto a
+    // carteira mostrava e cobrava R$34,90 mesmo com o desconto aplicado na
+    // tela — prometer um preço e cobrar outro, agora dentro do Apple Pay.
+    const { precoCents: amount } = await precoParaCobrar(body.cupom, PLAN_BASE_CENTS, email);
 
     const intent = await stripe.paymentIntents.create({
       amount,

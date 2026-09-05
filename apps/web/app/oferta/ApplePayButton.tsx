@@ -17,7 +17,7 @@ function stripeJs() {
 
 interface Props {
   amountCents: number;             // valor à vista (R$34,90 = 3490)
-  getPayer: () => { email: string; name: string; phone: string; cpf: string; sessionId: string; quizAnswers: Record<string, unknown> };
+  getPayer: () => { email: string; name: string; phone: string; cpf: string; sessionId: string; quizAnswers: Record<string, unknown>; cupom?: string };
   canPay: () => boolean;           // ex.: email/nome válidos no formulário
   onNeedInfo?: () => void;         // avisa o pai quando falta email/nome
   onSuccess: () => void;
@@ -73,7 +73,7 @@ export default function ApplePayButton({ amountCents, getPayer, canPay, onNeedIn
           const r = await fetch('/api/checkout/stripe/intent', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: p.email, name: p.name, phone: p.phone, cpf: p.cpf, session_id: p.sessionId, quiz_answers: p.quizAnswers }),
+            body: JSON.stringify({ email: p.email, name: p.name, phone: p.phone, cpf: p.cpf, session_id: p.sessionId, quiz_answers: p.quizAnswers, cupom: p.cupom }),
           });
           const data = await r.json().catch(() => ({}));
           if (!r.ok || !data.client_secret) {
