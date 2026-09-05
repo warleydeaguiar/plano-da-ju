@@ -8,7 +8,17 @@ import { installmentInfo, brlCents, MAX_INSTALLMENTS, PLAN_BASE_CENTS } from '@/
 import { getFunilCopy } from '@/lib/hair-copy';
 import { buildConsultaData } from '@/lib/consulta';
 import Picture from '@/app/components/Picture';
-import ApplePayButton from './ApplePayButton';
+import dynamic from 'next/dynamic';
+
+/**
+ * Carregado sob demanda, e não no pacote principal.
+ *
+ * O import estático arrastava a `@stripe/stripe-js` para o JavaScript que
+ * TODA cliente baixa — inclusive agora, com o botão desligado. Num checkout em
+ * que 87% do acesso é celular, peso de biblioteca que ninguém usa é conversão
+ * perdida.
+ */
+const ApplePayButton = dynamic(() => import('./ApplePayButton'), { ssr: false });
 
 // ╔══════════════════════════════════════════════════════════╗
 // ║  V2 — Página de oferta moderna feminina                  ║
