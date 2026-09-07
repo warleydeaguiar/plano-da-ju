@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
+import { PLAN_BASE_CENTS } from '@/lib/pricing';
 
 // Paleta brand
 const T = {
@@ -149,7 +150,12 @@ export default function ObrigadoClient() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (window as any).fbq &&
         !localStorage.getItem(purchaseFlagKey) &&
-        resolvedEmail
+        resolvedEmail &&
+        // Cortesia da parceria (UGC) não é venda: a pessoa não pagou nada.
+        // Sem isto o Meta recebe um Purchase por cada ativação gratuita —
+        // fatura fantasma no relatório e, pior, a campanha passa a otimizar
+        // para encontrar mais gente parecida com quem NÃO paga.
+        params.get('cortesia') !== '1'
       ) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let userData: any = null;
@@ -177,7 +183,7 @@ export default function ObrigadoClient() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (window as any).fbq('track', 'Purchase', {
           content_name: 'Plano Capilar Personalizado',
-          value: data.amount ?? 47,
+          value: data.amount ?? PLAN_BASE_CENTS / 100,
           currency: 'BRL',
         }, { eventID: String(eventId) });
         localStorage.setItem(purchaseFlagKey, '1');

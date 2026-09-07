@@ -612,7 +612,7 @@ export default function OfertaClient() {
           } catch {}
         }
         if (data.paid) {
-          localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now(), orderId: pixOrderId }));
+          localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now(), amount: precoAtual / 100, orderId: pixOrderId }));
           localStorage.removeItem('pix_pending');
           setStep('pix_confirmed');
           setTimeout(() => router.push('/obrigado'), 2000);
@@ -633,7 +633,7 @@ export default function OfertaClient() {
     if (cardPollCount >= 60) {
       // 3 minutos (60 × 3s) — assume que o webhook vai chegar; redireciona
       try {
-        localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now(), orderId: cardOrderId }));
+        localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now(), amount: precoAtual / 100, orderId: cardOrderId }));
       } catch {}
       router.push('/obrigado?pending=1');
       return;
@@ -646,7 +646,7 @@ export default function OfertaClient() {
         );
         const data = await res.json();
         if (data.paid) {
-          localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now(), orderId: cardOrderId }));
+          localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now(), amount: precoAtual / 100, orderId: cardOrderId }));
           await logEvent({ event_type: 'payment_confirmed', email, payment_type: 'card', amount_cents: precoAtual });
           router.push('/obrigado');
         } else if (data.failed) {
@@ -847,7 +847,7 @@ export default function OfertaClient() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Não consegui enviar o comprovante.');
       try {
-        localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now(), orderId: pixOrderId, gateway: 'pix_manual' }));
+        localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now(), amount: precoAtual / 100, orderId: pixOrderId, gateway: 'pix_manual' }));
         localStorage.removeItem('pix_pending');
       } catch { /* ok */ }
       router.push('/obrigado');
@@ -982,7 +982,7 @@ export default function OfertaClient() {
 
       // Cobrança aprovada imediatamente?
       if (data.paid) {
-        localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now(), orderId: data.order_id }));
+        localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now(), amount: precoAtual / 100, orderId: data.order_id }));
         await logEvent({ event_type: 'payment_confirmed', email, payment_type: 'card', amount_cents: precoAtual });
         router.push('/obrigado');
       } else {
@@ -1526,7 +1526,7 @@ export default function OfertaClient() {
               canPay={() => name.trim().length >= 2 && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())}
               onNeedInfo={() => { setTouched(t => ({ ...t, cpf: true })); setError('Preencha seu nome e e-mail para pagar com Apple Pay.'); }}
               onSuccess={() => {
-                try { localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now(), gateway: 'stripe_wallet' })); } catch { /* ok */ }
+                try { localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now(), amount: precoAtual / 100, gateway: 'stripe_wallet' })); } catch { /* ok */ }
                 router.push('/obrigado');
               }}
               onError={(msg) => setError(msg)}
