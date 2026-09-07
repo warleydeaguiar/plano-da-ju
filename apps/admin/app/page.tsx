@@ -430,6 +430,7 @@ export default async function DashboardPage() {
     // Plano — usuárias / receita
     totalUsers,
     activeUsers,
+    activeCortesia,
     newLast7,
     // Funil quiz
     quizViewsToday, quizViewsYesterday, quizViewsMonth,
@@ -465,6 +466,10 @@ export default async function DashboardPage() {
     (sb.from('profiles') as any).select('*', { count: 'exact', head: true }),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sb.from('profiles') as any).select('*', { count: 'exact', head: true }).eq('subscription_status', 'active'),
+    // Cortesias (UGC da parceria + contas de teste): usam o produto, mas não pagam.
+    // Sem separar, "assinantes ativas" mostrava ~10x o número de clientes de verdade.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sb.from('profiles') as any).select('*', { count: 'exact', head: true }).eq('subscription_status', 'active').eq('subscription_type', 'parceria'),
     // (vendas/receita do dia/ontem/mês agora vêm de getRealSales — pagamento real Pagar.me)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sb.from('profiles') as any).select('*', { count: 'exact', head: true }).gte('created_at', day7agoBR.toISOString()),
@@ -564,6 +569,12 @@ export default async function DashboardPage() {
       return { status, orders: merged };
     })(),
   ]);
+
+  // Ativas = quem tem o produto liberado; pagantes = quem comprou. As UGC da
+  // parceria entram no primeiro grupo e não no segundo, e por isso o número
+  // cheio não serve para ler o negócio.
+  const cortesiasAtivas = activeCortesia.count ?? 0;
+  const pagantesAtivas = Math.max(0, (activeUsers.count ?? 0) - cortesiasAtivas);
 
   const pixStats = await getPixStats();
   const aiCosts = await getAiCosts();
@@ -1400,10 +1411,10 @@ export default async function DashboardPage() {
         <div className="dash-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
           <StatCard icon={IconUsers} label="Total usuárias" value={(totalUsers.count ?? 0).toLocaleString('pt-BR')} sub="cadastradas" />
           <StatCard
-            icon={IconCheckCircle} label="Assinantes ativas"
-            value={(activeUsers.count ?? 0).toLocaleString('pt-BR')}
+            icon={IconCheckCircle} label="Clientes pagantes"
+            value={pagantesAtivas.toLocaleString('pt-BR')}
             accent={T.green} accentSoft={T.greenSoft} valueColor={T.green}
-            sub={`${((activeUsers.count ?? 0) / Math.max(1, totalUsers.count ?? 1) * 100).toFixed(0)}% do total`}
+            sub={`+ ${cortesiasAtivas.toLocaleString('pt-BR')} cortesias (parceria)`}
           />
           <StatCard
             icon={IconUserPlus} label="Novas usuárias 7d" value={newLast7.count ?? 0}
