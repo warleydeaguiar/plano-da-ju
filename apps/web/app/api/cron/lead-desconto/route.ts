@@ -111,21 +111,28 @@ export async function GET(req: NextRequest) {
   const candidatos = (leads ?? []) as any[];
   if (!candidatos.length) return NextResponse.json({ ok: true, enviados: 0, controle: 0, jaCompraram: 0 });
 
-  // Quem já comprou não recebe oferta de desconto.
+  // Quem já tem o plano não recebe oferta de desconto — nem quem pagou, nem
+  // quem ganhou por cortesia da parceria. Os dois são contados à parte porque
+  // só o primeiro grupo é venda.
   const emails = candidatos.map((l) => (l.email ?? '').toLowerCase().trim()).filter(Boolean);
-  const { data: compradores } = emails.length
+  const { data: comAcesso } = emails.length
     ? await (sb.from('profiles') as any)
-        .select('email').in('email', emails).eq('subscription_status', 'active')
+        .select('email, subscription_type').in('email', emails).eq('subscription_status', 'active')
     : { data: [] as any[] };
-  const comprou = new Set(((compradores ?? []) as any[]).map((p) => String(p.email).toLowerCase()));
+  const pagantes = new Set<string>();
+  const cortesias = new Set<string>();
+  for (const p of ((comAcesso ?? []) as any[])) {
+    const e = String(p.email).toLowerCase();
+    (p.subscription_type === 'parceria' ? cortesias : pagantes).add(e);
+  }
 
-  let enviados = 0, controle = 0, jaCompraram = 0;
+  let enviados = 0, controle = 0, jaCompraram = 0, jaCortesia = 0;
   const falhas: { id: string; erro: string }[] = [];
 
   for (const lead of candidatos) {
     const email = (lead.email ?? '').toLowerCase().trim();
-    if (email && comprou.has(email)) {
-      jaCompraram++;
+    if (email && (pagantes.has(email) || cortesias.has(email))) {
+      if (pagantes.has(email)) jaCompraram++; else jaCortesia++;
       if (!dry) await (sb.from('wg_quiz_leads') as any)
         .update({ desconto_enviado_em: new Date().toISOString() }).eq('id', lead.id);
       continue;
@@ -154,7 +161,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     ok: true, dry, cupom: CUPOM,
-    candidatos: candidatos.length, enviados, controle, jaCompraram,
+    candidatos: candidatos.length, enviados, controle, jaCompraram, jaCortesia,
     falhas: falhas.slice(0, 5),
   });
 }
