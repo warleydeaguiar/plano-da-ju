@@ -124,6 +124,12 @@ export default function GerenciarClient({ initialGroups }: { initialGroups: Grou
   const [editLimite, setEditLimite]   = useState('')
   const [salvando, setSalvando]       = useState(false)
 
+  // Contagem em lote: o operador confere no WhatsApp e lança todos de uma vez.
+  const [lote, setLote]                   = useState(false)
+  const [loteValores, setLoteValores]     = useState<Record<string, string>>({})
+  const [salvandoLote, setSalvandoLote]   = useState(false)
+  const [loteResultado, setLoteResultado] = useState<string | null>(null)
+
   // Discover
   const [discovering, setDiscovering]           = useState(false)
   const [discoveredGroups, setDiscoveredGroups] = useState<DiscoveredGroup[] | null>(null)
@@ -176,6 +182,37 @@ export default function GerenciarClient({ initialGroups }: { initialGroups: Grou
     if (quebrar && !confirm(`Marcar o link de "${g.name}" como quebrado? O grupo para de receber leads até você trocar ou confirmar o link.`)) return
     try { await patch(g, { link_ok: !quebrar }) }
     catch (err: any) { alert(err.message) }
+  }
+
+  async function salvarLote() {
+    const itens = Object.entries(loteValores)
+      .filter(([, v]) => v.trim() !== '')
+      .map(([id, v]) => ({ id, member_count: Number(v) }))
+    if (!itens.length) return
+    if (itens.some(i => !Number.isFinite(i.member_count) || i.member_count < 0)) {
+      alert('Há um número inválido.')
+      return
+    }
+    setSalvandoLote(true)
+    setLoteResultado(null)
+    try {
+      const res = await fetch('/api/grupos/contagens', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itens }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erro ao salvar')
+      const porId = new Map((data.grupos as Group[]).map(g => [g.id, g]))
+      setGroups(prev => prev.map(g => porId.has(g.id) ? { ...g, ...porId.get(g.id)! } : g))
+      setLoteValores({})
+      setLoteResultado(`✓ ${data.atualizados} ${data.atualizados === 1 ? 'grupo atualizado' : 'grupos atualizados'}`
+        + (data.falhas ? ` (${data.falhas} com erro)` : ''))
+    } catch (err: any) {
+      setLoteResultado('✗ ' + err.message)
+    } finally {
+      setSalvandoLote(false)
+    }
   }
 
   // ── Adicionar manualmente ──
@@ -394,6 +431,15 @@ export default function GerenciarClient({ initialGroups }: { initialGroups: Grou
             {bulking ? '⏳ Ativando…' : '✅ Ativar todos'}
           </button>
           <button
+            onClick={() => { setLote(v => !v); setLoteResultado(null) }}
+            style={{
+              background: lote ? ink : '#fff', color: lote ? '#fff' : ink, border: `1px solid ${ink}30`,
+              cursor: 'pointer', padding: '9px 18px', borderRadius: 10, fontSize: 14, fontWeight: 600,
+            }}
+          >
+            📝 Atualizar contagens
+          </button>
+          <button
             onClick={() => setShowForm(true)}
             style={{ background: accent, color: '#fff', border: 'none', cursor: 'pointer', padding: '9px 18px', borderRadius: 10, fontSize: 14, fontWeight: 600 }}
           >
@@ -415,7 +461,7 @@ export default function GerenciarClient({ initialGroups }: { initialGroups: Grou
           <div style={{ fontWeight: 700, color: orange, marginBottom: 4 }}>Evolution sem número conectado — modo manual</div>
           A distribuição continua funcionando: cada entrada pelo link é contada aqui, e a ocupação de cada grupo é a
           última contagem + essas entradas. O que não se atualiza sozinho é o número real de membros e os links.
-          Confira no WhatsApp de vez em quando e use <b>Atualizar membros</b> e <b>Trocar link</b>.
+          Confira no WhatsApp de vez em quando e lance tudo de uma vez em <b>📝 Atualizar contagens</b>.
         </div>
       ))}
 
@@ -441,6 +487,70 @@ export default function GerenciarClient({ initialGroups }: { initialGroups: Grou
           </div>
         )}
       </div>
+
+      {lote && (
+        <div style={{ background: '#fff', borderRadius: 14, border: `1px solid ${ink}20`, padding: '20px 24px', marginBottom: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, marginBottom: 16 }}>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: ink }}>Atualizar contagens</div>
+              <div style={{ fontSize: 12, color: gray, marginTop: 4, maxWidth: 640, lineHeight: 1.55 }}>
+                No WhatsApp, abra o grupo e toque no nome dele: aparece &quot;Grupo · 1.012 membros&quot;.
+                Preencha só os que você conferiu — os em branco ficam como estão. Ao salvar, as entradas
+                pelo link voltam a contar do zero a partir do número digitado.
+              </div>
+            </div>
+            <button
+              onClick={() => setLote(false)}
+              style={{ background: '#FFFAF5', border: 'none', cursor: 'pointer', padding: '6px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, color: ink, fontFamily: 'inherit' }}
+            >
+              Fechar
+            </button>
+          </div>
+
+          <div style={{ overflowX: 'auto' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 1fr) auto auto auto', gap: '8px 20px', alignItems: 'center', minWidth: 560 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: gray }}>GRUPO</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: gray }}>ÚLTIMA CONTAGEM</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: gray }}>ESTIMATIVA HOJE</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: gray }}>MEMBROS AGORA</div>
+              {groups
+                .filter(g => g.status !== 'archived')
+                .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { numeric: true }))
+                .map(g => (
+                  <div key={g.id} style={{ display: 'contents' }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: ink }}>{g.name}</div>
+                    <div style={{ fontSize: 12, color: gray }}>{num(g.member_count ?? 0)} em {dataCurta(g.contagem_em ?? g.last_synced_at)}</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: temVaga(g) ? ink : red }}>≈ {num(estimado(g))}</div>
+                    <input
+                      type="number" min={0} inputMode="numeric" placeholder="—"
+                      value={loteValores[g.id] ?? ''}
+                      onChange={e => setLoteValores(v => ({ ...v, [g.id]: e.target.value }))}
+                      onKeyDown={e => { if (e.key === 'Enter') salvarLote() }}
+                      style={{ ...inputStyle, width: 120 }}
+                    />
+                  </div>
+                ))}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 14, marginTop: 18 }}>
+            {loteResultado && (
+              <span style={{ fontSize: 13, fontWeight: 600, color: loteResultado.startsWith('✓') ? green : red }}>{loteResultado}</span>
+            )}
+            <button
+              onClick={salvarLote}
+              disabled={salvandoLote || !Object.values(loteValores).some(v => v.trim() !== '')}
+              style={{
+                background: accent, color: '#fff', border: 'none', padding: '9px 20px', borderRadius: 10, fontSize: 14, fontWeight: 700,
+                cursor: salvandoLote ? 'default' : 'pointer', fontFamily: 'inherit',
+                opacity: salvandoLote || !Object.values(loteValores).some(v => v.trim() !== '') ? 0.5 : 1,
+              }}
+            >
+              {salvandoLote ? 'Salvando…' : `Salvar ${Object.values(loteValores).filter(v => v.trim() !== '').length || ''} contagens`}
+            </button>
+          </div>
+        </div>
+      )}
 
       {syncResult && (
         <div style={{
