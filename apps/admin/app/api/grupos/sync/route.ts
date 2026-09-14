@@ -62,6 +62,9 @@ export async function POST() {
         member_count:   count,
         last_synced_at: new Date().toISOString(),
         updated_at:     new Date().toISOString(),
+        // Contagem real do WhatsApp: as entradas pelo link voltam a contar do zero.
+        entradas_desde_contagem: 0,
+        contagem_em:    new Date().toISOString(),
         ...(isFull ? { status: 'full', is_receiving: false } : {}),
       })
       .eq('id', group.id)

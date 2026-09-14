@@ -104,17 +104,27 @@ export async function GET(req: NextRequest) {
     return list.find(g => typeof g.invite_link === 'string' && g.invite_link.startsWith(WA)) ?? null
   }
 
-  let finalTarget =
-    // 1) ideal: recebendo + abaixo da capacidade
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await pickFrom((q: any) => q.eq('is_receiving', true).lt('member_count', CAPACITY))
-    // 2) qualquer ativo abaixo da capacidade (ignora pausa manual)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ?? await pickFrom((q: any) => q.lt('member_count', CAPACITY))
-    // 3) último recurso: qualquer ativo com link válido (ignora capacidade) —
-    //    melhor mandar pra um grupo cheio do que deixar a pessoa sem destino
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ?? await pickFrom((q: any) => q)
+  // A escolha acontece no banco (wg_grupo_escolher, migração 020): mesma ordem
+  // de preferência de antes, mas com a ocupação ESTIMADA — última contagem de
+  // membros + entradas por este link desde então — e já contando esta entrada.
+  // Antes a ocupação vinha só do Evolution; com o número banido a contagem
+  // congelou e o #BM ("0 membros") recebeu 2.202 entradas num grupo de 1.024.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: escolha, error: erroEscolha } = await (db as any).rpc('wg_grupo_escolher')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let finalTarget: any = Array.isArray(escolha) ? (escolha[0] ?? null) : null
+
+  // Plano B se a função falhar: a seleção antiga, pela contagem do Evolution.
+  if (erroEscolha) {
+    console.error('[g/entrar] wg_grupo_escolher falhou:', erroEscolha.message)
+    finalTarget =
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await pickFrom((q: any) => q.eq('is_receiving', true).lt('member_count', CAPACITY))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ?? await pickFrom((q: any) => q.lt('member_count', CAPACITY))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ?? await pickFrom((q: any) => q)
+  }
 
   if (finalTarget) {
     // Log do clique — await para garantir que o insert complete antes do redirect

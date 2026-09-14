@@ -60,24 +60,46 @@ export async function POST(req: NextRequest) {
   }
   const invite_code = match[1]
 
-  let groupInfo: { subject?: string; id?: string; size?: number } = {}
-  try {
-    groupInfo = await getGroupByInviteCode(invite_code)
-  } catch (err) {
-    console.warn('[grupos] Evolution offline — salvando sem validar:', err)
+  // Mesmo convite duas vezes dividiria a contagem de entradas em dois registros.
+  const { data: repetido } = await supabase
+    .from('wg_groups' as any).select('id, name').eq('invite_code', invite_code).neq('status', 'archived').limit(1)
+  if (repetido && repetido.length) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return NextResponse.json({ error: `Esse link já está cadastrado em "${(repetido[0] as any).name}"` }, { status: 409 })
   }
 
+  // O Evolution só completa nome e membros quando está no ar. Com o número
+  // banido ele pode demorar a responder: 6 s e segue sem ele.
+  let groupInfo: { subject?: string; id?: string; size?: number } = {}
+  try {
+    groupInfo = await Promise.race([
+      getGroupByInviteCode(invite_code),
+      new Promise<never>((_, rej) => setTimeout(() => rej(new Error('Evolution demorou mais de 6 s')), 6000)),
+    ])
+  } catch (err) {
+    console.warn('[grupos] Evolution indisponível — salvando com os dados digitados:', err)
+  }
+
+  const membrosDigitados = Number(body.member_count)
+  const limite = Math.round(Number(body.capacity))
+  const agora = new Date().toISOString()
   const { data, error } = await supabase
     .from('wg_groups' as any)
     .insert({
       name:         name || groupInfo?.subject || `Grupo ${invite_code.slice(0, 6)}`,
       jid:          groupInfo?.id || null,
       invite_code,
-      invite_link:  invite_link.trim(),
-      member_count: groupInfo?.size ?? 0,
-      capacity:     1024,
+      invite_link:  `https://chat.whatsapp.com/${invite_code}`,
+      member_count: Number.isFinite(membrosDigitados) && membrosDigitados >= 0 ? Math.round(membrosDigitados) : (groupInfo?.size ?? 0),
+      capacity:     limite >= 1 && limite <= 1024 ? limite : 1024,
       status:       'active',
       is_receiving: is_receiving ?? false,
+      // O operador colou o link: ele garante que o convite funciona. Sem isto o
+      // distribuidor ignorava o grupo (só o Evolution ligava link_ok).
+      link_ok:         true,
+      link_checked_at: agora,
+      contagem_em:     agora,
+      entradas_desde_contagem: 0,
     })
     .select()
     .single()

@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
       // Busca o grupo pelo JID
       const { data: group } = await supabase
         .from('wg_groups' as any)
-        .select('id, member_count')
+        .select('id, member_count, entradas_desde_contagem')
         .eq('jid', groupJid)
         .single()
 
@@ -66,9 +66,14 @@ export async function POST(req: NextRequest) {
       // Atualiza member_count incrementalmente
       const delta = action === 'join' ? participants.length : -participants.length
       const newCount = Math.max(0, (group.member_count ?? 0) + delta)
+      // Quem entrou pelo /g/entrar já foi somado em entradas_desde_contagem;
+      // somar de novo aqui contaria a mesma pessoa duas vezes na ocupação.
+      const entradas = action === 'join'
+        ? Math.max(0, (group.entradas_desde_contagem ?? 0) - participants.length)
+        : (group.entradas_desde_contagem ?? 0)
       await supabase
         .from('wg_groups' as any)
-        .update({ member_count: newCount, updated_at: new Date().toISOString() })
+        .update({ member_count: newCount, entradas_desde_contagem: entradas, updated_at: new Date().toISOString() })
         .eq('id', group.id)
     }
 
