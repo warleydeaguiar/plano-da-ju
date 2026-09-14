@@ -413,13 +413,42 @@ export default async function DashboardPage() {
   // Planos travados na geração (processing há >15min, com foto, sem plano pronto).
   // Sinal de que a IA parou — quase sempre OpenRouter sem crédito. Alerta no topo.
   const stuck15 = new Date(now.getTime() - 15 * 60_000).toISOString();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { count: stuckPlansCount } = await (sb.from('profiles') as any)
-    .select('id', { count: 'exact', head: true })
-    .eq('plan_status', 'processing')
-    .not('photo_url', 'is', null)
-    .lt('plan_requested_at', stuck15);
-  const stuckPlans = stuckPlansCount ?? 0;
+
+  // Janelas usadas pelos contadores de IA e SMS.
+  const _br = new Date(Date.now() - 3 * 3600 * 1000);
+  const _startTodayBR = new Date(Date.UTC(_br.getUTCFullYear(), _br.getUTCMonth(), _br.getUTCDate(), 3, 0, 0)).toISOString();
+  const _startMonthBR = new Date(Date.UTC(_br.getUTCFullYear(), _br.getUTCMonth(), 1, 3, 0, 0)).toISOString();
+  const cnt = (col: string, gte?: string) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let q = (sb.from('profiles') as any).select('id', { count: 'exact', head: true });
+    q = gte ? q.gte(col, gte) : q.not(col, 'is', null);
+    return q;
+  };
+
+  // Tudo o que não depende do lote principal sai JUNTO com ele. Antes eram oito
+  // idas ao banco em fila depois do lote (planos travados, PIX, custos de IA,
+  // planos do dia, avaliações, Ybera, SMS), cada uma esperando a anterior.
+  const extras = Promise.all([
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sb.from('profiles') as any)
+      .select('id', { count: 'exact', head: true })
+      .eq('plan_status', 'processing')
+      .not('photo_url', 'is', null)
+      .lt('plan_requested_at', stuck15),
+    getPixStats(),
+    getAiCosts(),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sb.from('profiles') as any)
+      .select('id', { count: 'exact', head: true })
+      .gte('plan_requested_at', _startTodayBR),
+    getPlanRatings(),
+    getYberaDashboard(),
+    cnt('pix_sms_last_at', _startTodayBR), cnt('pix_sms_last_at', _startMonthBR), cnt('pix_sms_last_at'),
+    cnt('plan_sms_sent_at', _startTodayBR), cnt('plan_sms_sent_at', _startMonthBR), cnt('plan_sms_sent_at'),
+  ]);
+  // Sem isto, se um deles falhar enquanto o lote principal ainda roda, o Node
+  // acusa rejeição não tratada. O erro continua subindo no `await extras`.
+  extras.catch(() => {});
 
   const [
     // Dashboard operacional (queries.ts)
@@ -576,41 +605,21 @@ export default async function DashboardPage() {
   const cortesiasAtivas = activeCortesia.count ?? 0;
   const pagantesAtivas = Math.max(0, (activeUsers.count ?? 0) - cortesiasAtivas);
 
-  const pixStats = await getPixStats();
-  const aiCosts = await getAiCosts();
+  const [
+    { count: stuckPlansCount }, pixStats, aiCosts, { count: plansGeneratedToday }, planRatings, yberaDash,
+    pixToday, pixMonth, pixTotal, planToday, planMonth, planTotal,
+  ] = await extras;
+  const stuckPlans = stuckPlansCount ?? 0;
 
   // Planos gerados HOJE (BR) → custo médio de IA por plano (custo do dia / planos)
-  const _br = new Date(Date.now() - 3 * 3600 * 1000);
-  const _startTodayBR = new Date(Date.UTC(_br.getUTCFullYear(), _br.getUTCMonth(), _br.getUTCDate(), 3, 0, 0)).toISOString();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { count: plansGeneratedToday } = await (sb.from('profiles') as any)
-    .select('id', { count: 'exact', head: true })
-    .gte('plan_requested_at', _startTodayBR);
   const aiCostPerPlanToday = (aiCosts.ok && plansGeneratedToday && plansGeneratedToday > 0)
     ? (aiCosts.dailyUsd * aiCosts.rate) / plansGeneratedToday
     : null;
-
-  // Avaliações dos planos entregues (plan_feedback)
-  const planRatings = await getPlanRatings();
-
-  // Conversão Ybera: tendência mensal + funil diário cliques→vendas
-  const yberaDash = await getYberaDashboard();
 
   // ── SMS (Zenvia) — recuperação de PIX + aviso de plano pronto ────────
   // Contamos as colunas ATUAIS: pix_sms_last_at (fluxo de PIX: imediato + 24h/72h)
   // e plan_sms_sent_at (SMS de "plano pronto"). Custo estimado por SMS ajustável.
   const SMS_COST_BRL = Number(process.env.ZENVIA_SMS_COST_BRL ?? '0.08');
-  const _startMonthBR = new Date(Date.UTC(_br.getUTCFullYear(), _br.getUTCMonth(), 1, 3, 0, 0)).toISOString();
-  const cnt = (col: string, gte?: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let q = (sb.from('profiles') as any).select('id', { count: 'exact', head: true });
-    q = gte ? q.gte(col, gte) : q.not(col, 'is', null);
-    return q;
-  };
-  const [pixToday, pixMonth, pixTotal, planToday, planMonth, planTotal] = await Promise.all([
-    cnt('pix_sms_last_at', _startTodayBR), cnt('pix_sms_last_at', _startMonthBR), cnt('pix_sms_last_at'),
-    cnt('plan_sms_sent_at', _startTodayBR), cnt('plan_sms_sent_at', _startMonthBR), cnt('plan_sms_sent_at'),
-  ]);
   const smsToday = (pixToday.count ?? 0) + (planToday.count ?? 0);
   const smsMonth = (pixMonth.count ?? 0) + (planMonth.count ?? 0);
   const smsTotal = (pixTotal.count ?? 0) + (planTotal.count ?? 0);

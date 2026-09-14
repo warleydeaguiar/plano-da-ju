@@ -75,27 +75,20 @@ export default async function PlanosPage({
   }>;
 
   // 2) hair_plan semana 1 de cada ativa (aprovação + notas).
-  // ⚠️ Buscamos em LOTES de 50. Com 200 ids num único .in() a URL passava de
-  // 7,5 mil chars e o nginx/Kong respondia 502 → a query falhava INTEIRA,
-  // planMap ficava vazio e TODAS as clientes apareciam como "incompleto/
-  // travado" (mesmo com plano pronto). Era a causa do "200 travados".
-  const userIds = profileList.map(p => p.id);
-  const CHUNK = 50;
-  const chunks: string[][] = [];
-  for (let i = 0; i < userIds.length; i += CHUNK) chunks.push(userIds.slice(i, i + CHUNK));
-  // Antes: os ~60 lotes rodavam em SÉRIE (await dentro do loop) = vários segundos
-  // de latência com milhares de ativas. Agora rodam em PARALELO → tempo ≈ 1 query.
-  const chunkResults = await Promise.all(chunks.map(slice =>
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (sb.from('hair_plans') as any)
-      .select('user_id,approved_by_juliane,created_at,juliane_notes')
-      .eq('week_number', 1)
-      .in('user_id', slice),
-  ));
+  // Uma consulta só, filtrada na memória. O .in() com muitos ids estourava a URL
+  // no nginx/Kong (502 → todas apareciam "travadas"), e a saída tinha sido
+  // fatiar em lotes de 50 disparados juntos: ~60 requisições simultâneas a cada
+  // abertura desta página, numa VPS de 1 núcleo. A semana 1 inteira são ~4 mil
+  // linhas e tem índice próprio (idx_hair_plans_semana_cobertura).
+  const ativas = new Set(profileList.map(p => p.id));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const weekOnePlans: Array<{ user_id: string; approved_by_juliane: boolean; created_at: string; juliane_notes: string | null }> = [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const { data } of chunkResults) if (Array.isArray(data)) weekOnePlans.push(...(data as any[]));
+  const { data: semana1, error: erroSemana1 } = await (sb.from('hair_plans') as any)
+    .select('user_id,approved_by_juliane,created_at,juliane_notes')
+    .eq('week_number', 1)
+    .limit(100000);
+  if (erroSemana1) console.error('[planos] semana 1:', erroSemana1.message);
+  const weekOnePlans = ((semana1 ?? []) as Array<{ user_id: string; approved_by_juliane: boolean; created_at: string; juliane_notes: string | null }>)
+    .filter(p => ativas.has(p.user_id));
 
   const planMap = new Map(
     (weekOnePlans as Array<{ user_id: string; approved_by_juliane: boolean; created_at: string; juliane_notes: string | null }>)

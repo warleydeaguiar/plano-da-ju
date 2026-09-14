@@ -10,15 +10,19 @@ const ym = (iso: string | null) => (iso ? iso.slice(0, 7) : '—');
 
 async function loadAllOrders(sb: ReturnType<typeof createAdminClient>): Promise<MatchOrder[]> {
   const out: MatchOrder[] = [];
+  // Páginas de 10 mil: hoje (~2,6 mil pedidos) é uma ida só, em vez de três em
+  // fila. ⚠️ Depende de PGRST_DB_MAX_ROWS (100000 na VPS) ser >= PAGINA: se o
+  // PostgREST cortar abaixo disso, a página volta menor e o laço para cedo.
+  const PAGINA = 10000;
   for (let page = 0; page < 50; page++) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (sb.from('ybera_orders') as any)
       .select('id, subtotal, total, register_date, customer_email, customer_phone, customer_name, products')
       .order('register_date', { ascending: true })
-      .range(page * 1000, page * 1000 + 999);
+      .range(page * PAGINA, page * PAGINA + PAGINA - 1);
     if (error || !data || data.length === 0) break;
     out.push(...(data as MatchOrder[]));
-    if (data.length < 1000) break;
+    if (data.length < PAGINA) break;
   }
   return out;
 }
@@ -46,11 +50,17 @@ export interface YberaDashboardData {
  */
 export async function getYberaDashboard(): Promise<YberaDashboardData> {
   const sb = createAdminClient();
-  const orders = await loadAllOrders(sb);
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: profRows } = await (sb.from('profiles') as any)
-    .select('id, email, phone, full_name, subscription_status, created_at, subscription_activated_at').limit(100000);
+  const sinceISO = new Date(Date.now() - 14 * 86400000).toISOString();
+  // As três leituras são independentes: saem juntas em vez de uma após a outra.
+  const [orders, { data: profRows }, { data: clickRows }] = await Promise.all([
+    loadAllOrders(sb),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sb.from('profiles') as any)
+      .select('id, email, phone, full_name, subscription_status, created_at, subscription_activated_at').limit(100000),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sb.from('plan_product_clicks') as any)
+      .select('user_id, created_at').gte('created_at', sinceISO).limit(100000),
+  ]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const allProfiles = (profRows ?? []) as (MatchProfile & { subscription_activated_at: string | null })[];
   const activeProfiles = allProfiles.filter(p => p.subscription_status === 'active');
@@ -139,10 +149,6 @@ export async function getYberaDashboard(): Promise<YberaDashboardData> {
 
   // Cliques dos últimos 14 dias
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const sinceISO = new Date(Date.now() - 14 * 86400000).toISOString();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: clickRows } = await (sb.from('plan_product_clicks') as any)
-    .select('user_id, created_at').gte('created_at', sinceISO).limit(100000);
   const clicks = (clickRows ?? []) as { user_id: string | null; created_at: string }[];
 
   const brDay = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso));
