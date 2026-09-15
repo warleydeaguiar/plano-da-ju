@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { pagarme } from '@/lib/pagarme/client';
+import { telefonesBloqueados, finalTelefone } from '@/lib/wa-optout';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -111,6 +112,9 @@ export async function GET(req: NextRequest) {
   const now = Date.now();
   const result = { scanned: cands?.length ?? 0, sent: 0, skipped_paid: 0, skipped_window: 0, expired: 0, failed: 0, details: [] as unknown[] };
 
+  // Quem pediu para não receber mensagens fica de fora.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const bloqueados = await telefonesBloqueados(sb, (cands ?? []).map((c: any) => c.phone));
   for (const p of cands ?? []) {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -138,6 +142,7 @@ export async function GET(req: NextRequest) {
 
       const phoneIntl = toIntlPhone(p.phone);
       if (phoneIntl.length < 12) { result.failed++; result.details.push({ email: p.email, err: 'bad_phone' }); continue; }
+      if (bloqueados.has(finalTelefone(phoneIntl))) { if (!dry) await markSent(sb, p.id, 'bloqueou'); result.details.push({ email: p.email, err: 'bloqueou' }); continue; }
 
       if (dry) { result.sent++; result.details.push({ email: p.email, ageMin: Math.round(ageMin), would_send: true }); continue; }
 

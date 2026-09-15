@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import { telefonesBloqueados, finalTelefone } from '@/lib/wa-optout';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -24,7 +25,12 @@ export const maxDuration = 60;
  *
  * ?dry=1 → não envia nem marca, só relata o que faria.
  */
-const TEMPLATE = process.env.WHATSAPP_LEAD_TEMPLATE || 'inscricao_pendente';
+// A versão v2 tem o botão "Bloquear mensagens". Enquanto a Meta não aprova, ela
+// recusa o envio com erro 132xxx e o cron cai na versão anterior sozinho.
+const TEMPLATES = [
+  process.env.WHATSAPP_LEAD_TEMPLATE_V2 || 'inscricao_pendente_util_v2',
+  process.env.WHATSAPP_LEAD_TEMPLATE || 'inscricao_pendente',
+];
 const TEMPLATE_LANG = process.env.WHATSAPP_LEAD_TEMPLATE_LANG || 'pt_BR';
 const MIN_IDADE_MIN = 20;
 const MAX_IDADE_HORAS = 3;
@@ -45,7 +51,7 @@ function telefoneIntl(bruto?: string | null): string {
   return `55${d}`;
 }
 
-async function enviarTemplate(telefone: string, nome: string): Promise<{ ok: boolean; erro?: string }> {
+async function enviarTemplate(telefone: string, nome: string, template: string): Promise<{ ok: boolean; erro?: string; codigo?: number }> {
   const token = process.env.WHATSAPP_TOKEN;
   const pid = process.env.WHATSAPP_PHONE_NUMBER_ID;
   if (!token || !pid) return { ok: false, erro: 'sem_token' };
@@ -58,7 +64,7 @@ async function enviarTemplate(telefone: string, nome: string): Promise<{ ok: boo
         to: telefone,
         type: 'template',
         template: {
-          name: TEMPLATE,
+          name: template,
           language: { code: TEMPLATE_LANG },
           // {{1}} do corpo = primeiro nome. O botão é URL fixa, sem variável.
           components: [{ type: 'body', parameters: [{ type: 'text', text: nome }] }],
@@ -68,7 +74,7 @@ async function enviarTemplate(telefone: string, nome: string): Promise<{ ok: boo
     if (res.ok) return { ok: true };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const j: any = await res.json().catch(() => ({}));
-    return { ok: false, erro: JSON.stringify(j?.error ?? j).slice(0, 300) };
+    return { ok: false, erro: JSON.stringify(j?.error ?? j).slice(0, 300), codigo: Number(j?.error?.code) || undefined };
   } catch (e) {
     return { ok: false, erro: e instanceof Error ? e.message : 'falha_fetch' };
   }
@@ -129,16 +135,21 @@ export async function GET(req: NextRequest) {
     (p.subscription_type === 'parceria' ? jaCortesia : jaPagou).add(e);
   }
   const temAcesso = (e: string) => jaPagou.has(e) || jaCortesia.has(e);
+  // Quem tocou em "Bloquear mensagens" (ou pediu para sair) não recebe mais nada.
+  const bloqueados = await telefonesBloqueados(sb, candidatos.map((l) => l.phone));
 
   let enviados = 0;
   let pulados = 0;
+  let inicioTemplate = 0;
+  const porTemplate: Record<string, number> = {};
   const falhas: { id: string; erro: string }[] = [];
 
   for (const lead of candidatos) {
     const email = (lead.email ?? '').toLowerCase().trim();
     const telefone = telefoneIntl(lead.phone);
 
-    if (!telefone || (email && temAcesso(email))) {
+    const bloqueou = !!telefone && bloqueados.has(finalTelefone(telefone));
+    if (!telefone || bloqueou || (email && temAcesso(email))) {
       pulados++;
       // Marca como resolvido: comprou (ou não tem telefone), não precisa voltar
       // à fila em todo ciclo.
@@ -148,6 +159,7 @@ export async function GET(req: NextRequest) {
             inscricao_wa_enviada_em: new Date().toISOString(),
             inscricao_wa_erro: email && jaPagou.has(email) ? 'ja_comprou'
               : email && jaCortesia.has(email) ? 'ja_cortesia'
+              : bloqueou ? 'bloqueou'
               : 'sem_telefone',
           })
           .eq('id', lead.id);
@@ -157,9 +169,19 @@ export async function GET(req: NextRequest) {
 
     if (dry) { enviados++; continue; }
 
-    const r = await enviarTemplate(telefone, primeiroNome(lead.name));
+    // Tenta a versão com o botão; se a Meta ainda não aprovou (erro 132xxx de
+    // template), usa a anterior pelo resto desta execução.
+    let r: { ok: boolean; erro?: string; codigo?: number } = { ok: false };
+    let usado = '';
+    for (const t of TEMPLATES.slice(inicioTemplate)) {
+      r = await enviarTemplate(telefone, primeiroNome(lead.name), t);
+      usado = t;
+      if (r.ok || !r.codigo || r.codigo < 132000 || r.codigo > 132999) break;
+      inicioTemplate = Math.min(inicioTemplate + 1, TEMPLATES.length - 1);
+    }
     if (r.ok) {
       enviados++;
+      porTemplate[usado] = (porTemplate[usado] ?? 0) + 1;
       await (sb.from('wg_quiz_leads') as any)
         .update({ inscricao_wa_enviada_em: new Date().toISOString(), inscricao_wa_erro: null })
         .eq('id', lead.id);
@@ -178,7 +200,7 @@ export async function GET(req: NextRequest) {
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
   return NextResponse.json({
-    ok: true, dry, template: TEMPLATE,
+    ok: true, dry, templates: porTemplate,
     candidatos: candidatos.length, enviados, pulados,
     falhas: falhas.slice(0, 5),
   });

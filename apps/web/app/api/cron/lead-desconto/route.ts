@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import { telefonesBloqueados, finalTelefone } from '@/lib/wa-optout';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -126,13 +127,23 @@ export async function GET(req: NextRequest) {
     (p.subscription_type === 'parceria' ? cortesias : pagantes).add(e);
   }
 
-  let enviados = 0, controle = 0, jaCompraram = 0, jaCortesia = 0;
+  // Quem pediu para não receber mensagens fica de fora (e sai da fila).
+  const bloqueados = await telefonesBloqueados(sb, candidatos.map((l) => l.phone));
+
+  let enviados = 0, controle = 0, jaCompraram = 0, jaCortesia = 0, bloqueou = 0;
   const falhas: { id: string; erro: string }[] = [];
 
   for (const lead of candidatos) {
     const email = (lead.email ?? '').toLowerCase().trim();
     if (email && (pagantes.has(email) || cortesias.has(email))) {
       if (pagantes.has(email)) jaCompraram++; else jaCortesia++;
+      if (!dry) await (sb.from('wg_quiz_leads') as any)
+        .update({ desconto_enviado_em: new Date().toISOString() }).eq('id', lead.id);
+      continue;
+    }
+
+    if (bloqueados.has(finalTelefone(lead.phone))) {
+      bloqueou++;
       if (!dry) await (sb.from('wg_quiz_leads') as any)
         .update({ desconto_enviado_em: new Date().toISOString() }).eq('id', lead.id);
       continue;
@@ -161,7 +172,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     ok: true, dry, cupom: CUPOM,
-    candidatos: candidatos.length, enviados, controle, jaCompraram, jaCortesia,
+    candidatos: candidatos.length, enviados, controle, jaCompraram, jaCortesia, bloqueou,
     falhas: falhas.slice(0, 5),
   });
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import { ehPedidoDeBloqueio, registrarBloqueio } from '@/lib/wa-optout';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -38,6 +39,21 @@ function telefoneDe(corpo: any): string {
   return String(bruto).replace(/\D/g, '');
 }
 
+/** Confirmação para quem pediu para parar. Texto livre: a janela de 24h acabou de abrir. */
+async function confirmarBloqueio(telefone: string): Promise<void> {
+  const token = process.env.WHATSAPP_TOKEN;
+  const pid = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  if (!token || !pid) return;
+  await fetch(`https://graph.facebook.com/v21.0/${pid}/messages`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp', to: telefone, type: 'text',
+      text: { body: 'Pronto! Você não vai mais receber mensagens automáticas por aqui. 💛' },
+    }),
+  }).catch(() => { /* a lista já foi gravada; a confirmação é cortesia */ });
+}
+
 export async function POST(req: NextRequest) {
   // Segredo na URL: o Chatwoot não assina o webhook, então é o que temos.
   const k = req.nextUrl.searchParams.get('k');
@@ -54,6 +70,20 @@ export async function POST(req: NextRequest) {
 
   const digitos = telefoneDe(corpo);
   if (digitos.length < 10) return NextResponse.json({ ok: true, semTelefone: true });
+
+  // "Bloquear mensagens" (botão do template) ou "sair"/"parar" escrito sozinho:
+  // entra na lista de bloqueio, recebe a confirmação e NÃO conta como resposta —
+  // senão o cron do desconto mandaria o cupom justamente para quem pediu para parar.
+  if (ehPedidoDeBloqueio(corpo.content)) {
+    try {
+      const sb = await createServiceClient();
+      await registrarBloqueio(sb, digitos, 'whatsapp');
+      await confirmarBloqueio(digitos);
+      return NextResponse.json({ ok: true, bloqueado: true });
+    } catch {
+      return NextResponse.json({ ok: true, erro: true });
+    }
+  }
 
   // O lead guarda DDD+número (10-11 dígitos); o WhatsApp manda com o 55 na
   // frente. Comparar pelos ÚLTIMOS dígitos cobre os dois formatos, e ainda o

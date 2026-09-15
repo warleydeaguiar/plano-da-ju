@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { sendWhatsAppTemplate } from '@/lib/whatsapp';
+import { telefonesBloqueados, finalTelefone } from '@/lib/wa-optout';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -70,7 +71,9 @@ export async function GET(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const clientes = (data ?? []) as any[];
-  let enviados = 0, semTelefone = 0;
+  // Quem pediu para não receber mensagens fica de fora, inclusive da boas-vindas.
+  const bloqueados = await telefonesBloqueados(sb, clientes.map((p) => p.phone ?? (p.quiz_answers ?? {}).phone));
+  let enviados = 0, semTelefone = 0, bloqueou = 0;
   const falhas: { id: string; erro: string }[] = [];
 
   for (const p of clientes) {
@@ -82,6 +85,13 @@ export async function GET(req: NextRequest) {
       semTelefone++;
       if (!dry) await (sb.from('profiles') as any)
         .update({ boas_vindas_wa_tentativas: MAX_TENTATIVAS, boas_vindas_wa_erro: 'sem_telefone' })
+        .eq('id', p.id);
+      continue;
+    }
+    if (bloqueados.has(finalTelefone(tel))) {
+      bloqueou++;
+      if (!dry) await (sb.from('profiles') as any)
+        .update({ boas_vindas_wa_tentativas: MAX_TENTATIVAS, boas_vindas_wa_erro: 'bloqueou' })
         .eq('id', p.id);
       continue;
     }
@@ -112,6 +122,6 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     ok: true, dry, template: TEMPLATE,
-    candidatos: clientes.length, enviados, semTelefone, falhas: falhas.slice(0, 5),
+    candidatos: clientes.length, enviados, semTelefone, bloqueou, falhas: falhas.slice(0, 5),
   });
 }
