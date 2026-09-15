@@ -97,7 +97,7 @@ export async function GET(req: NextRequest) {
   const agora = Date.now();
 
   const { data: leads, error } = await (sb.from('wg_quiz_leads') as any)
-    .select('id, name, email, phone, respondeu_em')
+    .select('id, name, email, phone, respondeu_em, resposta_tipo')
     .not('inscricao_wa_enviada_em', 'is', null)
     .lte('inscricao_wa_enviada_em', new Date(agora - ESPERA_HORAS * 3600_000).toISOString())
     .not('respondeu_em', 'is', null)
@@ -130,13 +130,22 @@ export async function GET(req: NextRequest) {
   // Quem pediu para não receber mensagens fica de fora (e sai da fila).
   const bloqueados = await telefonesBloqueados(sb, candidatos.map((l) => l.phone));
 
-  let enviados = 0, controle = 0, jaCompraram = 0, jaCortesia = 0, bloqueou = 0;
+  let enviados = 0, controle = 0, jaCompraram = 0, jaCortesia = 0, bloqueou = 0, naoElegivel = 0;
   const falhas: { id: string; erro: string }[] = [];
 
   for (const lead of candidatos) {
     const email = (lead.email ?? '').toLowerCase().trim();
     if (email && (pagantes.has(email) || cortesias.has(email))) {
       if (pagantes.has(email)) jaCompraram++; else jaCortesia++;
+      if (!dry) await (sb.from('wg_quiz_leads') as any)
+        .update({ desconto_enviado_em: new Date().toISOString() }).eq('id', lead.id);
+      continue;
+    }
+
+    // Saudação automática de outra empresa não é interesse, e quem recusou não
+    // deve receber oferta: os dois saem da fila sem gastar mensagem.
+    if (['automatica', 'recusa', 'bloqueio'].includes(String(lead.resposta_tipo ?? ''))) {
+      naoElegivel++;
       if (!dry) await (sb.from('wg_quiz_leads') as any)
         .update({ desconto_enviado_em: new Date().toISOString() }).eq('id', lead.id);
       continue;
@@ -172,7 +181,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     ok: true, dry, cupom: CUPOM,
-    candidatos: candidatos.length, enviados, controle, jaCompraram, jaCortesia, bloqueou,
+    candidatos: candidatos.length, enviados, controle, jaCompraram, jaCortesia, bloqueou, naoElegivel,
     falhas: falhas.slice(0, 5),
   });
 }

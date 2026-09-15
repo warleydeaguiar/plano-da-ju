@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { telefonesBloqueados, finalTelefone } from '@/lib/wa-optout';
+import { templateUtilitarioAprovado } from '@/lib/wa-templates';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -25,12 +26,20 @@ export const maxDuration = 60;
  *
  * ?dry=1 → não envia nem marca, só relata o que faria.
  */
-// A versão v2 tem o botão "Bloquear mensagens". Enquanto a Meta não aprova, ela
-// recusa o envio com erro 132xxx e o cron cai na versão anterior sozinho.
-const TEMPLATES = [
-  process.env.WHATSAPP_LEAD_TEMPLATE_V2 || 'inscricao_pendente_util_v2',
-  process.env.WHATSAPP_LEAD_TEMPLATE || 'inscricao_pendente',
-];
+// v4 = botões de resposta rápida ("Quero concluir" / "Tenho uma dúvida"), que
+// ABREM a janela de 24h quando tocados — botão de link não abre. v2 = atual, com
+// link + "Bloquear mensagens". A v3 foi aprovada como MARKETING e por isso NÃO
+// entra aqui: seria ~9× mais cara.
+const TEMPLATE_NOVO   = process.env.WHATSAPP_LEAD_TEMPLATE_V4 || 'inscricao_pendente_util_v4';
+const TEMPLATE_ATUAL  = process.env.WHATSAPP_LEAD_TEMPLATE_V2 || 'inscricao_pendente_util_v2';
+const TEMPLATE_ANTIGO = process.env.WHATSAPP_LEAD_TEMPLATE || 'inscricao_pendente';
+
+/** Metade dos leads, sempre a mesma metade: o sorteio é o id, não o relógio. */
+function ehGrupoNovo(id: string): boolean {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return h % 2 === 0;
+}
 const TEMPLATE_LANG = process.env.WHATSAPP_LEAD_TEMPLATE_LANG || 'pt_BR';
 const MIN_IDADE_MIN = 20;
 const MAX_IDADE_HORAS = 3;
@@ -140,8 +149,11 @@ export async function GET(req: NextRequest) {
 
   let enviados = 0;
   let pulados = 0;
-  let inicioTemplate = 0;
   const porTemplate: Record<string, number> = {};
+  // Só entra no teste se a Meta confirmar APROVADO **e** UTILITY.
+  const novoVale = await templateUtilitarioAprovado(TEMPLATE_NOVO);
+  // Template que a Meta recusar nesta execução (erro 132xxx) não é tentado de novo.
+  const ruins = new Set<string>();
   const falhas: { id: string; erro: string }[] = [];
 
   for (const lead of candidatos) {
@@ -169,21 +181,25 @@ export async function GET(req: NextRequest) {
 
     if (dry) { enviados++; continue; }
 
-    // Tenta a versão com o botão; se a Meta ainda não aprovou (erro 132xxx de
-    // template), usa a anterior pelo resto desta execução.
-    let r: { ok: boolean; erro?: string; codigo?: number } = { ok: false };
+    const fila = (novoVale && ehGrupoNovo(lead.id)
+      ? [TEMPLATE_NOVO, TEMPLATE_ATUAL, TEMPLATE_ANTIGO]
+      : [TEMPLATE_ATUAL, TEMPLATE_ANTIGO]).filter((t) => !ruins.has(t));
+
+    let r: { ok: boolean; erro?: string; codigo?: number } = { ok: false, erro: 'sem_template' };
     let usado = '';
-    for (const t of TEMPLATES.slice(inicioTemplate)) {
+    for (const t of fila) {
       r = await enviarTemplate(telefone, primeiroNome(lead.name), t);
       usado = t;
-      if (r.ok || !r.codigo || r.codigo < 132000 || r.codigo > 132999) break;
-      inicioTemplate = Math.min(inicioTemplate + 1, TEMPLATES.length - 1);
+      if (r.ok) break;
+      // 132xxx = problema do template (não aprovado, pausado, inexistente).
+      if (!r.codigo || r.codigo < 132000 || r.codigo > 132999) break;
+      ruins.add(t);
     }
     if (r.ok) {
       enviados++;
       porTemplate[usado] = (porTemplate[usado] ?? 0) + 1;
       await (sb.from('wg_quiz_leads') as any)
-        .update({ inscricao_wa_enviada_em: new Date().toISOString(), inscricao_wa_erro: null })
+        .update({ inscricao_wa_enviada_em: new Date().toISOString(), inscricao_wa_erro: null, inscricao_wa_template: usado })
         .eq('id', lead.id);
     } else {
       falhas.push({ id: lead.id, erro: r.erro ?? '?' });
@@ -200,7 +216,7 @@ export async function GET(req: NextRequest) {
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
   return NextResponse.json({
-    ok: true, dry, templates: porTemplate,
+    ok: true, dry, templates: porTemplate, testeNovo: novoVale,
     candidatos: candidatos.length, enviados, pulados,
     falhas: falhas.slice(0, 5),
   });
