@@ -1,10 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { sendCapiEvent } from '@/lib/meta/capi';
 import { getTrackingIdentity } from '@/lib/tracking-server';
 import { notifyNewSale } from '@/lib/discord';
 import { logCheckoutError } from '@/lib/checkout-log';
-import { sendWhatsAppTemplate } from '@/lib/whatsapp';
 import { PLAN_BASE_CENTS } from '@/lib/pricing';
 
 // Eventos do PagarMe que tratamos
@@ -209,8 +208,9 @@ export async function POST(req: NextRequest) {
           },
         });
 
-        // Discord notification for Juliane (fire-and-forget)
-        notifyNewSale({
+        // Aviso de venda no Discord. Dentro de after(): disparado solto, a função
+        // era encerrada ao responder à Pagar.me e o aviso podia não sair.
+        after(() => notifyNewSale({
           customerName: (ans.name as string) ?? profile?.full_name ?? null,
           email,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -225,19 +225,12 @@ export async function POST(req: NextRequest) {
             ?? null,
           paymentMethod: subType === 'annual_card' ? 'card' : 'pix',
           amountCents: data.amount ?? PLAN_BASE_CENTS,
-        }).catch(err => console.error('[discord notify]', err));
+        }).catch(err => console.error('[discord notify]', err)));
 
-        // Boas-vindas no WhatsApp (número oficial) — template acesso_plano com
-        // botão "Acessar meu plano" → /obrigado (cria senha e entra no plano).
-        // Fire-and-forget; tolerante (só envia depois da Meta aprovar o template).
-        if (phoneE164) {
-          sendWhatsAppTemplate({
-            to: phoneE164,
-            template: process.env.WHATSAPP_WELCOME_TEMPLATE || 'acesso_plano',
-            bodyParams: [fullName[0] || 'tudo bem'],
-          }).then(r => { if (!r.ok) console.error('[wa welcome]', r.error); })
-            .catch(err => console.error('[wa welcome]', err));
-        }
+        // A boas-vindas no WhatsApp (acesso_plano) NÃO sai daqui: quem envia é o
+        // cron /api/cron/boas-vindas, que anota cada envio em
+        // profiles.boas_vindas_wa_em. Disparada daqui sem esperar, a função
+        // terminava antes e ~15% dos envios se perdiam sem deixar rastro.
         } // fim if (justActivated)
 
         break;
