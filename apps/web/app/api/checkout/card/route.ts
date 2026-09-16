@@ -9,6 +9,7 @@ import { logCheckoutError } from '@/lib/checkout-log';
 import { normalizeEmail, isValidEmailFormat } from '@/lib/normalize-email';
 import { installmentInfo, MAX_INSTALLMENTS, PLAN_BASE_CENTS } from '@/lib/pricing';
 import { precoParaCobrar } from '@/lib/cupom';
+import { precoDoCliente } from '@/lib/preco-servidor';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,7 +62,8 @@ export async function POST(req: NextRequest) {
     // a.m. incidem sobre o valor já com desconto. Passar o desconto depois dos
     // juros cobraria juros sobre dinheiro que a cliente não deve.
     // O valor sai do banco, no servidor — o navegador manda só o código.
-    const { precoCents: baseComCupom } = await precoParaCobrar(cupom, PLAN_BASE_CENTS, email);
+    const { precoCents: precoBase } = await precoDoCliente(await createServiceClient(), { email });
+    const { precoCents: baseComCupom } = await precoParaCobrar(cupom, precoBase, email);
     const PRICE_CENTS = installmentInfo(n, baseComCupom).totalCents;
 
     const cleanCpf   = typeof cpf   === 'string' ? cpf.replace(/\D/g, '')   : '';

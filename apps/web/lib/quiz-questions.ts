@@ -1,6 +1,8 @@
 // Quiz Plano Capilar — TODAS as 32 telas exatas conforme screenshots enviados pela cliente
 // Mantém os textos COMO ENVIADOS (não corrigir ortografia/acentuação)
 
+import { FAIXAS_GASTO } from '@/lib/preco-dinamico';
+
 export interface QuizOption {
   id: string;
   label: string;
@@ -364,6 +366,16 @@ export const QUIZ_STEPS: QuizStep[] = [
     title: 'Resultados de quem aplicou meu plano personalizado',
     media: 'depoimentos',
     ctaText: 'Também quero ter resultados',
+  },
+  // ── 25b — gasto mensal: é esta resposta que define o preço do plano
+  // (ver lib/preco-dinamico.ts). Fica ANTES da captura de telefone/e-mail para
+  // já estar salva mesmo se a pessoa abandonar antes de virar lead.
+  {
+    id: 'gasto_mensal',
+    kind: 'single',
+    title: 'Quanto você gasta por mês com produtos para cabelo?',
+    subtitle: 'Assim eu monto o seu plano dentro do que cabe no seu bolso.',
+    options: FAIXAS_GASTO.map((f) => ({ id: f.id, label: f.label })),
   },
   // ── 26 — loading
   {

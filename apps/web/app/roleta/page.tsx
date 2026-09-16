@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { PLAN_BASE_CENTS, PLAN_ANCHOR_CENTS, PLAN_DISCOUNT_PCT, brlCents } from '@/lib/pricing'
+import { PLAN_BASE_CENTS, PLAN_ANCHOR_CENTS, brlCents } from '@/lib/pricing'
 
 // ─── Tema — idêntico ao quiz / oferta ─────────────────────────
 const T = {
@@ -34,8 +34,16 @@ const CY      = SIZE / 2   // 150
 const R       = 136
 const INNER_R = 36
 
-const SEGMENTS = [
-  { label: `${PLAN_DISCOUNT_PCT}% OFF`, sublabel: brlCents(PLAN_BASE_CENTS), win: true },
+const N_SEG = 8
+
+/**
+ * Os 8 prêmios. O primeiro — o que sempre sai — mostra o preço DESTA cliente,
+ * vindo da faixa de gasto que ela respondeu no quiz. A âncora riscada
+ * (R$149,90) é a mesma para todas, então o percentual muda junto com o preço.
+ */
+function segmentos(precoCents: number) {
+  return [
+  { label: `${descontoPct(precoCents)}% OFF`, sublabel: brlCents(precoCents), win: true },
   { label: '5%',      sublabel: 'PIX' },
   { label: '10%',     sublabel: 'CARTÃO' },
   { label: '5%',      sublabel: 'CARTÃO' },
@@ -43,7 +51,12 @@ const SEGMENTS = [
   { label: '10%',     sublabel: 'PIX' },
   { label: '30%',     sublabel: 'CARTÃO' },
   { label: '5%',      sublabel: 'PIX' },
-]
+  ]
+}
+
+function descontoPct(precoCents: number): number {
+  return Math.round((1 - precoCents / PLAN_ANCHOR_CENTS) * 100)
+}
 
 // Seg 0 = gold (vencedor), ímpares = vinho escuro, pares = rosa escuro
 const SEG_BG   = ['#C9A877', '#5C1B3A', '#9D174D', '#5C1B3A', '#9D174D', '#5C1B3A', '#9D174D', '#5C1B3A']
@@ -56,7 +69,7 @@ function polarXY(deg: number, radius: number) {
 }
 
 function segPath(i: number): string {
-  const n = SEGMENTS.length
+  const n = N_SEG
   const s = polarXY(-90 + i * (360 / n), R)
   const e = polarXY(-90 + (i + 1) * (360 / n), R)
   return `M ${CX} ${CY} L ${s.x.toFixed(2)} ${s.y.toFixed(2)} A ${R} ${R} 0 0 1 ${e.x.toFixed(2)} ${e.y.toFixed(2)} Z`
@@ -134,6 +147,21 @@ export default function RoletaPage() {
   const [rotation, setRotation] = useState(0)
   const [spinTransition, setSpinTransition] = useState('none')
   const [timeLeft, setTimeLeft] = useState(10 * 60) // 10 minutos em segundos
+
+  /** Preço desta cliente — o servidor decide, igual à oferta. */
+  const [precoCents, setPrecoCents] = useState(PLAN_BASE_CENTS)
+  useEffect(() => {
+    try {
+      const s = localStorage.getItem('quiz_session_id') ?? ''
+      const ans = JSON.parse(localStorage.getItem('quiz_answers') ?? '{}')
+      const e = String((ans as Record<string, unknown>)?.email ?? '')
+      fetch(`/api/preco?s=${encodeURIComponent(s)}&e=${encodeURIComponent(e)}`, { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((d) => { if (d?.preco_cents) setPrecoCents(Number(d.preco_cents)) })
+        .catch(() => { /* fica no padrão */ })
+    } catch { /* localStorage bloqueado */ }
+  }, [])
+  const segs = useMemo(() => segmentos(precoCents), [precoCents])
 
   // BUG FIX: guardar ref do timeout para cancelar se componente desmontar
   const spinTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -331,8 +359,8 @@ export default function RoletaPage() {
                 boxShadow: '0 4px 24px rgba(190,24,93,0.15)',
               }}
             >
-              {SEGMENTS.map((seg, i) => {
-                const n           = SEGMENTS.length
+              {segs.map((seg, i) => {
+                const n           = N_SEG
                 const centerAngle = -90 + (i + 0.5) * (360 / n)
                 const pos         = polarXY(centerAngle, R * 0.60)
                 const fg          = SEG_TEXT[i]
@@ -502,7 +530,7 @@ export default function RoletaPage() {
                 backgroundClip: 'text',
                 marginBottom: 4,
               }}>
-                {PLAN_DISCOUNT_PCT}% OFF
+                {descontoPct(precoCents)}% OFF
               </div>
               <p style={{
                 fontSize: 11, fontWeight: 700,
@@ -531,7 +559,7 @@ export default function RoletaPage() {
                 <div style={{ textAlign: 'center' }}>
                   <span style={{ fontSize: 11, color: T.pinkDeep, fontWeight: 600, display: 'block' }}>por apenas</span>
                   <span style={{ fontSize: 34, fontWeight: 800, color: T.ink, fontFamily: fonts.ui, lineHeight: 1.1 }}>
-                    {brlCents(PLAN_BASE_CENTS)}
+                    {brlCents(precoCents)}
                   </span>
                 </div>
               </div>

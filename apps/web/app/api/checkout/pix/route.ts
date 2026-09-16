@@ -11,6 +11,7 @@ import { logCheckoutError } from '@/lib/checkout-log';
 import { normalizeEmail, isValidEmailFormat } from '@/lib/normalize-email';
 import { PLAN_BASE_CENTS } from '@/lib/pricing';
 import { precoParaCobrar } from '@/lib/cupom';
+import { precoDoCliente } from '@/lib/preco-servidor';
 
 // Preço vem da fonte única (lib/pricing) — nunca hardcode aqui, senão o valor
 // cobrado diverge do que a cliente vê na página.
@@ -116,8 +117,13 @@ export async function POST(req: NextRequest) {
     // O navegador manda só o código; nunca o preço. Cupom inválido ou esgotado
     // cai no preço cheio em silêncio — recusar a compra por causa disso seria
     // perder a venda por um detalhe.
+    // Preço da faixa de gasto respondida no quiz, lido do BANCO (o navegador
+    // manda as respostas junto, mas elas não valem para definir preço).
+    const { precoCents: precoBase } = await precoDoCliente(await createServiceClient(), {
+      email, quizSessionId: typeof session_id === 'string' ? session_id : null,
+    });
     const { precoCents: PRICE_CENTS, cupom: cupomAplicado } =
-      await precoParaCobrar(cupom, PRICE_PADRAO, email);
+      await precoParaCobrar(cupom, precoBase, email);
     void cupomAplicado;
 
     const cleanCpf = (cpf ?? '').replace(/\D/g, '');

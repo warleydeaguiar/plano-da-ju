@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe/client';
 import { PLAN_BASE_CENTS } from '@/lib/pricing';
+import { precoDoCliente } from '@/lib/preco-servidor';
 import { precoParaCobrar } from '@/lib/cupom';
 import { normalizeEmail, isValidEmailFormat } from '@/lib/normalize-email';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
@@ -79,7 +80,8 @@ export async function POST(req: NextRequest) {
     // O valor sai do cupom, no servidor, igual ao PIX e ao cartão. Sem isto a
     // carteira mostrava e cobrava R$34,90 mesmo com o desconto aplicado na
     // tela — prometer um preço e cobrar outro, agora dentro do Apple Pay.
-    const { precoCents: amount } = await precoParaCobrar(body.cupom, PLAN_BASE_CENTS, email);
+    const { precoCents: precoBase } = await precoDoCliente(await createServiceClient(), { email });
+    const { precoCents: amount } = await precoParaCobrar(body.cupom, precoBase, email);
 
     const intent = await stripe.paymentIntents.create({
       amount,

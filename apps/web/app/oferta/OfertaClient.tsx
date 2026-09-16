@@ -492,8 +492,27 @@ export default function OfertaClient() {
     if (daUrl) { setCupom(daUrl); conferirCupom(daUrl); }
   }, [conferirCupom]);
 
+  /**
+   * Preço base desta cliente — decidido pelo SERVIDOR a partir da faixa de gasto
+   * respondida no quiz (lib/preco-dinamico.ts). A tela só exibe o que o
+   * checkout vai cobrar; calcular aqui deixaria o preço ao alcance do navegador.
+   * Enquanto a resposta não chega, mostra o preço padrão.
+   */
+  const [precoBase, setPrecoBase] = useState(PLAN_BASE_CENTS);
+  useEffect(() => {
+    try {
+      const s = localStorage.getItem('quiz_session_id') ?? '';
+      const ans = JSON.parse(localStorage.getItem('quiz_answers') ?? '{}');
+      const e = String((ans as Record<string, unknown>)?.email ?? '');
+      fetch(`/api/preco?s=${encodeURIComponent(s)}&e=${encodeURIComponent(e)}`, { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((d) => { if (d?.preco_cents) setPrecoBase(Number(d.preco_cents)); })
+        .catch(() => { /* fica no padrão */ });
+    } catch { /* localStorage bloqueado: fica no padrão */ }
+  }, []);
+
   /** Preço que a cliente deve VER. Com cupom aplicado, é o do cupom. */
-  const precoAtual = cupomInfo?.preco_cents ?? PLAN_BASE_CENTS;
+  const precoAtual = cupomInfo?.preco_cents ?? precoBase;
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -1408,7 +1427,7 @@ export default function OfertaClient() {
                       }}>{installPerStr(MAX_INSTALLMENTS)}</span>
                       <span style={{ fontSize: 10, color: T.inkSoft, fontFamily: fonts.ui }}>no cartão</span>
                     </div>
-                    <div style={{ fontSize: 10, color: T.inkSoft, marginTop: 2 }}>ou à vista R$34,90</div>
+                    <div style={{ fontSize: 10, color: T.inkSoft, marginTop: 2 }}>{`ou à vista ${brlCents(precoAtual)}`}</div>
                   </div>
                 </div>
               </div>
@@ -1566,7 +1585,7 @@ export default function OfertaClient() {
                     }}>MAIS RÁPIDO</span>
                   </div>
                   <div style={{ fontSize: 12, color: T.inkSoft, marginTop: 2 }}>
-                    Aprovação instantânea · R$34,90 à vista
+                    {`Aprovação instantânea · ${brlCents(precoAtual)} à vista`}
                   </div>
                 </div>
               </button>
@@ -1748,7 +1767,7 @@ export default function OfertaClient() {
               {isSubmitting
                 ? '⏳ Processando…'
                 : payType === 'pix'
-                  ? '🔒 Gerar PIX — R$34,90'
+                  ? `🔒 Gerar PIX — ${brlCents(precoAtual)}`
                   : `🔒 Pagar ${installAmt}`}
             </GreenButton>
 
@@ -1996,7 +2015,7 @@ export default function OfertaClient() {
               <div style={{ flex: 1, background: `linear-gradient(135deg, ${T.pinkDeep}, ${T.pink})`, borderRadius: 12, padding: '12px 10px', textAlign: 'center', boxShadow: `0 6px 16px ${T.pink}44` }}>
                 <div style={{ fontSize: 10.5, fontWeight: 700, color: 'rgba(255,255,255,0.85)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4, fontFamily: fonts.ui }}>Plano da Ju</div>
                 <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.75)', textDecoration: 'line-through', lineHeight: 1, marginBottom: 2, fontFamily: fonts.ui }}>de R$ 149,90</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', fontFamily: fonts.display, lineHeight: 1 }}>R$34,90<span style={{ fontSize: 12 }}> uma vez</span></div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', fontFamily: fonts.display, lineHeight: 1 }}>{brlCents(precoAtual)}<span style={{ fontSize: 12 }}> uma vez</span></div>
                 <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', marginTop: 4, lineHeight: 1.35, fontFamily: fonts.ui }}>feito exatamente pro seu cabelo</div>
               </div>
             </div>
@@ -2009,7 +2028,7 @@ export default function OfertaClient() {
             <div style={{ display: 'flex', gap: 10, background: '#EAF7EE', border: '1px solid #BFE8CC', borderRadius: 12, padding: '13px 15px' }}>
               <span style={{ fontSize: 18, lineHeight: 1.2, flexShrink: 0 }}>💸</span>
               <div style={{ fontSize: 13.5, color: '#166534', lineHeight: 1.55, fontFamily: fonts.ui }}>
-                E o melhor: <strong>o valor volta rápido.</strong> Só com os <strong>descontos exclusivos da Ju nos produtos capilares</strong> e no <strong>grupo fechado de promoções</strong>, você já recupera os R$34,90 nas primeiras compras. 💚
+                E o melhor: <strong>o valor volta rápido.</strong> Só com os <strong>descontos exclusivos da Ju nos produtos capilares</strong> e no <strong>grupo fechado de promoções</strong>, você já recupera os {brlCents(precoAtual)} nas primeiras compras. 💚
               </div>
             </div>
           </div>
@@ -2155,7 +2174,7 @@ export default function OfertaClient() {
               { q: 'É confiável? Não é golpe?', a: 'Entendo total a desconfiança, tem muita coisa ruim na internet. Eu sou tricologista, tenho meu Instagram com milhares de mulheres acompanhando, mostro meu próprio cabelo desde a raiz (não uso mega hair) e tenho +3.500 alunas. Pagamento é feito em ambiente seguro e, se você não gostar, tem garantia — devolvo 100% do seu dinheiro, sem perguntas.' },
               { q: 'E se eu tiver dúvidas depois?', a: 'Você não fica sozinha. Tem suporte por WhatsApp pra tirar dúvidas ao longo do caminho — se ficar na dúvida de algum passo ou produto, é só me chamar que eu te ajudo. 💗' },
               { q: 'Os produtos são difíceis de achar?', a: 'Não! São produtos que você encontra com facilidade, e os que eu indico ficam disponíveis no meu grupo de promoções com preço especial. Nada de fórmula secreta impossível de comprar.' },
-              { q: 'É pagamento único ou cobra todo mês?', a: 'Pagamento único, uma vez só. São R$ 34,90 e pronto — nada de mensalidade, nada de cobrança recorrente te pegando de surpresa depois. Você paga uma vez e tem acesso ao seu plano.' },
+              { q: 'É pagamento único ou cobra todo mês?', a: `Pagamento único, uma vez só. São ${brlCents(precoAtual)} e pronto — nada de mensalidade, nada de cobrança recorrente te pegando de surpresa depois. Você paga uma vez e tem acesso ao seu plano.` },
             ].map((f, i, arrF) => (
               <div key={i} style={{ borderBottom: i < arrF.length - 1 ? `1px solid ${T.border}` : 'none' }}>
                 <button
