@@ -21,7 +21,21 @@ function precoCom(tipo: string, valorCents: number, base: number): number {
   if (tipo === 'preco_final') return Math.max(0, valorCents);
   // percentual: valor_cents guarda o percentual (ex.: 30 = 30%)
   const desconto = Math.round((base * Math.min(100, Math.max(0, valorCents))) / 100);
-  return Math.max(0, base - desconto);
+  return terminaEm90(Math.max(0, base - desconto));
+}
+
+/**
+ * Arredonda PARA BAIXO até o próximo valor terminado em ,90.
+ *
+ * Com preço dinâmico, um cupom percentual devolve números como R$15,01 e
+ * R$17,16. Descer para R$14,90 e R$16,90 mantém o padrão de preço da casa e
+ * nunca cobra mais do que o percentual prometido. Abaixo de R$1,90 não há o que
+ * arredondar sem virar centavo esquisito.
+ */
+function terminaEm90(cents: number): number {
+  if (cents < 190) return cents;
+  const reais = Math.floor(cents / 100);
+  return cents % 100 >= 90 ? reais * 100 + 90 : (reais - 1) * 100 + 90;
 }
 
 /**

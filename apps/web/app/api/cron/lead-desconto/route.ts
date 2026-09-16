@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { telefonesBloqueados, finalTelefone } from '@/lib/wa-optout';
 import { precoDoCliente } from '@/lib/preco-servidor';
+import { conferirCupom } from '@/lib/cupom';
 import { brlCents } from '@/lib/pricing';
 
 export const runtime = 'nodejs';
@@ -55,12 +56,12 @@ function telefoneIntl(bruto?: string | null): string {
   return d.startsWith('55') && d.length >= 12 ? d : `55${d}`;
 }
 
-function mensagem(nome: string, precoBaseCents: number): string {
+function mensagem(nome: string, precoBaseCents: number, precoComCupomCents: number): string {
   return (
     `Oi ${nome}! Vi que você ainda não finalizou a sua inscrição no Plano Capilar 💛\n\n`
     // O "em vez de" é o preço DELA (a faixa que respondeu no quiz), senão a
     // mensagem prometeria um desconto sobre um valor que ela nunca viu.
-    + `Separei um desconto pra você: em vez de ${brlCents(precoBaseCents)}, fica por R$ 14,90.\n\n`
+    + `Separei um desconto pra você: em vez de ${brlCents(precoBaseCents)}, fica por ${brlCents(precoComCupomCents)}.\n\n`
     + `É só entrar por aqui que o desconto já vem aplicado:\n`
     + `https://planodaju.julianecost.com/oferta?cupom=${CUPOM}`
   );
@@ -173,7 +174,11 @@ export async function GET(req: NextRequest) {
     if (dry) { enviados++; continue; }
 
     const { precoCents: precoBase } = await precoDoCliente(sb, { email: lead.email });
-    const r = await enviarTexto(telefoneIntl(lead.phone), mensagem(primeiroNome(lead.name), precoBase));
+    // O valor prometido na mensagem é o mesmo que o cupom vai aplicar no
+    // checkout — inclusive o arredondamento para ,90.
+    const cupomInfo = await conferirCupom(CUPOM, precoBase);
+    const precoComCupom = cupomInfo?.precoCents ?? precoBase;
+    const r = await enviarTexto(telefoneIntl(lead.phone), mensagem(primeiroNome(lead.name), precoBase, precoComCupom));
     if (r.ok) {
       enviados++;
       await (sb.from('wg_quiz_leads') as any)

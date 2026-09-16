@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { conferirCupom } from '@/lib/cupom';
+import { precoDoCliente } from '@/lib/preco-servidor';
+import { createServiceClient } from '@/lib/supabase/server';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
@@ -26,7 +28,14 @@ export async function GET(req: NextRequest) {
   }
 
   const codigo = req.nextUrl.searchParams.get('codigo');
-  const c = await conferirCupom(codigo);
+  // O desconto incide sobre a faixa de gasto DESTA cliente (preço dinâmico):
+  // conferir sobre o preço padrão mostraria na tela um valor que o checkout
+  // não cobraria.
+  const { precoCents: base } = await precoDoCliente(await createServiceClient(), {
+    email: req.nextUrl.searchParams.get('e'),
+    quizSessionId: req.nextUrl.searchParams.get('s'),
+  });
+  const c = await conferirCupom(codigo, base);
   if (!c) {
     return NextResponse.json({ valido: false, erro: 'Cupom inválido ou expirado.' });
   }
@@ -35,6 +44,7 @@ export async function GET(req: NextRequest) {
     codigo: c.codigo,
     preco_cents: c.precoCents,
     desconto_cents: c.descontoCents,
+    preco_sem_cupom_cents: base,
     descricao: c.descricao,
   });
 }

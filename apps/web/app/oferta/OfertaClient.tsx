@@ -474,7 +474,14 @@ export default function OfertaClient() {
     if (!c) { setCupomInfo(null); setCupomErro(null); return; }
     setConferindoCupom(true);
     try {
-      const r = await fetch(`/api/cupom?codigo=${encodeURIComponent(c)}`);
+      // Manda a sessão do quiz e o e-mail: o desconto tem que ser calculado
+      // sobre a faixa desta cliente, não sobre o preço padrão.
+      let s = '', e = '';
+      try {
+        s = localStorage.getItem('quiz_session_id') ?? '';
+        e = String((JSON.parse(localStorage.getItem('quiz_answers') ?? '{}') as Record<string, unknown>)?.email ?? '');
+      } catch { /* localStorage bloqueado */ }
+      const r = await fetch(`/api/cupom?codigo=${encodeURIComponent(c)}&s=${encodeURIComponent(s)}&e=${encodeURIComponent(e)}`);
       const d = await r.json();
       if (d.valido) { setCupomInfo({ preco_cents: d.preco_cents, descricao: d.descricao }); setCupomErro(null); }
       else { setCupomInfo(null); setCupomErro(d.erro ?? 'Cupom inválido.'); }
