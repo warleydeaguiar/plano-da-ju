@@ -422,10 +422,11 @@ function ClientProfile({ card, expanded, onToggle }: {
 
       {/* Expanded content */}
       {expanded && (
-        <div style={{
+        <div className="planos-grid2" style={{
           borderTop: '1px solid #F3EBE1',
           padding: '4px 20px 16px',
           display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 32px',
+          // no celular vira uma coluna (classe planos-grid2 no globals.css)
         }}>
           {/* Col 1 */}
           <div>
@@ -882,7 +883,7 @@ export default function PlanosClient(
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div style={{
+    <div className="planos-shell" style={{
       display: 'flex', height: '100vh', overflow: 'hidden',
       background: '#FFFAF5',
       fontFamily: 'Plus Jakarta Sans, -apple-system, system-ui, sans-serif',
@@ -890,11 +891,11 @@ export default function PlanosClient(
     }}>
       <Sidebar />
 
-      <div style={{ marginLeft: 234, flex: 1, height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <div className="planos-conteudo" style={{ marginLeft: 234, flex: 1, height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         {/* Page header */}
         <div style={{
           padding: '28px 32px 20px', background: '#FFFAF5',
-          display: 'flex', alignItems: 'center', gap: 12,
+          display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
           borderBottom: '1px solid #EDE0D2', flexShrink: 0,
         }}>
           <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.4, margin: 0 }}>Revisão de Planos</h1>
@@ -941,7 +942,7 @@ export default function PlanosClient(
                 return (
                   <div key={r.id} style={{
                     background: '#fff', border: '1px solid #F3D6DE', borderRadius: 12,
-                    padding: '12px 14px', display: 'flex', gap: 12, alignItems: 'flex-start',
+                    padding: '12px 14px', display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap',
                   }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -996,9 +997,9 @@ export default function PlanosClient(
           </div>
         )}
 
-        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        <div className="planos-corpo" style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
           {/* ── Left list ───────────────────────────────────────────────── */}
-          <div style={{
+          <div className="planos-lista" style={{
             width: 320, minWidth: 320, background: '#fff',
             borderRight: '1px solid #EDE0D2',
             display: 'flex', flexDirection: 'column', overflow: 'hidden',
@@ -1140,7 +1141,7 @@ export default function PlanosClient(
           {/* IMPORTANTE: o container externo SÓ faz scroll (sem flex column),
               senão os cards filhos ficam squashed quando a soma deles excede
               a altura do container. O wrapper interno faz o stacking. */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px 80px', minHeight: 0 }}>
+          <div className="planos-detalhe" style={{ flex: 1, overflowY: 'auto', padding: '28px 32px 80px', minHeight: 0 }}>
             {!selected ? (
               <div style={{ color: '#7C6B7E', fontSize: 14 }}>
                 Selecione uma usuária na lista para ver o plano.

@@ -84,6 +84,30 @@ html, body {
   body { overflow-x: hidden; }
 }
 
+/* ── /planos no celular ────────────────────────────────────────────────
+   A tela é mestre-detalhe de altura fixa (lista de 320px + detalhe, dentro de
+   um container 100vh sem rolagem). No celular isso não cabe: vira uma coluna
+   embaixo da outra, com a página rolando normalmente. */
+@media (max-width: 768px) {
+  .planos-shell { height: auto !important; overflow: visible !important; display: block !important; }
+  .planos-conteudo {
+    margin-left: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding: 52px 0 0 !important;
+  }
+  .planos-corpo { flex-direction: column !important; overflow: visible !important; }
+  .planos-lista {
+    width: 100% !important; min-width: 0 !important;
+    border-right: none !important; border-bottom: 1px solid #EDE0D2;
+    max-height: 46vh;
+  }
+  .planos-detalhe { padding: 18px 14px 60px !important; }
+  .planos-grid2 { grid-template-columns: 1fr !important; }
+  /* cabeçalho e cartões com menos respiro lateral */
+  .planos-conteudo > div:first-child { padding: 16px 14px 14px !important; }
+}
+
 @media (max-width: 430px) {
   /* Telas bem estreitas: stats em 1 coluna pra não espremer números */
   .dash-grid-4,
