@@ -31,6 +31,9 @@ export const maxDuration = 60;
 // link + "Bloquear mensagens". A v3 foi aprovada como MARKETING e por isso NÃO
 // entra aqui: seria ~9× mais cara.
 const TEMPLATE_NOVO   = process.env.WHATSAPP_LEAD_TEMPLATE_V4 || 'inscricao_pendente_util_v4';
+// v5 = mesmo texto da v2 SEM o preço. Com o preço dinâmico (faixa de gasto do
+// quiz), "o pagamento de R$ 34,90" seria falso para três das quatro faixas.
+const TEMPLATE_SEM_PRECO = process.env.WHATSAPP_LEAD_TEMPLATE_V5 || 'inscricao_pendente_util_v5';
 const TEMPLATE_ATUAL  = process.env.WHATSAPP_LEAD_TEMPLATE_V2 || 'inscricao_pendente_util_v2';
 const TEMPLATE_ANTIGO = process.env.WHATSAPP_LEAD_TEMPLATE || 'inscricao_pendente';
 
@@ -150,8 +153,10 @@ export async function GET(req: NextRequest) {
   let enviados = 0;
   let pulados = 0;
   const porTemplate: Record<string, number> = {};
-  // Só entra no teste se a Meta confirmar APROVADO **e** UTILITY.
+  // Só entram se a Meta confirmar APROVADO **e** UTILITY (a v3 foi aprovada como
+  // MARKETING; sem esta checagem o gasto saltaria ~9×).
   const novoVale = await templateUtilitarioAprovado(TEMPLATE_NOVO);
+  const semPrecoVale = await templateUtilitarioAprovado(TEMPLATE_SEM_PRECO);
   // Template que a Meta recusar nesta execução (erro 132xxx) não é tentado de novo.
   const ruins = new Set<string>();
   const falhas: { id: string; erro: string }[] = [];
@@ -181,9 +186,13 @@ export async function GET(req: NextRequest) {
 
     if (dry) { enviados++; continue; }
 
-    const fila = (novoVale && ehGrupoNovo(lead.id)
-      ? [TEMPLATE_NOVO, TEMPLATE_ATUAL, TEMPLATE_ANTIGO]
-      : [TEMPLATE_ATUAL, TEMPLATE_ANTIGO]).filter((t) => !ruins.has(t));
+    // Ordem: versão em teste (metade dos leads) → versão sem preço → atual → antiga.
+    const fila = [
+      ...(novoVale && ehGrupoNovo(lead.id) ? [TEMPLATE_NOVO] : []),
+      ...(semPrecoVale ? [TEMPLATE_SEM_PRECO] : []),
+      TEMPLATE_ATUAL,
+      TEMPLATE_ANTIGO,
+    ].filter((t) => !ruins.has(t));
 
     let r: { ok: boolean; erro?: string; codigo?: number } = { ok: false, erro: 'sem_template' };
     let usado = '';
