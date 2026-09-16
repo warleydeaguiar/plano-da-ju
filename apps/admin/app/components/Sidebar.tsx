@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { T, fonts, gradient } from '../theme';
@@ -115,8 +116,25 @@ export default function Sidebar() {
     router.push('/login');
   }
 
+  // No celular o menu não cabe ao lado do conteúdo: vira gaveta, aberta pelo
+  // botão. Antes ele era simplesmente escondido abaixo de 768px — dava para ver
+  // a página, mas não para trocar de página.
+  const [aberto, setAberto] = useState(false);
+  useEffect(() => { setAberto(false); }, [pathname]);   // fecha ao navegar
+
   return (
-    <aside className="dash-sidebar" style={{
+    <>
+      <button
+        type="button"
+        className="dash-menu-btn"
+        aria-label={aberto ? 'Fechar menu' : 'Abrir menu'}
+        aria-expanded={aberto}
+        onClick={() => setAberto(v => !v)}
+      >
+        {aberto ? '✕' : '☰'}
+      </button>
+      {aberto && <div className="dash-backdrop" onClick={() => setAberto(false)} aria-hidden="true" />}
+    <aside className={`dash-sidebar${aberto ? ' aberta' : ''}`} style={{
       width: 234, minWidth: 234, background: T.cream,
       display: 'flex', flexDirection: 'column', height: '100vh',
       position: 'fixed', left: 0, top: 0,
@@ -249,5 +267,6 @@ export default function Sidebar() {
         </div>
       </div>
     </aside>
+    </>
   );
 }
