@@ -394,6 +394,126 @@ function CampaignList({ campaigns, color }: { campaigns: AdGroupResult['campaign
   );
 }
 
+type FaixaPreco = {
+  faixa: string; preco_cents: number; respostas: number;
+  leads: number; iniciaram: number; compras: number; receita_cents: number;
+};
+
+const ROTULO_FAIXA: Record<string, string> = {
+  ate_100:      'Gasta até R$ 100/mês',
+  ate_300:      'Até R$ 300/mês',
+  ate_600:      'Até R$ 600/mês',
+  ate_1000:     'Até R$ 1.000/mês',
+  sem_resposta: 'Não respondeu',
+};
+
+/**
+ * Qual faixa de preço vende mais (preço dinâmico, no ar desde 15/09/2026).
+ *
+ * Conversão = compras ÷ leads com e-mail daquela faixa. "Não respondeu" são os
+ * leads dos últimos 30 dias que vieram antes de a pergunta existir (ou por link
+ * direto): serve de régua do preço antigo, mas cobre um período bem maior — por
+ * isso aparece separado e esmaecido, não como concorrente das faixas.
+ */
+function PrecoDinamicoSection({ linhas }: { linhas: FaixaPreco[] }) {
+  const n = (v: unknown) => Number(v ?? 0);
+  const comFaixa = linhas.filter(l => l.faixa !== 'sem_resposta');
+  const base     = linhas.find(l => l.faixa === 'sem_resposta');
+  const totalRespostas = comFaixa.reduce((acc, l) => acc + n(l.respostas), 0);
+  const conv = (l: FaixaPreco) => (n(l.leads) ? n(l.compras) / n(l.leads) : null);
+  const AMOSTRA_MINIMA = 15;
+  const confiaveis = comFaixa.filter(l => n(l.leads) >= AMOSTRA_MINIMA);
+  const melhor = confiaveis.length
+    ? confiaveis.reduce((a, b) => ((conv(b) ?? 0) > (conv(a) ?? 0) ? b : a))
+    : null;
+  const receitaFaixas = comFaixa.reduce((acc, l) => acc + n(l.receita_cents), 0) / 100;
+  const comprasFaixas = comFaixa.reduce((acc, l) => acc + n(l.compras), 0);
+
+  const th: React.CSSProperties = {
+    fontSize: 11, fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase',
+    letterSpacing: 0.4, padding: '0 12px 10px', textAlign: 'right', whiteSpace: 'nowrap',
+  };
+  const td: React.CSSProperties = {
+    fontSize: 13, color: T.ink, padding: '12px', textAlign: 'right', whiteSpace: 'nowrap',
+    borderTop: `1px solid ${T.borderSoft}`,
+  };
+
+  return (
+    <div style={{ ...cardStyle, padding: '22px 24px' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: T.ink }}>Preço dinâmico — qual faixa vende mais</div>
+        <div style={{ fontSize: 12, color: T.inkMuted }}>
+          {comprasFaixas} venda{comprasFaixas === 1 ? '' : 's'} · {brl(receitaFaixas)} nas faixas novas
+        </div>
+      </div>
+      <div style={{ fontSize: 12, color: T.inkSoft, marginBottom: 16, lineHeight: 1.5 }}>
+        Conversão = compras ÷ leads com e-mail. A pergunta do gasto entrou em 15/09, então as
+        faixas têm poucos dias de vida; &quot;não respondeu&quot; cobre 30 dias e serve só de régua.
+      </div>
+
+      {melhor && (
+        <div style={{
+          background: T.greenSoft, border: `1px solid ${T.green}30`, borderRadius: 12,
+          padding: '10px 14px', marginBottom: 16, fontSize: 13, color: T.ink,
+        }}>
+          Melhor conversão com amostra razoável: <strong>{ROTULO_FAIXA[melhor.faixa] ?? melhor.faixa}</strong>
+          {' '}({brl(n(melhor.preco_cents) / 100)}) — {((conv(melhor) ?? 0) * 100).toFixed(1)}% de {n(melhor.leads)} leads.
+        </div>
+      )}
+
+      {/* rola de lado no celular em vez de estourar a tela */}
+      <div className="tabela-rolavel" style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', minWidth: 720, borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              <th style={{ ...th, textAlign: 'left' }}>Faixa de gasto</th>
+              <th style={th}>Preço</th>
+              <th style={th}>Respostas</th>
+              <th style={th}>Leads</th>
+              <th style={th}>Iniciaram</th>
+              <th style={th}>Compras</th>
+              <th style={th}>Conversão</th>
+              <th style={th}>Receita</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[...comFaixa, ...(base ? [base] : [])].map(l => {
+              const c = conv(l);
+              const poucos = n(l.leads) < AMOSTRA_MINIMA;
+              const ehBase = l.faixa === 'sem_resposta';
+              return (
+                <tr key={l.faixa} style={{ opacity: ehBase ? 0.72 : 1 }}>
+                  <td style={{ ...td, textAlign: 'left', fontWeight: 600 }}>
+                    {ROTULO_FAIXA[l.faixa] ?? l.faixa}
+                    {ehBase && <div style={{ fontSize: 11, color: T.inkMuted, fontWeight: 400 }}>base de comparação · 30 dias</div>}
+                  </td>
+                  <td style={{ ...td, fontWeight: 700 }}>{brl(n(l.preco_cents) / 100)}</td>
+                  <td style={td}>
+                    {ehBase ? '—' : n(l.respostas).toLocaleString('pt-BR')}
+                    {!ehBase && totalRespostas > 0 && (
+                      <div style={{ fontSize: 11, color: T.inkMuted, fontWeight: 400 }}>
+                        {Math.round((100 * n(l.respostas)) / totalRespostas)}% de quem respondeu
+                      </div>
+                    )}
+                  </td>
+                  <td style={td}>{n(l.leads).toLocaleString('pt-BR')}</td>
+                  <td style={td}>{n(l.iniciaram).toLocaleString('pt-BR')}</td>
+                  <td style={{ ...td, fontWeight: 700 }}>{n(l.compras).toLocaleString('pt-BR')}</td>
+                  <td style={{ ...td, color: poucos ? T.inkMuted : (c ?? 0) >= 0.1 ? T.green : T.ink, fontWeight: 700 }}>
+                    {c === null ? '—' : `${(c * 100).toFixed(1)}%`}
+                    {poucos && <div style={{ fontSize: 10, color: T.inkMuted, fontWeight: 400 }}>amostra pequena</div>}
+                  </td>
+                  <td style={td}>{brl(n(l.receita_cents) / 100)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export default async function DashboardPage() {
   const sb = createAdminClient();
   const now = new Date();
@@ -485,6 +605,8 @@ export default async function DashboardPage() {
     metaAds,
     // Ybera orders
     yberaMonthOrders,
+    // Preço dinâmico: relatório por faixa de gasto
+    faixasPreco,
   ] = await Promise.all([
     getDashboardStats(),
     getPendingPlans(8),
@@ -597,6 +719,12 @@ export default async function DashboardPage() {
       const status = (dbRows && dbRows.length > 0) ? 'ok' : live.status;
       return { status, orders: merged };
     })(),
+    // Uma chamada só: a função preco_faixas_relatorio (migração 024) faz o
+    // cruzamento faixa → lead → compra dentro do banco.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sb.rpc as any)('preco_faixas_relatorio', {
+      p_desde: new Date(Date.now() - 30 * 86400000).toISOString(),
+    }),
   ]);
 
   // Ativas = quem tem o produto liberado; pagantes = quem comprou. As UGC da
@@ -610,6 +738,7 @@ export default async function DashboardPage() {
     pixToday, pixMonth, pixTotal, planToday, planMonth, planTotal,
   ] = await extras;
   const stuckPlans = stuckPlansCount ?? 0;
+  const linhasFaixas = (((faixasPreco as { data?: FaixaPreco[] } | null)?.data) ?? []) as FaixaPreco[];
 
   // Planos gerados HOJE (BR) → custo médio de IA por plano (custo do dia / planos)
   const aiCostPerPlanToday = (aiCosts.ok && plansGeneratedToday && plansGeneratedToday > 0)
@@ -923,6 +1052,8 @@ export default async function DashboardPage() {
         {/* ════════════════════════════════════════════════════════ */}
         {/* SEÇÃO 1: PLANO CAPILAR                                    */}
         {/* ════════════════════════════════════════════════════════ */}
+        {linhasFaixas.length > 0 && <PrecoDinamicoSection linhas={linhasFaixas} />}
+
         <SectionHeader
           icon={IconMegaphone}
           title="Plano Capilar — Anúncios com 'Plano' no nome"
