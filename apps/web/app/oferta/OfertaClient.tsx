@@ -181,9 +181,11 @@ function useOfferCountdown() {
 }
 
 // ─── Cálculo de parcelas (cartão: até 3x COM juros 2,99% a.m.) ───
-// À vista (1x) e PIX = R$34,90 sem juros. Fonte única em lib/pricing.
-function installPerStr(n: number): string {
-  const info = installmentInfo(n);
+// À vista (1x) e PIX sem juros. Fonte única em lib/pricing.
+// ⚠️ A base é o preço DESTA cliente (faixa de gasto do quiz): sem ela, a tela
+// oferecia "3x de R$12,33" para quem seria cobrada sobre R$49,90.
+function installPerStr(n: number, baseCents: number): string {
+  const info = installmentInfo(n, baseCents);
   return `${info.n}x de ${brlCents(info.perCents)}`;
 }
 
@@ -523,6 +525,20 @@ export default function OfertaClient() {
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+
+  // Reconsulta pelo e-mail digitado: é a chave que o checkout usa para achar a
+  // faixa. Sem isto, quem chega sem a sessão salva veria um preço e pagaria outro.
+  useEffect(() => {
+    const e = email.trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return;
+    const t = setTimeout(() => {
+      fetch(`/api/preco?e=${encodeURIComponent(e)}`, { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((d) => { if (d?.preco_cents) setPrecoBase(Number(d.preco_cents)); })
+        .catch(() => { /* mantém o que já estava */ });
+    }, 600);
+    return () => clearTimeout(t);
+  }, [email]);
   const [quizAnswers, setQuizAnswers] = useState<Record<string, unknown>>({});
   const [cardNumber, setCardNumber] = useState('');
   const [cardName, setCardName] = useState('');
@@ -1008,8 +1024,10 @@ export default function OfertaClient() {
 
       // Cobrança aprovada imediatamente?
       if (data.paid) {
-        localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now(), amount: precoAtual / 100, orderId: data.order_id }));
-        await logEvent({ event_type: 'payment_confirmed', email, payment_type: 'card', amount_cents: precoAtual });
+        // Valor que o servidor cobrou de fato — não o que a tela mostrava.
+        const cobrado = Number(data.amount) || precoAtual;
+        localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now(), amount: cobrado / 100, orderId: data.order_id }));
+        await logEvent({ event_type: 'payment_confirmed', email, payment_type: 'card', amount_cents: cobrado });
         router.push('/obrigado');
       } else {
         // Order criado mas cobrança ainda pendente — inicia polling
@@ -1364,9 +1382,9 @@ export default function OfertaClient() {
     // Cartão: até 3x. 1x à vista (sem juros), 2x/3x COM juros (2,99% a.m.)
     const INSTALLMENTS = [1, 2, 3].map(n => ({
       n,
-      label: installPerStr(n) + (n === 1 ? ' (à vista)' : ''),
+      label: installPerStr(n, precoAtual) + (n === 1 ? ' (à vista)' : ''),
     }));
-    const installAmt = installPerStr(installments);
+    const installAmt = installPerStr(installments, precoAtual);
 
     return (
       <>
@@ -1431,7 +1449,7 @@ export default function OfertaClient() {
                         background: `linear-gradient(135deg, ${T.pinkDeep}, ${T.pink})`,
                         WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
                         lineHeight: 1,
-                      }}>{installPerStr(MAX_INSTALLMENTS)}</span>
+                      }}>{installPerStr(MAX_INSTALLMENTS, precoAtual)}</span>
                       <span style={{ fontSize: 10, color: T.inkSoft, fontFamily: fonts.ui }}>no cartão</span>
                     </div>
                     <div style={{ fontSize: 10, color: T.inkSoft, marginTop: 2 }}>{`ou à vista ${brlCents(precoAtual)}`}</div>

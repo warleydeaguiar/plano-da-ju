@@ -279,6 +279,8 @@ export async function POST(req: NextRequest) {
       order_id:     chargeId,
       status:       order.status,
       paid:         isReallyPaid,
+      // O front usa este valor no rastreamento: é o cobrado, não o exibido.
+      amount:       PRICE_CENTS,
       redirect_url: isReallyPaid ? '/obrigado' : null,
     });
   } catch (err) {
