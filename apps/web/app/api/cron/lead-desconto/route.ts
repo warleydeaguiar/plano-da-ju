@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import { acessoDosLeads } from '@/lib/acesso-lead';
 import { telefonesBloqueados, finalTelefone } from '@/lib/wa-optout';
 import { precoDoCliente } from '@/lib/preco-servidor';
 import { conferirCupom } from '@/lib/cupom';
@@ -118,19 +119,10 @@ export async function GET(req: NextRequest) {
   if (!candidatos.length) return NextResponse.json({ ok: true, enviados: 0, controle: 0, jaCompraram: 0 });
 
   // Quem já tem o plano não recebe oferta de desconto — nem quem pagou, nem
-  // quem ganhou por cortesia da parceria. Os dois são contados à parte porque
-  // só o primeiro grupo é venda.
-  const emails = candidatos.map((l) => (l.email ?? '').toLowerCase().trim()).filter(Boolean);
-  const { data: comAcesso } = emails.length
-    ? await (sb.from('profiles') as any)
-        .select('email, subscription_type').in('email', emails).eq('subscription_status', 'active')
-    : { data: [] as any[] };
-  const pagantes = new Set<string>();
-  const cortesias = new Set<string>();
-  for (const p of ((comAcesso ?? []) as any[])) {
-    const e = String(p.email).toLowerCase();
-    (p.subscription_type === 'parceria' ? cortesias : pagantes).add(e);
-  }
+  // quem ganhou por cortesia da parceria. Casa por e-mail E por telefone (a
+  // cortesia é cadastrada à mão e já veio com e-mail errado). Os dois grupos
+  // são contados à parte porque só o primeiro é venda.
+  const acessoDe = await acessoDosLeads(sb, candidatos);
 
   // Quem pediu para não receber mensagens fica de fora (e sai da fila).
   const bloqueados = await telefonesBloqueados(sb, candidatos.map((l) => l.phone));
@@ -139,9 +131,9 @@ export async function GET(req: NextRequest) {
   const falhas: { id: string; erro: string }[] = [];
 
   for (const lead of candidatos) {
-    const email = (lead.email ?? '').toLowerCase().trim();
-    if (email && (pagantes.has(email) || cortesias.has(email))) {
-      if (pagantes.has(email)) jaCompraram++; else jaCortesia++;
+    const acesso = acessoDe(lead);
+    if (acesso) {
+      if (acesso === 'pago') jaCompraram++; else jaCortesia++;
       if (!dry) await (sb.from('wg_quiz_leads') as any)
         .update({ desconto_enviado_em: new Date().toISOString() }).eq('id', lead.id);
       continue;

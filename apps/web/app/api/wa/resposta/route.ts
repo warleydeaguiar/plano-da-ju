@@ -87,6 +87,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, bloqueado: true });
     }
 
+    // ── Cortesia UGC cobrada por engano ──────────────────────────────────
+    // "Eu ganhei o plano com a Bianca": ela recebeu o plano de graça e mesmo
+    // assim levou "finalize sua inscrição". Para a régua na hora (a cortesia
+    // pode ter sido ativada depois do envio, ou com e-mail errado no cadastro),
+    // pede desculpa e joga a conversa para atendimento humano.
+    if (tipo === 'cortesia') {
+      await registrarBloqueio(sb, digitos, 'cortesia');
+      await responder(conversa, digitos,
+        'Ai, me desculpa! 🙈 Se você já recebeu o Plano de cortesia, ignora essa mensagem — não é para você pagar nada. Já tirei o seu número da fila desse aviso.\n\nSe o seu acesso não estiver funcionando, me fala por aqui que eu resolvo. 💛');
+      await marcarConversa(conversa, 'cortesia-cobrada');
+      await marcarLead(sb, digitos, {
+        resposta_tipo: 'cortesia',
+        resposta_texto: texto.slice(0, 200),
+        respondeu_em: agora,
+        desconto_enviado_em: agora, // não entra na fila do cupom
+      });
+      return NextResponse.json({ ok: true, cortesia: true });
+    }
+
     // O lead guarda DDD+número (10-11 dígitos); o WhatsApp manda com o 55 na
     // frente. Comparar pelos ÚLTIMOS dígitos cobre os dois formatos, e ainda o
     // nono dígito que o WhatsApp às vezes omite em número antigo.

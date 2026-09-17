@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import { acessoDosLeads } from '@/lib/acesso-lead';
 import { telefonesBloqueados, finalTelefone } from '@/lib/wa-optout';
 import { templateUtilitarioAprovado } from '@/lib/wa-templates';
 
@@ -125,28 +126,16 @@ export async function GET(req: NextRequest) {
   const candidatos = (leads ?? []) as any[];
   if (!candidatos.length) return NextResponse.json({ ok: true, enviados: 0, pulados: 0 });
 
-  // Quem já tem o plano não recebe. A checagem é por e-mail, que é a chave que o
-  // checkout grava no profile.
+  // Quem já tem o plano não recebe. Casa por e-mail E por telefone: a cortesia
+  // da parceria é cadastrada à mão e já veio com e-mail errado (hormail.com,
+  // gamil.com) — nesses casos a menina ganhou o plano e recebeu cobrança.
   //
   // Duas razões diferentes para pular, e vale distinguir: quem PAGOU já é
   // cliente; quem tem CORTESIA da parceria recebeu o plano de graça, e mandar
   // "finalize sua inscrição por R$34,90" para ela seria cobrar o que já é dela.
   // O comportamento é o mesmo (não envia), mas guardar o motivo certo evita ler
   // 80 cortesias como 80 vendas depois.
-  const emails = candidatos.map((l) => (l.email ?? '').toLowerCase().trim()).filter(Boolean);
-  const { data: comAcesso } = emails.length
-    ? await (sb.from('profiles') as any)
-        .select('email, subscription_type')
-        .in('email', emails)
-        .eq('subscription_status', 'active')
-    : { data: [] as any[] };
-  const jaPagou = new Set<string>();
-  const jaCortesia = new Set<string>();
-  for (const p of ((comAcesso ?? []) as any[])) {
-    const e = String(p.email).toLowerCase();
-    (p.subscription_type === 'parceria' ? jaCortesia : jaPagou).add(e);
-  }
-  const temAcesso = (e: string) => jaPagou.has(e) || jaCortesia.has(e);
+  const acessoDe = await acessoDosLeads(sb, candidatos);
   // Quem tocou em "Bloquear mensagens" (ou pediu para sair) não recebe mais nada.
   const bloqueados = await telefonesBloqueados(sb, candidatos.map((l) => l.phone));
 
@@ -162,11 +151,11 @@ export async function GET(req: NextRequest) {
   const falhas: { id: string; erro: string }[] = [];
 
   for (const lead of candidatos) {
-    const email = (lead.email ?? '').toLowerCase().trim();
     const telefone = telefoneIntl(lead.phone);
 
+    const acesso = acessoDe(lead);
     const bloqueou = !!telefone && bloqueados.has(finalTelefone(telefone));
-    if (!telefone || bloqueou || (email && temAcesso(email))) {
+    if (!telefone || bloqueou || acesso) {
       pulados++;
       // Marca como resolvido: comprou (ou não tem telefone), não precisa voltar
       // à fila em todo ciclo.
@@ -174,8 +163,8 @@ export async function GET(req: NextRequest) {
         await (sb.from('wg_quiz_leads') as any)
           .update({
             inscricao_wa_enviada_em: new Date().toISOString(),
-            inscricao_wa_erro: email && jaPagou.has(email) ? 'ja_comprou'
-              : email && jaCortesia.has(email) ? 'ja_cortesia'
+            inscricao_wa_erro: acesso === 'pago' ? 'ja_comprou'
+              : acesso === 'cortesia' ? 'ja_cortesia'
               : bloqueou ? 'bloqueou'
               : 'sem_telefone',
           })
