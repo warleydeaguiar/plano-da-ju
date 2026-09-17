@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { NOME_SITE } from '@/lib/seo';
 
+const TERMOS = 'https://planodaju.julianecost.com/termos';
+
 const MENU = [
   { rotulo: 'Início', href: '/' },
   { rotulo: 'Blog', href: '/blog/' },
@@ -90,6 +92,14 @@ export default function Moldura({ children, atalhos = [], redes = [] }: {
                   {m.rotulo}
                 </Link>
               ))}
+              {/* Condições de contratação do Plano Capilar (entrega, garantia e
+                  reembolso). Mora no funil, que é onde a compra acontece. */}
+              <a
+                href={TERMOS}
+                style={{ display: 'block', color: 'var(--tinta-suave)', padding: '0.25rem 0' }}
+              >
+                Termos de Uso do Plano
+              </a>
             </div>
 
             {/* Os mesmos atalhos do link da bio do Instagram. Vêm do conteúdo,

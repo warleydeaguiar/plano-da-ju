@@ -2200,7 +2200,8 @@ export default function OfertaClient() {
               { q: 'E se eu tiver dúvidas depois?', a: 'Você não fica sozinha. Tem suporte por WhatsApp pra tirar dúvidas ao longo do caminho — se ficar na dúvida de algum passo ou produto, é só me chamar que eu te ajudo. 💗' },
               { q: 'Os produtos são difíceis de achar?', a: 'Não! São produtos que você encontra com facilidade, e os que eu indico ficam disponíveis no meu grupo de promoções com preço especial. Nada de fórmula secreta impossível de comprar.' },
               { q: 'É pagamento único ou cobra todo mês?', a: `Pagamento único, uma vez só. São ${brlCents(precoAtual)} e pronto — nada de mensalidade, nada de cobrança recorrente te pegando de surpresa depois. Você paga uma vez e tem acesso ao seu plano.` },
-            ].map((f, i, arrF) => (
+              { q: 'Como funciona a garantia e os termos de uso?', a: 'O seu plano é um material digital feito sob medida pra você, montado depois que o pagamento é confirmado e a sua foto chega. A garantia de 7 dias existe pra te dar segurança de que você VAI receber o seu plano: enquanto ele não for entregue, é só me avisar que eu devolvo 100% do valor. Depois que o plano personalizado é criado e liberado no app, ele não pode ser devolvido nem desfeito — por isso não tem reembolso a partir daí. Se tiver qualquer problema de acesso ou o conteúdo vier incompleto, eu resolvo ou devolvo o seu dinheiro. Está tudo detalhado, com as leis que se aplicam, nos Termos de Uso.', link: { texto: 'Ler os Termos de Uso', href: '/termos' } },
+            ].map((f: { q: string; a: string; link?: { texto: string; href: string } }, i, arrF) => (
               <div key={i} style={{ borderBottom: i < arrF.length - 1 ? `1px solid ${T.border}` : 'none' }}>
                 <button
                   onClick={() => setOpenFaq(openFaq === i ? null : i)}
@@ -2226,6 +2227,18 @@ export default function OfertaClient() {
                     whiteSpace: 'pre-line',
                   }}>
                     {f.a}
+                    {f.link && (
+                      <div style={{ marginTop: 10 }}>
+                        <a
+                          href={f.link.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: T.pinkDeep, fontWeight: 700, textDecoration: 'underline' }}
+                        >
+                          {f.link.texto} →
+                        </a>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -2303,6 +2316,11 @@ export default function OfertaClient() {
               julianecost.com | Avenida Quinze de Novembro, 609, Jardim Petrópolis, Contagem — MG · CEP 32.185-122
             </div>
             <div style={{ marginBottom: 12 }}>CNPJ: 20.227.193/0001-18</div>
+            <div style={{ marginBottom: 12 }}>
+              <a href="/termos" target="_blank" rel="noopener noreferrer" style={{ color: T.inkSoft, textDecoration: 'underline' }}>
+                Termos de Uso do Plano Capilar
+              </a>
+            </div>
             <div style={{ fontSize: 11, color: T.inkMuted }}>© 2026 julianecost.com — Todos os direitos reservados.</div>
           </div>
         </div>
