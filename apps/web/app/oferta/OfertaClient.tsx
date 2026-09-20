@@ -560,6 +560,10 @@ export default function OfertaClient() {
   const [compError, setCompError] = useState('');
   const [cpfCopied, setCpfCopied] = useState(false);
   const [pixExpired, setPixExpired] = useState(false);
+  // A Pagar.me pode devolver a ordem como `failed`: a cobrança não nasce e o QR
+  // NUNCA vem. Sem isso a tela ficava "gerando seu código" até expirar (1h) —
+  // 21 clientes ficaram presas nessa tela nos últimos 28 dias.
+  const [pixFalhou, setPixFalhou] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [payType, setPayType] = useState<'card' | 'pix'>('pix');
   const [images, setImages] = useState<Record<string, string>>({});
@@ -644,8 +648,11 @@ export default function OfertaClient() {
     if (step !== 'pix_qr' || !pixOrderId) return;
     if (pixExpiresAt && Date.now() >= pixExpiresAt) {
       setPixExpired(true);
+      // Código vencido não pode voltar num próximo acesso.
+      try { localStorage.removeItem('pix_pending'); } catch {}
       return;
     }
+    if (pixFalhou) return; // ordem recusada: não adianta continuar perguntando
 
     const timer = setTimeout(async () => {
       try {
@@ -667,6 +674,16 @@ export default function OfertaClient() {
             }));
           } catch {}
         }
+        // Ordem que a Pagar.me marcou como falha/cancelada não vai gerar QR.
+        if (!data.pix_qr_code && (data.order_status === 'failed' || data.order_status === 'canceled')) {
+          setPixFalhou(true);
+          try { localStorage.removeItem('pix_pending'); } catch {}
+          logEvent({
+            event_type: 'checkout_error', email, payment_type: 'pix',
+            metadata: { route: 'frontend/pix', kind: 'order_failed', message: `Ordem PIX ${data.order_status}`, order_id: pixOrderId },
+          });
+          return;
+        }
         if (data.paid) {
           localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now(), amount: precoAtual / 100, orderId: pixOrderId }));
           localStorage.removeItem('pix_pending');
@@ -681,7 +698,7 @@ export default function OfertaClient() {
     }, pixQrCode ? 5000 : 2000);
 
     return () => clearTimeout(timer);
-  }, [step, pixOrderId, pixPollCount, pixExpiresAt, email, name, router, pixQrCode]);
+  }, [step, pixOrderId, pixPollCount, pixExpiresAt, email, name, router, pixQrCode, pixFalhou]);
 
   // ── Polling do cartão (order ainda processando) ──
   useEffect(() => {
@@ -863,6 +880,7 @@ export default function OfertaClient() {
       setPixExpiresAt(expiresAtMs);
       setPixPollCount(0);
       setPixExpired(false);
+      setPixFalhou(false);
 
       // Persiste para recovery em refresh/close tab
       try {
@@ -1270,24 +1288,50 @@ export default function OfertaClient() {
                   border: `3px solid ${T.pinkSoft}`, borderTopColor: T.pinkDeep,
                   animation: 'spin 0.8s linear infinite',
                 }} />
-                <div style={{ fontSize: 14, fontWeight: 700, color: T.ink }}>Gerando seu PIX…</div>
-                <div style={{ fontSize: 12.5, color: T.inkSoft, lineHeight: 1.5, maxWidth: 300 }}>
-                  Às vezes o banco demora alguns segundos. Pode deixar essa tela aberta —
-                  o código aparece aqui sozinho. Também vamos te enviar por <strong>e-mail</strong>. 💛
+                <div style={{ fontSize: 14, fontWeight: 700, color: T.ink }}>
+                  {pixFalhou ? 'O banco não gerou o código' : 'Gerando seu PIX…'}
                 </div>
+                <div style={{ fontSize: 12.5, color: T.inkSoft, lineHeight: 1.5, maxWidth: 320 }}>
+                  {pixFalhou
+                    ? <>Costuma ser CPF que não confere ou instabilidade do banco. Você pode
+                        <strong> pagar na chave PIX da Ju</strong>, logo abaixo, conferir o CPF e tentar de novo,
+                        ou ir no cartão. Sua vaga continua reservada. 💛</>
+                    : <>Às vezes o banco demora alguns segundos. Pode deixar essa tela aberta —
+                        o código aparece aqui sozinho. Também vamos te enviar por <strong>e-mail</strong>. 💛</>}
+                </div>
+                {pixFalhou && (
+                  <div style={{ display: 'flex', gap: 8, width: '100%', marginTop: 4 }}>
+                    <button
+                      onClick={() => { setPixFalhou(false); setPixOrderId(''); setPixExpiresAt(0); setPixPollCount(0); handlePix(); }}
+                      style={{
+                        flex: 1, border: 'none', borderRadius: 12, padding: 13, cursor: 'pointer',
+                        background: `linear-gradient(135deg, ${T.pink}, ${T.pinkDeep})`, color: '#fff',
+                        fontSize: 13.5, fontWeight: 800, fontFamily: fonts.ui,
+                      }}
+                    >Tentar de novo</button>
+                    <button
+                      onClick={() => { setPayType('card'); setStep('card_form'); }}
+                      style={{
+                        flex: 1, borderRadius: 12, padding: 13, cursor: 'pointer',
+                        background: '#fff', border: `1px solid ${T.border}`, color: T.ink,
+                        fontSize: 13.5, fontWeight: 700, fontFamily: fonts.ui,
+                      }}
+                    >Pagar no cartão</button>
+                  </div>
+                )}
               </div>
             )}
 
             {/* PLANO B — PIX manual na chave da Ju. Só aparece se o QR realmente
                 não vier (~20s de tentativa). A cliente paga e anexa o comprovante;
                 o acesso é liberado na hora. */}
-            {!pixQrCode && pixPollCount >= 8 && (
+            {!pixQrCode && (pixPollCount >= 8 || pixFalhou) && (
               <div style={{
                 background: '#FFF8E7', border: '1px solid #F5D98B', borderRadius: 18,
                 padding: '18px 16px', marginBottom: 20, textAlign: 'left',
               }}>
                 <div style={{ fontSize: 13.5, fontWeight: 800, color: '#8A5A00', marginBottom: 6 }}>
-                  ⏳ O banco está demorando — pague por aqui, é mais rápido
+                  {pixFalhou ? '✅ Pague por aqui — leva o mesmo tempo' : '⏳ O banco está demorando — pague por aqui, é mais rápido'}
                 </div>
                 <p style={{ fontSize: 12.5, color: '#6B4A00', lineHeight: 1.5, margin: '0 0 14px' }}>
                   Faça um PIX de <strong>{brlCents(precoAtual)}</strong> para a chave abaixo
@@ -1380,6 +1424,13 @@ export default function OfertaClient() {
               {pixCopied ? '✓ Código copiado!' : '📋 Copiar código PIX'}
             </button>)}
 
+            {error && (
+              <div style={{
+                background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: 12,
+                padding: '12px 16px', marginBottom: 14, fontSize: 13, color: '#991B1B', lineHeight: 1.5,
+              }}>{error}</div>
+            )}
+
             {/* Status: polling + countdown real */}
             {!isExpired ? (
               <>
@@ -1400,7 +1451,7 @@ export default function OfertaClient() {
 
                 {/* Contagem regressiva do código. Anda de segundo em segundo e
                     fica âmbar nos últimos 5 minutos. */}
-                {pixExpiresAt > 0 && (
+                {pixExpiresAt > 0 && !!pixQrCode && (
                   <div style={{
                     background: secondsLeft <= 300 ? '#FEF3C7' : 'rgba(255,255,255,0.7)',
                     border: `1px solid ${secondsLeft <= 300 ? '#FDE68A' : T.border}`,
