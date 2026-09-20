@@ -602,8 +602,12 @@ export default function OfertaClient() {
         const pending = localStorage.getItem('pix_pending');
         if (pending) {
           const p = JSON.parse(pending);
-          // Só recupera se ainda dentro de 1h
-          if (p.expiresAt && p.expiresAt > Date.now() && p.orderId) {
+          // Só recupera se ainda sobrar tempo ÚTIL. Com o resto de um PIX
+          // velho (poucos minutos), a cliente voltava e encontrava a tela
+          // "O PIX expirou" logo de cara — parecia que o código durava
+          // segundos. Abaixo de 5 minutos o código antigo é descartado e ela
+          // gera um novo, com a hora cheia.
+          if (p.expiresAt && p.expiresAt > Date.now() + 5 * 60_000 && p.orderId) {
             setPixOrderId(p.orderId);
             setPixQrCode(p.qrCode ?? '');
             setPixQrCodeUrl(p.qrCodeUrl ?? '');
@@ -624,6 +628,16 @@ export default function OfertaClient() {
       })
       .catch(() => {});
   }, []);
+
+  // Relógio de 1s enquanto a tela do PIX está aberta: sem isso o contador só
+  // se mexia quando o polling (5s) redesenhava a tela, e dava a impressão de
+  // travado.
+  const [, setTicPix] = useState(0);
+  useEffect(() => {
+    if (step !== 'pix_qr') return;
+    const id = setInterval(() => setTicPix(t => t + 1), 1000);
+    return () => clearInterval(id);
+  }, [step]);
 
   // ── Polling do PIX — verifica a cada 5s até expirar (até 1h) ──
   useEffect(() => {
@@ -1180,13 +1194,67 @@ export default function OfertaClient() {
           padding: '40px 24px', fontFamily: fonts.ui,
         }}>
           <div style={{ maxWidth: 420, width: '100%', textAlign: 'center' }}>
+            {/* Quem está com o app do banco aberto precisa saber para QUEM
+                está pagando. A foto da Juliane no consultório é a mesma cara
+                que a cliente viu no quiz e na oferta. */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center',
+              marginBottom: 16,
+            }}>
+              <div style={{
+                width: 56, height: 56, borderRadius: '50%', overflow: 'hidden',
+                border: '3px solid #fff', boxShadow: `0 8px 20px ${T.pinkDeep}22`,
+                flexShrink: 0,
+              }}>
+                {/* A foto é do consultório inteiro; o scale aproxima o rosto,
+                    senão num círculo de 56px ela vira um borrão de escritório. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={images['oferta_ju_pagamento'] || '/images/juliane-consultorio.jpg'}
+                  alt="Juliane Cost, tricologista"
+                  style={{
+                    width: '100%', height: '100%', objectFit: 'cover',
+                    objectPosition: '43% 20%', transform: 'scale(1.9)', transformOrigin: '43% 28%',
+                  }}
+                />
+              </div>
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ fontSize: 14, fontWeight: 800, color: T.ink, lineHeight: 1.2 }}>Juliane Cost</div>
+                <div style={{ fontSize: 11.5, color: T.inkSoft }}>Tricologista · +3.500 alunas</div>
+              </div>
+            </div>
+
             <h1 style={{
               fontSize: 26, fontWeight: 600, color: T.ink, marginBottom: 8,
               fontFamily: fonts.display, letterSpacing: -0.4,
             }}>Pague via PIX</h1>
-            <p style={{ color: T.inkSoft, fontSize: 14, marginBottom: 24 }}>
+            <p style={{ color: T.inkSoft, fontSize: 14, marginBottom: 14 }}>
               {pixQrCode ? 'Escaneie o QR Code ou copie o código abaixo' : 'Só um instante — estamos gerando seu código'}
             </p>
+
+            {/* Valor + acesso imediato: as duas dúvidas de quem está com o app
+                do banco na mão ("quanto?" e "quando libera?"). */}
+            <div style={{
+              background: 'rgba(255,255,255,0.9)', border: `1px solid ${T.border}`,
+              borderRadius: 16, padding: '14px 18px', marginBottom: 16,
+              display: 'flex', flexDirection: 'column', gap: 8,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
+                <span style={{ fontSize: 13, color: T.inkSoft }}>Valor do seu plano</span>
+                <strong style={{ fontSize: 24, color: T.pinkDeep, fontFamily: fonts.display, letterSpacing: -0.5 }}>
+                  {brlCents(precoAtual)}
+                </strong>
+              </div>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8, background: '#E7F8F0',
+                borderRadius: 10, padding: '9px 12px',
+              }}>
+                <span style={{ fontSize: 15 }}>⚡</span>
+                <span style={{ fontSize: 12.5, color: T.greenDeep, fontWeight: 700, textAlign: 'left', lineHeight: 1.35 }}>
+                  Acesso imediato: assim que o PIX cair, seu plano libera na hora — automático, sem enviar comprovante.
+                </span>
+              </div>
+            </div>
 
             {/* QR ainda nascendo: a cobrança JÁ existe, o código chega em segundos.
                 Antes isso virava tela de erro e a cliente ia embora. */}
@@ -1326,28 +1394,85 @@ export default function OfertaClient() {
                     animation: 'spin 0.9s linear infinite', flexShrink: 0,
                   }} />
                   <p style={{ color: T.inkSoft, fontSize: 13, margin: 0 }}>
-                    Aguardando confirmação do pagamento…
+                    Confirmação automática — deixe esta tela aberta
                   </p>
                 </div>
+
+                {/* Contagem regressiva do código. Anda de segundo em segundo e
+                    fica âmbar nos últimos 5 minutos. */}
                 {pixExpiresAt > 0 && (
-                  <p style={{ color: T.inkSoft, fontSize: 12, margin: 0 }}>
-                    ⏱ Este PIX expira em <strong style={{ color: T.ink, fontFamily: 'ui-monospace, monospace' }}>{mmExp}:{ssExp}</strong>
-                  </p>
+                  <div style={{
+                    background: secondsLeft <= 300 ? '#FEF3C7' : 'rgba(255,255,255,0.7)',
+                    border: `1px solid ${secondsLeft <= 300 ? '#FDE68A' : T.border}`,
+                    borderRadius: 12, padding: '12px 16px', marginBottom: 16,
+                  }}>
+                    <div style={{
+                      fontSize: 10.5, letterSpacing: 1.2, textTransform: 'uppercase',
+                      fontWeight: 800, color: secondsLeft <= 300 ? '#92400E' : T.inkSoft, marginBottom: 4,
+                    }}>
+                      {secondsLeft <= 300 ? 'Este código está acabando' : 'Este código vale por'}
+                    </div>
+                    <div style={{
+                      fontSize: 30, fontWeight: 800, lineHeight: 1,
+                      fontFamily: 'ui-monospace, SFMono-Regular, monospace',
+                      color: secondsLeft <= 300 ? '#B45309' : T.ink, letterSpacing: 1,
+                    }}>
+                      {mmExp}:{ssExp}
+                    </div>
+                    <div style={{ fontSize: 11.5, color: secondsLeft <= 300 ? '#92400E' : T.inkSoft, marginTop: 5 }}>
+                      Depois disso é preciso gerar outro código — e a sua vaga volta para a fila.
+                    </div>
+                  </div>
                 )}
+
+                {/* Passo a passo: tira a dúvida de quem nunca pagou por copia e cola. */}
+                <div style={{
+                  background: 'rgba(255,255,255,0.7)', border: `1px solid ${T.border}`,
+                  borderRadius: 12, padding: '14px 16px', textAlign: 'left',
+                }}>
+                  {[
+                    'Abra o app do seu banco e escolha PIX',
+                    'Toque em "Ler QR Code" ou "PIX copia e cola"',
+                    'Confirme o pagamento — seu acesso libera sozinho aqui',
+                  ].map((passo, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: i === 2 ? 0 : 9 }}>
+                      <span style={{
+                        width: 20, height: 20, borderRadius: '50%', background: T.pinkSoft,
+                        color: T.pinkDeep, fontSize: 11, fontWeight: 800, flexShrink: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1,
+                      }}>{i + 1}</span>
+                      <span style={{ fontSize: 12.5, color: T.inkSoft, lineHeight: 1.45 }}>{passo}</span>
+                    </div>
+                  ))}
+                </div>
               </>
             ) : (
               <div style={{
-                background: '#FEF3C7', borderRadius: 12, padding: '12px 16px',
-                border: '1px solid #FDE68A',
+                background: '#FEF3C7', borderRadius: 14, padding: '16px 18px',
+                border: '1px solid #FDE68A', textAlign: 'center',
               }}>
-                <p style={{ color: '#92400E', fontSize: 13, margin: 0 }}>
-                  ⏳ O PIX expirou. <button onClick={() => {
-                    localStorage.removeItem('pix_pending');
-                    setPixOrderId(''); setPixQrCode(''); setPixQrCodeUrl('');
-                    setPixExpiresAt(0); setPixExpired(false);
-                    setStep('card_form');
-                  }} style={{ color: T.pinkDeep, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, padding: 0 }}>Gerar novo PIX</button>
+                <p style={{ color: '#92400E', fontSize: 13.5, margin: '0 0 12px', lineHeight: 1.5 }}>
+                  ⏳ Este código expirou — mas a sua vaga continua aqui.
+                  É só gerar outro, leva um segundo.
                 </p>
+                <button
+                  onClick={() => {
+                    try { localStorage.removeItem('pix_pending'); } catch {}
+                    setPixOrderId(''); setPixQrCode(''); setPixQrCodeUrl('');
+                    setPixExpiresAt(0); setPixExpired(false); setPixPollCount(0);
+                    // Gera direto: mandar de volta pro formulário fazia a cliente
+                    // preencher tudo de novo só para ver o mesmo QR.
+                    handlePix();
+                  }}
+                  style={{
+                    width: '100%', border: 'none', borderRadius: 12, padding: 15,
+                    background: `linear-gradient(135deg, ${T.pink}, ${T.pinkDeep})`,
+                    color: '#fff', fontSize: 14.5, fontWeight: 800, cursor: 'pointer',
+                    fontFamily: fonts.ui, boxShadow: `0 8px 20px ${T.pink}44`,
+                  }}
+                >
+                  Gerar um novo PIX de {brlCents(precoAtual)}
+                </button>
               </div>
             )}
           </div>
