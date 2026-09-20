@@ -40,9 +40,12 @@ export function metaDoConteudo(c: Conteudo): Metadata {
     title: titulo,
     description: descricao,
     alternates: { canonical: abs(c.path) },
-    robots: BLOQUEAR_INDEXACAO || c.noindex
+    // `follow` mesmo fora do índice: a landing de campanha não entra na busca,
+    // mas os links dela continuam levando o rastreador ao resto do site. Só o
+    // bloqueio geral (site inteiro fora do ar para o Google) usa nofollow.
+    robots: BLOQUEAR_INDEXACAO
       ? { index: false, follow: false }
-      : { index: true, follow: true },
+      : { index: !c.noindex, follow: true },
     openGraph: {
       title: titulo,
       description: descricao,
