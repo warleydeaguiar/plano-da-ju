@@ -36,6 +36,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: (() => { const d = dataDeAtualizacao(i); return d ? new Date(d) : undefined; })(),
       changeFrequency: i.kind === 'post' ? ('weekly' as const) : ('monthly' as const),
       priority: PESO[i.kind] ?? 0.5,
+      // A busca por IMAGENS é a maior fonte deste site (549 mil impressões em
+      // 3 meses, mais cliques que a busca web) e o sitemap não citava imagem
+      // nenhuma. As fotos moram no storage, em subdomínio — coberto pela mesma
+      // propriedade sc-domain do Search Console, então valem aqui.
+      images: [i.featured_image_url, i.og_image]
+        .filter((u): u is string => !!u && /^https?:\/\//.test(u))
+        .filter((u, k, arr) => arr.indexOf(u) === k),
     }));
 
   return [...fixas, ...doBanco];

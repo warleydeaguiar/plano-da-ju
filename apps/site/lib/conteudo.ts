@@ -255,12 +255,20 @@ export async function contar(kind: Tipo): Promise<number> {
   return Number.isFinite(total) ? total : 0;
 }
 
-export async function tudoParaSitemap(): Promise<
-  { path: string; modified_at: string | null; revisado_em: string | null; kind: string }[]
-> {
+export interface ItemSitemap {
+  path: string;
+  modified_at: string | null;
+  revisado_em: string | null;
+  kind: string;
+  /** Imagem de destaque — entra no sitemap para o Google Imagens achar. */
+  featured_image_url?: string | null;
+  og_image?: string | null;
+}
+
+export async function tudoParaSitemap(): Promise<ItemSitemap[]> {
   const [conteudo, cats] = await Promise.all([
-    consulta<{ path: string; modified_at: string | null; revisado_em: string | null; kind: string }>(
-      'site_content?noindex=is.false&select=path,modified_at,revisado_em,kind&limit=2000',
+    consulta<ItemSitemap>(
+      'site_content?noindex=is.false&select=path,modified_at,revisado_em,kind,featured_image_url,og_image&limit=2000',
     ),
     consulta<{ path: string; kind: string }>('site_categories?select=path,kind&limit=200'),
   ]);
