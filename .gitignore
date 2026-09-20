@@ -49,3 +49,6 @@ Thumbs.db
 supabase/.temp/
 supabase/.branches/
 .vercel
+
+# artefato de build do TS
+*.tsbuildinfo

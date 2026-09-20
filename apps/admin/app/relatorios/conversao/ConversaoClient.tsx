@@ -101,8 +101,10 @@ export default function ConversaoClient({
 
       {!metaOk && (
         <Aviso>
-          Sem dados do Meta Ads agora (token não configurado ou API fora do ar) — os cliques aparecem como 0
-          e a conversão fica sem base. As vendas continuam corretas.
+          Sem dados do Meta Ads agora (token não configurado ou API fora do ar). Sem a lista de campanhas não dá
+          para dizer qual venda veio de anúncio: os cliques e a conversão ficam zerados, e todas as
+          <strong> {num(tot.total)} vendas</strong> do período aparecem como &ldquo;sem origem registrada&rdquo; no bloco
+          abaixo — o total de vendas continua certo, a atribuição é que está indisponível.
         </Aviso>
       )}
 
@@ -131,7 +133,11 @@ export default function ConversaoClient({
           label="Conversão"
           value={pctStr(conv)}
           cor={T.green}
-          nota={conv != null ? `1 venda a cada ${Math.round(tot.clicks / Math.max(1, tot.sales))} cliques` : 'sem cliques no período'}
+          nota={
+            tot.clicks === 0 ? 'sem cliques no período'
+              : tot.sales === 0 ? 'nenhuma venda atribuída a esses cliques'
+              : `1 venda a cada ${Math.round(tot.clicks / tot.sales)} cliques`
+          }
           destaque
         />
         <Stat label="Receita desses anúncios" value={brl(tot.revenue)} nota={`de ${brl(tot.revenueTotal)} no total`} />

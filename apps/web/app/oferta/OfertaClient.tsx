@@ -1460,9 +1460,12 @@ export default function OfertaClient() {
                     try { localStorage.removeItem('pix_pending'); } catch {}
                     setPixOrderId(''); setPixQrCode(''); setPixQrCodeUrl('');
                     setPixExpiresAt(0); setPixExpired(false); setPixPollCount(0);
-                    // Gera direto: mandar de volta pro formulário fazia a cliente
-                    // preencher tudo de novo só para ver o mesmo QR.
-                    handlePix();
+                    // Gera direto quando ainda temos os dados em tela. Depois de
+                    // um refresh o CPF não volta (não guardamos CPF no
+                    // navegador), e aí o certo é o formulário — senão o botão
+                    // não faria nada, porque handlePix() para na validação.
+                    if (name.trim() && email.includes('@') && isValidCpf(cpf)) handlePix();
+                    else setStep('card_form');
                   }}
                   style={{
                     width: '100%', border: 'none', borderRadius: 12, padding: 15,

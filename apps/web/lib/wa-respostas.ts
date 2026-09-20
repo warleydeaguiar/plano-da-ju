@@ -19,7 +19,15 @@ const RECUSA = /(nao quero|nao tenho interesse|nao me interessa|cancela|numero e
 // ("eu ganhei o plano com a Bianca"). Acontece quando a cortesia é ativada
 // depois do envio, ou com e-mail errado no cadastro. Ela não deve receber mais
 // nada da régua de cobrança — e a conversa precisa de olho humano.
-const CORTESIA = /(ganhei|recebi|me deram|ja (tenho|recebi|ganhei)|foi de).{0,30}(plano|acesso|gratis|cortesia)|(plano|acesso).{0,30}(de (graca|cortesia|brinde)|gratuito|gratis)|(com|pela|da) bianca|sou (ugc|creator|parceira)|fiz (o )?ugc|permuta/;
+//
+// ⚠️ Exige SEMPRE um sinal de gratuidade (ganhei / cortesia / grátis / UGC /
+// permuta). Só "recebi o plano" não basta: "paguei e não recebi o plano" é
+// cliente pagante reclamando de entrega, e tratá-la como cortesia seria
+// responder "não é para você pagar nada" para quem já pagou.
+const CORTESIA_GRATIS = /(ganhei|cortesia|gratis|gratuit|de graca|nao paguei|sem pagar|permuta|brinde|sou (ugc|creator|parceira)|fiz (o )?ugc|(com|pela|da) bianca)/;
+// Se a mensagem fala em pagamento dela ou em algo que NÃO chegou, não é
+// cortesia — é atendimento.
+const NEGACAO_CORTESIA = /(paguei|pago|comprei|nao recebi|nao chegou|nao consigo|nao veio|nao libero|cade|cobranca|estorno|reembolso)/;
 
 /** Classifica a mensagem que a pessoa mandou depois da mensagem de inscrição. */
 export function classificarResposta(texto: unknown): TipoResposta {
@@ -27,7 +35,7 @@ export function classificarResposta(texto: unknown): TipoResposta {
   if (t === 'quero concluir') return 'botao_concluir';
   if (t === 'tenho uma duvida') return 'botao_duvida';
   if (ehPedidoDeBloqueio(texto)) return 'bloqueio';
-  if (CORTESIA.test(t)) return 'cortesia';
+  if (CORTESIA_GRATIS.test(t) && !NEGACAO_CORTESIA.test(t)) return 'cortesia';
   if (AUTOMATICA.test(t)) return 'automatica';
   if (RECUSA.test(t)) return 'recusa';
   return 'humana';

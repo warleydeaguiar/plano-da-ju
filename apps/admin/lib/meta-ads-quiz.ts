@@ -115,7 +115,9 @@ async function fetchInsights(params: Record<string, string>, revalidate = 1800):
   let url: string | null = `${BASE}/${ACCOUNT_ID}/insights?${qs}`
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const todas: any[] = []
-  for (let pagina = 0; url && pagina < 25; pagina++) {
+  const MAX_PAGINAS = 60
+  let pagina = 0
+  for (; url && pagina < MAX_PAGINAS; pagina++) {
     const res: Response = await fetch(url, { next: { revalidate } })
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
@@ -125,6 +127,9 @@ async function fetchInsights(params: Record<string, string>, revalidate = 1800):
     todas.push(...(json.data ?? []))
     url = json.paging?.next ?? null
   }
+  // Se ainda havia página quando o teto chegou, o resultado está incompleto —
+  // e um número incompleto que parece completo é pior do que nenhum.
+  if (url) console.error(`[meta-ads] insights truncado em ${pagina} páginas (${todas.length} linhas) — faltou dado`)
   return todas
 }
 

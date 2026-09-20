@@ -1,4 +1,15 @@
-import { finalTelefone } from './wa-optout';
+/**
+ * Chave de comparação de telefone: DDD + 8 últimos dígitos.
+ *
+ * Ignora o DDI (55) e o nono dígito, que variam entre o cadastro e o WhatsApp,
+ * mas mantém o DDD — sem ele, dois números iguais de estados diferentes
+ * casariam, e um lead legítimo sairia calado da régua.
+ */
+function chaveTelefone(bruto: string | null | undefined): string {
+  let d = String(bruto ?? '').replace(/\D/g, '');
+  if (d.startsWith('55') && d.length >= 12) d = d.slice(2);
+  return d.length >= 10 ? d.slice(0, 2) + d.slice(-8) : '';
+}
 
 export type TipoAcesso = 'pago' | 'cortesia';
 
@@ -19,7 +30,7 @@ export async function acessoDosLeads(
   leads: { email?: string | null; phone?: string | null }[],
 ): Promise<(lead: { email?: string | null; phone?: string | null }) => TipoAcesso | null> {
   const emails = [...new Set(leads.map((l) => (l.email ?? '').toLowerCase().trim()).filter(Boolean))];
-  const finais = [...new Set(leads.map((l) => finalTelefone(l.phone ?? '')).filter(Boolean))];
+  const finais = [...new Set(leads.map((l) => chaveTelefone(l.phone)).filter(Boolean))];
 
   const porEmail = new Map<string, TipoAcesso>();
   if (emails.length) {
@@ -51,7 +62,7 @@ export async function acessoDosLeads(
 
   return (lead) => {
     const e = (lead.email ?? '').toLowerCase().trim();
-    const f = finalTelefone(lead.phone ?? '');
+    const f = chaveTelefone(lead.phone);
     return (e && porEmail.get(e)) || (f && porTelefone.get(f)) || null;
   };
 }

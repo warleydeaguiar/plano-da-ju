@@ -111,7 +111,9 @@ export default function PixClient({ token }: { token: string }) {
     const faltam = expiraEm ? Math.max(0, Math.floor((expiraEm - Date.now()) / 1000)) : 0;
     const mm = String(Math.floor(faltam / 60)).padStart(2, '0');
     const ss = String(faltam % 60).padStart(2, '0');
-    const acabando = faltam > 0 && faltam <= 300;
+    // Zerado também conta como "acabando": senão o painel volta ao tom calmo
+    // mostrando "Este código vale por 00:00" até o próximo polling.
+    const acabando = expiraEm > 0 && faltam <= 300;
 
     return wrap(
       <>
@@ -229,7 +231,7 @@ export default function PixClient({ token }: { token: string }) {
               fontSize: 10.5, letterSpacing: 1.2, textTransform: 'uppercase', fontWeight: 800,
               color: acabando ? '#92400E' : T.inkSoft, marginBottom: 4,
             }}>
-              {acabando ? 'Este código está acabando' : 'Este código vale por'}
+              {faltam === 0 ? 'Este código expirou' : acabando ? 'Este código está acabando' : 'Este código vale por'}
             </div>
             <div style={{
               fontSize: 30, fontWeight: 800, lineHeight: 1, letterSpacing: 1,
@@ -237,7 +239,9 @@ export default function PixClient({ token }: { token: string }) {
               color: acabando ? '#B45309' : T.ink,
             }}>{mm}:{ss}</div>
             <div style={{ fontSize: 11.5, color: acabando ? '#92400E' : T.inkSoft, marginTop: 5 }}>
-              Depois disso é preciso gerar outro código.
+              {faltam === 0
+                ? 'Volte à oferta para gerar um novo código — sua vaga continua lá.'
+                : 'Depois disso é preciso gerar outro código.'}
             </div>
           </div>
         )}
