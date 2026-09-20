@@ -147,9 +147,15 @@ function trilha(itens: { nome: string; path: string }[]) {
  * é aqui que o markup precisa estar correto — Article com autor, datas e
  * imagem, mais a trilha de navegação.
  */
+/** O site é em português; o path `/en-…` marca a exceção. */
+export function idiomaDe(path: string): 'pt-BR' | 'en' {
+  return /^\/en-/.test(path) ? 'en' : 'pt-BR';
+}
+
 export function schemaDoPost(c: Conteudo, videos: VideoIncorporado[] = []) {
   const imagem = c.og_image || c.featured_image_url;
   const idPagina = `${abs(c.path)}#webpage`;
+  const idioma = idiomaDe(c.path);
 
   return {
     '@context': 'https://schema.org',
@@ -169,7 +175,7 @@ export function schemaDoPost(c: Conteudo, videos: VideoIncorporado[] = []) {
         isPartOf: { '@id': idPagina },
         mainEntityOfPage: { '@id': idPagina },
         image: imagem ? { '@id': `${abs(c.path)}#imagem` } : undefined,
-        inLanguage: 'pt-BR',
+        inLanguage: idioma,
         wordCount: c.word_count || undefined,
       },
       {
@@ -181,7 +187,7 @@ export function schemaDoPost(c: Conteudo, videos: VideoIncorporado[] = []) {
         datePublished: c.published_at || undefined,
         dateModified: dataDeAtualizacao(c) || undefined,
         isPartOf: { '@id': `${SITE}/#website` },
-        inLanguage: 'pt-BR',
+        inLanguage: idioma,
         breadcrumb: { '@id': `${abs(c.path)}#trilha` },
         ...(imagem ? { primaryImageOfPage: { '@id': `${abs(c.path)}#imagem` } } : {}),
       },

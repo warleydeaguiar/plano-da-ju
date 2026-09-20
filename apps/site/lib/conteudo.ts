@@ -185,9 +185,11 @@ const palavrasDoTitulo = (titulo: string): string[] =>
     .filter((p) => p.length > 2 && !VAZIAS.has(p));
 
 /** Só os posts que podem receber visita do Google, com o título para comparar. */
-async function postsParaRelacionar(): Promise<Conteudo[]> {
-  return consulta<Conteudo>(
-    `site_content?kind=eq.post&status=eq.publish&noindex=is.false&select=${LISTA}&limit=2000`,
+type PostRelacionavel = Conteudo & { gsc_impressions?: number | null };
+
+async function postsParaRelacionar(): Promise<PostRelacionavel[]> {
+  return consulta<PostRelacionavel>(
+    `site_conteudo_trafego?kind=eq.post&status=eq.publish&noindex=is.false&select=${LISTA},gsc_impressions&limit=2000`,
   );
 }
 
@@ -221,12 +223,21 @@ export async function relacionados(pathAtual: string, limite = 6): Promise<Conte
   }
   const peso = (p: string) => Math.log(todos.length / (emQuantosTitulos.get(p) ?? 1));
 
+  // Bônus por desempenho: entre dois vizinhos igualmente parecidos, o link vai
+  // para o que o Google já mostra mais. Sem isto, a página de 461 mil
+  // impressões ("vitaminas para queda de cabelo") recebia UM link interno no
+  // site inteiro, enquanto páginas sem busca nenhuma recebiam dezenas.
+  // O log segura a escala: a campeã vale ~2,3× a última, não 400×.
+  const bonus = (i: PostRelacionavel) => Math.log10(1 + Math.max(0, Number(i.gsc_impressions ?? 0))) / 2;
+
   const minhas = new Set(palavrasDoTitulo(atual.title));
   const pontuado = candidatos.map((i) => {
     const dele = new Set(palavrasDoTitulo(i.title));
     let nota = 0;
     for (const p of dele) if (minhas.has(p)) nota += peso(p);
-    return { item: i, nota };
+    // Só soma o bônus para quem JÁ tem alguma afinidade de assunto: um artigo
+    // popular sobre outro tema não deve invadir a lista.
+    return { item: i, nota: nota > 0 ? nota + bonus(i) : nota };
   });
 
   pontuado.sort(
