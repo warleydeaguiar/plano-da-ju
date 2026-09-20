@@ -78,7 +78,14 @@ async function consulta<T>(caminho: string, revalidate = REVALIDA): Promise<T[]>
     headers: { apikey: CHAVE, Authorization: `Bearer ${CHAVE}` },
     next: { revalidate },
   });
-  if (!r.ok) return [];
+  if (!r.ok) {
+    // Falhar calado já custou caro: uma coluna que faltava na view derrubou a
+    // /loja/ inteira (47 produtos) e os destaques da home, e o site continuou
+    // respondendo 200 com a lista vazia. Lista vazia ainda é o resultado — a
+    // página não pode quebrar —, mas agora o erro aparece no log.
+    console.error('[conteudo] PostgREST', r.status, caminho.slice(0, 160), await r.text().catch(() => ''));
+    return [];
+  }
   return (await r.json()) as T[];
 }
 

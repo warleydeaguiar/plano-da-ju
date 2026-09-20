@@ -70,6 +70,29 @@ const nextConfig: NextConfig = {
         destination: 'https://julianecost.com/progressiva-fashion-gold-e-boa-atualizado/',
         permanent: true,
       },
+      // ── Lixo de URL herdado do WordPress ──────────────────────────────
+      // O Google ainda rastreia esses padrões e desde 26/08 eles viraram uma
+      // enxurrada de 404 (45 páginas no Search Console, ~30 por dia). Todos
+      // têm destino óbvio; 301 devolve a força do link para a página certa.
+      //
+      // Paginação de comentários: /artigo/2/ → /artigo/
+      { source: '/:slug/:pagina(\\d{1,3})', destination: '/:slug/', permanent: true },
+      // Feed RSS de post e de produto: /artigo/feed/ → /artigo/
+      { source: '/:slug/feed', destination: '/:slug/', permanent: true },
+      { source: '/produto/:slug/feed', destination: '/produto/:slug/', permanent: true },
+      { source: '/feed', destination: '/blog/', permanent: true },
+      { source: '/comments/feed', destination: '/blog/', permanent: true },
+      // Paginação da home do WordPress: /page/2/ → /blog/pagina/2/
+      { source: '/page/1', destination: '/blog/', permanent: true },
+      { source: '/page/:pagina(\\d{1,3})', destination: '/blog/pagina/:pagina/', permanent: true },
+      // Paginação da loja antiga: /?product-page=3 → /loja/
+      {
+        source: '/',
+        has: [{ type: 'query', key: 'product-page' }],
+        destination: '/loja/',
+        permanent: true,
+      },
+
       ...(await redirectsDoBanco()),
     ];
   },
