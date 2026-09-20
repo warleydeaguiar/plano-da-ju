@@ -109,13 +109,66 @@ function classifyCampaign(name: string): CampaignType {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function fetchInsights(params: Record<string, string>, revalidate = 1800): Promise<any[]> {
   const qs = new URLSearchParams({ ...params, access_token: TOKEN!, limit: '200' })
-  const res = await fetch(`${BASE}/${ACCOUNT_ID}/insights?${qs}`, { next: { revalidate } })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(err?.error?.message ?? `HTTP ${res.status}`)
+  // A Meta pagina em 200 linhas. Com time_increment=1 uma consulta de alguns
+  // meses vira (dias × campanhas) linhas e passa MUITO disso — sem seguir o
+  // paging, os dias que sobram voltavam como zero e a conversão saía inflada.
+  let url: string | null = `${BASE}/${ACCOUNT_ID}/insights?${qs}`
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const todas: any[] = []
+  for (let pagina = 0; url && pagina < 25; pagina++) {
+    const res: Response = await fetch(url, { next: { revalidate } })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err?.error?.message ?? `HTTP ${res.status}`)
+    }
+    const json = await res.json()
+    todas.push(...(json.data ?? []))
+    url = json.paging?.next ?? null
   }
-  const json = await res.json()
-  return json.data ?? []
+  return todas
+}
+
+export interface PlanoDaily {
+  /** 'YYYY-MM-DD' → cliques no link das campanhas de PLANO naquele dia. */
+  byDay: Record<string, number>
+  /** Campanhas de PLANO com entrega no período — o id casa com utm_campaign do lead. */
+  campanhas: Array<{ id: string; nome: string; clicks: number }>
+}
+
+/**
+ * Cliques por dia das campanhas de PLANO **e** a lista de campanhas.
+ *
+ * O id da campanha é o que o funil grava em `wg_quiz_leads.utm_campaign`, então
+ * com ele dá pra contar só as vendas que vieram DESTAS campanhas — sem isso a
+ * página dividia todas as vendas (orgânico, WhatsApp, grupos) pelos cliques do
+ * plano e mostrava uma conversão maior do que a real.
+ */
+export async function getPlanoDaily(since: string, until: string): Promise<PlanoDaily> {
+  if (!TOKEN) return { byDay: {}, campanhas: [] }
+  try {
+    const rows = await fetchInsights({
+      level: 'campaign',
+      fields: 'campaign_id,campaign_name,inline_link_clicks',
+      time_range: JSON.stringify({ since, until }),
+      time_increment: '1',
+    }, 1800)
+    const byDay: Record<string, number> = {}
+    const camp = new Map<string, { id: string; nome: string; clicks: number }>()
+    for (const r of rows) {
+      if (classifyCampaign(r.campaign_name) !== 'plano') continue
+      const d: string = r.date_start ?? ''
+      const cliques = parseInt(r.inline_link_clicks ?? '0', 10)
+      if (d) byDay[d] = (byDay[d] ?? 0) + cliques
+      const id = String(r.campaign_id ?? '')
+      if (!id) continue
+      const c = camp.get(id) ?? { id, nome: r.campaign_name ?? '', clicks: 0 }
+      c.clicks += cliques
+      camp.set(id, c)
+    }
+    return { byDay, campanhas: [...camp.values()].sort((a, b) => b.clicks - a.clicks) }
+  } catch {
+    return { byDay: {}, campanhas: [] }
+  }
 }
 
 /**

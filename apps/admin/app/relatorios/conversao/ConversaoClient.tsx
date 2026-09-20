@@ -3,141 +3,399 @@
 import { useMemo, useState } from 'react'
 import { T, fonts } from '../../theme'
 
-type Day = { date: string; clicks: number; sales: number; revenue: number }
+type Day = {
+  date: string; clicks: number
+  sales: number; revenue: number
+  salesOutras: number; salesSemOrigem: number
+  salesTotal: number; revenueTotal: number
+}
 type View = 'dia' | 'semana' | 'mes'
-type Bucket = { key: string; label: string; clicks: number; sales: number; revenue: number }
+type Periodo = 30 | 90 | 0 // 0 = tudo
+type Bucket = {
+  key: string; label: string; titulo: string
+  clicks: number; sales: number; revenue: number
+  outras: number; semOrigem: number; total: number
+}
 
 const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 const brl = (v: number) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+const brlCurto = (v: number) => (v >= 1000 ? `R$ ${(v / 1000).toFixed(1).replace('.', ',')}k` : `R$ ${Math.round(v)}`)
+const num = (v: number) => v.toLocaleString('pt-BR')
 const pct = (s: number, c: number) => (c > 0 ? (s / c) * 100 : null)
+const pctStr = (v: number | null) => (v != null ? `${v.toFixed(2).replace('.', ',')}%` : '—')
+const dm = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`
 
 function mondayOf(iso: string): string {
-  const d = new Date(iso + 'T12:00:00')
-  const dow = d.getDay()
-  d.setDate(d.getDate() + (dow === 0 ? -6 : 1 - dow))
+  const d = new Date(iso + 'T12:00:00Z')
+  const dow = d.getUTCDay()
+  d.setUTCDate(d.getUTCDate() + (dow === 0 ? -6 : 1 - dow))
   return d.toISOString().slice(0, 10)
 }
 
 function bucketize(days: Day[], view: View): Bucket[] {
-  const map = new Map<string, Bucket>()
+  const map = new Map<string, Bucket & { ini: string; fim: string }>()
   for (const d of days) {
     let key: string, label: string
-    if (view === 'dia') {
-      key = d.date
-      label = `${d.date.slice(8, 10)}/${d.date.slice(5, 7)}`
-    } else if (view === 'semana') {
-      key = mondayOf(d.date)
-      label = `${key.slice(8, 10)}/${key.slice(5, 7)}`
-    } else {
-      key = d.date.slice(0, 7)
-      label = `${MESES[Number(key.slice(5, 7)) - 1]}/${key.slice(2, 4)}`
+    if (view === 'dia') { key = d.date; label = dm(d.date) }
+    else if (view === 'semana') { key = mondayOf(d.date); label = dm(key) }
+    else { key = d.date.slice(0, 7); label = `${MESES[Number(key.slice(5, 7)) - 1]}/${key.slice(2, 4)}` }
+    const b = map.get(key) ?? {
+      key, label, titulo: '', ini: d.date, fim: d.date,
+      clicks: 0, sales: 0, revenue: 0, outras: 0, semOrigem: 0, total: 0,
     }
-    const b = map.get(key) ?? { key, label, clicks: 0, sales: 0, revenue: 0 }
     b.clicks += d.clicks; b.sales += d.sales; b.revenue += d.revenue
+    b.outras += d.salesOutras; b.semOrigem += d.salesSemOrigem; b.total += d.salesTotal
+    if (d.date < b.ini) b.ini = d.date
+    if (d.date > b.fim) b.fim = d.date
     map.set(key, b)
   }
-  return [...map.values()].sort((a, b) => a.key.localeCompare(b.key))
+  return [...map.values()]
+    .sort((a, b) => a.key.localeCompare(b.key))
+    .map(b => ({
+      ...b,
+      titulo: view === 'dia' ? dm(b.key)
+        : view === 'semana' ? `Semana de ${dm(b.ini)} a ${dm(b.fim)}`
+        : `${MESES[Number(b.key.slice(5, 7)) - 1]} de ${b.key.slice(0, 4)}`,
+    }))
 }
 
-export default function ConversaoClient({ days, metaOk }: { days: Day[]; metaOk: boolean }) {
+export default function ConversaoClient({
+  days, metaOk, campanhas,
+}: {
+  days: Day[]
+  metaOk: boolean
+  campanhas: Array<{ id: string; nome: string; clicks: number }>
+}) {
   const [view, setView] = useState<View>('semana')
-  const buckets = useMemo(() => bucketize(days, view), [days, view])
+  const [periodo, setPeriodo] = useState<Periodo>(90)
+  const [sel, setSel] = useState<string | null>(null)
 
-  const totClicks = days.reduce((s, d) => s + d.clicks, 0)
-  const totSales = days.reduce((s, d) => s + d.sales, 0)
-  const totRev = days.reduce((s, d) => s + d.revenue, 0)
-  const convMedia = pct(totSales, totClicks)
-  const maxConv = Math.max(1, ...buckets.map(b => pct(b.sales, b.clicks) ?? 0))
+  const janela = useMemo(() => (periodo === 0 ? days : days.slice(-periodo)), [days, periodo])
+  const buckets = useMemo(() => bucketize(janela, view), [janela, view])
+
+  const tot = janela.reduce(
+    (a, d) => ({
+      clicks: a.clicks + d.clicks, sales: a.sales + d.sales, revenue: a.revenue + d.revenue,
+      outras: a.outras + d.salesOutras, semOrigem: a.semOrigem + d.salesSemOrigem,
+      total: a.total + d.salesTotal, revenueTotal: a.revenueTotal + d.revenueTotal,
+    }),
+    { clicks: 0, sales: 0, revenue: 0, outras: 0, semOrigem: 0, total: 0, revenueTotal: 0 },
+  )
+  const conv = pct(tot.sales, tot.clicks)
+  const ticket = tot.sales > 0 ? tot.revenue / tot.sales : 0
+  const selecionado = buckets.find(b => b.key === sel) ?? null
 
   return (
-    <div>
-      <div style={{ fontSize: 26, fontWeight: 600, fontFamily: fonts.display, letterSpacing: -0.5 }}>📈 Conversão — cliques × vendas</div>
-      <div style={{ fontSize: 13, color: T.inkSoft, marginTop: 4, marginBottom: 18 }}>
-        Quantos cliques do Meta Ads (plano) viram venda paga. Conversão = vendas ÷ cliques.
+    <div style={{ maxWidth: 1180 }}>
+      {/* ── Cabeçalho ───────────────────────────────────────────────── */}
+      <div style={{ marginBottom: 26 }}>
+        <div style={{ fontSize: 27, fontWeight: 600, fontFamily: fonts.display, letterSpacing: -0.6 }}>
+          Conversão dos anúncios
+        </div>
+        <div style={{ fontSize: 13.5, color: T.inkSoft, marginTop: 6, lineHeight: 1.55, maxWidth: 620 }}>
+          De cada 100 cliques nos anúncios do Plano, quantos viraram venda paga.
+          Só entram as vendas que vieram <strong style={{ color: T.ink }}>dessas mesmas campanhas</strong> —
+          as outras aparecem à parte, logo abaixo.
+        </div>
       </div>
 
       {!metaOk && (
-        <div style={{ background: '#FFF7EE', border: `1px solid ${T.gold}44`, borderRadius: 12, padding: '12px 16px', marginBottom: 16, fontSize: 13, color: T.inkSoft }}>
-          ⚠️ Sem dados do Meta Ads agora (token não configurado ou API indisponível) — os cliques aparecem como 0. As vendas continuam corretas.
-        </div>
+        <Aviso>
+          Sem dados do Meta Ads agora (token não configurado ou API fora do ar) — os cliques aparecem como 0
+          e a conversão fica sem base. As vendas continuam corretas.
+        </Aviso>
       )}
 
-      {/* Resumo */}
-      <div className="dash-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 22 }}>
-        <Stat label="Cliques (Meta)" value={totClicks.toLocaleString('pt-BR')} color={T.blue} />
-        <Stat label="Vendas pagas" value={totSales.toLocaleString('pt-BR')} color={T.pinkDeep} />
-        <Stat label="Conversão média" value={convMedia != null ? `${convMedia.toFixed(1).replace('.', ',')}%` : '—'} color={T.green} />
-        <Stat label="Receita" value={brl(totRev)} />
+      {/* ── Controles ───────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginBottom: 20 }}>
+        <Grupo
+          opcoes={[{ v: 30, t: '30 dias' }, { v: 90, t: '90 dias' }, { v: 0, t: 'Tudo' }]}
+          valor={periodo}
+          onChange={(v) => { setPeriodo(v as Periodo); setSel(null) }}
+        />
+        <Grupo
+          opcoes={[{ v: 'dia', t: 'Dia' }, { v: 'semana', t: 'Semana' }, { v: 'mes', t: 'Mês' }]}
+          valor={view}
+          onChange={(v) => { setView(v as View); setSel(null) }}
+        />
       </div>
 
-      {/* Toggle dia/semana/mês */}
-      <div style={{ display: 'inline-flex', gap: 4, background: T.surface, border: `1px solid ${T.borderSoft}`, borderRadius: 12, padding: 4, marginBottom: 16 }}>
-        {(['dia', 'semana', 'mes'] as View[]).map(v => (
-          <button key={v} onClick={() => setView(v)} style={{
-            border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: fonts.ui,
-            padding: '8px 16px', borderRadius: 9,
-            background: view === v ? T.pinkDeep : 'transparent',
-            color: view === v ? '#fff' : T.inkSoft,
-          }}>{v === 'dia' ? 'Por dia' : v === 'semana' ? 'Por semana' : 'Por mês'}</button>
-        ))}
+      {/* ── Resumo ──────────────────────────────────────────────────── */}
+      <div
+        className="dash-grid-4"
+        style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 14, marginBottom: 14 }}
+      >
+        <Stat label="Cliques no anúncio" value={num(tot.clicks)} nota="cliques no link, campanhas do Plano" />
+        <Stat label="Vendas desses anúncios" value={num(tot.sales)} cor={T.pinkDeep} nota={`ticket médio ${brl(ticket)}`} />
+        <Stat
+          label="Conversão"
+          value={pctStr(conv)}
+          cor={T.green}
+          nota={conv != null ? `1 venda a cada ${Math.round(tot.clicks / Math.max(1, tot.sales))} cliques` : 'sem cliques no período'}
+          destaque
+        />
+        <Stat label="Receita desses anúncios" value={brl(tot.revenue)} nota={`de ${brl(tot.revenueTotal)} no total`} />
       </div>
 
-      {/* Gráfico de barras — conversão % por período */}
-      <div style={{ background: T.surface, border: `1px solid ${T.borderSoft}`, borderRadius: 14, padding: '20px 22px', marginBottom: 22 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: T.inkSoft, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 14 }}>Conversão (%) por período</div>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: view === 'dia' ? 3 : 8, height: 180, overflowX: 'auto', paddingBottom: 4 }}>
-          {buckets.map(b => {
-            const c = pct(b.sales, b.clicks)
-            const h = c != null ? Math.max(3, (c / maxConv) * 150) : 0
-            return (
-              <div key={b.key} title={`${b.label}\nCliques: ${b.clicks}\nVendas: ${b.sales}\nConversão: ${c != null ? c.toFixed(1) + '%' : '—'}\nReceita: ${brl(b.revenue)}`}
-                style={{ flex: view === 'dia' ? '0 0 14px' : 1, minWidth: view === 'dia' ? 14 : 26, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, height: '100%', justifyContent: 'flex-end' }}>
-                {c != null && <div style={{ fontSize: 9.5, color: T.inkSoft, fontWeight: 700 }}>{Math.round(c)}%</div>}
-                <div style={{ width: '80%', maxWidth: 34, height: h, borderRadius: '4px 4px 0 0', background: c != null ? T.pinkDeep : T.border, opacity: c != null ? 0.9 : 0.4 }} />
-                <div style={{ fontSize: view === 'dia' ? 8 : 10, color: T.inkMuted, whiteSpace: 'nowrap', transform: view === 'dia' ? 'rotate(-45deg)' : 'none', transformOrigin: 'center', marginTop: view === 'dia' ? 6 : 0 }}>{b.label}</div>
-              </div>
-            )
-          })}
-        </div>
+      {/* ── Vendas que não vieram desses anúncios ───────────────────── */}
+      <div style={{
+        display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'center',
+        background: T.cream, border: `1px solid ${T.borderSoft}`, borderRadius: 14,
+        padding: '14px 18px', marginBottom: 26, fontSize: 13, color: T.inkSoft,
+      }}>
+        <span style={{ fontWeight: 700, color: T.ink }}>Fora dessa conta:</span>
+        <span><strong style={{ color: T.ink }}>{num(tot.semOrigem)}</strong> venda(s) sem origem registrada</span>
+        {tot.outras > 0 && <span><strong style={{ color: T.ink }}>{num(tot.outras)}</strong> de outras campanhas</span>}
+        <span style={{ color: T.inkMuted }}>
+          — total de {num(tot.total)} vendas no período. Cortesias da parceria não entram (não têm pagamento).
+        </span>
       </div>
 
-      {/* Tabela detalhada */}
-      <div style={{ background: T.surface, border: `1px solid ${T.borderSoft}`, borderRadius: 14, overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 520 }}>
+      {/* ── Gráfico ─────────────────────────────────────────────────── */}
+      <Card titulo="Cliques e conversão ao longo do tempo" acao={
+        <Legenda />
+      }>
+        <Grafico buckets={buckets} sel={sel} onSel={setSel} />
+        <Detalhe b={selecionado} />
+      </Card>
+
+      {/* ── Tabela ──────────────────────────────────────────────────── */}
+      <Card titulo="Detalhe por período" espacoInterno={false}>
+        <div className="tabela-rolavel" style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 620 }}>
             <thead>
-              <tr style={{ background: '#FFF7EE', borderBottom: `1px solid ${T.borderSoft}` }}>
-                {['Período', 'Cliques', 'Vendas', 'Conversão', 'Receita'].map(h => (
-                  <th key={h} style={{ padding: '11px 16px', textAlign: h === 'Período' ? 'left' : 'right', fontSize: 11, color: T.inkSoft, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, whiteSpace: 'nowrap' }}>{h}</th>
+              <tr style={{ background: T.cream }}>
+                {['Período', 'Cliques', 'Vendas', 'Conversão', 'Receita', 'Outras vendas'].map((h, i) => (
+                  <th key={h} style={{
+                    padding: '11px 16px', textAlign: i === 0 ? 'left' : 'right',
+                    fontSize: 11, color: T.inkSoft, fontWeight: 700, textTransform: 'uppercase',
+                    letterSpacing: 0.4, whiteSpace: 'nowrap', borderBottom: `1px solid ${T.borderSoft}`,
+                  }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {[...buckets].reverse().map(b => {
                 const c = pct(b.sales, b.clicks)
+                const ativo = b.key === sel
                 return (
-                  <tr key={b.key} style={{ borderBottom: `1px solid #F9F9FC` }}>
-                    <td style={{ padding: '10px 16px', fontSize: 13, fontWeight: 600 }}>{b.label}</td>
-                    <td style={{ padding: '10px 16px', textAlign: 'right', fontSize: 13, color: T.blue }}>{b.clicks.toLocaleString('pt-BR')}</td>
-                    <td style={{ padding: '10px 16px', textAlign: 'right', fontSize: 13, color: T.pinkDeep, fontWeight: 600 }}>{b.sales.toLocaleString('pt-BR')}</td>
-                    <td style={{ padding: '10px 16px', textAlign: 'right', fontSize: 13, fontWeight: 700, color: c != null && c >= 5 ? T.green : T.ink }}>{c != null ? `${c.toFixed(1).replace('.', ',')}%` : '—'}</td>
-                    <td style={{ padding: '10px 16px', textAlign: 'right', fontSize: 13, color: T.inkSoft }}>{brl(b.revenue)}</td>
+                  <tr
+                    key={b.key}
+                    onMouseEnter={() => setSel(b.key)}
+                    style={{ borderBottom: `1px solid ${T.borderSoft}55`, background: ativo ? T.pinkSoft + '66' : 'transparent' }}
+                  >
+                    <td style={{ padding: '11px 16px', fontSize: 13, fontWeight: 600 }}>{b.label}</td>
+                    <td style={{ ...td, color: T.inkSoft }}>{num(b.clicks)}</td>
+                    <td style={{ ...td, color: T.pinkDeep, fontWeight: 700 }}>{num(b.sales)}</td>
+                    <td style={{ ...td, fontWeight: 700, color: c == null ? T.inkMuted : c >= 3 ? T.green : T.ink }}>{pctStr(c)}</td>
+                    <td style={{ ...td, color: T.inkSoft }}>{brl(b.revenue)}</td>
+                    <td style={{ ...td, color: T.inkMuted }}>{num(b.outras + b.semOrigem)}</td>
                   </tr>
                 )
               })}
             </tbody>
           </table>
         </div>
-      </div>
+      </Card>
+
+      {/* ── Como o número é calculado ───────────────────────────────── */}
+      <details style={{
+        marginTop: 20, background: T.surface, border: `1px solid ${T.borderSoft}`,
+        borderRadius: 14, padding: '14px 18px', fontSize: 12.5, color: T.inkSoft, lineHeight: 1.7,
+      }}>
+        <summary style={{ cursor: 'pointer', fontWeight: 700, color: T.ink, fontSize: 13 }}>
+          Como estes números são calculados
+        </summary>
+        <ul style={{ margin: '12px 0 0', paddingLeft: 18 }}>
+          <li><strong>Cliques</strong>: cliques no link (o que o Meta chama de &ldquo;cliques no link&rdquo;) das campanhas com &ldquo;plano&rdquo; no nome.</li>
+          <li><strong>Vendas desses anúncios</strong>: pagamento confirmado cujo lead entrou por uma dessas campanhas (o funil grava o id da campanha no lead).</li>
+          <li><strong>Uma venda</strong> = um cliente por dia, pelo menor valor do grupo — mesma regra do painel inicial (o webhook grava o pagamento duas vezes, e o menor valor é o preço sem os juros da parcela).</li>
+          <li><strong>Cortesia da parceria não entra</strong> em lugar nenhum desta página: não há pagamento.</li>
+          <li>Clique e venda são contados no dia em que aconteceram. Quem clica hoje e compra amanhã aparece em dias diferentes — por isso a visão por semana é mais estável que a por dia.</li>
+        </ul>
+        {campanhas.length > 0 && (
+          <div style={{ marginTop: 12 }}>
+            <strong style={{ color: T.ink }}>Campanhas consideradas:</strong>{' '}
+            {campanhas.map(c => `${c.nome} (${num(c.clicks)})`).join(' · ')}
+          </div>
+        )}
+      </details>
     </div>
   )
 }
 
-function Stat({ label, value, color }: { label: string; value: string; color?: string }) {
+const td: React.CSSProperties = { padding: '11px 16px', textAlign: 'right', fontSize: 13 }
+
+/* ── Gráfico: barras de cliques + linha de conversão ─────────────────── */
+function Grafico({ buckets, sel, onSel }: { buckets: Bucket[]; sel: string | null; onSel: (k: string | null) => void }) {
+  const W = 1000, H = 260, PL = 52, PR = 46, PT = 14, PB = 30
+  const iw = W - PL - PR, ih = H - PT - PB
+  if (!buckets.length) return <div style={{ padding: 30, textAlign: 'center', color: T.inkMuted, fontSize: 13 }}>Sem dados no período.</div>
+
+  const maxClicks = Math.max(1, ...buckets.map(b => b.clicks))
+  const maxConv = Math.max(1, ...buckets.map(b => pct(b.sales, b.clicks) ?? 0))
+  const passo = iw / buckets.length
+  const larguraBarra = Math.max(2, Math.min(38, passo * 0.62))
+  const x = (i: number) => PL + passo * i + passo / 2
+  const yClick = (v: number) => PT + ih - (v / maxClicks) * ih
+  const yConv = (v: number) => PT + ih - (v / maxConv) * ih
+
+  const pontos = buckets
+    .map((b, i) => ({ i, c: pct(b.sales, b.clicks) }))
+    .filter(p => p.c != null) as Array<{ i: number; c: number }>
+  const linha = pontos.map((p, k) => `${k === 0 ? 'M' : 'L'} ${x(p.i).toFixed(1)} ${yConv(p.c).toFixed(1)}`).join(' ')
+
+  // Rótulos do eixo X sem sobrepor
+  const cada = Math.ceil(buckets.length / 14)
+
   return (
-    <div style={{ background: T.surface, borderRadius: 14, padding: '16px 18px', border: `1px solid ${T.borderSoft}` }}>
-      <div style={{ fontSize: 11, color: T.inkSoft, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 700, color: color ?? T.ink, lineHeight: 1 }}>{value}</div>
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block', overflow: 'visible' }} onMouseLeave={() => onSel(null)}>
+      {[0, 0.25, 0.5, 0.75, 1].map(f => {
+        const y = PT + ih - f * ih
+        return (
+          <g key={f}>
+            <line x1={PL} x2={W - PR} y1={y} y2={y} stroke={T.borderSoft} strokeWidth={1} />
+            <text x={PL - 10} y={y + 4} textAnchor="end" fontSize={10.5} fill={T.inkMuted}>{num(Math.round(maxClicks * f))}</text>
+            <text x={W - PR + 10} y={y + 4} textAnchor="start" fontSize={10.5} fill={T.pinkDeep}>
+              {(maxConv * f).toFixed(1).replace('.', ',')}%
+            </text>
+          </g>
+        )
+      })}
+
+      {buckets.map((b, i) => {
+        const ativo = b.key === sel
+        const h = (b.clicks / maxClicks) * ih
+        return (
+          <rect
+            key={b.key}
+            x={x(i) - larguraBarra / 2} y={yClick(b.clicks)}
+            width={larguraBarra} height={Math.max(h, b.clicks > 0 ? 2 : 0)}
+            rx={Math.min(4, larguraBarra / 2)}
+            fill={ativo ? T.blue : T.blueSoft}
+          />
+        )
+      })}
+
+      {linha && <path d={linha} fill="none" stroke={T.pinkDeep} strokeWidth={2.2} strokeLinejoin="round" strokeLinecap="round" />}
+      {pontos.map(p => (
+        <circle key={p.i} cx={x(p.i)} cy={yConv(p.c)} r={buckets[p.i].key === sel ? 5 : 3} fill={T.pinkDeep} stroke="#fff" strokeWidth={1.5} />
+      ))}
+
+      {buckets.map((b, i) => (
+        i % cada === 0 ? (
+          <text key={b.key} x={x(i)} y={H - 8} textAnchor="middle" fontSize={10.5} fill={T.inkMuted}>{b.label}</text>
+        ) : null
+      ))}
+
+      {/* Faixas invisíveis para hover/toque */}
+      {buckets.map((b, i) => (
+        <rect
+          key={`h-${b.key}`} x={PL + passo * i} y={PT} width={passo} height={ih}
+          fill="transparent" style={{ cursor: 'pointer' }}
+          onMouseEnter={() => onSel(b.key)} onClick={() => onSel(b.key)}
+        />
+      ))}
+    </svg>
+  )
+}
+
+function Detalhe({ b }: { b: Bucket | null }) {
+  const c = b ? pct(b.sales, b.clicks) : null
+  return (
+    <div style={{
+      marginTop: 14, paddingTop: 14, borderTop: `1px solid ${T.borderSoft}`,
+      display: 'flex', flexWrap: 'wrap', gap: 22, alignItems: 'baseline',
+      fontSize: 13, color: T.inkSoft, minHeight: 22,
+    }}>
+      {b ? (
+        <>
+          <strong style={{ color: T.ink, fontSize: 14 }}>{b.titulo}</strong>
+          <span>{num(b.clicks)} cliques</span>
+          <span style={{ color: T.pinkDeep, fontWeight: 700 }}>{num(b.sales)} vendas</span>
+          <span style={{ color: T.green, fontWeight: 700 }}>{pctStr(c)}</span>
+          <span>{brlCurto(b.revenue)}</span>
+          {(b.outras + b.semOrigem) > 0 && <span style={{ color: T.inkMuted }}>+{num(b.outras + b.semOrigem)} de outras origens</span>}
+        </>
+      ) : (
+        <span style={{ color: T.inkMuted }}>Passe o mouse (ou toque) no gráfico para ver os números de cada período.</span>
+      )}
     </div>
+  )
+}
+
+function Legenda() {
+  return (
+    <div style={{ display: 'flex', gap: 16, fontSize: 12, color: T.inkSoft, alignItems: 'center' }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ width: 12, height: 12, borderRadius: 3, background: T.blueSoft, display: 'inline-block' }} /> cliques
+      </span>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ width: 14, height: 3, borderRadius: 2, background: T.pinkDeep, display: 'inline-block' }} /> conversão
+      </span>
+    </div>
+  )
+}
+
+/* ── Blocos de UI ────────────────────────────────────────────────────── */
+function Card({ titulo, children, acao, espacoInterno = true }: {
+  titulo: string; children: React.ReactNode; acao?: React.ReactNode; espacoInterno?: boolean
+}) {
+  return (
+    <div style={{
+      background: T.surface, border: `1px solid ${T.borderSoft}`, borderRadius: 16,
+      padding: espacoInterno ? '20px 22px 18px' : 0, marginBottom: 22, overflow: 'hidden',
+    }}>
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+        padding: espacoInterno ? 0 : '16px 20px 14px', marginBottom: espacoInterno ? 16 : 0,
+      }}>
+        <div style={{ fontSize: 12.5, fontWeight: 700, color: T.inkSoft, textTransform: 'uppercase', letterSpacing: 0.5 }}>{titulo}</div>
+        {acao}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function Stat({ label, value, cor, nota, destaque }: {
+  label: string; value: string; cor?: string; nota?: string; destaque?: boolean
+}) {
+  return (
+    <div style={{
+      background: destaque ? T.greenSoft : T.surface,
+      border: `1px solid ${destaque ? T.green + '44' : T.borderSoft}`,
+      borderRadius: 16, padding: '18px 20px',
+    }}>
+      <div style={{ fontSize: 11, color: T.inkSoft, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</div>
+      <div style={{ fontSize: 28, fontWeight: 700, color: cor ?? T.ink, lineHeight: 1.15, margin: '8px 0 4px', letterSpacing: -0.6 }}>{value}</div>
+      {nota && <div style={{ fontSize: 11.5, color: T.inkMuted }}>{nota}</div>}
+    </div>
+  )
+}
+
+function Grupo<V extends string | number>({ opcoes, valor, onChange }: {
+  opcoes: Array<{ v: V; t: string }>; valor: V; onChange: (v: V) => void
+}) {
+  return (
+    <div style={{ display: 'inline-flex', gap: 3, background: T.surface, border: `1px solid ${T.borderSoft}`, borderRadius: 12, padding: 4 }}>
+      {opcoes.map(o => (
+        <button key={String(o.v)} onClick={() => onChange(o.v)} style={{
+          border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: fonts.ui,
+          padding: '7px 15px', borderRadius: 9,
+          background: valor === o.v ? T.ink : 'transparent',
+          color: valor === o.v ? '#fff' : T.inkSoft,
+        }}>{o.t}</button>
+      ))}
+    </div>
+  )
+}
+
+function Aviso({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{
+      background: T.alertSoft, border: `1px solid ${T.alert}44`, borderRadius: 12,
+      padding: '12px 16px', marginBottom: 18, fontSize: 13, color: T.ink, lineHeight: 1.6,
+    }}>⚠️ {children}</div>
   )
 }
