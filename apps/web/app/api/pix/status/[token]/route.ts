@@ -52,6 +52,9 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ token: str
       qr_code: tx?.qr_code ?? null,
       qr_code_url: tx?.qr_code_url ?? null,
       expires_at: tx?.expires_at ?? null,
+      // Quanto ela vai pagar: a tela precisa mostrar o valor, e com preço
+      // dinâmico ele não é o mesmo para todo mundo. Vem da própria cobrança.
+      amount_cents: Number(order?.amount ?? tx?.amount ?? 0) || null,
     });
   } catch {
     return NextResponse.json({ status: 'error', name: firstName(profile.full_name) }, { status: 502 });
