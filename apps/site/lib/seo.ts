@@ -20,11 +20,21 @@ export const NOME_SITE = 'Juliane Cost';
 
 const abs = (path: string) => `${SITE}${path}`;
 
+/**
+ * Imagem de compartilhamento quando a página não tem a sua.
+ *
+ * Sem isto, link de 5 páginas (termos, privacidade, trocas e dois artigos)
+ * aparecia sem imagem no WhatsApp e no Instagram — que é onde a Juliane
+ * divulga. A foto é a mesma que já identifica a autora no site.
+ */
+export const IMAGEM_PADRAO =
+  'https://db.planodaju.julianecost.com/storage/v1/object/public/site-conteudo/autora/juliane-cost.webp';
+
 /** Metadata do Next a partir do que o Yoast já publicava, para paridade 1:1. */
 export function metaDoConteudo(c: Conteudo): Metadata {
   const titulo = c.seo_title || c.title;
   const descricao = c.seo_description || undefined;
-  const imagem = c.og_image || c.featured_image_url || undefined;
+  const imagem = c.og_image || c.featured_image_url || IMAGEM_PADRAO;
 
   return {
     title: titulo,
@@ -40,7 +50,7 @@ export function metaDoConteudo(c: Conteudo): Metadata {
       siteName: NOME_SITE,
       locale: 'pt_BR',
       type: c.kind === 'post' ? 'article' : 'website',
-      images: imagem ? [imagem] : undefined,
+      images: [imagem],
       ...(c.kind === 'post' && c.published_at
         ? { publishedTime: c.published_at, modifiedTime: dataDeAtualizacao(c) || undefined }
         : {}),
