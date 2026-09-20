@@ -400,10 +400,13 @@ type FaixaPreco = {
 };
 
 const ROTULO_FAIXA: Record<string, string> = {
-  ate_100:      'Gasta até R$ 100/mês',
-  ate_300:      'Até R$ 300/mês',
-  ate_600:      'Até R$ 600/mês',
-  ate_1000:     'Até R$ 1.000/mês',
+  ate_50:       'Gasta até R$ 50/mês',
+  ate_100:      'De R$ 50 a R$ 100/mês',
+  ate_300:      'De R$ 100 a R$ 300/mês',
+  acima_300:    'Mais de R$ 300/mês',
+  // Cortes antigos (até 19/09/26) — seguem aparecendo enquanto houver resposta.
+  ate_600:      'Até R$ 600/mês (antiga)',
+  ate_1000:     'Até R$ 1.000/mês (antiga)',
   sem_resposta: 'Não respondeu',
 };
 

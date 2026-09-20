@@ -1,5 +1,6 @@
 import { createAdminClient } from '../../lib/supabase'
 import Sidebar from '../components/Sidebar'
+import PrecoSection, { type LinhaFaixa } from './PrecoSection'
 
 export const revalidate = 30
 export const metadata = { title: 'Checkout — Funil de Conversão' }
@@ -95,6 +96,11 @@ export default async function CheckoutFunnelPage({
   const paidCount = f.paid
   const conversionRate = topCount > 0 ? (paidCount / topCount) * 100 : 0
   const totalRevenue = f.revenue
+
+  // Conversão por preço (preço dinâmico) — mesma janela do funil.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: faixasData } = await (sb as any).rpc('preco_faixas_relatorio', { p_desde: since })
+  const faixas: LinhaFaixa[] = faixasData ?? []
 
   // Últimos eventos: query própria, limitada (não afeta os agregados).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -287,6 +293,9 @@ export default async function CheckoutFunnelPage({
             })()}
           </div>
         </div>
+
+        {/* Conversão por preço (preço dinâmico) */}
+        <PrecoSection linhas={faixas} days={days} />
 
         {/* Eventos recentes */}
         <div style={{ background: '#fff', borderRadius: 14, padding: '20px 24px', border: '1px solid rgba(0,0,0,0.06)' }}>

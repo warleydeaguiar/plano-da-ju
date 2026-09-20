@@ -18,88 +18,146 @@ type NavItem = {
   children?: { label: string; href: string }[]
 }
 
-const NAV: NavItem[] = [
-  { icon: SbDashboard, label: 'Dashboard', href: '/' },
-  { icon: SbFunil, label: 'Funil', href: '/funil' },
+/**
+ * Menu por SEÇÃO, não uma lista corrida.
+ *
+ * Eram 22 itens soltos no primeiro nível — dava para rolar o menu inteiro sem
+ * achar o que se procura, e coisas do mesmo assunto ficavam longe umas das
+ * outras (Anúncios em cima, Google Analytics no meio, Checkout no fim). Agora
+ * cada seção responde a uma pergunta: como estamos, onde entra dinheiro, quem
+ * são as clientes, o que estamos divulgando, o que publicamos e o que quebrou.
+ */
+type NavGroup = { secao: string; itens: NavItem[] }
+
+const NAV: NavGroup[] = [
   {
-    icon: SbAnalytics, label: 'Relatórios', href: '/relatorios/lucro',
-    children: [
-      { label: 'Lucro', href: '/relatorios/lucro' },
-      { label: 'Conversão', href: '/relatorios/conversao' },
+    secao: 'Visão geral',
+    itens: [
+      { icon: SbDashboard, label: 'Dashboard', href: '/' },
+      { icon: SbFunil, label: 'Funil do quiz', href: '/funil' },
+      {
+        icon: SbAnalytics, label: 'Relatórios', href: '/relatorios/lucro',
+        children: [
+          { label: 'Lucro', href: '/relatorios/lucro' },
+          { label: 'Conversão dos anúncios', href: '/relatorios/conversao' },
+        ],
+      },
     ],
   },
   {
-    icon: SbPlanos, label: 'Revisão de Planos', href: '/planos',
-    children: [
-      { label: 'Revisar planos', href: '/planos' },
-      { label: 'Aprovação de Planos', href: '/planos/aprovacao' },
-      { label: 'Galeria de fotos', href: '/planos/galeria' },
-      { label: 'Fotos de progresso', href: '/planos/progresso' },
+    secao: 'Vendas',
+    itens: [
+      {
+        icon: SbCheckout, label: 'Checkout', href: '/checkout',
+        children: [
+          { label: 'Funil e preços', href: '/checkout' },
+          { label: 'Erros no checkout', href: '/checkout/erros' },
+        ],
+      },
+      { icon: SbExperimentos, label: 'Experimentos A/B', href: '/experimentos' },
     ],
   },
   {
-    icon: SbUsuarias, label: 'Usuárias', href: '/usuarios',
-    children: [
-      { label: 'Assinaturas', href: '/assinaturas' },
-      { label: 'Leads', href: '/leads' },
+    secao: 'Clientes',
+    itens: [
+      {
+        icon: SbUsuarias, label: 'Usuárias', href: '/usuarios',
+        children: [
+          { label: 'Todas as usuárias', href: '/usuarios' },
+          { label: 'Assinaturas', href: '/assinaturas' },
+          { label: 'Leads', href: '/leads' },
+        ],
+      },
+      {
+        icon: SbPlanos, label: 'Planos', href: '/planos',
+        children: [
+          { label: 'Revisar planos', href: '/planos' },
+          { label: 'Aprovação de planos', href: '/planos/aprovacao' },
+          { label: 'Galeria de fotos', href: '/planos/galeria' },
+          { label: 'Fotos de progresso', href: '/planos/progresso' },
+        ],
+      },
+      {
+        icon: SbSuporte, label: 'Atendimento', href: '/suporte',
+        children: [
+          { label: 'Suporte Plano Capilar', href: '/suporte' },
+          { label: 'Follow-up', href: '/followup' },
+        ],
+      },
+      { icon: SbChat, label: 'Chatwoot', href: 'https://chat.julianecost.com' },
     ],
   },
   {
-    icon: SbGrupos, label: 'Grupos de Promoções', href: '/grupos',
-    children: [
-      { label: 'Lista', href: '/grupos' },
-      { label: 'Broadcast', href: '/grupos/broadcast' },
-      { label: 'Promoções no App', href: '/promocoes' },
-      { label: 'Gerenciar', href: '/grupos/gerenciar' },
-      { label: 'Conexões Evolution', href: '/grupos/conexao' },
+    secao: 'Marketing',
+    itens: [
+      {
+        icon: SbAnuncios, label: 'Anúncios', href: '/anuncios',
+        children: [
+          { label: 'Meta Ads', href: '/anuncios' },
+          { label: 'Google Analytics', href: '/analytics' },
+        ],
+      },
+      {
+        icon: SbQuiz, label: 'Quiz', href: '/quiz',
+        children: [
+          { label: 'Plano Capilar', href: '/quiz/plano-capilar' },
+          { label: 'Fashion Gold', href: '/quiz/fashion-gold' },
+          { label: '🇺🇸 Brasileiras nos EUA', href: '/quiz/eua' },
+          { label: 'Imagens & mídia', href: '/quiz/imagens' },
+          { label: 'Depoimentos & fotos', href: '/quiz/configuracoes' },
+        ],
+      },
+      { icon: SbEmail, label: 'E-mail marketing', href: '/email-marketing' },
+      {
+        icon: SbGrupos, label: 'Grupos de promoções', href: '/grupos',
+        children: [
+          { label: 'Lista de grupos', href: '/grupos' },
+          { label: 'Broadcast', href: '/grupos/broadcast' },
+          { label: 'Gerenciar', href: '/grupos/gerenciar' },
+          { label: 'Conexões Evolution', href: '/grupos/conexao' },
+          { label: 'Promoções no app', href: '/promocoes' },
+        ],
+      },
     ],
   },
   {
-    icon: SbProdutos, label: 'Site (blog)', href: '/site',
-    children: [
-      { label: 'Conteúdo', href: '/site' },
-      { label: 'Perguntas frequentes', href: '/site/faq' },
-      { label: 'Avaliações', href: '/site/avaliacoes' },
-      { label: 'Cliques no WhatsApp', href: '/site/whatsapp' },
+    secao: 'Conteúdo',
+    itens: [
+      {
+        icon: SbProdutos, label: 'Site e blog', href: '/site',
+        children: [
+          { label: 'Conteúdo', href: '/site' },
+          { label: 'Perguntas frequentes', href: '/site/faq' },
+          { label: 'Avaliações', href: '/site/avaliacoes' },
+          { label: 'Cliques no WhatsApp', href: '/site/whatsapp' },
+        ],
+      },
+      { icon: SbProdutos, label: 'Produtos', href: '/produtos' },
+      { icon: SbStories, label: 'Stories da Juliane', href: '/stories' },
+      {
+        icon: SbYbera, label: 'Ybera', href: '/ybera',
+        children: [
+          { label: 'Visão geral', href: '/ybera' },
+          { label: 'Conversão', href: '/ybera/conversao' },
+        ],
+      },
     ],
   },
-  { icon: SbFollowup, label: 'Followup', href: '/followup' },
-  { icon: SbAnuncios, label: 'Anúncios', href: '/anuncios' },
-  { icon: SbAnalytics, label: 'Google Analytics', href: '/analytics' },
-  { icon: SbEmail, label: 'Email Marketing', href: '/email-marketing' },
   {
-    icon: SbQuiz, label: 'Quiz', href: '/quiz',
-    children: [
-      { label: 'Fashion Gold', href: '/quiz/fashion-gold' },
-      { label: 'Plano Capilar', href: '/quiz/plano-capilar' },
-      { label: '🇺🇸 Brasileiras nos EUA', href: '/quiz/eua' },
-      { label: 'Imagens & Mídia', href: '/quiz/imagens' },
-      { label: 'Depoimentos & Fotos', href: '/quiz/configuracoes' },
+    secao: 'Sistema',
+    itens: [
+      { icon: SbErros, label: 'Erros do sistema', href: '/erros' },
+      { icon: SbSuporte, label: 'Feedback', href: '/feedback' },
+      {
+        icon: SbConfig, label: 'Configurações', href: '/configuracoes',
+        children: [
+          { label: 'Geral', href: '/configuracoes' },
+          { label: 'Funcionários', href: '/funcionarios' },
+        ],
+      },
     ],
   },
-  { icon: SbStories, label: 'Stories da Juliane', href: '/stories' },
-  { icon: SbSuporte, label: 'Suporte Plano Capilar', href: '/suporte' },
-  { icon: SbChat, label: 'Atendimento (Chatwoot)', href: 'https://chat.julianecost.com' },
-  { icon: SbProdutos, label: 'Produtos', href: '/produtos' },
-  {
-    icon: SbYbera, label: 'Ybera', href: '/ybera',
-    children: [
-      { label: 'Visão geral', href: '/ybera' },
-      { label: 'Conversão', href: '/ybera/conversao' },
-    ],
-  },
-  { icon: SbExperimentos, label: 'Experimentos A/B', href: '/experimentos' },
-  {
-    icon: SbCheckout, label: 'Checkout', href: '/checkout',
-    children: [
-      { label: 'Funil', href: '/checkout' },
-      { label: 'Erros', href: '/checkout/erros' },
-    ],
-  },
-  { icon: SbErros, label: 'Erros do Sistema', href: '/erros' },
-  { icon: SbSuporte, label: 'Feedback', href: '/feedback' },
-  { icon: SbConfig, label: 'Configurações', href: '/configuracoes' },
-];
+]
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -157,7 +215,13 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav style={{ flex: 1, padding: '14px 12px', overflowY: 'auto' }}>
-        {NAV.map(item => {
+        {NAV.map(grupo => (
+          <div key={grupo.secao} style={{ marginBottom: 12 }}>
+            <div style={{
+              fontSize: 9.5, fontWeight: 800, color: T.inkMuted, letterSpacing: 1.2,
+              textTransform: 'uppercase', padding: '8px 13px 5px',
+            }}>{grupo.secao}</div>
+            {grupo.itens.map(item => {
           const isExternal = item.href.startsWith('http://') || item.href.startsWith('https://');
           const hasChildren = item.children && item.children.length > 0;
           // Filho casa com a rota atual mesmo quando não fica sob o href do pai
@@ -247,7 +311,9 @@ export default function Sidebar() {
               )}
             </div>
           );
-        })}
+            })}
+          </div>
+        ))}
       </nav>
 
       {/* User */}
