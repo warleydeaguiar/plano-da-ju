@@ -75,16 +75,19 @@ const nextConfig: NextConfig = {
       // enxurrada de 404 (45 páginas no Search Console, ~30 por dia). Todos
       // têm destino óbvio; 301 devolve a força do link para a página certa.
       //
-      // Paginação de comentários: /artigo/2/ → /artigo/
-      { source: '/:slug/:pagina(\\d{1,3})', destination: '/:slug/', permanent: true },
-      // Feed RSS de post e de produto: /artigo/feed/ → /artigo/
-      { source: '/:slug/feed', destination: '/:slug/', permanent: true },
-      { source: '/produto/:slug/feed', destination: '/produto/:slug/', permanent: true },
-      { source: '/feed', destination: '/blog/', permanent: true },
-      { source: '/comments/feed', destination: '/blog/', permanent: true },
+      // ⚠️ ORDEM IMPORTA: a regra genérica de /:slug/:numero casa também com
+      // /page/2, então as específicas vêm primeiro — senão /page/2/ ia parar
+      // em /page/, que não existe.
       // Paginação da home do WordPress: /page/2/ → /blog/pagina/2/
       { source: '/page/1', destination: '/blog/', permanent: true },
       { source: '/page/:pagina(\\d{1,3})', destination: '/blog/pagina/:pagina/', permanent: true },
+      // Feed RSS de post e de produto: /artigo/feed/ → /artigo/
+      { source: '/feed', destination: '/blog/', permanent: true },
+      { source: '/comments/feed', destination: '/blog/', permanent: true },
+      { source: '/produto/:slug/feed', destination: '/produto/:slug/', permanent: true },
+      { source: '/:slug/feed', destination: '/:slug/', permanent: true },
+      // Paginação de comentários: /artigo/2/ → /artigo/
+      { source: '/:slug/:pagina(\\d{1,3})', destination: '/:slug/', permanent: true },
       // Paginação da loja antiga: /?product-page=3 → /loja/
       {
         source: '/',
