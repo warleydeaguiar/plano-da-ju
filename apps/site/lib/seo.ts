@@ -54,13 +54,32 @@ export function metaDoConteudo(c: Conteudo): Metadata {
   };
 }
 
+/**
+ * Categoria que não merece estar na busca.
+ *
+ * Herança do WordPress: "Sem categoria" com 66 posts (não diz nada a ninguém),
+ * tag técnica de campanha e categorias com um ou dois produtos, que viram
+ * página magra competindo com o próprio artigo. Ficam no ar para navegação e
+ * saem do índice — se a categoria crescer, ela volta sozinha.
+ */
+const SLUG_DE_LIXO = /^(sem-categoria|uncategorized|removergoogleads|en-blog-en)/;
+const MINIMO_DE_POSTS = 3;
+
+export function categoriaIndexavel(cat: Categoria): boolean {
+  if (SLUG_DE_LIXO.test(cat.slug)) return false;
+  return (cat.post_count ?? 0) >= MINIMO_DE_POSTS;
+}
+
 export function metaDaCategoria(cat: Categoria): Metadata {
   const titulo = cat.seo_title || `${cat.name} — ${NOME_SITE}`;
+  const indexar = !BLOQUEAR_INDEXACAO && categoriaIndexavel(cat);
   return {
     title: titulo,
     description: cat.seo_description || cat.description || undefined,
     alternates: { canonical: abs(cat.path) },
-    robots: BLOQUEAR_INDEXACAO ? { index: false, follow: false } : { index: true, follow: true },
+    // `follow` mesmo quando não indexa: os links da listagem continuam levando
+    // o rastreador até os artigos, que é o que interessa.
+    robots: indexar ? { index: true, follow: true } : { index: false, follow: true },
   };
 }
 

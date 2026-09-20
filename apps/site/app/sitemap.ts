@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { tudoParaSitemap, contar, dataDeAtualizacao } from '@/lib/conteudo';
 import { POR_PAGINA, caminhoDaPagina } from './blog/ListaBlog';
-import { SITE } from '@/lib/seo';
+import { SITE, categoriaIndexavel } from '@/lib/seo';
 
 // Gerado do banco a cada hora. O sitemap do WordPress tinha lastmod congelado
 // em março, o que diz ao Google "aqui não muda nada" — este acompanha a
@@ -29,6 +29,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const doBanco: MetadataRoute.Sitemap = itens
     // as fixas acima já entraram; /carrinho/ e afins são noindex e nem vêm
     .filter((i) => !['/', '/blog/', '/loja/'].includes(i.path))
+    // Categoria fora do índice também sai do sitemap: pedir rastreio de uma
+    // página marcada como noindex é sinal contraditório.
+    .filter((i) => !i.categoria || categoriaIndexavel(i.categoria))
     .map((i) => ({
       url: `${SITE}${i.path}`,
       // A revisão manual manda no lastmod: é o sinal que diz ao Google que

@@ -263,6 +263,8 @@ export interface ItemSitemap {
   /** Imagem de destaque — entra no sitemap para o Google Imagens achar. */
   featured_image_url?: string | null;
   og_image?: string | null;
+  /** Presente só nos itens que SÃO categoria — o sitemap usa para filtrar. */
+  categoria?: Categoria;
 }
 
 export async function tudoParaSitemap(): Promise<ItemSitemap[]> {
@@ -270,9 +272,14 @@ export async function tudoParaSitemap(): Promise<ItemSitemap[]> {
     consulta<ItemSitemap>(
       'site_content?noindex=is.false&select=path,modified_at,revisado_em,kind,featured_image_url,og_image&limit=2000',
     ),
-    consulta<{ path: string; kind: string }>('site_categories?select=path,kind&limit=200'),
+    consulta<Categoria>('site_categories?select=*&limit=200'),
   ]);
-  return [...conteudo, ...cats.map((c) => ({ ...c, modified_at: null, revisado_em: null }))];
+  return [
+    ...conteudo,
+    ...cats.map((c) => ({
+      path: c.path, kind: c.kind, modified_at: null, revisado_em: null, categoria: c,
+    })),
+  ];
 }
 
 export interface Redirect {
