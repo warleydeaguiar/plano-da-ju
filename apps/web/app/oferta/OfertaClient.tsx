@@ -459,22 +459,24 @@ export default function OfertaClient() {
   const [loadingMsg, setLoadingMsg] = useState(LOADING_MESSAGES[0]);
 
   /**
-   * Cupom de desconto.
+   * Cupom de desconto — SÓ pelo link.
    *
-   * Vem de `?cupom=` na URL (é como a mensagem do WhatsApp entrega) ou é
-   * digitado na tela. O que guardamos aqui é só o CÓDIGO: o preço quem decide
-   * é o servidor, no momento de cobrar. Confiar num preço vindo do navegador
-   * seria deixar qualquer pessoa escolher quanto pagar.
+   * O campo para digitar o código saiu da tela (19/09/26): ninguém chega aqui
+   * com um código na mão, e o campo vazio só sugeria que existe um desconto
+   * escondido de quem não tem. O cupom continua entrando por `?cupom=` na URL,
+   * que é como a mensagem de recuperação do WhatsApp entrega — sem isso a
+   * mensagem prometeria um preço e a página cobraria outro.
+   *
+   * O que guardamos aqui é só o CÓDIGO: o preço quem decide é o servidor, no
+   * momento de cobrar. Confiar num preço vindo do navegador seria deixar
+   * qualquer pessoa escolher quanto pagar.
    */
   const [cupom, setCupom] = useState('');
   const [cupomInfo, setCupomInfo] = useState<{ preco_cents: number; descricao: string | null } | null>(null);
-  const [cupomErro, setCupomErro] = useState<string | null>(null);
-  const [conferindoCupom, setConferindoCupom] = useState(false);
 
   const conferirCupom = useCallback(async (codigo: string) => {
     const c = codigo.trim();
-    if (!c) { setCupomInfo(null); setCupomErro(null); return; }
-    setConferindoCupom(true);
+    if (!c) { setCupomInfo(null); return; }
     try {
       // Manda a sessão do quiz e o e-mail: o desconto tem que ser calculado
       // sobre a faixa desta cliente, não sobre o preço padrão.
@@ -485,17 +487,15 @@ export default function OfertaClient() {
       } catch { /* localStorage bloqueado */ }
       const r = await fetch(`/api/cupom?codigo=${encodeURIComponent(c)}&s=${encodeURIComponent(s)}&e=${encodeURIComponent(e)}`);
       const d = await r.json();
-      if (d.valido) { setCupomInfo({ preco_cents: d.preco_cents, descricao: d.descricao }); setCupomErro(null); }
-      else { setCupomInfo(null); setCupomErro(d.erro ?? 'Cupom inválido.'); }
+      setCupomInfo(d.valido ? { preco_cents: d.preco_cents, descricao: d.descricao } : null);
     } catch {
-      setCupomInfo(null); setCupomErro('Não consegui conferir agora.');
-    } finally {
-      setConferindoCupom(false);
+      // Cupom que não confere: a página segue no preço normal, sem erro na tela.
+      setCupomInfo(null);
     }
   }, []);
 
   // Cupom que veio no link já entra aplicado: quem clicou na mensagem não
-  // deveria ter que digitar nada.
+  // precisa digitar nada.
   useEffect(() => {
     const daUrl = new URLSearchParams(window.location.search).get('cupom');
     if (daUrl) { setCupom(daUrl); conferirCupom(daUrl); }
@@ -1502,43 +1502,6 @@ export default function OfertaClient() {
                   )}
                 </div>
 
-                {/* Cupom. Quem chega pelo link da mensagem já encontra aplicado;
-                    o campo existe para quem recebeu o código por outro caminho. */}
-                <div>
-                  <label style={labelS}>Cupom de desconto <span style={{ fontWeight: 400, fontSize: 11, color: T.inkSoft }}>(opcional)</span></label>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <input
-                      className="co-input"
-                      style={{ ...inputS, textTransform: 'uppercase' }}
-                      placeholder="Digite o código"
-                      value={cupom}
-                      onChange={(e) => { setCupom(e.target.value); setCupomInfo(null); setCupomErro(null); }}
-                      onBlur={() => conferirCupom(cupom)}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => conferirCupom(cupom)}
-                      disabled={conferindoCupom || !cupom.trim()}
-                      style={{
-                        padding: '0 16px', borderRadius: 10, border: `1px solid ${T.border}`,
-                        background: '#fff', color: T.ink, fontWeight: 700, fontSize: 13,
-                        cursor: conferindoCupom || !cupom.trim() ? 'default' : 'pointer',
-                        whiteSpace: 'nowrap', fontFamily: 'inherit',
-                      }}
-                    >
-                      {conferindoCupom ? '…' : 'Aplicar'}
-                    </button>
-                  </div>
-                  {cupomInfo && (
-                    <p style={{ color: T.greenDeep, fontSize: 12.5, marginTop: 6, fontWeight: 600 }}>
-                      ✓ Cupom aplicado — você paga {brlCents(cupomInfo.preco_cents)}
-                      {cupomInfo.descricao ? ` (${cupomInfo.descricao})` : ''}
-                    </p>
-                  )}
-                  {cupomErro && (
-                    <p style={{ color: T.red, fontSize: 12, marginTop: 6 }}>{cupomErro}</p>
-                  )}
-                </div>
               </div>
             </div>
 
