@@ -128,6 +128,25 @@ export async function GET(req: NextRequest) {
     // enquanto mostra "gerando seu código" — assim um QR que demorou aparece
     // sozinho, sem erro e sem a cliente precisar refazer o checkout.
     const tx = order.charges?.[0]?.last_transaction;
+
+    // Ordem recusada: registra o motivo do gateway UMA vez, para sabermos por
+    // que o QR não nasce (21 clientes ficaram presas em "gerando" nos últimos
+    // 28 dias e não dava para saber a causa olhando só os nossos logs).
+    if (!tx?.qr_code && (order.status === 'failed' || order.status === 'canceled')) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const t = tx as any;
+      const motivo = [t?.gateway_response?.errors?.[0]?.message, t?.acquirer_message, t?.status, order.status]
+        .filter(Boolean).join(' · ') || 'sem detalhe do gateway';
+      await logCheckoutError({
+        route: 'checkout/pix/status',
+        email,
+        payment_type: 'pix',
+        kind: 'pix_failed',
+        err: new Error(motivo.slice(0, 200)),
+        context: { order_id: orderId, order_status: order.status },
+      });
+    }
+
     return NextResponse.json({
       paid: isPaid,
       order_status: order.status,
