@@ -12,6 +12,7 @@ import { normalizeEmail, isValidEmailFormat } from '@/lib/normalize-email';
 import { PLAN_BASE_CENTS } from '@/lib/pricing';
 import { precoParaCobrar } from '@/lib/cupom';
 import { precoDoCliente } from '@/lib/preco-servidor';
+import { telefoneDoCliente } from '@/lib/telefone-cliente';
 
 // Preço vem da fonte única (lib/pricing) — nunca hardcode aqui, senão o valor
 // cobrado diverge do que a cliente vê na página.
@@ -131,14 +132,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'CPF inválido — obrigatório para pagamento via PIX' }, { status: 400 });
     }
 
-    // Telefone: prefere form, fallback quiz_answers (coletado no quiz)
+    // Telefone: form → quiz_answers → banco (perfil/lead). SEM telefone a
+    // Pagar.me recusa a ordem PIX e a cliente fica olhando "gerando o código".
     const rawPhone = phone ?? (quiz_answers as Record<string, unknown>)?.phone
                            ?? (quiz_answers as Record<string, unknown>)?.telefone ?? '';
-    const cleanPhone = String(rawPhone).replace(/\D/g, '');
-    const areaCode = cleanPhone.length >= 10 ? cleanPhone.slice(0, 2) : '';
-    const phoneNumber = cleanPhone.length >= 10 ? cleanPhone.slice(2) : '';
 
     const supabase = await createServiceClient();
+
+    const cleanPhone = await telefoneDoCliente(supabase, String(rawPhone), email);
+    if (!cleanPhone) {
+      // Melhor pedir o número do que criar uma cobrança que já nasce recusada.
+      await logCheckoutError({
+        route: 'checkout/pix', email, payment_type: 'pix', kind: 'block',
+        err: new Error('PIX sem telefone — Pagar.me recusaria a ordem'),
+        session_id: session_id ?? null,
+      });
+      return NextResponse.json(
+        { error: 'Preciso do seu WhatsApp para gerar o PIX.', need_phone: true },
+        { status: 400 },
+      );
+    }
+    const areaCode = cleanPhone.slice(0, 2);
+    const phoneNumber = cleanPhone.slice(2);
 
     // ── Idempotência: se já existe PIX pendente recente, reusa ──
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

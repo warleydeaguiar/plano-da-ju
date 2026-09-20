@@ -564,6 +564,12 @@ export default function OfertaClient() {
   // NUNCA vem. Sem isso a tela ficava "gerando seu código" até expirar (1h) —
   // 21 clientes ficaram presas nessa tela nos últimos 28 dias.
   const [pixFalhou, setPixFalhou] = useState(false);
+  // A Pagar.me exige telefone na cobrança PIX. O quiz sempre coleta, mas quem
+  // abre a oferta em outro aparelho chega sem nada no navegador — aí o servidor
+  // procura no banco e, se não achar, pede aqui em vez de criar uma cobrança
+  // que já nasce recusada.
+  const [precisaTelefone, setPrecisaTelefone] = useState(false);
+  const [telefone, setTelefone] = useState('');
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [payType, setPayType] = useState<'card' | 'pix'>('pix');
   const [images, setImages] = useState<Record<string, string>>({});
@@ -862,7 +868,7 @@ export default function OfertaClient() {
           name,
           email,
           cpf: cpf.replace(/\D/g, ''),
-          phone: (quizAnswers?.phone ?? '').toString().replace(/\D/g, ''),
+          phone: (telefone || (quizAnswers?.phone ?? '').toString()).replace(/\D/g, ''),
           quiz_answers: quizAnswers,
           session_id: getSessionId(),
           cupom: cupom || undefined,
@@ -870,7 +876,15 @@ export default function OfertaClient() {
       });
       const data = await res.json();
       clearInterval(interval);
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) {
+        if (data?.need_phone) {
+          setPrecisaTelefone(true);
+          setError('Só falta o seu WhatsApp — o banco exige um telefone para gerar o PIX.');
+          setStep('card_form');
+          return;
+        }
+        throw new Error(data.error);
+      }
 
       const expiresAtMs = data.expires_at ? new Date(data.expires_at).getTime() : Date.now() + 3600_000;
 
@@ -1680,6 +1694,29 @@ export default function OfertaClient() {
                     <p style={{ color: T.red, fontSize: 12, marginTop: 4 }}>{cardErrors.cpf}</p>
                   )}
                 </div>
+
+                {/* Só aparece quando o servidor não achou telefone nenhum —
+                    não faz sentido pedir de novo a quem já respondeu no quiz. */}
+                {precisaTelefone && (
+                  <div>
+                    <label style={labelS}>
+                      WhatsApp <span style={{ color: T.red }}>*</span>
+                      <span style={{ fontWeight: 400, fontSize: 11, color: T.inkSoft, marginLeft: 6 }}>
+                        é onde a Ju te avisa quando o plano fica pronto
+                      </span>
+                    </label>
+                    <input
+                      className="co-input"
+                      style={inputS}
+                      placeholder="(11) 98888-7777"
+                      value={telefone}
+                      onChange={e => setTelefone(e.target.value)}
+                      inputMode="tel"
+                      maxLength={16}
+                      required
+                    />
+                  </div>
+                )}
 
               </div>
             </div>
