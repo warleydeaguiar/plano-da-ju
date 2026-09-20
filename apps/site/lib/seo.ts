@@ -1,6 +1,7 @@
 import { dataDeAtualizacao } from './conteudo';
 import type { Metadata } from 'next';
 import type { Conteudo, Categoria } from './conteudo';
+import type { VideoIncorporado } from './video';
 
 /**
  * Domínio canônico. Enquanto o site novo roda em novo.julianecost.com, o
@@ -127,7 +128,7 @@ function trilha(itens: { nome: string; path: string }[]) {
  * é aqui que o markup precisa estar correto — Article com autor, datas e
  * imagem, mais a trilha de navegação.
  */
-export function schemaDoPost(c: Conteudo) {
+export function schemaDoPost(c: Conteudo, videos: VideoIncorporado[] = []) {
   const imagem = c.og_image || c.featured_image_url;
   const idPagina = `${abs(c.path)}#webpage`;
 
@@ -170,6 +171,22 @@ export function schemaDoPost(c: Conteudo) {
         : []),
       { ...trilha([{ nome: 'Início', path: '/' }, { nome: 'Blog', path: '/blog/' }, { nome: c.title, path: c.path }]),
         '@id': `${abs(c.path)}#trilha` },
+      // Vídeo do YouTube incorporado no artigo. Sem isto o Search Console
+      // listava 21 vídeos como "não está em uma página de exibição" — o embed
+      // existia, mas nada dizia ao Google o que ele era.
+      ...videos.map((v, i) => ({
+        '@type': 'VideoObject',
+        '@id': `${abs(c.path)}#video-${i + 1}`,
+        name: v.titulo,
+        description: v.canal
+          ? `${v.titulo} — vídeo do canal ${v.canal}, incorporado em "${c.title}".`
+          : `${v.titulo} — vídeo incorporado em "${c.title}".`,
+        thumbnailUrl: [v.miniatura],
+        embedUrl: v.embedUrl,
+        contentUrl: `https://www.youtube.com/watch?v=${v.id}`,
+        isPartOf: { '@id': idPagina },
+        inLanguage: 'pt-BR',
+      })),
       // autora() e organizacao() NÃO entram aqui: o layout já as emite em toda
       // página pelo schemaDoSite, e os @id acima apontam para elas. Repetir só
       // engordaria o HTML de 185 posts sem dizer nada novo ao Google.

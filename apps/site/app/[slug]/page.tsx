@@ -10,6 +10,7 @@ import { ChamadaPlano, ChamadaGrupos } from '../components/Chamadas';
 import { Grade } from '../components/CardPost';
 import { porPath, todosOsPaths, relacionados, faqDoPost, dataDeAtualizacao } from '@/lib/conteudo';
 import { metaDoConteudo, schemaDoPost } from '@/lib/seo';
+import { videosDaPagina } from '@/lib/video';
 import { extrairIndice, tempoDeLeitura, dividirPorSecoes } from '@/lib/artigo';
 
 export const revalidate = 3600; // literal: o Next analisa este export estaticamente
@@ -51,6 +52,10 @@ export default async function Pagina({ params }: Props) {
     ? await Promise.all([relacionados(item.path), faqDoPost(item.id)])
     : [[], []];
 
+  // Vídeo incorporado no texto: o título e a miniatura vêm do próprio YouTube,
+  // e viram VideoObject no schema (ver lib/video).
+  const videos = ehPost ? await videosDaPagina(item.content_clean, `${item.path}`) : [];
+
   // Chamada no meio do texto, não empilhada no fim: a leitora chega aqui com
   // uma dúvida específica e o plano responde justamente a ela. O corte cai
   // sempre antes de um H2, então nunca parte um parágrafo.
@@ -61,7 +66,7 @@ export default async function Pagina({ params }: Props) {
 
   return (
     <>
-      {ehPost && <JsonLd dados={schemaDoPost(item)} />}
+      {ehPost && <JsonLd dados={schemaDoPost(item, videos)} />}
 
       <article style={{ maxWidth: 'var(--largura)', margin: '0 auto', padding: '1.5rem 1.25rem 0' }}>
         <Trilha
