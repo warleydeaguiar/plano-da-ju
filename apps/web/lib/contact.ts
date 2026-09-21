@@ -25,3 +25,13 @@ export function juWhatsappLink(
 ): string {
   return `https://wa.me/${JU_WHATSAPP}?text=${encodeURIComponent(msg)}`;
 }
+
+/**
+ * Canal de promoções da Juliane no Instagram.
+ *
+ * Canal de transmissão (broadcast): a cliente entra e recebe os avisos de
+ * promoção sem precisar de grupo nem de o número dela ficar visível para
+ * ninguém. É o convite mais barato que existe — não custa mensagem, não
+ * depende de janela de 24 h e não corre risco de bloqueio como o WhatsApp.
+ */
+export const CANAL_IG = 'https://www.instagram.com/channel/AbbP57TAjTc3opIG/';

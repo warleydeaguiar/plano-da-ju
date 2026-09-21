@@ -7,6 +7,8 @@
 import { ESCOVA_IMAGES } from './escovas-images'
 
 const IG = 'https://instagram.com/julianecost'
+// Canal de transmissão de promoções no Instagram (ver lib/contact).
+const CANAL = 'https://www.instagram.com/channel/AbbP57TAjTc3opIG/'
 const GRUPO = 'https://planodaju.julianecost.com/g/entrar'
 const DIAS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
 
@@ -195,6 +197,7 @@ export function buildHtml(data) {
         <div class="footer-sign">Beijos da Ju</div>
         <a href="${IG}" class="ln">Seguir a Juliane no Instagram</a>
         <a href="${GRUPO}" class="ln">Entrar no grupo de promoções</a>
+        <a href="${CANAL}" class="ln">Canal de promoções no Instagram</a>
       </div>
     </section>`
 

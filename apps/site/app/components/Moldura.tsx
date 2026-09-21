@@ -5,6 +5,8 @@ import { usePathname } from 'next/navigation';
 import { NOME_SITE } from '@/lib/seo';
 
 const TERMOS = 'https://planodaju.julianecost.com/termos';
+/** Canal de transmissão de promoções da Juliane no Instagram. */
+const CANAL_IG = 'https://www.instagram.com/channel/AbbP57TAjTc3opIG/';
 
 const MENU = [
   { rotulo: 'Início', href: '/' },
@@ -94,6 +96,12 @@ export default function Moldura({ children, atalhos = [], redes = [] }: {
               ))}
               {/* Condições de contratação do Plano Capilar (entrega, garantia e
                   reembolso). Mora no funil, que é onde a compra acontece. */}
+              <a
+                href={CANAL_IG}
+                style={{ display: 'block', color: 'var(--tinta-suave)', padding: '0.25rem 0' }}
+              >
+                Canal de promoções
+              </a>
               <a
                 href={TERMOS}
                 style={{ display: 'block', color: 'var(--tinta-suave)', padding: '0.25rem 0' }}

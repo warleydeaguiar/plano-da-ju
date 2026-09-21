@@ -15,6 +15,7 @@ import PlanFeedback from './PlanFeedback';
 import GuiaCompleto from './GuiaCompleto';
 import { DICAS_UNIVERSAIS } from '@/lib/dicas-universais';
 import GroupInvite from '../GroupInvite';
+import CanalInstagram from '../CanalInstagram';
 import Consulta from '../Consulta';
 import ConsultaWhatsApp from '../ConsultaWhatsApp';
 import { buildConsultaData, computeConsultaMinutes } from '@/lib/consulta';
@@ -861,6 +862,7 @@ export default function PlanoPage() {
             <SectionLabel>Compre com desconto</SectionLabel>
             <div style={{ padding: '0 16px 18px' }}>
               <GroupInvite />
+              <div style={{ marginTop: 12 }}><CanalInstagram /></div>
             </div>
 
             {currentPlan?.products && currentPlan.products.length > 0 && (

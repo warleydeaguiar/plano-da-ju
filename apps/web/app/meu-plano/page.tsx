@@ -1,5 +1,6 @@
 'use client';
 
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -16,6 +17,7 @@ import {
 import StoriesPlayer, { type Story } from './StoriesPlayer';
 import { normalizeTasks } from './plan-helpers';
 import { previewCtx, fetchPreviewBundle } from './preview';
+import CanalInstagram from './CanalInstagram';
 
 // ── types ────────────────────────────────────────────────
 interface HairState {
@@ -610,6 +612,12 @@ export default function HojePage() {
             </a>
           </div>
         )}
+
+        {/* Canal de promoções no Instagram — transmissão, não depende de
+            número nem de janela de 24 h, e não some se um número cair. */}
+        <div style={{ padding: '0 16px 16px' }}>
+          <CanalInstagram />
+        </div>
 
         {/* Dicas da Juliane carousel (Instagram-style) */}
         {stories.length > 0 && (
