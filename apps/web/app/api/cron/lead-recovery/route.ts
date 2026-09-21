@@ -32,6 +32,13 @@ export const maxDuration = 60;
 // ABREM a janela de 24h quando tocados — botão de link não abre. v2 = atual, com
 // link + "Bloquear mensagens". A v3 foi aprovada como MARKETING e por isso NÃO
 // entra aqui: seria ~9× mais cara.
+// Primeira mensagem nova: em vez de cobrar a inscrição, oferece o diagnóstico
+// do quiz que a pessoa já respondeu, e pergunta se pode mandar. Quem toca em
+// "Quero meu diagnóstico" é atendida por uma pessoa da equipe — é ela quem
+// monta e entrega o diagnóstico, dentro da janela de 24 h que o toque abre.
+// Medição da v5 em 21 dias: 961 enviadas, 7,5% responderam, 4,4% pediram para
+// parar. Pedir algo é o que faz a primeira mensagem valer a pena receber.
+const TEMPLATE_DIAG   = process.env.WHATSAPP_LEAD_TEMPLATE_DIAG || 'diagnostico_quiz_v1';
 const TEMPLATE_NOVO   = process.env.WHATSAPP_LEAD_TEMPLATE_V4 || 'inscricao_pendente_util_v4';
 // v5 = mesmo texto da v2 SEM o preço. Com o preço dinâmico (faixa de gasto do
 // quiz), "o pagamento de R$ 34,90" seria falso para três das quatro faixas.
@@ -160,6 +167,7 @@ export async function GET(req: NextRequest) {
   const porTemplate: Record<string, number> = {};
   // Só entram se a Meta confirmar APROVADO **e** UTILITY (a v3 foi aprovada como
   // MARKETING; sem esta checagem o gasto saltaria ~9×).
+  const diagVale = await templateUtilitarioAprovado(TEMPLATE_DIAG);
   const novoVale = await templateUtilitarioAprovado(TEMPLATE_NOVO);
   const semPrecoVale = await templateUtilitarioAprovado(TEMPLATE_SEM_PRECO);
   // Template que a Meta recusar nesta execução (erro 132xxx) não é tentado de novo.
@@ -191,8 +199,10 @@ export async function GET(req: NextRequest) {
 
     if (dry) { enviados++; continue; }
 
-    // Ordem: versão em teste (metade dos leads) → versão sem preço → atual → antiga.
+    // Ordem: diagnóstico (quando a Meta aprovar) → versão em teste (metade dos
+    // leads) → versão sem preço → atual → antiga.
     const fila = [
+      ...(diagVale ? [TEMPLATE_DIAG] : []),
       ...(novoVale && ehGrupoNovo(lead.id) ? [TEMPLATE_NOVO] : []),
       ...(semPrecoVale ? [TEMPLATE_SEM_PRECO] : []),
       TEMPLATE_ATUAL,
