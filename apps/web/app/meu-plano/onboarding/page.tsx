@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { T, fonts, shadow, gradient } from '../theme';
 import { IconCamera, IconSparkles } from '../icons';
+import { prepararFoto, motivoDoErroDeUpload, avisarFalhaDeFoto } from '@/lib/foto-upload';
 
 /**
  * Onboarding — primeira tela após login.
@@ -51,29 +52,6 @@ const QUIZ_QUESTIONS: { key: string; q: string; opts: { v: string; l: string }[]
  * pra deixar o upload leve e dentro do limite de corpo da serverless (~4.5MB).
  * Se algo falhar, devolve o arquivo original.
  */
-async function compressImage(file: File, maxDim = 1600, quality = 0.82): Promise<File> {
-  if (!file.type.startsWith('image/')) return file;
-  try {
-    const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
-    let { width, height } = bitmap;
-    const scale = Math.min(1, maxDim / Math.max(width, height));
-    width = Math.round(width * scale);
-    height = Math.round(height * scale);
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return file;
-    ctx.drawImage(bitmap, 0, 0, width, height);
-    const blob: Blob | null = await new Promise(res => canvas.toBlob(res, 'image/jpeg', quality));
-    bitmap.close?.();
-    if (!blob) return file;
-    return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
-  } catch {
-    return file;
-  }
-}
-
 export default function OnboardingPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -199,7 +177,7 @@ export default function OnboardingPage() {
       const authH = { Authorization: `Bearer ${accessToken}` };
 
       // Comprime as três fotos no navegador (rápido + cabe no limite da Vercel).
-      const [frontC, backC, rootC] = await Promise.all([compressImage(photoFile), compressImage(backFile), compressImage(rootFile)]);
+      const [frontC, backC, rootC] = await Promise.all([prepararFoto(photoFile), prepararFoto(backFile), prepararFoto(rootFile)]);
 
       // Vídeo opcional → sobe DIRETO pro Storage via URL assinada (sem limite de corpo).
       let videoUrl = '';
@@ -238,7 +216,10 @@ export default function OnboardingPage() {
         const u = bySlot[slot];
         if (!u) throw new Error('Falha ao preparar o envio das fotos.');
         const up = await supabase.storage.from('hair-photos').uploadToSignedUrl(u.path, u.token, files[slot]);
-        if (up.error) throw new Error('Não consegui enviar suas fotos. Verifique a conexão e tente de novo.');
+        if (up.error) {
+          avisarFalhaDeFoto(`storage:${up.error.message ?? 'erro'}`, files[slot], `upload_${slot}`);
+          throw new Error(motivoDoErroDeUpload(up.error));
+        }
       }
 
       const payload: Record<string, unknown> = {
@@ -427,7 +408,7 @@ export default function OnboardingPage() {
                   )}
                 </div>
               </label>
-              <input id={slot.id} ref={slot.ref} type="file" accept="image/*"
+              <input id={slot.id} ref={slot.ref} type="file" accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif"
                 onChange={e => handlePhotoPick(slot.key, e)} style={{ display: 'none' }} />
               {slot.preview && (
                 <button onClick={slot.clear} style={{

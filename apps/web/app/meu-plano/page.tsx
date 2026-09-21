@@ -18,6 +18,7 @@ import StoriesPlayer, { type Story } from './StoriesPlayer';
 import { normalizeTasks } from './plan-helpers';
 import { previewCtx, fetchPreviewBundle } from './preview';
 import CanalInstagram from './CanalInstagram';
+import { prepararFoto, FotoNaoSuportada } from '@/lib/foto-upload';
 
 // ── types ────────────────────────────────────────────────
 interface HairState {
@@ -371,8 +372,11 @@ export default function HojePage() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { router.push('/login'); return; }
+      // Converte e encolhe antes de mandar: foto de celular passa do limite de
+      // corpo da serverless (~4,5 MB) e HEIC do iPhone nem é aceito no storage.
+      const pronta = await prepararFoto(file);
       const fd = new FormData();
-      fd.append('photo', file);
+      fd.append('photo', pronta);
       const res = await fetch('/api/meu-plano/photo', {
         method: 'POST',
         headers: { Authorization: `Bearer ${session.access_token}` },
@@ -386,8 +390,8 @@ export default function HojePage() {
         const j = await res.json().catch(() => ({}));
         setPhotoMsg(j.error ?? 'Não consegui enviar a foto. Tente de novo.');
       }
-    } catch {
-      setPhotoMsg('Não consegui enviar a foto. Tente de novo.');
+    } catch (err) {
+      setPhotoMsg(err instanceof FotoNaoSuportada ? err.message : 'Não consegui enviar a foto. Tente de novo.');
     } finally {
       setPhotoUploading(false);
     }
@@ -996,7 +1000,7 @@ export default function HojePage() {
         <input
           ref={photoInputRef}
           type="file"
-          accept="image/*"
+          accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif"
           onChange={handlePhotoUpload}
           style={{ display: 'none' }}
         />

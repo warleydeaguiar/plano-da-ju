@@ -7,6 +7,7 @@ import { T, fonts, shadow, gradient } from '../theme';
 import { PlanoLoading } from '../Loading';
 import { IconCamera, IconChevronRight, IconFlame, IconRuler, IconSparkles, IconDrop } from '../icons';
 import { previewCtx, fetchPreviewBundle } from '../preview';
+import { prepararFoto, FotoNaoSuportada } from '@/lib/foto-upload';
 
 interface PhotoAnalysis {
   id: string;
@@ -81,8 +82,11 @@ export default function ProgressoPage() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { setUploading(false); return; }
+      // Converte e encolhe antes de mandar: foto de celular passa do limite de
+      // corpo da serverless (~4,5 MB) e HEIC do iPhone nem é aceito no storage.
+      const pronta = await prepararFoto(file);
       const fd = new FormData();
-      fd.append('photo', file);
+      fd.append('photo', pronta);
       const res = await fetch('/api/meu-plano/photo', {
         method: 'POST',
         headers: { Authorization: `Bearer ${session.access_token}` },
@@ -96,8 +100,8 @@ export default function ProgressoPage() {
         await load();
         setTimeout(() => setUploadOk(false), 4000);
       }
-    } catch {
-      setUploadError('Erro ao enviar foto');
+    } catch (err) {
+      setUploadError(err instanceof FotoNaoSuportada ? err.message : 'Erro ao enviar foto');
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -245,7 +249,7 @@ export default function ProgressoPage() {
           opacity: uploading ? 0.7 : 1,
           position: 'relative', overflow: 'hidden',
         }}>
-          <input ref={fileInputRef} type="file" accept="image/*" capture="user" onChange={handlePhoto} disabled={uploading} style={{ display: 'none' }} />
+          <input ref={fileInputRef} type="file" accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif" onChange={handlePhoto} disabled={uploading} style={{ display: 'none' }} />
           <div style={{ position: 'absolute', right: -30, top: -30, width: 140, height: 140, borderRadius: '50%', background: 'rgba(255,255,255,0.10)' }} />
           <div style={{
             width: 54, height: 54, borderRadius: 15,

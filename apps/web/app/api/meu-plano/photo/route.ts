@@ -75,13 +75,20 @@ export async function POST(req: NextRequest) {
         }
       } catch { /* segue — a rede de segurança do cron cobre */ }
     } else {
+      // iOS manda `type` vazio em parte dos envios (HEIC vindo da galeria).
+      // Recusar por isso descartava foto boa — e, nas fotos de costas e raiz,
+      // em SILÊNCIO: a cliente achava que tinha enviado as três.
+      const ehImagem = (f: File) =>
+        (f.type || '').startsWith('image/') || /\.(jpe?g|png|webp|heic|heif)$/i.test(f.name || '');
+      const mimeDe = (f: File) => (f.type || '').startsWith('image/') ? f.type : 'image/jpeg';
+
       // Caminho LEGADO (multipart): fotos vêm no corpo. Usado por progresso/home.
       const form = await req.formData();
       const file = form.get('photo');
       if (!file || typeof file === 'string') return NextResponse.json({ error: 'Foto não enviada' }, { status: 400 });
       const f = file as File;
       if (f.size > 10 * 1024 * 1024) return NextResponse.json({ error: 'Foto muito grande (máx. 10 MB)' }, { status: 400 });
-      if (!f.type.startsWith('image/')) return NextResponse.json({ error: 'Arquivo precisa ser uma imagem' }, { status: 400 });
+      if (!ehImagem(f)) return NextResponse.json({ error: 'Arquivo precisa ser uma imagem' }, { status: 400 });
 
       const backFile = form.get('photo_back');
       const backF = backFile && typeof backFile !== 'string' ? (backFile as File) : null;
@@ -92,23 +99,23 @@ export async function POST(req: NextRequest) {
       hairLengthCm = parseLen(form.get('hair_length_cm'));
       weightKg = parseW(form.get('weight_kg'));
 
-      const ext = f.type === 'image/png' ? 'png' : f.type === 'image/webp' ? 'webp' : 'jpg';
+      const ext = f.type === 'image/png' ? 'png' : f.type === 'image/webp' ? 'webp' : 'jpg';  // HEIC convertido vira jpg
       const fileName = `${user.id}/${Date.now()}.${ext}`;
       frontBuffer = new Uint8Array(await f.arrayBuffer());
-      frontMime = f.type;
-      const { error: upErr } = await supabase.storage.from('hair-photos').upload(fileName, frontBuffer, { contentType: f.type, upsert: false });
+      frontMime = mimeDe(f);
+      const { error: upErr } = await supabase.storage.from('hair-photos').upload(fileName, frontBuffer, { contentType: frontMime, upsert: false });
       if (upErr) { console.error('[photo] upload error', upErr); return NextResponse.json({ error: 'Falha ao salvar foto' }, { status: 500 }); }
       photoUrl = supabase.storage.from('hair-photos').getPublicUrl(fileName).data.publicUrl;
 
-      if (backF && backF.type.startsWith('image/') && backF.size <= 10 * 1024 * 1024) {
+      if (backF && ehImagem(backF) && backF.size <= 10 * 1024 * 1024) {
         const backName = `${user.id}/${Date.now()}-costas.jpg`;
-        const { error: e } = await supabase.storage.from('hair-photos').upload(backName, new Uint8Array(await backF.arrayBuffer()), { contentType: backF.type, upsert: false });
+        const { error: e } = await supabase.storage.from('hair-photos').upload(backName, new Uint8Array(await backF.arrayBuffer()), { contentType: mimeDe(backF), upsert: false });
         if (!e) photoBackUrl = supabase.storage.from('hair-photos').getPublicUrl(backName).data.publicUrl;
         else console.error('[photo] back upload error', e);
       }
-      if (rootF && rootF.type.startsWith('image/') && rootF.size <= 10 * 1024 * 1024) {
+      if (rootF && ehImagem(rootF) && rootF.size <= 10 * 1024 * 1024) {
         const rootName = `${user.id}/${Date.now()}-raiz.jpg`;
-        const { error: e } = await supabase.storage.from('hair-photos').upload(rootName, new Uint8Array(await rootF.arrayBuffer()), { contentType: rootF.type, upsert: false });
+        const { error: e } = await supabase.storage.from('hair-photos').upload(rootName, new Uint8Array(await rootF.arrayBuffer()), { contentType: mimeDe(rootF), upsert: false });
         if (!e) photoRootUrl = supabase.storage.from('hair-photos').getPublicUrl(rootName).data.publicUrl;
         else console.error('[photo] root upload error', e);
       }
