@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
 
   /* eslint-disable @typescript-eslint/no-explicit-any */
   const [templates, numero] = await Promise.all([
-    graph(`${waba}/message_templates?fields=name,status,category,language,quality_score&limit=200`),
+    graph(`${waba}/message_templates?fields=name,status,category,language,quality_score,components&limit=200`),
     phoneId ? graph(`${phoneId}?fields=display_phone_number,verified_name,quality_rating,messaging_limit_tier,status`) : Promise.resolve({}),
   ]);
 
@@ -42,6 +42,10 @@ export async function GET(req: NextRequest) {
     templates: ((templates as any)?.data ?? []).map((t: any) => ({
       nome: t.name, status: t.status, categoria: t.category, idioma: t.language,
       qualidade: t.quality_score?.score ?? null,
+      // O texto importa tanto quanto a categoria: é o que a cliente lê.
+      corpo: (t.components ?? []).find((c: any) => c.type === 'BODY')?.text ?? null,
+      botoes: ((t.components ?? []).find((c: any) => c.type === 'BUTTONS')?.buttons ?? [])
+        .map((b: any) => `${b.type}: ${b.text}`),
     })),
     erro: (templates as any)?.error?.message ?? null,
   });
