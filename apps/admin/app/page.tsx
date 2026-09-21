@@ -21,6 +21,7 @@ import {
   IconMegaphone, IconCursor, IconEye, IconEdit, IconCheckCircle, IconWarning,
   IconChat, iconForHairFeel,
 } from './icons';
+import AlunasPorDia, { type DiaAlunas } from './components/AlunasPorDia';
 
 export const dynamic = 'force-dynamic';
 
@@ -390,95 +391,6 @@ function CampaignList({ campaigns, color }: { campaigns: AdGroupResult['campaign
           </div>
         </div>
       ))}
-    </div>
-  );
-}
-
-type DiaAlunas = { dia: string; pagantes: number; ugc: number };
-
-/**
- * Alunas que entraram por dia — pagante × cortesia da parceria UGC.
- *
- * Os dois números nunca aparecem somados: cortesia não é venda (foi o que o
- * pixel fazia errado, contando 283 cortesias como compra). Aqui cada barra
- * mostra as duas partes empilhadas, com o total em cima, para dar para ler de
- * longe quanto do movimento do dia foi dinheiro e quanto foi permuta.
- */
-function AlunasPorDiaSection({ dias }: { dias: DiaAlunas[] }) {
-  if (!dias.length) return null;
-
-  const totPag = dias.reduce((a, d) => a + Number(d.pagantes || 0), 0);
-  const totUgc = dias.reduce((a, d) => a + Number(d.ugc || 0), 0);
-  const maxDia = Math.max(1, ...dias.map(d => Number(d.pagantes || 0) + Number(d.ugc || 0)));
-  const ALTURA = 132;
-
-  return (
-    <div style={{
-      background: T.surface, border: `1px solid ${T.borderSoft}`, borderRadius: 16,
-      padding: '20px 22px 16px', marginBottom: 22,
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap', marginBottom: 6 }}>
-        <div>
-          <div style={{ fontSize: 15.5, fontWeight: 800, color: T.ink }}>Alunas por dia</div>
-          <div style={{ fontSize: 12.5, color: T.inkSoft, marginTop: 3 }}>
-            Últimos 30 dias · quem pagou e quem entrou por cortesia da parceria
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: 18, alignItems: 'center' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: T.inkSoft, fontWeight: 700 }}>
-              <span style={{ width: 10, height: 10, borderRadius: 3, background: T.green, display: 'inline-block' }} /> Pagantes
-            </div>
-            <div style={{ fontSize: 21, fontWeight: 800, color: T.green, lineHeight: 1.2 }}>{totPag.toLocaleString('pt-BR')}</div>
-          </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: T.inkSoft, fontWeight: 700 }}>
-              <span style={{ width: 10, height: 10, borderRadius: 3, background: T.gold, display: 'inline-block' }} /> UGC (cortesia)
-            </div>
-            <div style={{ fontSize: 21, fontWeight: 800, color: T.goldDeep, lineHeight: 1.2 }}>{totUgc.toLocaleString('pt-BR')}</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="tabela-rolavel" style={{ overflowX: 'auto', paddingTop: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: ALTURA + 34, minWidth: 30 * 22 }}>
-          {dias.map(d => {
-            const pag = Number(d.pagantes || 0);
-            const ugc = Number(d.ugc || 0);
-            const total = pag + ugc;
-            const hPag = (pag / maxDia) * ALTURA;
-            const hUgc = (ugc / maxDia) * ALTURA;
-            const dia = String(d.dia).slice(8, 10);
-            const mes = String(d.dia).slice(5, 7);
-            return (
-              <div
-                key={d.dia}
-                title={`${dia}/${mes}: ${pag} pagante(s) + ${ugc} cortesia(s) = ${total}`}
-                style={{ flex: 1, minWidth: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}
-              >
-                <div style={{ fontSize: 9.5, fontWeight: 800, color: total > 0 ? T.ink : T.inkMuted }}>
-                  {total > 0 ? total : '·'}
-                </div>
-                <div style={{ width: '100%', maxWidth: 26, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: ALTURA }}>
-                  {ugc > 0 && (
-                    <div style={{ height: Math.max(hUgc, 2), background: T.gold, borderRadius: pag > 0 ? '4px 4px 0 0' : 4 }} />
-                  )}
-                  {pag > 0 && (
-                    <div style={{ height: Math.max(hPag, 2), background: T.green, borderRadius: ugc > 0 ? '0 0 4px 4px' : 4 }} />
-                  )}
-                  {total === 0 && <div style={{ height: 2, background: T.borderSoft, borderRadius: 2 }} />}
-                </div>
-                <div style={{ fontSize: 9, color: T.inkMuted, whiteSpace: 'nowrap' }}>{dia}/{mes}</div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div style={{ fontSize: 11.5, color: T.inkMuted, marginTop: 10, lineHeight: 1.6 }}>
-        Conta a data de ativação do acesso. Cortesia da parceria não é venda e nunca entra na receita —
-        aparece aqui para explicar o movimento do dia.
-      </div>
     </div>
   );
 }
@@ -1150,15 +1062,8 @@ export default async function DashboardPage() {
         {/* ════════════════════════════════════════════════════════ */}
         {/* SEÇÃO 1: PLANO CAPILAR                                    */}
         {/* ════════════════════════════════════════════════════════ */}
-        <AlunasPorDiaSection dias={diasAlunas} />
+        <AlunasPorDia dias={diasAlunas} />
         {linhasFaixas.length > 0 && <PrecoDinamicoSection linhas={linhasFaixas} />}
-
-        <SectionHeader
-          icon={IconMegaphone}
-          title="Plano Capilar — Anúncios com 'Plano' no nome"
-          subtitle={`Receita = soma real dos pagamentos (Pagar.me), já com descontos e sem cortesias. Investimento já inclui o imposto da Meta (${(META_TAX_RATE * 100).toFixed(2).replace('.', ',')}%). Lucro = receita − investimento.`}
-          accent={T.pinkDeep}
-        />
 
         {/* KPIs Plano — hoje */}
         <div className="dash-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
