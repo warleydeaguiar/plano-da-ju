@@ -1166,7 +1166,34 @@ export default function PlanosClient(
                   </div>
 
                   {/* Action buttons */}
-                  <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                  <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
+                    {/* Liberar o plano depois da consulta no WhatsApp. O plano
+                        de quem paga nasce retido; sem este botão a cliente
+                        esperaria os 3 dias do prazo mesmo já atendida. */}
+                    <button
+                      onClick={async () => {
+                        if (!confirm('Liberar o plano para esta cliente ver agora?')) return;
+                        try {
+                          const r = await fetch(`/api/plans/${selectedUserId}`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: 'liberar_plano' }),
+                          });
+                          const d = await r.json();
+                          if (d.ok) { alert('Plano liberado. A cliente já consegue ver.'); location.reload(); }
+                          else alert(d.error || 'Não consegui liberar');
+                        } catch { alert('Não consegui liberar'); }
+                      }}
+                      title="Solta o plano para a cliente depois da consulta"
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                        fontSize: 13, fontWeight: 700, padding: '9px 16px', borderRadius: 9,
+                        background: '#22A06B', border: '1.5px solid #22A06B', color: '#fff',
+                        cursor: 'pointer', transition: 'all 0.15s',
+                      }}
+                    >
+                      ✅ Liberar plano
+                    </button>
                     {/* Ver como o cliente — abre a tela REAL do app dela (read-only) */}
                     <button
                       onClick={async () => {

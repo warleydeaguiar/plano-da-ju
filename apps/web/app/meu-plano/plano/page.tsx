@@ -16,6 +16,7 @@ import GuiaCompleto from './GuiaCompleto';
 import { DICAS_UNIVERSAIS } from '@/lib/dicas-universais';
 import GroupInvite from '../GroupInvite';
 import Consulta from '../Consulta';
+import ConsultaWhatsApp from '../ConsultaWhatsApp';
 import { buildConsultaData, computeConsultaMinutes } from '@/lib/consulta';
 
 // Meta de seguidores da Ju no Instagram (prova social — atualizar quando mudar)
@@ -1209,6 +1210,16 @@ function PreparingState({ profile, revisao = false }: { profile: Profile | null;
     const startC = requestedMs ?? Date.now();
     const endC = releasedMs ?? (startC + computeConsultaMinutes(profile) * 60_000);
     const minutesC = Math.max(1, Math.round((endC - startC) / 60_000)); // deriva da janela real
+
+    // Janela longa = plano retido esperando a consulta no WhatsApp (quem
+    // pagou). Janela curta = a consulta simulada de sempre, que é o que a
+    // cortesia da parceria continua vendo. O corte em 2 h separa os dois sem
+    // precisar de mais uma flag para manter em dia.
+    const esperandoConsultaReal = !revisao && endC - startC > 2 * 3600_000;
+    if (esperandoConsultaReal && Date.now() < endC) {
+      return <ConsultaWhatsApp nome={profile?.full_name} liberaEm={endC} />;
+    }
+
     return (
       <Consulta
         data={dadosConsulta}

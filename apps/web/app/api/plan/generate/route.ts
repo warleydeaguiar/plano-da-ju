@@ -8,6 +8,9 @@ import { computeConsultaMinutes } from '@/lib/consulta';
 // Gera 12 semanas (90 dias) — cabe folgado em 300s.
 export const maxDuration = 300;
 
+/** Dias até o plano da cliente pagante abrir sozinho, sem a consulta. */
+const DIAS_ATE_LIBERAR_SOZINHO = 3;
+
 /**
  * POST /api/plan/generate
  * Body: { email, photo_base64, photo_mime_type }
@@ -106,7 +109,7 @@ export async function POST(req: NextRequest) {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: profile } = await (supabase.from('profiles') as any)
-      .select('id, quiz_answers, hair_type, full_name, photo_back_url, photo_root_url')
+      .select('id, quiz_answers, hair_type, full_name, photo_back_url, photo_root_url, subscription_type')
       .eq('email', email)
       .single();
 
@@ -143,13 +146,22 @@ export async function POST(req: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await savePlanToDb(supabase as any, profile.id, plan);
 
-    // ENTREGA AUTOMÁTICA: sem aprovação manual da Juliane. O plano é gerado e já
-    // fica 'ready'; a VISIBILIDADE é liberada quando a "Consulta com a Juliane"
-    // termina. O tempo varia por complexidade do caso (computeConsultaMinutes) —
-    // casos mais difíceis levam mais tempo, dando verdade ao "seu caso pediu mais".
+    // O plano é gerado igual para todo mundo; o que muda é QUANDO ele aparece.
+    //
+    // CORTESIA da parceria (UGC): libera sozinha em 20-28 min, como sempre — a
+    // menina precisa do plano para gravar, não para ser atendida.
+    //
+    // Quem PAGOU: o plano fica retido até a consulta no WhatsApp. Entregar pelo
+    // app e pronto não sustentava a indicação dos produtos — a cliente recebia
+    // um PDF e não falava com ninguém. O prazo de 3 dias é a rede de proteção:
+    // se a consulta não acontecer, o plano abre sozinho e ninguém fica sem o
+    // que pagou.
     const now = Date.now();
-    const consultaMs = computeConsultaMinutes(profile) * 60 * 1000;
-    const releasedAt = new Date(now + consultaMs).toISOString();
+    const ehCortesia = profile.subscription_type === 'parceria';
+    const esperaMs = ehCortesia
+      ? computeConsultaMinutes(profile) * 60 * 1000
+      : DIAS_ATE_LIBERAR_SOZINHO * 24 * 60 * 60 * 1000;
+    const releasedAt = new Date(now + esperaMs).toISOString();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase.from('profiles') as any)
       .update({

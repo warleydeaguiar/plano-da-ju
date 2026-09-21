@@ -56,7 +56,7 @@ async function run(req: NextRequest) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data } = await (sb.from('profiles') as any)
-    .select('id, email, full_name')
+    .select('id, email, full_name, plano_liberado_em, plano_liberado_por')
     .eq('subscription_status', 'active')
     .eq('plan_status', 'ready')
     .is('plan_delivered_email_sent_at', null)
@@ -76,7 +76,14 @@ async function run(req: NextRequest) {
       if (r.ok !== false) {
         sent++
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (sb.from('profiles') as any).update({ plan_delivered_email_sent_at: new Date().toISOString() }).eq('id', p.id)
+        await (sb.from('profiles') as any).update({
+          plan_delivered_email_sent_at: new Date().toISOString(),
+          // Quem não foi liberada no botão chegou aqui pelo prazo de 3 dias.
+          // Guardar a diferença é o que permite saber depois quantas consultas
+          // realmente aconteceram.
+          plano_liberado_em: p.plano_liberado_em ?? new Date().toISOString(),
+          plano_liberado_por: p.plano_liberado_por ?? 'prazo',
+        }).eq('id', p.id)
       } else { failed++ }
     } catch { failed++ }
   }

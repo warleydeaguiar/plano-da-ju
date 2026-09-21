@@ -31,6 +31,26 @@ export async function PATCH(
 
   const sb = createAdminClient();
 
+  // ── Liberar o plano para a cliente ver ──────────────────────────────────
+  // Fluxo novo: o plano de quem PAGOU nasce retido esperando a consulta no
+  // WhatsApp. Aqui a Juliane solta depois de conversar. Sem isto a cliente
+  // esperaria os 3 dias do prazo mesmo tendo sido atendida hoje.
+  if (action === 'liberar_plano') {
+    const agora = new Date().toISOString();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (sb.from('profiles') as any)
+      .update({
+        plan_released_at: agora,
+        plano_liberado_em: agora,
+        plano_liberado_por: 'manual',
+        // O e-mail de "plano liberado" sai no próximo ciclo do cron.
+        plan_delivered_email_sent_at: null,
+      })
+      .eq('id', userId);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true, liberado_em: agora });
+  }
+
   // ── Edição manual de uma semana ─────────────────────────────────────────
   if (action === 'update_week') {
     const weekNumber = Number(body.week_number);
