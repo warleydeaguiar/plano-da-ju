@@ -31,11 +31,29 @@ export async function GET(req: NextRequest) {
     return r.json().catch(() => ({}));
   };
 
+  // Entrega de VERDADE, por template. A paginação do template_analytics é
+  // quebrada quando o intervalo é grande: a Meta devolve só a primeira página
+  // e finge que acabou. Por isso a janela é curta (7 dias).
+  const fim = Math.floor(Date.now() / 1000);
+  const ini = fim - 7 * 86400;
+
   /* eslint-disable @typescript-eslint/no-explicit-any */
-  const [templates, numero] = await Promise.all([
-    graph(`${waba}/message_templates?fields=name,status,category,language,quality_score,components&limit=200`),
+  const [templates, numero, analytics] = await Promise.all([
+    graph(`${waba}/message_templates?fields=id,name,status,category,language,quality_score,components&limit=200`),
     phoneId ? graph(`${phoneId}?fields=display_phone_number,verified_name,quality_rating,messaging_limit_tier,status`) : Promise.resolve({}),
+    graph(`${waba}?fields=template_analytics.start(${ini}).end(${fim}).granularity(DAILY).metric_types(["SENT","DELIVERED","READ"])`),
   ]);
+
+  // Soma por template no período (a resposta vem por dia).
+  const porTemplate = new Map<string, { enviadas: number; entregues: number; lidas: number }>();
+  for (const linha of ((analytics as any)?.template_analytics?.data?.[0]?.data_points ?? [])) {
+    const id = String(linha.template_id ?? '');
+    const at = porTemplate.get(id) ?? { enviadas: 0, entregues: 0, lidas: 0 };
+    at.enviadas += Number(linha.sent ?? 0);
+    at.entregues += Number(linha.delivered ?? 0);
+    at.lidas += Number(linha.read ?? 0);
+    porTemplate.set(id, at);
+  }
 
   return NextResponse.json({
     numero,
@@ -46,7 +64,8 @@ export async function GET(req: NextRequest) {
       corpo: (t.components ?? []).find((c: any) => c.type === 'BODY')?.text ?? null,
       botoes: ((t.components ?? []).find((c: any) => c.type === 'BUTTONS')?.buttons ?? [])
         .map((b: any) => `${b.type}: ${b.text}`),
+      entrega7d: porTemplate.get(String(t.id)) ?? null,
     })),
-    erro: (templates as any)?.error?.message ?? null,
+    erro: (templates as any)?.error?.message ?? (analytics as any)?.error?.message ?? null,
   });
 }
