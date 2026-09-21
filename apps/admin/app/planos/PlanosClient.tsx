@@ -1180,6 +1180,7 @@ export default function PlanosClient(
                             body: JSON.stringify({ action: 'liberar_plano' }),
                           });
                           const d = await r.json();
+                          if (d.jaEstavaLiberado) { alert('Esta cliente já estava com o plano liberado — nada foi alterado.'); return; }
                           if (d.ok) { alert('Plano liberado. A cliente já consegue ver.'); location.reload(); }
                           else alert(d.error || 'Não consegui liberar');
                         } catch { alert('Não consegui liberar'); }

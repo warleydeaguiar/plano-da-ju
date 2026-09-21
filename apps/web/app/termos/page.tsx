@@ -8,8 +8,10 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-const ATUALIZADO_EM = '17 de setembro de 2026';
-const VERSAO = '1.0';
+const ATUALIZADO_EM = '21 de setembro de 2026';
+// Sobe a cada mudança no texto: a própria página diz qual versão vale para a
+// compra, e manter 1.0 depois de trocar telefone e horário tornaria isso falso.
+const VERSAO = '1.1';
 
 const T = {
   bg: '#FFFAF5',

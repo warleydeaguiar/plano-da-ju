@@ -58,6 +58,8 @@ interface Profile {
   plan_status: string;
   quiz_answers: Record<string, unknown> | null;
   avatar_url: string | null;
+  /** Quando o plano fica visível. No futuro = ainda esperando a consulta. */
+  plan_released_at?: string | null;
 }
 interface HairEvent {
   event_type: string;
@@ -295,7 +297,7 @@ export default function HojePage() {
 
     const [p, pl, hs, ev, ci, ph] = await Promise.all([
       supabase.from('profiles')
-        .select('full_name,hair_type,subscription_status,plan_status,quiz_answers,avatar_url')
+        .select('full_name,hair_type,subscription_status,plan_status,quiz_answers,avatar_url,plan_released_at')
         .eq('id', uid).single(),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase as any).from('hair_plans')
@@ -480,9 +482,15 @@ export default function HojePage() {
   };
   const tipIndex  = new Date().getDate() % TIPS.length;
   const tip       = TIPS[tipIndex];
-  const rec       = getRecommendation(hairState, profile, plans[0]);
-  const upcoming  = buildUpcoming(plans[0], events);
-  const nextStep  = plans[0]?.tasks?.[1] ? taskText(plans[0].tasks[1]).title : '';
+  // Plano retido esperando a consulta no WhatsApp: a aba "Hoje" lê hair_plans
+  // direto e mostrava tarefa, produto e próximo passo mesmo com o plano
+  // fechado — a consulta virava opcional. Enquanto não liberar, esta tela
+  // trabalha como se ainda não houvesse plano.
+  const planoLiberado = !profile?.plan_released_at || new Date(profile.plan_released_at).getTime() <= Date.now();
+  const planosVisiveis = planoLiberado ? plans : [];
+  const rec       = planoLiberado ? getRecommendation(hairState, profile, planosVisiveis[0]) : null;
+  const upcoming  = buildUpcoming(planosVisiveis[0], events);
+  const nextStep  = planosVisiveis[0]?.tasks?.[1] ? taskText(planosVisiveis[0].tasks[1]).title : '';
 
   return (
     <div>
@@ -771,7 +779,10 @@ export default function HojePage() {
           </div>
         )}
 
-        {/* Hero: Próximo tratamento */}
+        {/* Hero: Próximo tratamento — só quando o plano está liberado. Sem a
+            guarda, o cartão mostrava tratamento, produto e próximo passo de um
+            plano que ainda espera a consulta. */}
+        {rec && (
         <div style={{
           margin: '0 16px 18px',
           background: gradient.hero,
@@ -852,6 +863,7 @@ export default function HojePage() {
           </div>
         </div>
 
+        )}
         {/* Check-in card */}
         <Link href="/meu-plano/check-in" style={{ textDecoration: 'none' }}>
           <div style={{

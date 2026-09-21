@@ -192,7 +192,9 @@ async function marcarPlanoPorWhatsApp(sb: any, digitos: string): Promise<void> {
     .select('id, phone')
     .not('phone', 'is', null)
     .ilike('phone', `%${final8}`)
-    .order('subscription_activated_at', { ascending: false })
+    // NULLS LAST: em DESC o Postgres traz nulo primeiro, e um perfil que nunca
+    // ativou vencia a cliente de verdade quando dois números terminam igual.
+    .order('subscription_activated_at', { ascending: false, nullsFirst: false })
     .limit(1);
   const perfil = (data ?? [])[0];
   if (!perfil) return;

@@ -31,9 +31,12 @@ export function idsDeVideo(html: string | null | undefined): string[] {
 /** Título e miniatura reais do vídeo, pelo oEmbed público do YouTube. */
 export async function dadosDoVideo(id: string): Promise<{ titulo: string; canal: string; miniatura: string } | null> {
   try {
+    // Timeout curto: isto roda no build de 185 posts e dentro do render de
+    // cada página. Um oEmbed lento não pode travar a publicação do site — sem
+    // resposta, a página simplesmente sai sem o VideoObject.
     const r = await fetch(
       `https://www.youtube.com/oembed?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${id}`)}&format=json`,
-      { next: { revalidate: 86400 } },
+      { next: { revalidate: 86400 }, signal: AbortSignal.timeout(4000) },
     );
     if (!r.ok) return null;
     const j = (await r.json()) as { title?: string; author_name?: string; thumbnail_url?: string };

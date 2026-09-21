@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { generatePlanWithClaude, savePlanToDb } from '@/lib/plan-generator';
+import { liberarEm } from '@/lib/liberacao-plano';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -98,12 +99,16 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ ok: true, dry, ...result });
 }
 
-// Libera o plano: ready + visível agora; zera o flag de e-mail pro cron de entrega mandar.
+// Marca o plano como pronto e agenda a visibilidade pela MESMA regra do fluxo
+// normal: cortesia abre na hora, quem pagou espera a consulta. Antes daqui
+// saía visível na hora para todo mundo, furando a retenção.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function releasePlan(sb: any, id: string) {
+  const { data: perfil } = await sb.from('profiles')
+    .select('subscription_type, is_gift').eq('id', id).maybeSingle();
   await sb.from('profiles').update({
     plan_status: 'ready',
-    plan_released_at: new Date().toISOString(),
+    plan_released_at: liberarEm(perfil ?? {}, 0),
     plan_delivered_email_sent_at: null,
   }).eq('id', id);
 }

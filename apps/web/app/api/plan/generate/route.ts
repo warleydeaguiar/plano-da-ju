@@ -3,13 +3,13 @@ import { createServiceClient } from '@/lib/supabase/server';
 import { generatePlanWithClaude, savePlanToDb } from '@/lib/plan-generator';
 import { logServerError } from '@/lib/server-log';
 import { computeConsultaMinutes } from '@/lib/consulta';
+import { liberarEm } from '@/lib/liberacao-plano';
 
 // 300s = max do Vercel Pro plan. Plano de 90 dias = 12 semanas.
 // Gera 12 semanas (90 dias) — cabe folgado em 300s.
 export const maxDuration = 300;
 
-/** Dias até o plano da cliente pagante abrir sozinho, sem a consulta. */
-const DIAS_ATE_LIBERAR_SOZINHO = 3;
+
 
 /**
  * POST /api/plan/generate
@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: profile } = await (supabase.from('profiles') as any)
-      .select('id, quiz_answers, hair_type, full_name, photo_back_url, photo_root_url, subscription_type')
+      .select('id, quiz_answers, hair_type, full_name, photo_back_url, photo_root_url, subscription_type, is_gift')
       .eq('email', email)
       .single();
 
@@ -157,11 +157,10 @@ export async function POST(req: NextRequest) {
     // se a consulta não acontecer, o plano abre sozinho e ninguém fica sem o
     // que pagou.
     const now = Date.now();
-    const ehCortesia = profile.subscription_type === 'parceria';
-    const esperaMs = ehCortesia
-      ? computeConsultaMinutes(profile) * 60 * 1000
-      : DIAS_ATE_LIBERAR_SOZINHO * 24 * 60 * 60 * 1000;
-    const releasedAt = new Date(now + esperaMs).toISOString();
+    // Cortesia = parceria (UGC da Bianca) OU acesso dado de presente. Quem
+    // não pagou não tem consulta para fazer — segurar o plano dela seria
+    // esperar uma conversa que ninguém combinou.
+    const releasedAt = liberarEm(profile, computeConsultaMinutes(profile) * 60 * 1000, now);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase.from('profiles') as any)
       .update({

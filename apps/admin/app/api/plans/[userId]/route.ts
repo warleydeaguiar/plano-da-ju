@@ -36,6 +36,16 @@ export async function PATCH(
   // WhatsApp. Aqui a Juliane solta depois de conversar. Sem isto a cliente
   // esperaria os 3 dias do prazo mesmo tendo sido atendida hoje.
   if (action === 'liberar_plano') {
+    // Quem já está com o plano aberto não pode ser "liberada" de novo: isso
+    // reenviaria o e-mail de entrega e empurraria a data de retorno do PDF
+    // (+90 dias a partir de plan_released_at) de uma cliente já atendida.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: atual } = await (sb.from('profiles') as any)
+      .select('plan_released_at').eq('id', userId).maybeSingle();
+    const jaAberto = atual?.plan_released_at && new Date(atual.plan_released_at).getTime() <= Date.now();
+    if (jaAberto) {
+      return NextResponse.json({ ok: true, jaEstavaLiberado: true, liberado_em: atual.plan_released_at });
+    }
     const agora = new Date().toISOString();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (sb.from('profiles') as any)

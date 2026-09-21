@@ -19,10 +19,10 @@ function emailHtml(firstName: string): string {
   <div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:520px;margin:0 auto;color:#2A1E2C">
     <div style="background:linear-gradient(135deg,#BE185D,#EC4899);color:#fff;padding:28px 24px;border-radius:16px 16px 0 0">
       <div style="font-size:13px;letter-spacing:1px;opacity:.9;text-transform:uppercase">Plano da Ju</div>
-      <h1 style="font-size:24px;margin:8px 0 0">⚡ Seu plano ficou pronto — antes do prazo!</h1>
+      <h1 style="font-size:24px;margin:8px 0 0">💛 Seu plano capilar está liberado!</h1>
     </div>
     <div style="background:#fff;border:1px solid #f0e6ec;border-top:none;padding:24px;border-radius:0 0 16px 16px">
-      <p style="font-size:15px;line-height:1.6">${oi}Prometemos seu plano capilar em até <strong>24 horas</strong>… mas a Juliane caprichou e já deixou o seu pronto! 💛</p>
+      <p style="font-size:15px;line-height:1.6">${oi}A Juliane terminou de revisar o seu caso e <strong>liberou o seu plano capilar</strong> no aplicativo. É só entrar e começar. 💛</p>
       <p style="font-size:15px;line-height:1.6">Seu <strong>cronograma capilar personalizado de 90 dias</strong> já está liberado no app — com as lavagens, hidratações, reconstruções e os produtos certos pro seu cabelo.</p>
       <p style="text-align:center;margin:26px 0">
         <a href="${APP_URL}" style="background:#BE185D;color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:12px;display:inline-block">Ver meu plano agora</a>
@@ -72,7 +72,7 @@ async function run(req: NextRequest) {
     if (!p.email) continue
     const first = (p.full_name ?? '').trim().split(/\s+/)[0] ?? ''
     try {
-      const r = await sendEmail({ to: p.email, toName: p.full_name ?? undefined, subject: '⚡ Seu plano capilar ficou pronto — antes do prazo!', html: emailHtml(first) })
+      const r = await sendEmail({ to: p.email, toName: p.full_name ?? undefined, subject: '💛 Seu plano capilar está liberado', html: emailHtml(first) })
       if (r.ok !== false) {
         sent++
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

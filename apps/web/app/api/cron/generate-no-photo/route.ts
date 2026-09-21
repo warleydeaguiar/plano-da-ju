@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { generatePlanWithClaude, savePlanToDb } from '@/lib/plan-generator';
+import { liberarEm } from '@/lib/liberacao-plano';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -60,7 +61,7 @@ export async function GET(req: NextRequest) {
   // 200 mais antigos são cadastros abandonados (nunca pagaram) e os elegíveis de
   // verdade (mais novos) nunca eram alcançados → cron achava 0.
   const { data: cands, error } = await (sb.from('profiles') as any)
-    .select('id, email, full_name, hair_type, quiz_answers, subscription_status, subscription_type, partner_label, plan_requested_at, subscription_activated_at, created_at')
+    .select('id, email, full_name, hair_type, quiz_answers, subscription_status, subscription_type, is_gift, partner_label, plan_requested_at, subscription_activated_at, created_at')
     .eq('plan_status', 'pending_photo')
     .is('photo_url', null)
     .not('email', 'is', null)
@@ -102,7 +103,9 @@ export async function GET(req: NextRequest) {
         hair_type: plan.tipo_cabelo?.toLowerCase() ?? p.hair_type,
         recommended_products: Array.isArray(plan.produtos_indicados) ? plan.produtos_indicados : null,
         plan_status: 'ready',
-        plan_released_at: new Date().toISOString(),
+        // A retenção para a consulta vale aqui também: sem isto, quem não
+        // mandou foto recebia o plano na hora e furava o fluxo novo.
+        plan_released_at: liberarEm(p, 0),
         plan_delivered_email_sent_at: null, // cron de entrega manda o "plano pronto"
         plan_without_photo: true,           // se ela mandar a foto depois, refaz COM foto
       }).eq('id', p.id);

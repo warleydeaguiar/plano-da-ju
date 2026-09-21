@@ -220,8 +220,14 @@ export function schemaDoPost(c: Conteudo, videos: VideoIncorporado[] = []) {
           ? `${v.titulo} — vídeo do canal ${v.canal}, incorporado em "${c.title}".`
           : `${v.titulo} — vídeo incorporado em "${c.title}".`,
         thumbnailUrl: [v.miniatura],
+        // `embedUrl` sozinho basta para o Google: `contentUrl` tem de ser o
+        // arquivo de vídeo, e a página /watch não é. Apontar para ela deixava
+        // o item inválido.
         embedUrl: v.embedUrl,
-        contentUrl: `https://www.youtube.com/watch?v=${v.id}`,
+        // Data obrigatória. Sem uma data REAL do vídeo (o oEmbed não devolve),
+        // usamos a publicação do artigo onde ele está — é verdadeira quanto ao
+        // momento em que aquele vídeo passou a ser publicado ali.
+        uploadDate: c.published_at || dataDeAtualizacao(c) || undefined,
         isPartOf: { '@id': idPagina },
         inLanguage: 'pt-BR',
       })),
