@@ -162,7 +162,7 @@ export default function TermosPage() {
               — MG, CEP 32.185-122.
             </P>
             <P>
-              Atendimento de segunda a sexta-feira, das 9h às 17h30, pelo telefone/WhatsApp{' '}
+              Atendimento de segunda a sexta-feira, das 8h às 17h30, pelo telefone/WhatsApp{' '}
               <strong>{JU_WHATSAPP_EXIBICAO}</strong>.
             </P>
             <Lei>
@@ -365,7 +365,7 @@ export default function TermosPage() {
             <Lista
               itens={[
                 <>
-                  Fale com a gente pelo WhatsApp <strong>{JU_WHATSAPP_EXIBICAO}</strong>, de segunda a sexta, das 9h
+                  Fale com a gente pelo WhatsApp <strong>{JU_WHATSAPP_EXIBICAO}</strong>, de segunda a sexta, das 8h
                   às 17h30, informando o nome, o e-mail usado na compra e o motivo.
                 </>,
                 <>Respondemos em até 2 dias úteis.</>,
@@ -478,7 +478,7 @@ export default function TermosPage() {
           >
             <div>julianecost.com · CNPJ 20.227.193/0001-18</div>
             <div>Avenida Quinze de Novembro, 609, Jardim Petrópolis, Contagem — MG · CEP 32.185-122</div>
-            <div>Atendimento: segunda a sexta, das 9h às 17h30 · {JU_WHATSAPP_EXIBICAO}</div>
+            <div>Atendimento: segunda a sexta, das 8h às 17h30 · {JU_WHATSAPP_EXIBICAO}</div>
             <div style={{ marginTop: 10 }}>
               © 2026 julianecost.com — Todos os direitos reservados. Versão {VERSAO}, de {ATUALIZADO_EM}.
             </div>

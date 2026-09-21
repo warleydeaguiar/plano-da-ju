@@ -1,6 +1,7 @@
 'use client';
 
-import { JU_WHATSAPP } from '@/lib/contact';
+import { JU_WHATSAPP, CANAL_IG } from '@/lib/contact';
+import { GROUP_URL } from './GroupInvite';
 import Picture from '@/app/components/Picture';
 import { IconWhatsApp } from './icons';
 
@@ -99,7 +100,7 @@ export default function ConsultaWhatsApp({
           Falar com a Juliane agora
         </a>
         <div style={{ textAlign: 'center', fontSize: 12.5, color: '#9C7C8B', marginBottom: 24 }}>
-          Atendimento de segunda a sexta, das 9h às 17h30
+          Atendimento de segunda a sexta, das 8h às 17h30
         </div>
 
         <div style={{
@@ -119,6 +120,68 @@ export default function ConsultaWhatsApp({
               <span style={{ fontSize: 13.5, lineHeight: 1.55, color: '#E8D6DC' }}>{txt}</span>
             </div>
           ))}
+        </div>
+
+        {/* Promoções: enquanto a consulta não acontece, ela já pode entrar nos
+            canais de desconto. Discreto de propósito — a ação principal desta
+            tela continua sendo falar com a Juliane. */}
+        <div style={{ marginTop: 22 }}>
+          <div style={{
+            fontSize: 11, fontWeight: 800, letterSpacing: 1, textTransform: 'uppercase',
+            color: '#9C7C8B', marginBottom: 10, textAlign: 'center',
+          }}>
+            Enquanto isso, garanta os descontos
+          </div>
+
+          <a
+            href={CANAL_IG}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 11, textDecoration: 'none',
+              background: 'linear-gradient(120deg,#F58529 0%,#DD2A7B 45%,#8134AF 100%)',
+              borderRadius: 14, padding: '13px 15px', marginBottom: 10,
+            }}
+          >
+            <span style={{
+              width: 34, height: 34, borderRadius: '50%', background: '#fff', flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17,
+            }}>📣</span>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ display: 'block', color: '#fff', fontWeight: 700, fontSize: 14 }}>
+                Canal de promoções no Instagram
+              </span>
+              <span style={{ display: 'block', color: 'rgba(255,255,255,.92)', fontSize: 12, marginTop: 1 }}>
+                Os descontos chegam primeiro por lá
+              </span>
+            </span>
+            <span style={{ color: '#fff', fontSize: 18, fontWeight: 700 }}>→</span>
+          </a>
+
+          <a
+            href={GROUP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 11, textDecoration: 'none',
+              background: 'linear-gradient(135deg,#25D366,#128C7E)',
+              borderRadius: 14, padding: '13px 15px',
+            }}
+          >
+            <span style={{
+              width: 34, height: 34, borderRadius: '50%', background: '#fff', flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}><IconWhatsApp size={21} color="#25D366" /></span>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ display: 'block', color: '#fff', fontWeight: 700, fontSize: 14 }}>
+                Grupo VIP de promoções
+              </span>
+              <span style={{ display: 'block', color: 'rgba(255,255,255,.92)', fontSize: 12, marginTop: 1 }}>
+                Descontos exclusivos no WhatsApp
+              </span>
+            </span>
+            <span style={{ color: '#fff', fontSize: 18, fontWeight: 700 }}>→</span>
+          </a>
         </div>
       </div>
     </div>

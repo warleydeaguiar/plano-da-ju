@@ -19,9 +19,9 @@ export async function GET() {
   const semana = (n: number, foco: string) => ({
     n, foco,
     tasks: [
-      { dia: 'Segunda', tarefa: 'Lavagem com shampoo de limpeza suave' },
-      { dia: 'Quarta', tarefa: 'Máscara de hidratação — 20 minutos' },
-      { dia: 'Sábado', tarefa: 'Nutrição com óleo vegetal nas pontas' },
+      { day: 1, title: 'Lavagem com shampoo de limpeza suave', description: 'Água morna, massagem no couro por 1 minuto.' },
+      { day: 3, title: 'Máscara de hidratação — 20 minutos', description: 'Do meio às pontas, com touca.' },
+      { day: 6, title: 'Nutrição com óleo vegetal nas pontas', description: 'Meia hora antes da lavagem.' },
     ],
     tips: ['Evite água muito quente', 'Finalize sempre com protetor térmico'],
   });

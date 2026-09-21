@@ -413,7 +413,10 @@ img { display:block; max-width:100%; }
 .carta p { margin-bottom:11px; } .carta p:last-child { margin-bottom:0; }
 .bigfotos { display:flex; flex-direction:column; gap:12px; margin-bottom:16px; }
 .bigfoto { border-radius:16px; overflow:hidden; border:1px solid #F3D6DE; position:relative; }
-.bigfoto img { width:100%; height:300px; object-fit:cover; }
+.bigfoto img { width:100%; height:360px; object-fit:contain; background:#FBF4F6; }
+/* `contain`, não `cover`: foto de celular é vertical e, numa caixa deitada, o
+   corte comia quase metade da imagem — justamente o comprimento do cabelo, que
+   é o que a cliente quer ver no "antes". */
 .bigfoto figcaption { position:absolute; left:10px; bottom:10px; background:rgba(61,20,44,.75); color:#fff; font-size:11px; font-weight:700; padding:4px 10px; border-radius:8px; text-transform:uppercase; letter-spacing:.5px; }
 .diag { font-family:'Fraunces',Georgia,serif; font-size:15.5px; line-height:1.65; background:#fff; border:1px solid #F3D6DE; border-radius:16px; padding:18px; margin-bottom:16px; }
 .diag-by { font-family:'Plus Jakarta Sans'; font-size:12px; color:#BE185D; font-weight:700; margin-top:8px; }

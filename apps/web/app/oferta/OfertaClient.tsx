@@ -2490,7 +2490,7 @@ export default function OfertaClient() {
             paddingTop: 24, borderTop: `1px solid ${T.border}`, fontFamily: fonts.ui,
           }}>
             <div style={{ marginBottom: 4, fontWeight: 700, color: T.ink }}>Segunda à Sexta-feira:</div>
-            <div style={{ marginBottom: 12 }}>das 9h às 17h30</div>
+            <div style={{ marginBottom: 12 }}>das 8h às 17h30</div>
             <div style={{ marginBottom: 12 }}>📞 {JU_WHATSAPP_EXIBICAO}</div>
             <div style={{ marginBottom: 4 }}>
               julianecost.com | Avenida Quinze de Novembro, 609, Jardim Petrópolis, Contagem — MG · CEP 32.185-122
