@@ -1,6 +1,6 @@
 import { ehPedidoDeBloqueio } from '@/lib/wa-optout';
 
-export type TipoResposta = 'botao_concluir' | 'botao_duvida' | 'botao_plano_wa' | 'bloqueio' | 'cortesia' | 'automatica' | 'recusa' | 'humana';
+export type TipoResposta = 'botao_concluir' | 'botao_duvida' | 'botao_plano_wa' | 'botao_diagnostico' | 'bloqueio' | 'cortesia' | 'automatica' | 'recusa' | 'humana';
 
 const normalizar = (texto: unknown) =>
   String(texto ?? '')
@@ -36,6 +36,9 @@ export function classificarResposta(texto: unknown): TipoResposta {
   // Botão da mensagem de compra: é a cliente pedindo o plano por aqui — e,
   // como ela é quem escreve, abre a janela de 24 h.
   if (t === 'pode enviar por aqui') return 'botao_plano_wa';
+  // Botão da primeira mensagem da régua: ela pediu o diagnóstico do quiz. Quem
+  // responde é a atendente — aqui só abrimos a janela e marcamos a fila.
+  if (t === 'quero meu diagnostico') return 'botao_diagnostico';
   if (t === 'tenho uma duvida') return 'botao_duvida';
   if (ehPedidoDeBloqueio(texto)) return 'bloqueio';
   if (CORTESIA_GRATIS.test(t) && !NEGACAO_CORTESIA.test(t)) return 'cortesia';

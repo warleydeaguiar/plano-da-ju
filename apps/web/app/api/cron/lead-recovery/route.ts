@@ -140,15 +140,14 @@ export async function GET(req: NextRequest) {
   // "finalize sua inscrição por R$34,90" para ela seria cobrar o que já é dela.
   // O comportamento é o mesmo (não envia), mas guardar o motivo certo evita ler
   // 80 cortesias como 80 vendas depois.
-  // Trava de segurança: a régua fria para sozinha quando a rejeição sobe.
-  // Perder o número levaria junto a confirmação de compra e a recuperação de
-  // PIX, que são as mensagens que a cliente espera receber.
+  // Trava de segurança: teto diário e qualidade do número (o único sinal de
+  // rejeição real que a Meta entrega). Perder o número levaria junto a
+  // confirmação de compra e a recuperação de PIX.
   const saude = await saudeDoCanal(sb);
   if (!saude.podeEnviar) {
     return NextResponse.json({
       ok: true, pausado: true, motivo: saude.motivo,
-      enviadas7d: saude.enviadas7d, bloqueios7d: saude.bloqueios7d,
-      pct_bloqueio: Number(saude.pctBloqueio.toFixed(2)), enviadas_hoje: saude.enviadasHoje,
+      qualidade: saude.qualidade, enviadas_hoje: saude.enviadasHoje, teto_hoje: saude.tetoHoje,
     });
   }
 

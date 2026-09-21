@@ -3,65 +3,78 @@
 /**
  * Trava de segurança do canal de WhatsApp.
  *
- * Em 20/09/2026 a Meta avisou que a conta estava "enviando spam" e ameaçou
- * desabilitar o número. O que nos levou até ali foi medido: 1.254 mensagens
- * de "inscrição pendente" em 7 dias e 93 pessoas tocando em "Bloquear
- * mensagens" — 7,4%. A Meta trata acima de ~2% como problema.
+ * ⚠️ O botão "Bloquear mensagens" das nossas mensagens é um QUICK REPLY nosso,
+ * não o bloqueio do WhatsApp: quem toca nele continua com o contato liberado e
+ * só entra na nossa lista de não-enviar (`wa_optout`). Para a Meta aquilo é uma
+ * RESPOSTA — ou seja, engajamento. Não serve, portanto, como medida de
+ * rejeição, e usá-la como gatilho pausava a régua sem motivo.
  *
- * Perder o número não custa só a régua de leads: leva junto a confirmação de
- * compra e a recuperação de PIX, que são as mensagens que a cliente ESPERA
- * receber. Por isso a régua fria para sozinha quando a rejeição sobe, e volta
- * sozinha quando cai — sem depender de alguém lembrar de olhar.
+ * O sinal que a Meta de fato enxerga (bloqueios de verdade e denúncias) ela não
+ * entrega aberto: entrega mastigado no `quality_rating` do número — GREEN,
+ * YELLOW ou RED. É esse o gatilho aqui, somado a um teto diário, porque volume
+ * alto foi o que levou ao aviso de spam de 20/09/2026.
  */
-export const LIMITE_BLOQUEIO_PCT = 2;
-
-/** Teto diário da régua fria. Antes o cron podia mandar 11 mil por dia. */
 export const TETO_DIARIO_LEADS = 150;
+/** Com qualidade amarela o volume cai pela metade: sinal de alerta, não de parada. */
+export const TETO_DIARIO_AMARELO = 75;
 
 export interface SaudeCanal {
-  enviadas7d: number;
-  bloqueios7d: number;
-  pctBloqueio: number;
+  qualidade: string;
   enviadasHoje: number;
+  tetoHoje: number;
+  optoutsHoje: number;
   podeEnviar: boolean;
   motivo: string;
 }
 
+const cacheQualidade = { ate: 0, valor: 'UNKNOWN' };
+
+/** Qualidade do número segundo a Meta. Cache de 10 min (o cron roda a cada 5). */
+export async function qualidadeDoNumero(): Promise<string> {
+  if (cacheQualidade.ate > Date.now()) return cacheQualidade.valor;
+  const token = process.env.WHATSAPP_TOKEN;
+  const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  let valor = 'UNKNOWN';
+  if (token && phoneId) {
+    try {
+      const r = await fetch(
+        `https://graph.facebook.com/v21.0/${phoneId}?fields=quality_rating&access_token=${encodeURIComponent(token)}`,
+        { cache: 'no-store' },
+      );
+      const j: any = await r.json();
+      if (typeof j?.quality_rating === 'string') valor = j.quality_rating.toUpperCase();
+    } catch { /* sem resposta: segue como UNKNOWN, que não bloqueia */ }
+  }
+  cacheQualidade.ate = Date.now() + 10 * 60_000;
+  cacheQualidade.valor = valor;
+  return valor;
+}
+
 export async function saudeDoCanal(sb: any): Promise<SaudeCanal> {
-  const seteDias = new Date(Date.now() - 7 * 86400_000).toISOString();
   const inicioHojeBR = (() => {
     const agora = new Date(Date.now() - 3 * 3600_000);
     return new Date(`${agora.toISOString().slice(0, 10)}T03:00:00.000Z`).toISOString();
   })();
 
-  const [env, blo, hoje] = await Promise.all([
-    sb.from('wg_quiz_leads').select('id', { count: 'exact', head: true })
-      .gte('inscricao_wa_enviada_em', seteDias).is('inscricao_wa_erro', null),
-    sb.from('wa_optout').select('final8', { count: 'exact', head: true }).gte('criado_em', seteDias),
+  const [qualidade, hoje, optouts] = await Promise.all([
+    qualidadeDoNumero(),
     sb.from('wg_quiz_leads').select('id', { count: 'exact', head: true })
       .gte('inscricao_wa_enviada_em', inicioHojeBR).is('inscricao_wa_erro', null),
+    // Só para acompanhar: quem pediu para não receber é informação útil de
+    // copy, não motivo para parar o envio.
+    sb.from('wa_optout').select('final8', { count: 'exact', head: true }).gte('criado_em', inicioHojeBR),
   ]);
 
-  const enviadas7d = env.count ?? 0;
-  const bloqueios7d = blo.count ?? 0;
   const enviadasHoje = hoje.count ?? 0;
-  // Amostra pequena não condena o canal: abaixo de 100 envios a porcentagem
-  // oscila demais para servir de gatilho.
-  const pctBloqueio = enviadas7d >= 100 ? (bloqueios7d / enviadas7d) * 100 : 0;
+  const optoutsHoje = optouts.count ?? 0;
+  const tetoHoje = qualidade === 'YELLOW' ? TETO_DIARIO_AMARELO : TETO_DIARIO_LEADS;
 
-  if (pctBloqueio > LIMITE_BLOQUEIO_PCT) {
-    return {
-      enviadas7d, bloqueios7d, pctBloqueio, enviadasHoje,
-      podeEnviar: false,
-      motivo: `rejeicao_alta:${pctBloqueio.toFixed(2)}%`,
-    };
+  // Vermelho é a Meta dizendo que o número está prestes a ser restringido.
+  if (qualidade === 'RED') {
+    return { qualidade, enviadasHoje, tetoHoje, optoutsHoje, podeEnviar: false, motivo: 'qualidade_vermelha' };
   }
-  if (enviadasHoje >= TETO_DIARIO_LEADS) {
-    return {
-      enviadas7d, bloqueios7d, pctBloqueio, enviadasHoje,
-      podeEnviar: false,
-      motivo: `teto_diario:${enviadasHoje}`,
-    };
+  if (enviadasHoje >= tetoHoje) {
+    return { qualidade, enviadasHoje, tetoHoje, optoutsHoje, podeEnviar: false, motivo: `teto_diario:${enviadasHoje}/${tetoHoje}` };
   }
-  return { enviadas7d, bloqueios7d, pctBloqueio, enviadasHoje, podeEnviar: true, motivo: 'ok' };
+  return { qualidade, enviadasHoje, tetoHoje, optoutsHoje, podeEnviar: true, motivo: 'ok' };
 }

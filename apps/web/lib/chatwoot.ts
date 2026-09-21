@@ -34,6 +34,25 @@ export async function responderNoChatwoot(displayId: unknown, texto: string): Pr
 }
 
 /**
+ * Nota PRIVADA na conversa: a cliente não vê, só a equipe.
+ *
+ * Serve para deixar na mão da atendente o que ela precisa para responder —
+ * hoje, as respostas do quiz de quem pediu o diagnóstico.
+ */
+export async function notaPrivada(displayId: unknown, texto: string): Promise<boolean> {
+  const c = config();
+  if (!c || !displayId || !texto.trim()) return false;
+  try {
+    const r = await fetch(`${c.url}/api/v1/accounts/${c.conta}/conversations/${displayId}/messages`, {
+      method: 'POST',
+      headers: { 'api-access-token': c.token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: texto, message_type: 'outgoing', private: true }),
+    });
+    return r.ok;
+  } catch { return false; }
+}
+
+/**
  * Marca a conversa para a equipe achar. O endpoint de labels SUBSTITUI a lista,
  * então lemos as atuais antes de somar — senão marcar uma tira as outras.
  */

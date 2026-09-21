@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { ehPedidoDeBloqueio, registrarBloqueio } from '@/lib/wa-optout';
 import { classificarResposta } from '@/lib/wa-respostas';
-import { responder, marcarConversa } from '@/lib/chatwoot';
+import { responder, marcarConversa, notaPrivada } from '@/lib/chatwoot';
+import { resumoQuizTexto, respostasDasSessoes } from '@/lib/quiz-resumo';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -21,6 +22,7 @@ export const dynamic = 'force-dynamic';
  * O que fazemos com cada tipo de resposta:
  *  - "Bloquear mensagens" → entra na lista de bloqueio e não recebe mais nada;
  *  - "Quero concluir"     → mandamos o link na hora;
+ *  - "Quero meu diagnóstico" → fila da atendente (ela é quem responde);
  *  - "Tenho uma dúvida"   → confirmamos e marcamos a conversa para a equipe;
  *  - resposta automática de outra empresa → NÃO conta como resposta (é robô);
  *  - recusa ("não quero", "cancela") → conta, mas sai da fila do cupom;
@@ -99,6 +101,22 @@ export async function POST(req: NextRequest) {
         'Perfeito! 💛 Vou te mandar o seu plano por aqui. Se precisar de qualquer ajuste, é só me falar nesta conversa.');
       await marcarConversa(conversa, 'plano-por-whatsapp');
       return NextResponse.json({ ok: true, planoPorWhatsapp: true, lead: lead ?? null });
+    }
+
+    // ── "Quero meu diagnóstico": vai para a fila da ATENDENTE ─────────────
+    // Quem monta e entrega o diagnóstico é uma pessoa da equipe. O que o
+    // sistema faz aqui é o que ninguém precisa fazer à mão: registrar o
+    // aceite, marcar a conversa e deixar as respostas do quiz na nota privada,
+    // para a atendente responder sem procurar nada. O toque no botão já abriu
+    // a janela de 24 h — dentro dela a equipe fala por texto, sem template.
+    if (tipo === 'botao_diagnostico') {
+      const lead = await marcarLead(sb, digitos, {
+        resposta_tipo: tipo, resposta_texto: texto.slice(0, 200), respondeu_em: agora,
+      });
+      await marcarConversa(conversa, 'quer-diagnostico');
+      await notaPrivada(conversa, await notaDoQuiz(sb, digitos));
+      await responder(conversa, digitos, esperaDoDiagnostico(primeiroNome(corpo)));
+      return NextResponse.json({ ok: true, querDiagnostico: true, lead: lead ?? null });
     }
 
     // ── Cortesia UGC cobrada por engano ──────────────────────────────────
@@ -201,4 +219,42 @@ async function marcarPlanoPorWhatsApp(sb: any, digitos: string): Promise<void> {
   await sb.from('profiles')
     .update({ plano_por_wa_pedido_em: new Date().toISOString() })
     .eq('id', perfil.id);
+}
+
+/**
+ * Aviso de que a resposta vem de gente, com o prazo certo.
+ *
+ * Sem isto a cliente toca no botão e fica no vácuo até alguém abrir o
+ * Chatwoot — e a janela de 24 h corre igual. Fora do expediente o texto muda:
+ * prometer "já já" às 22h queima a confiança que a mensagem acabou de ganhar.
+ */
+function esperaDoDiagnostico(nome: string): string {
+  const agora = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+  const dia = agora.getDay();
+  const minutos = agora.getHours() * 60 + agora.getMinutes();
+  const noExpediente = dia >= 1 && dia <= 5 && minutos >= 8 * 60 && minutos < 17 * 60 + 30;
+  const abertura = 'Nosso atendimento é de segunda a sexta, das 8h às 17h30.';
+  return noExpediente
+    ? `${nome ? `Oi, ${nome}! ` : 'Oi! '}Estou olhando as suas respostas do quiz agora e já te mando o seu diagnóstico por aqui. 💛`
+    : `${nome ? `Oi, ${nome}! ` : 'Oi! '}Recebi o seu pedido 💛 Vou olhar as suas respostas do quiz e te mandar o diagnóstico por aqui. ${abertura}`;
+}
+
+/** Respostas do quiz daquela pessoa, prontas para a atendente ler na conversa. */
+async function notaDoQuiz(sb: any, digitos: string): Promise<string> {
+  try {
+    const finais = digitos.slice(-8);
+    const { data } = await (sb.from('wg_quiz_leads') as any)
+      .select('session_id, name')
+      .like('phone', `%${finais}`)
+      .order('created_at', { ascending: false })
+      .limit(5);
+    const leads = (data ?? []) as any[];
+    const respostas = await respostasDasSessoes(sb, leads.map((l) => l.session_id));
+    const resumo = resumoQuizTexto(respostas);
+    return resumo
+      ? `🔔 Pediu o diagnóstico pelo botão. Respostas do quiz:\n\n${resumo}`
+      : '🔔 Pediu o diagnóstico pelo botão. Não achei as respostas do quiz deste número — confira no painel pelo e-mail.';
+  } catch {
+    return '🔔 Pediu o diagnóstico pelo botão.';
+  }
 }

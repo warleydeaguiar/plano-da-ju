@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
-import { saudeDoCanal, LIMITE_BLOQUEIO_PCT, TETO_DIARIO_LEADS } from '@/lib/wa-saude';
+import { saudeDoCanal } from '@/lib/wa-saude';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -79,12 +79,12 @@ export async function GET(req: NextRequest) {
     numero,
     // Rejeição da régua fria: é o número que a Meta enxerga como spam.
     saude: saude ? {
-      enviadas_7d: saude.enviadas7d,
-      bloqueios_7d: saude.bloqueios7d,
-      pct_bloqueio: Number(saude.pctBloqueio.toFixed(2)),
-      limite_pct: LIMITE_BLOQUEIO_PCT,
+      qualidade_meta: saude.qualidade,
       enviadas_hoje: saude.enviadasHoje,
-      teto_diario: TETO_DIARIO_LEADS,
+      teto_hoje: saude.tetoHoje,
+      // Quem pediu para não receber HOJE. É leitura de copy, não gatilho: o
+      // botão é quick reply nosso, e para a Meta aquilo é engajamento.
+      pediram_para_parar_hoje: saude.optoutsHoje,
       regua_fria: saude.podeEnviar ? 'liberada' : `pausada (${saude.motivo})`,
     } : null,
     templates: lista.map((t: any) => ({
