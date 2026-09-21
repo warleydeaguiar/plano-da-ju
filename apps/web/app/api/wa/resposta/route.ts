@@ -87,6 +87,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, bloqueado: true });
     }
 
+    // ── "Pode enviar por aqui": a cliente autoriza receber o plano no WhatsApp ──
+    // O toque no botão conta como mensagem DELA: a janela de 24 h abre e o
+    // plano pode ir por texto, sem template e sem custo por mensagem.
+    if (tipo === 'botao_plano_wa') {
+      const lead = await marcarLead(sb, digitos, {
+        resposta_tipo: tipo, resposta_texto: texto.slice(0, 200), respondeu_em: agora,
+      });
+      await marcarPlanoPorWhatsApp(sb, digitos);
+      await responder(conversa, digitos,
+        'Perfeito! 💛 Vou te mandar o seu plano por aqui. Se precisar de qualquer ajuste, é só me falar nesta conversa.');
+      await marcarConversa(conversa, 'plano-por-whatsapp');
+      return NextResponse.json({ ok: true, planoPorWhatsapp: true, lead: lead ?? null });
+    }
+
     // ── Cortesia UGC cobrada por engano ──────────────────────────────────
     // "Eu ganhei o plano com a Bianca": ela recebeu o plano de graça e mesmo
     // assim levou "finalize sua inscrição". Para a régua na hora (a cortesia
@@ -161,4 +175,28 @@ async function marcarLead(sb: any, digitos: string, campos: Record<string, unkno
   if (!lead) return null;
   await (sb.from('wg_quiz_leads') as any).update(campos).eq('id', lead.id);
   return lead.id;
+}
+
+/**
+ * Anota que a cliente pediu o plano pelo WhatsApp.
+ *
+ * Casa pelo fim do telefone (o perfil guarda DDD+número, o WhatsApp manda com
+ * o 55 na frente e às vezes sem o nono dígito). Sem isto, o pedido dela
+ * dependeria de alguém lembrar de anotar.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function marcarPlanoPorWhatsApp(sb: any, digitos: string): Promise<void> {
+  const final8 = digitos.replace(/\D/g, '').slice(-8);
+  if (final8.length < 8) return;
+  const { data } = await sb.from('profiles')
+    .select('id, phone')
+    .not('phone', 'is', null)
+    .ilike('phone', `%${final8}`)
+    .order('subscription_activated_at', { ascending: false })
+    .limit(1);
+  const perfil = (data ?? [])[0];
+  if (!perfil) return;
+  await sb.from('profiles')
+    .update({ plano_por_wa_pedido_em: new Date().toISOString() })
+    .eq('id', perfil.id);
 }

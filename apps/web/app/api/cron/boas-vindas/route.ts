@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { sendWhatsAppTemplate } from '@/lib/whatsapp';
 import { telefonesBloqueados, finalTelefone } from '@/lib/wa-optout';
+import { templateUtilitarioAprovado } from '@/lib/wa-templates';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -24,6 +25,11 @@ export const maxDuration = 60;
  *
  * ?dry=1 → não envia nem marca, só relata.
  */
+// A v2 traz o botão "Pode enviar por aqui" — quando a cliente toca, é ela
+// quem inicia a conversa, a janela de 24 h abre e o plano pode ir por texto.
+// Só entra quando a Meta confirmar APROVADO **e** UTILITY: pedir utilidade não
+// garante utilidade, e MARKETING custa ~9× mais.
+const TEMPLATE_V2 = process.env.WHATSAPP_WELCOME_TEMPLATE_V2 || 'acesso_plano_v2';
 const TEMPLATE = process.env.WHATSAPP_WELCOME_TEMPLATE || 'acesso_plano';
 const JANELA_DIAS = 30;
 const MAX_TENTATIVAS = 3;
@@ -56,6 +62,7 @@ export async function GET(req: NextRequest) {
 
   const dry = req.nextUrl.searchParams.get('dry') === '1';
   const sb = await createServiceClient();
+  const template = (await templateUtilitarioAprovado(TEMPLATE_V2)) ? TEMPLATE_V2 : TEMPLATE;
   const desde = new Date(Date.now() - JANELA_DIAS * 86400_000).toISOString();
 
   /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -106,7 +113,7 @@ export async function GET(req: NextRequest) {
       .select('id');
     if (!reservado?.length) continue;
 
-    const r = await sendWhatsAppTemplate({ to: tel, template: TEMPLATE, bodyParams: [primeiroNome(p.full_name ?? ans.name)] });
+    const r = await sendWhatsAppTemplate({ to: tel, template, bodyParams: [primeiroNome(p.full_name ?? ans.name)] });
     if (r.ok) {
       enviados++;
       await (sb.from('profiles') as any)
@@ -121,7 +128,7 @@ export async function GET(req: NextRequest) {
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
   return NextResponse.json({
-    ok: true, dry, template: TEMPLATE,
+    ok: true, dry, template,
     candidatos: clientes.length, enviados, semTelefone, bloqueou, falhas: falhas.slice(0, 5),
   });
 }
