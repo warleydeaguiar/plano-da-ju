@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { acessoDosLeads } from '@/lib/acesso-lead';
+import { saudeDoCanal } from '@/lib/wa-saude';
 import { telefonesBloqueados, finalTelefone } from '@/lib/wa-optout';
 import { precoDoCliente } from '@/lib/preco-servidor';
 import { conferirCupom } from '@/lib/cupom';
@@ -122,6 +123,13 @@ export async function GET(req: NextRequest) {
   // quem ganhou por cortesia da parceria. Casa por e-mail E por telefone (a
   // cortesia é cadastrada à mão e já veio com e-mail errado). Os dois grupos
   // são contados à parte porque só o primeiro é venda.
+  // Mesma trava da régua de inscrição: mensagem fria não pode continuar
+  // saindo enquanto a rejeição estiver alta.
+  const saude = await saudeDoCanal(sb);
+  if (!saude.podeEnviar) {
+    return NextResponse.json({ ok: true, pausado: true, motivo: saude.motivo });
+  }
+
   const acessoDe = await acessoDosLeads(sb, candidatos);
 
   // Quem pediu para não receber mensagens fica de fora (e sai da fila).

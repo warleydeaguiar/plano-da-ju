@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createServiceClient } from '@/lib/supabase/server';
+import { saudeDoCanal, LIMITE_BLOQUEIO_PCT, TETO_DIARIO_LEADS } from '@/lib/wa-saude';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -71,8 +73,20 @@ export async function GET(req: NextRequest) {
     porTemplate.set(id, at);
   }
 
+  const saude = await saudeDoCanal(await createServiceClient()).catch(() => null);
+
   return NextResponse.json({
     numero,
+    // Rejeição da régua fria: é o número que a Meta enxerga como spam.
+    saude: saude ? {
+      enviadas_7d: saude.enviadas7d,
+      bloqueios_7d: saude.bloqueios7d,
+      pct_bloqueio: Number(saude.pctBloqueio.toFixed(2)),
+      limite_pct: LIMITE_BLOQUEIO_PCT,
+      enviadas_hoje: saude.enviadasHoje,
+      teto_diario: TETO_DIARIO_LEADS,
+      regua_fria: saude.podeEnviar ? 'liberada' : `pausada (${saude.motivo})`,
+    } : null,
     templates: lista.map((t: any) => ({
       nome: t.name,
       status: t.status,
