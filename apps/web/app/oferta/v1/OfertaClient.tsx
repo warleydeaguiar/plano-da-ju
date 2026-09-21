@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { JU_WHATSAPP_EXIBICAO } from '@/lib/contact';
 
 // ─── Design tokens ───────────────────────────────────────────
 const T = {
@@ -676,7 +677,7 @@ export default function OfertaClient() {
         <div style={{ fontSize: 12, color: T.inkSoft, lineHeight: 1.6, paddingTop: 20, borderTop: `1px solid ${T.border}` }}>
           <div style={{ marginBottom: 4 }}>Segunda à Sexta-feira:</div>
           <div style={{ marginBottom: 12 }}>das 9h às 17h30</div>
-          <div style={{ marginBottom: 12 }}>📞 31 9744-5597</div>
+          <div style={{ marginBottom: 12 }}>📞 {JU_WHATSAPP_EXIBICAO}</div>
           <div style={{ marginBottom: 4 }}>
             julianecost.com | Avenida Quinze de Novembro, 609, Jardim Petrópolis, Belim - MS CEP: 32855-122
           </div>

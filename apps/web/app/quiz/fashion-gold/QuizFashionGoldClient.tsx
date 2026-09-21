@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { newEventId, sendServerEvent } from '../../../lib/tracking-client'
+import { JU_WHATSAPP } from '@/lib/contact';
 
 // ─── Design tokens ──────────────────────────────────────────
 const T = {
@@ -605,7 +606,7 @@ export default function QuizFashionGoldClient() {
   // NOVO FUNIL: em vez de jogar direto num grupo, manda a pessoa iniciar uma
   // conversa no nosso número OFICIAL (Cloud API) — isso abre a janela gratuita
   // de 24h. A 1ª mensagem já vai pré-preenchida com o nome (dinâmico).
-  const WA_OFICIAL = '553199994001'
+  const WA_OFICIAL = JU_WHATSAPP;  // fonte única: lib/contact
   const waEntrarLink = () => {
     const msg = `Oi Ju, tudo bem? Meu nome é ${(name || '').trim()} e gostaria de participar dos seus grupos de promoção. Ainda tem vaga?`
     return `https://wa.me/${WA_OFICIAL}?text=${encodeURIComponent(msg)}`

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { JU_WHATSAPP_EXIBICAO } from '@/lib/contact';
 
 export const metadata: Metadata = {
   title: 'Termos de Uso — Plano Capilar | Juliane Cost',
@@ -162,7 +163,7 @@ export default function TermosPage() {
             </P>
             <P>
               Atendimento de segunda a sexta-feira, das 9h às 17h30, pelo telefone/WhatsApp{' '}
-              <strong>(31) 9744-5597</strong>.
+              <strong>{JU_WHATSAPP_EXIBICAO}</strong>.
             </P>
             <Lei>
               Estas informações são apresentadas em cumprimento ao Decreto nº 7.962/2013, art. 2º, que obriga
@@ -364,7 +365,7 @@ export default function TermosPage() {
             <Lista
               itens={[
                 <>
-                  Fale com a gente pelo WhatsApp <strong>(31) 9744-5597</strong>, de segunda a sexta, das 9h
+                  Fale com a gente pelo WhatsApp <strong>{JU_WHATSAPP_EXIBICAO}</strong>, de segunda a sexta, das 9h
                   às 17h30, informando o nome, o e-mail usado na compra e o motivo.
                 </>,
                 <>Respondemos em até 2 dias úteis.</>,
@@ -477,7 +478,7 @@ export default function TermosPage() {
           >
             <div>julianecost.com · CNPJ 20.227.193/0001-18</div>
             <div>Avenida Quinze de Novembro, 609, Jardim Petrópolis, Contagem — MG · CEP 32.185-122</div>
-            <div>Atendimento: segunda a sexta, das 9h às 17h30 · (31) 9744-5597</div>
+            <div>Atendimento: segunda a sexta, das 9h às 17h30 · {JU_WHATSAPP_EXIBICAO}</div>
             <div style={{ marginTop: 10 }}>
               © 2026 julianecost.com — Todos os direitos reservados. Versão {VERSAO}, de {ATUALIZADO_EM}.
             </div>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 import { buildHtml } from '@/lib/plan-pdf-template';
+import { JU_WHATSAPP } from '@/lib/contact';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -100,7 +101,7 @@ export async function GET(req: NextRequest) {
     ritualDiario: profile.daily_rituals || [],
     couro: normCouro(quiz.oleosidade),
     dataRetorno: retornoDate(profile.plan_released_at),
-    wa: '553171260408',
+    wa: JU_WHATSAPP,  // era 553171260408 — número da WABA antiga, EXPIRED
     ju: {
       cover: `${JU}/ju-1.jpg`, carta: `${JU}/ju-2.jpg`, prodDivider: `${JU}/ju-3.jpg`,
       cronoDivider: `${JU}/ju-5.jpg`, footer: `${JU}/ju-4.jpg`,

@@ -9,6 +9,7 @@ import { getFunilCopy } from '@/lib/hair-copy';
 import { buildConsultaData } from '@/lib/consulta';
 import Picture from '@/app/components/Picture';
 import dynamic from 'next/dynamic';
+import { JU_WHATSAPP_EXIBICAO } from '@/lib/contact';
 
 /**
  * Carregado sob demanda, e não no pacote principal.
@@ -2490,7 +2491,7 @@ export default function OfertaClient() {
           }}>
             <div style={{ marginBottom: 4, fontWeight: 700, color: T.ink }}>Segunda à Sexta-feira:</div>
             <div style={{ marginBottom: 12 }}>das 9h às 17h30</div>
-            <div style={{ marginBottom: 12 }}>📞 31 9744-5597</div>
+            <div style={{ marginBottom: 12 }}>📞 {JU_WHATSAPP_EXIBICAO}</div>
             <div style={{ marginBottom: 4 }}>
               julianecost.com | Avenida Quinze de Novembro, 609, Jardim Petrópolis, Contagem — MG · CEP 32.185-122
             </div>
