@@ -2,6 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { createServerClient } from '@supabase/ssr';
 import { logServerError } from '@/lib/server-log';
+import { normalizarParaJpeg, MIME_NORMALIZADO } from '@/lib/imagem-servidor';
 
 export const runtime = 'nodejs';
 // Upload + análise da Claude Vision podem passar de 30s; sem isto a função
@@ -65,15 +66,31 @@ export async function POST(req: NextRequest) {
       videoUrl = typeof body.video_url === 'string' && body.video_url.startsWith('http') ? body.video_url : null;
       hairLengthCm = parseLen(body.hair_length_cm);
       weightKg = parseW(body.weight_kg);
-      // Baixa a foto de frente (do Storage) só pra disparar a geração do plano em
-      // base64. Se falhar, o cron recover-stuck-plans regenera pela URL do perfil.
-      try {
-        const r = await fetch(photoUrl);
-        if (r.ok) {
-          frontBuffer = new Uint8Array(await r.arrayBuffer());
-          frontMime = r.headers.get('content-type') || 'image/jpeg';
-        }
-      } catch { /* segue — a rede de segurança do cron cobre */ }
+      // O navegador SOBE o que conseguir — inclusive HEIC, quando a conversão
+      // dele falha. Aqui cada foto é normalizada para JPEG e o original é
+      // apagado: ninguém precisa dele, e a análise do cabelo não lê HEIC.
+      const normalizada = await normalizarNoStorage(supabase, user.id, photoUrl);
+      if (normalizada) { photoUrl = normalizada.url; frontBuffer = normalizada.jpeg; frontMime = MIME_NORMALIZADO; }
+      if (photoBackUrl) {
+        const n = await normalizarNoStorage(supabase, user.id, photoBackUrl, '-costas');
+        if (n) photoBackUrl = n.url;
+      }
+      if (photoRootUrl) {
+        const n = await normalizarNoStorage(supabase, user.id, photoRootUrl, '-raiz');
+        if (n) photoRootUrl = n.url;
+      }
+      // Se a normalização não rolou (rede, storage fora), ainda tentamos a
+      // base64 para a geração do plano — o cron recover-stuck-plans cobre o
+      // resto.
+      if (!frontBuffer.length) {
+        try {
+          const r = await fetch(photoUrl);
+          if (r.ok) {
+            frontBuffer = new Uint8Array(await r.arrayBuffer());
+            frontMime = r.headers.get('content-type') || 'image/jpeg';
+          }
+        } catch { /* segue — a rede de segurança do cron cobre */ }
+      }
     } else {
       // iOS manda `type` vazio em parte dos envios (HEIC vindo da galeria).
       // Recusar por isso descartava foto boa — e, nas fotos de costas e raiz,
@@ -99,23 +116,33 @@ export async function POST(req: NextRequest) {
       hairLengthCm = parseLen(form.get('hair_length_cm'));
       weightKg = parseW(form.get('weight_kg'));
 
-      const ext = f.type === 'image/png' ? 'png' : f.type === 'image/webp' ? 'webp' : 'jpg';  // HEIC convertido vira jpg
-      const fileName = `${user.id}/${Date.now()}.${ext}`;
-      frontBuffer = new Uint8Array(await f.arrayBuffer());
-      frontMime = mimeDe(f);
+      // Converte ANTES de guardar: o que entra pode ser qualquer formato, o
+      // que fica salvo é sempre JPEG.
+      const original = new Uint8Array(await f.arrayBuffer());
+      const jpeg = await normalizarParaJpeg(original);
+      if (!jpeg) return NextResponse.json({ error: 'Não consegui ler essa foto. Tente tirar uma foto nova pela câmera.' }, { status: 400 });
+      frontBuffer = new Uint8Array(jpeg);
+      frontMime = MIME_NORMALIZADO;
+      const fileName = `${user.id}/${Date.now()}.jpg`;
       const { error: upErr } = await supabase.storage.from('hair-photos').upload(fileName, frontBuffer, { contentType: frontMime, upsert: false });
       if (upErr) { console.error('[photo] upload error', upErr); return NextResponse.json({ error: 'Falha ao salvar foto' }, { status: 500 }); }
       photoUrl = supabase.storage.from('hair-photos').getPublicUrl(fileName).data.publicUrl;
 
       if (backF && ehImagem(backF) && backF.size <= 10 * 1024 * 1024) {
         const backName = `${user.id}/${Date.now()}-costas.jpg`;
-        const { error: e } = await supabase.storage.from('hair-photos').upload(backName, new Uint8Array(await backF.arrayBuffer()), { contentType: mimeDe(backF), upsert: false });
+        const convertida = await normalizarParaJpeg(new Uint8Array(await backF.arrayBuffer()));
+        const { error: e } = convertida
+          ? await supabase.storage.from('hair-photos').upload(backName, new Uint8Array(convertida), { contentType: MIME_NORMALIZADO, upsert: false })
+          : { error: new Error('nao_consegui_converter') };
         if (!e) photoBackUrl = supabase.storage.from('hair-photos').getPublicUrl(backName).data.publicUrl;
         else console.error('[photo] back upload error', e);
       }
       if (rootF && ehImagem(rootF) && rootF.size <= 10 * 1024 * 1024) {
         const rootName = `${user.id}/${Date.now()}-raiz.jpg`;
-        const { error: e } = await supabase.storage.from('hair-photos').upload(rootName, new Uint8Array(await rootF.arrayBuffer()), { contentType: mimeDe(rootF), upsert: false });
+        const convertida = await normalizarParaJpeg(new Uint8Array(await rootF.arrayBuffer()));
+        const { error: e } = convertida
+          ? await supabase.storage.from('hair-photos').upload(rootName, new Uint8Array(convertida), { contentType: MIME_NORMALIZADO, upsert: false })
+          : { error: new Error('nao_consegui_converter') };
         if (!e) photoRootUrl = supabase.storage.from('hair-photos').getPublicUrl(rootName).data.publicUrl;
         else console.error('[photo] root upload error', e);
       }
@@ -275,4 +302,66 @@ export async function POST(req: NextRequest) {
     await logServerError({ route: 'meu-plano/photo', err, severity: 'error', context: { impact: 'cliente não conseguiu enviar foto de progresso/onboarding' } });
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
   }
+}
+
+/**
+ * Deixa no storage um JPEG no lugar do que a cliente subiu, e apaga o original.
+ *
+ * O upload do onboarding vai DIRETO para o storage (é o que permite mandar
+ * foto grande sem esbarrar no limite da serverless), então a conversão só pode
+ * acontecer depois. Se o arquivo já for JPEG, não há o que fazer — é o caso
+ * comum, quando a conversão do navegador funcionou.
+ *
+ * Falhar aqui não pode derrubar o envio: a foto original continua valendo, e
+ * a cliente não perde o que mandou.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function normalizarNoStorage(
+  sb: any,
+  userId: string,
+  url: string,
+  sufixo = '',
+): Promise<{ url: string; jpeg: Uint8Array<ArrayBuffer> } | null> {
+  try {
+    const caminho = caminhoDoStorage(url);
+    if (!caminho) return null;
+    if (/\.jpe?g$/i.test(caminho)) {
+      // Já é JPEG: só busca o conteúdo para a geração do plano, sem reescrever.
+      const r = await fetch(url);
+      if (!r.ok) return null;
+      return { url, jpeg: new Uint8Array(await r.arrayBuffer()) as Uint8Array<ArrayBuffer> };
+    }
+
+    const r = await fetch(url);
+    if (!r.ok) return null;
+    const jpeg = await normalizarParaJpeg(new Uint8Array(await r.arrayBuffer()));
+    if (!jpeg) {
+      await logServerError({
+        route: 'meu-plano/photo',
+        err: new Error(`nao_consegui_converter:${caminho.split('.').pop()}`),
+        severity: 'warning',
+        context: { impact: 'foto ficou no formato original', caminho },
+      });
+      return null;
+    }
+
+    const novoCaminho = `${userId}/${Date.now()}${sufixo}-conv.jpg`;
+    const { error } = await sb.storage.from('hair-photos')
+      .upload(novoCaminho, new Uint8Array(jpeg), { contentType: MIME_NORMALIZADO, upsert: false });
+    if (error) return null;
+
+    // Original descartado: ele não serve para mais nada e ocupa espaço.
+    await sb.storage.from('hair-photos').remove([caminho]).catch?.(() => {});
+
+    const publica = sb.storage.from('hair-photos').getPublicUrl(novoCaminho).data.publicUrl;
+    return { url: publica, jpeg: new Uint8Array(jpeg) as Uint8Array<ArrayBuffer> };
+  } catch {
+    return null;
+  }
+}
+
+/** Caminho dentro do bucket a partir da URL pública. */
+function caminhoDoStorage(url: string): string | null {
+  const m = String(url).match(/\/storage\/v1\/object\/public\/hair-photos\/(.+)$/);
+  return m ? decodeURIComponent(m[1].split('?')[0]) : null;
 }

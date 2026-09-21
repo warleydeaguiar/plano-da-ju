@@ -1,18 +1,14 @@
 /**
  * Preparo da foto no navegador, antes de subir.
  *
- * O bucket `hair-photos` aceita só JPEG, PNG e WebP, com teto de tamanho. A
- * foto do iPhone é HEIC — e é aí que a cliente ficava travada: a conversão era
- * tentada por `createImageBitmap`, que falha com HEIC em vários navegadores, e
- * o código então subia o ARQUIVO ORIGINAL, que o storage recusava. A mensagem
- * falava em "verifique a conexão", quando o problema nunca foi a conexão.
+ * Converter aqui é bom porque encolhe a imagem: sobe mais rápido no 4G da
+ * cliente e economiza trabalho do servidor. Mas não é obrigatório — quando o
+ * navegador não dá conta (HEIC do iPhone é o caso comum), o arquivo sobe como
+ * veio e o SERVIDOR converte para JPEG e descarta o original.
  *
- * Aqui a conversão tem duas tentativas (bitmap e, se falhar, <img>, que o
- * Safari decodifica nativamente para HEIC) e, quando nenhuma funciona, o envio
- * para com um aviso que diz o que fazer — em vez de falhar no meio do caminho.
+ * Duas tentativas de conversão: `createImageBitmap` e, se falhar, `<img>`, que
+ * é o caminho que o Safari decodifica para HEIC.
  */
-const TIPOS_ACEITOS = ['image/jpeg', 'image/png', 'image/webp'];
-
 export class FotoNaoSuportada extends Error {
   constructor(msg: string) {
     super(msg);
@@ -74,20 +70,21 @@ export async function prepararFoto(file: File, maxDim = 1600, quality = 0.82): P
   const canvas = await desenhar(file, maxDim);
 
   if (!canvas) {
-    // Sem conversão: só passa adiante se o arquivo já for de um tipo aceito e
-    // couber. Mandar um HEIC de 12 MB era garantia de erro lá na frente.
-    if (TIPOS_ACEITOS.includes(file.type) && file.size <= 9 * 1024 * 1024) return file;
-    avisarFalhaDeFoto('nao_consegui_decodificar', file, 'preparo');
+    // Sem conversão aqui, segue o original: o servidor converte para JPEG e
+    // descarta o que veio (lib/imagem-servidor). O único limite que resta é o
+    // tamanho do bucket.
+    avisarFalhaDeFoto('convertido_no_servidor', file, 'preparo');
+    if (file.size <= 25 * 1024 * 1024) return file;
     throw new FotoNaoSuportada(
-      'Não consegui abrir essa foto aqui. Tente escolher outra imagem ou tirar uma foto nova pela câmera do aplicativo.',
+      'Essa foto é muito pesada (acima de 25 MB). Tente tirar uma foto nova pela câmera do aplicativo.',
     );
   }
 
   const blob: Blob | null = await new Promise(res => canvas.toBlob(res, 'image/jpeg', quality));
   if (!blob) {
-    if (TIPOS_ACEITOS.includes(file.type) && file.size <= 9 * 1024 * 1024) return file;
     avisarFalhaDeFoto('toBlob_vazio', file, 'preparo');
-    throw new FotoNaoSuportada('Não consegui preparar essa foto. Tente tirar uma foto nova pela câmera do aplicativo.');
+    if (file.size <= 25 * 1024 * 1024) return file;
+    throw new FotoNaoSuportada('Essa foto é muito pesada (acima de 25 MB). Tente tirar uma foto nova pela câmera do aplicativo.');
   }
 
   const nome = (file.name || 'foto').replace(/\.[^.]+$/, '') + '.jpg';
