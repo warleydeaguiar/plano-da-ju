@@ -137,19 +137,29 @@ export async function PATCH(
       // Lê o estado anterior pra saber se está TRANSICIONANDO pra ready (evita re-envio do email)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: priorProfile } = await (sb.from('profiles') as any)
-        .select('email, full_name, plan_status, checkout_session_id')
+        .select('email, full_name, plan_status, checkout_session_id, plan_released_at')
         .eq('id', userId)
         .maybeSingle();
 
       const wasNotReady = priorProfile && priorProfile.plan_status !== 'ready';
+      // Quem paga tem o plano retido até a consulta no WhatsApp: a data de
+      // abertura já está marcada lá na frente. Aprovar a semana NÃO pode
+      // antecipar isso — senão o plano abre sozinho e a consulta deixa de
+      // acontecer. Só definimos a data quando não existe nenhuma (cortesia UGC,
+      // que abre na hora).
+      const retido = priorProfile?.plan_released_at
+        && new Date(priorProfile.plan_released_at).getTime() > Date.now();
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (sb.from('profiles') as any)
-        .update({ plan_status: 'ready', plan_released_at: new Date().toISOString() })
+        .update(retido
+          ? { plan_status: 'ready' }
+          : { plan_status: 'ready', plan_released_at: new Date().toISOString() })
         .eq('id', userId);
 
-      // Dispara email de "Plano pronto" só na transição (fire-and-forget — não bloqueia approve)
-      if (wasNotReady && priorProfile?.email) {
+      // Dispara email de "Plano pronto" só na transição (fire-and-forget — não bloqueia approve).
+      // Retido não recebe: o aviso de liberação sai no cron, quando o plano abrir de verdade.
+      if (wasNotReady && !retido && priorProfile?.email) {
         sendPlanReadyEmail(sb, {
           email: priorProfile.email,
           name: priorProfile.full_name ?? null,

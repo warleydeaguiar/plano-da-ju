@@ -116,6 +116,14 @@ interface PreparedRecipient {
  * Tolerância é metade do intervalo do cron (5min) — assim cada lead é atingido exatamente uma vez.
  */
 async function findEligibleRecipients(sb: any, seq: any, toleranceMinutes = 6): Promise<PreparedRecipient[]> {
+  // Âncora que o cron não sabe calcular = sequência disparada por CÓDIGO, não
+  // por tempo (hoje: 'plan_ready', enviada quando a Juliane aprova o plano).
+  // Sem esta saída, ela caía no caminho padrão e buscava LEADS recém-criados:
+  // 3.276 pessoas que nunca compraram receberam "seu plano está pronto e
+  // liberado no app" em 30 dias, clicaram e não acharam plano nenhum.
+  if (seq.anchor_event && seq.anchor_event !== 'purchase' && seq.anchor_event !== 'lead_created') {
+    return []
+  }
   const totalMin = totalDelayMinutes(seq)
   const now = Date.now()
   const maxIso = new Date(now - (totalMin - toleranceMinutes) * 60_000).toISOString()
@@ -174,10 +182,12 @@ async function filterByAudience(sb: any, recipients: PreparedRecipient[], audien
   if (audience === 'no_purchase') {
     return recipients.filter(r => !activeSet.has(r.to_email.toLowerCase()))
   }
-  if (audience === 'customers') {
+  if (audience === 'customers' || audience === 'paid') {
     return recipients.filter(r => activeSet.has(r.to_email.toLowerCase()))
   }
-  return recipients
+  // Audiência desconhecida: trata como cliente pagante, que é o caso restrito.
+  // Devolver a lista inteira era o que deixava e-mail de cliente chegar a lead.
+  return recipients.filter(r => activeSet.has(r.to_email.toLowerCase()))
 }
 
 /**
