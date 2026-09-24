@@ -56,7 +56,7 @@ async function run(req: NextRequest) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data } = await (sb.from('profiles') as any)
-    .select('id, email, full_name, plano_liberado_em, plano_liberado_por')
+    .select('id, email, full_name, plano_liberado_em, plano_liberado_por, subscription_type, is_gift')
     .eq('subscription_status', 'active')
     .eq('plan_status', 'ready')
     .is('plan_delivered_email_sent_at', null)
@@ -78,11 +78,12 @@ async function run(req: NextRequest) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (sb.from('profiles') as any).update({
           plan_delivered_email_sent_at: new Date().toISOString(),
-          // Quem não foi liberada no botão chegou aqui pelo prazo de 3 dias.
-          // Guardar a diferença é o que permite saber depois quantas consultas
-          // realmente aconteceram.
+          // Só chega aqui quem já tem data de abertura: a cliente pagante pelo
+          // clique em "Liberar plano", e a cortesia pelo prazo curto dela.
+          // Guardar a origem é o que permite saber quantas consultas aconteceram.
           plano_liberado_em: p.plano_liberado_em ?? new Date().toISOString(),
-          plano_liberado_por: p.plano_liberado_por ?? 'prazo',
+          plano_liberado_por: p.plano_liberado_por
+            ?? (p.subscription_type === 'parceria' || p.is_gift === true ? 'cortesia' : 'manual'),
         }).eq('id', p.id)
       } else { failed++ }
     } catch { failed++ }

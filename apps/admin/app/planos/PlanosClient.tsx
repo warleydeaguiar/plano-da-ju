@@ -50,6 +50,7 @@ const STAGE_CONFIG: Record<string, { label: string; color: string; bg: string }>
   awaiting_photo: { label: 'Aguardando foto',  color: '#D97706', bg: 'rgba(255,149,0,0.10)' },
   processing:     { label: 'Processando IA',   color: '#2563EB', bg: 'rgba(0,122,255,0.10)' },
   needs_review:   { label: 'Pra revisar',      color: ACCENT,    bg: 'rgba(196,96,122,0.10)' },
+  awaiting_release:{ label: 'Liberar p/ cliente', color: '#B45309', bg: 'rgba(245,158,11,0.16)' },
   approved:       { label: 'Entregue',         color: '#22A06B', bg: 'rgba(52,199,89,0.10)'  },
   no_subscription:{ label: 'Sem assinatura',   color: '#7C6B7E', bg: 'rgba(138,138,142,0.10)'},
 };
@@ -74,7 +75,7 @@ interface PlanCard {
   approved: boolean;
   created_at: string;
   juliane_notes: string | null;
-  stage?: 'awaiting_photo' | 'processing' | 'needs_review' | 'approved' | 'no_subscription';
+  stage?: 'awaiting_photo' | 'processing' | 'needs_review' | 'approved' | 'awaiting_release' | 'no_subscription';
   plan_status?: string;
   has_plan?: boolean;
   has_photo?: boolean;
@@ -121,6 +122,9 @@ interface CatalogProduct {
 
 // ── Filter / tab constants ────────────────────────────────────────────────────
 const FILTER_TABS = [
+  // Primeira aba de propósito: é a fila de trabalho do dia. Sem prazo que
+  // libere sozinho, o plano de quem pagou fica parado até alguém clicar aqui.
+  { key: 'release'  as const, label: 'Liberar' },
   { key: 'pending'  as const, label: 'Incompletos' },
   { key: 'approved' as const, label: 'Entregues'   },
   { key: 'all'      as const, label: 'Todos'       },
@@ -565,7 +569,7 @@ export default function PlanosClient(
   const [revisions, setRevisions]     = useState<RevisionRequest[]>(revisionRequests);
   const [resolving, setResolving]     = useState<string | null>(null);
   const [revOpen, setRevOpen]         = useState(false); // painel de pedidos de ajuste recolhido por padrão
-  const [filterTab, setFilterTab]     = useState<'pending' | 'approved' | 'all'>('pending');
+  const [filterTab, setFilterTab]     = useState<'release' | 'pending' | 'approved' | 'all'>('release');
   const [search, setSearch]           = useState('');
   // A lista pode ter milhares de ativas — renderiza em blocos de 50 pra não travar
   // o navegador (o "infinito" que pesava). Reseta ao trocar filtro/busca.
@@ -623,8 +627,10 @@ export default function PlanosClient(
   // (plano gerado + ready). "Incompletos" = ainda sem plano (aguardando foto /
   // gerando / travado) — esses sim precisam de atenção.
   const isDelivered = useCallback((c: PlanCard) => c.stage === 'approved', []);
+  const aguardaLiberacao = useCallback((c: PlanCard) => c.stage === 'awaiting_release', []);
   const filtered = useMemo(() => {
-    let list = filterTab === 'pending' ? cards.filter(c => !isDelivered(c))
+    let list = filterTab === 'release' ? cards.filter(c => aguardaLiberacao(c))
+      : filterTab === 'pending' ? cards.filter(c => !isDelivered(c) && !aguardaLiberacao(c))
       : filterTab === 'approved' ? cards.filter(c => isDelivered(c))
       : cards;
     const q = search.trim().toLowerCase();
@@ -643,10 +649,11 @@ export default function PlanosClient(
   useEffect(() => { setVisibleCount(50); }, [filterTab, search]);
 
   const counts = useMemo(() => ({
-    pending:  cards.filter(c => !isDelivered(c)).length,
+    release:  cards.filter(c =>  aguardaLiberacao(c)).length,
+    pending:  cards.filter(c => !isDelivered(c) && !aguardaLiberacao(c)).length,
     approved: cards.filter(c =>  isDelivered(c)).length,
     all:      cards.length,
-  }), [cards, isDelivered]);
+  }), [cards, isDelivered, aguardaLiberacao]);
 
   const selected = useMemo(
     () => cards.find(c => c.user_id === selectedUserId) ?? null,
@@ -1051,6 +1058,7 @@ export default function PlanosClient(
               {filtered.length === 0 ? (
                 <div style={{ padding: 30, textAlign: 'center', color: '#7C6B7E', fontSize: 13 }}>
                   {filterTab === 'pending' ? 'Nenhum plano incompleto 🎉'
+                    : filterTab === 'release' ? 'Ninguém esperando liberação 🎉'
                     : filterTab === 'approved' ? 'Nenhum plano entregue ainda'
                     : 'Sem planos no sistema'}
                 </div>
@@ -1169,7 +1177,7 @@ export default function PlanosClient(
                   <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
                     {/* Liberar o plano depois da consulta no WhatsApp. O plano
                         de quem paga nasce retido; sem este botão a cliente
-                        esperaria os 3 dias do prazo mesmo já atendida. */}
+                        ficaria esperando para sempre — não há prazo automático. */}
                     <button
                       onClick={async () => {
                         if (!confirm('Liberar o plano para esta cliente ver agora?')) return;

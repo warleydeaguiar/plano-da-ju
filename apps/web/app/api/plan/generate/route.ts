@@ -153,9 +153,10 @@ export async function POST(req: NextRequest) {
     //
     // Quem PAGOU: o plano fica retido até a consulta no WhatsApp. Entregar pelo
     // app e pronto não sustentava a indicação dos produtos — a cliente recebia
-    // um PDF e não falava com ninguém. O prazo de 3 dias é a rede de proteção:
-    // se a consulta não acontecer, o plano abre sozinho e ninguém fica sem o
-    // que pagou.
+    // um PDF e não falava com ninguém. Não há prazo que solte sozinho: o plano
+    // abre quando alguém da equipe clica em "Liberar plano" no painel. O prazo
+    // automático de 3 dias existiu até 24/09/2026 e foi removido porque
+    // transformava a consulta em formalidade — bastava esperar.
     const now = Date.now();
     // Cortesia = parceria (UGC da Bianca) OU acesso dado de presente. Quem
     // não pagou não tem consulta para fazer — segurar o plano dela seria

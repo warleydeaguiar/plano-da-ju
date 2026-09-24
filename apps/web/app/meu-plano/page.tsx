@@ -19,6 +19,7 @@ import { normalizeTasks } from './plan-helpers';
 import { previewCtx, fetchPreviewBundle } from './preview';
 import CanalInstagram from './CanalInstagram';
 import { prepararFoto, FotoNaoSuportada } from '@/lib/foto-upload';
+import { planoVisivel } from '@/lib/liberacao-plano';
 
 // ── types ────────────────────────────────────────────────
 interface HairState {
@@ -61,6 +62,8 @@ interface Profile {
   avatar_url: string | null;
   /** Quando o plano fica visível. No futuro = ainda esperando a consulta. */
   plan_released_at?: string | null;
+  subscription_type?: string | null;
+  is_gift?: boolean | null;
 }
 interface HairEvent {
   event_type: string;
@@ -298,7 +301,7 @@ export default function HojePage() {
 
     const [p, pl, hs, ev, ci, ph] = await Promise.all([
       supabase.from('profiles')
-        .select('full_name,hair_type,subscription_status,plan_status,quiz_answers,avatar_url,plan_released_at')
+        .select('full_name,hair_type,subscription_status,subscription_type,is_gift,plan_status,quiz_answers,avatar_url,plan_released_at')
         .eq('id', uid).single(),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase as any).from('hair_plans')
@@ -490,7 +493,9 @@ export default function HojePage() {
   // direto e mostrava tarefa, produto e próximo passo mesmo com o plano
   // fechado — a consulta virava opcional. Enquanto não liberar, esta tela
   // trabalha como se ainda não houvesse plano.
-  const planoLiberado = !profile?.plan_released_at || new Date(profile.plan_released_at).getTime() <= Date.now();
+  // planoVisivel: para quem pagou, SEM data = retido (esperando a liberação no
+  // painel). Ler isso "na mão" aqui era o que deixava o plano vazar antes.
+  const planoLiberado = planoVisivel(profile ?? {});
   const planosVisiveis = planoLiberado ? plans : [];
   const rec       = planoLiberado ? getRecommendation(hairState, profile, planosVisiveis[0]) : null;
   const upcoming  = buildUpcoming(planosVisiveis[0], events);

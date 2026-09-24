@@ -34,7 +34,7 @@ export async function PATCH(
   // ── Liberar o plano para a cliente ver ──────────────────────────────────
   // Fluxo novo: o plano de quem PAGOU nasce retido esperando a consulta no
   // WhatsApp. Aqui a Juliane solta depois de conversar. Sem isto a cliente
-  // esperaria os 3 dias do prazo mesmo tendo sido atendida hoje.
+  // ficaria esperando para sempre, porque não existe mais prazo automático.
   if (action === 'liberar_plano') {
     // Quem já está com o plano aberto não pode ser "liberada" de novo: isso
     // reenviaria o e-mail de entrega e empurraria a data de retorno do PDF
@@ -137,18 +137,18 @@ export async function PATCH(
       // Lê o estado anterior pra saber se está TRANSICIONANDO pra ready (evita re-envio do email)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: priorProfile } = await (sb.from('profiles') as any)
-        .select('email, full_name, plan_status, checkout_session_id, plan_released_at')
+        .select('email, full_name, plan_status, checkout_session_id, plan_released_at, subscription_type, is_gift')
         .eq('id', userId)
         .maybeSingle();
 
       const wasNotReady = priorProfile && priorProfile.plan_status !== 'ready';
-      // Quem paga tem o plano retido até a consulta no WhatsApp: a data de
-      // abertura já está marcada lá na frente. Aprovar a semana NÃO pode
-      // antecipar isso — senão o plano abre sozinho e a consulta deixa de
-      // acontecer. Só definimos a data quando não existe nenhuma (cortesia UGC,
-      // que abre na hora).
-      const retido = priorProfile?.plan_released_at
-        && new Date(priorProfile.plan_released_at).getTime() > Date.now();
+      // Quem paga só abre quando alguém clica em "Liberar plano". Aprovar uma
+      // semana NÃO pode antecipar isso — senão a consulta deixa de acontecer.
+      // Cortesia (parceria/presente) continua abrindo sozinha.
+      const gratuito = priorProfile?.subscription_type === 'parceria' || priorProfile?.is_gift === true;
+      const jaAberto = priorProfile?.plan_released_at
+        && new Date(priorProfile.plan_released_at).getTime() <= Date.now();
+      const retido = !gratuito && !jaAberto;
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (sb.from('profiles') as any)

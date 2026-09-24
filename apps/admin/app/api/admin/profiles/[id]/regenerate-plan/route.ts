@@ -35,7 +35,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: profile } = await (sb.from('profiles') as any)
-      .select('id, email, full_name, hair_type, quiz_answers, photo_url')
+      .select('id, email, full_name, hair_type, quiz_answers, photo_url, subscription_type, is_gift, plan_released_at')
       .eq('id', id)
       .single()
     if (!profile) return NextResponse.json({ error: 'Profile não encontrado' }, { status: 404 })
@@ -184,9 +184,18 @@ Gere ${WEEKS_TO_GENERATE} semanas (cronograma capilar: hidratação/nutrição/r
     await (sb.from('hair_plans') as any).insert(rows)
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // Refazer o plano NÃO libera: quem paga só abre quando alguém clica em
+    // "Liberar plano". Sem esta guarda, regenerar o plano de uma cliente que
+    // ainda não passou pela consulta entregava o plano por um caminho lateral.
+    const gratuito = profile.subscription_type === 'parceria' || profile.is_gift === true
+    const jaAberto = profile.plan_released_at
+      && new Date(profile.plan_released_at).getTime() <= Date.now()
+    const liberaAgora = gratuito || jaAberto
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (sb.from('profiles') as any).update({
       plan_status: 'ready',
-      plan_released_at: new Date().toISOString(),
+      ...(liberaAgora ? { plan_released_at: profile.plan_released_at ?? new Date().toISOString() } : {}),
       hair_type: plan.tipo_cabelo?.toLowerCase() ?? profile.hair_type,
     }).eq('id', id)
 

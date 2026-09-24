@@ -1,5 +1,6 @@
 import { createAdminClient } from '../../lib/supabase';
 import PlanosClient from './PlanosClient';
+import { planoVisivel } from '@/lib/liberacao-plano'
 
 export const metadata = { title: 'Revisão de Planos — Admin Plano da Ju' };
 export const dynamic = 'force-dynamic';
@@ -19,7 +20,7 @@ interface PlanCardData {
   approved: boolean;
   created_at: string;
   juliane_notes: string | null;
-  stage: 'awaiting_photo' | 'processing' | 'needs_review' | 'approved' | 'no_subscription';
+  stage: 'awaiting_photo' | 'processing' | 'needs_review' | 'approved' | 'awaiting_release' | 'no_subscription';
   plan_status: string;
   has_plan: boolean;
   has_photo: boolean;
@@ -42,7 +43,7 @@ export default async function PlanosPage({
   // 1) Todas as assinantes ATIVAS — agora com quiz_answers + campos de perfil
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let profilesQuery = (sb.from('profiles') as any)
-    .select('id,full_name,email,phone,hair_type,porosity,main_problems,chemical_history,hair_length_cm,budget_range,quiz_answers,plan_status,photo_url,photo_back_url,photo_root_url,recommended_products,subscription_status,subscription_activated_at,created_at,is_gift,subscription_type')
+    .select('id,full_name,email,phone,hair_type,porosity,main_problems,chemical_history,hair_length_cm,budget_range,quiz_answers,plan_status,plan_released_at,photo_url,photo_back_url,photo_root_url,recommended_products,subscription_status,subscription_activated_at,created_at,is_gift,subscription_type')
     .eq('subscription_status', 'active');
   // Filtro UGC/grátis: server-side. UGC = parceria (Bianca) OU presente (is_gift).
   if (giftMode) profilesQuery = profilesQuery.or('is_gift.eq.true,subscription_type.eq.parceria');
@@ -103,8 +104,14 @@ export default async function PlanosPage({
     // Entrega é AUTOMÁTICA: plano gerado + status 'ready' = ENTREGUE (não precisa
     // de aprovação manual). 'needs_review' só sobra p/ casos raros (tem plano mas
     // status não-ready). Incompletos reais = sem plano (aguardando foto ou gerando).
+    // Plano pronto mas ainda RETIDO é a fila de trabalho da equipe: sem prazo
+    // automático, ninguém abre no lugar dela. Antes isto aparecia como
+    // "Entregue" — e a cliente esperava sem que ninguém soubesse.
+    const retido = hasPlan && p.plan_status === 'ready' && !planoVisivel(p);
+
     let stage: PlanCardData['stage'];
-    if (plan?.approved_by_juliane || (hasPlan && p.plan_status === 'ready')) stage = 'approved';
+    if (retido)                     stage = 'awaiting_release';
+    else if (plan?.approved_by_juliane || (hasPlan && p.plan_status === 'ready')) stage = 'approved';
     else if (hasPlan)               stage = 'needs_review';
     else if (p.plan_status === 'processing') stage = 'processing';
     else if (!hasPhoto)             stage = 'awaiting_photo';
