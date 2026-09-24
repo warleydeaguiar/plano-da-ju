@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { fotoParaIA } from '@/lib/imagem-servidor';
 
 // Tipo do produto que vai entrar no prompt
 interface CatalogProduct {
@@ -316,6 +317,17 @@ export async function generatePlanWithClaude(
 
   const hadPhoto = !!(args.photo.photoBase64 || args.photo.photoUrl || (args.photo.extraPhotoUrls?.some(Boolean)));
 
+  /**
+   * Fotos já reduzidas para o tamanho que a IA precisa (ver LADO_FOTO_IA).
+   * Se alguma falhar, segue com a URL original — nunca deixa de gerar o plano.
+   */
+  const urlsDasFotos = [args.photo.photoUrl, ...(args.photo.extraPhotoUrls ?? [])].filter(Boolean) as string[];
+  const fotosLeves = new Map<string, string>();
+  await Promise.all(urlsDasFotos.map(async (u) => {
+    const leve = await fotoParaIA(u);
+    if (leve) fotosLeves.set(u, leve);
+  }));
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function buildContent(dropPhoto: boolean): any[] {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -324,10 +336,10 @@ export async function generatePlanWithClaude(
       if (args.photo.photoBase64) {
         content.push({ type: 'image_url', image_url: { url: `data:${args.photo.photoMimeType || 'image/jpeg'};base64,${args.photo.photoBase64}` } });
       } else if (args.photo.photoUrl) {
-        content.push({ type: 'image_url', image_url: { url: args.photo.photoUrl } });
+        content.push({ type: 'image_url', image_url: { url: fotosLeves.get(args.photo.photoUrl) ?? args.photo.photoUrl } });
       }
       for (const url of (args.photo.extraPhotoUrls ?? [])) {
-        if (url) content.push({ type: 'image_url', image_url: { url } });
+        if (url) content.push({ type: 'image_url', image_url: { url: fotosLeves.get(url) ?? url } });
       }
     }
     const nFotos = content.filter(c => c.type === 'image_url').length;
