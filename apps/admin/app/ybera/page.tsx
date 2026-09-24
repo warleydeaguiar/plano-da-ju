@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase'
-import { getGrupoAdSpend } from '@/lib/meta-ads'
+import { getGrupoAdSpend, getGrupoAdSpendPorMes } from '@/lib/meta-ads'
 import { fetchCurrentMonthOrders, fetchYberaOrders, groupByMonth, type YberaOrder } from '@/lib/ybera-api'
 import Sidebar from '../components/Sidebar'
 
@@ -91,6 +91,23 @@ export default async function YberaPage() {
       meta: null,
       custo_por_lead: null,
     })
+  }
+
+  // Meses cujo gasto com anúncios nunca foi digitado: busca na Meta.
+  // A planilha parou em maio e junho–setembro apareciam com R$ 0, zerando CPL e
+  // ROI — parecia que não houve investimento, quando só faltava a digitação.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mesesSemAnuncio = (rows as any[])
+    .filter((r) => r.year_month !== currentYM && !(r.anuncios > 0))
+    .map((r) => r.year_month as string)
+    .slice(0, 12)
+  const gastoDaMeta = await getGrupoAdSpendPorMes(mesesSemAnuncio)
+  for (const r of rows as any[]) {
+    const daMeta = gastoDaMeta[r.year_month]
+    if (typeof daMeta === 'number' && daMeta > 0) {
+      r.anuncios = daMeta
+      r.anuncios_da_meta = true
+    }
   }
 
   const current   = rows.find((r: any) => r.year_month === currentYM)

@@ -151,3 +151,48 @@ async function getMonthlySpend(): Promise<Array<{ month: string; spend: number }
     return ai - bi
   }).reverse()
 }
+
+/**
+ * Gasto com campanhas "Grupo" em CADA mês pedido (chave `YYYY-MM`).
+ *
+ * A tabela do /ybera é preenchida à mão a partir de uma planilha, e a digitação
+ * parou em maio: junho, julho, agosto e setembro apareciam com R$ 0 em
+ * anúncios, o que zerava CPL e ROI e fazia parecer que não houve investimento.
+ * Aqui o número vem da própria Meta, do mesmo jeito que já vinha para o mês
+ * corrente — sem depender de ninguém lembrar de digitar.
+ *
+ * Mês que a Meta não souber responder volta como `null` (e não como zero): zero
+ * é uma afirmação — "não gastamos nada" — e era justamente a afirmação errada.
+ */
+export async function getGrupoAdSpendPorMes(
+  meses: string[],
+): Promise<Record<string, number | null>> {
+  const saida: Record<string, number | null> = {}
+  if (!TOKEN || !ACCOUNT_ID || meses.length === 0) return saida
+
+  await Promise.allSettled(meses.map(async (ym) => {
+    saida[ym] = null
+    const [ano, mes] = ym.split('-').map(Number)
+    if (!ano || !mes) return
+    const ultimoDia = new Date(ano, mes, 0).getDate()
+    const params = new URLSearchParams({
+      level:        'campaign',
+      fields:       'campaign_name,spend',
+      time_range:   JSON.stringify({ since: `${ym}-01`, until: `${ym}-${String(ultimoDia).padStart(2, '0')}` }),
+      access_token: TOKEN!,
+      limit:        '500',
+    })
+    try {
+      const r = await fetch(`${BASE}/${ACCOUNT_ID}/insights?${params}`, { next: { revalidate: 21600 } })
+      const json = await r.json()
+      if (!r.ok || json?.error || !Array.isArray(json?.data)) return
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const gasto = (json.data as any[])
+        .filter((d) => isGrupoCampaign(d.campaign_name))
+        .reduce((s, d) => s + parseFloat(d.spend ?? '0'), 0)
+      saida[ym] = (1 + META_TAX_RATE) * gasto
+    } catch { /* fica null: melhor sem número do que com número errado */ }
+  }))
+
+  return saida
+}
