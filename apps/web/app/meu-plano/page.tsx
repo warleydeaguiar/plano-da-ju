@@ -289,7 +289,17 @@ export default function HojePage() {
     if (!session) { router.push('/login'); return; }
     setAccessToken(session.access_token);
     const uid = session.user.id;
-    const today = new Date().toISOString().split('T')[0];
+    // Início do dia no fuso de São Paulo — não em UTC.
+    //
+    // `toISOString()` devolve a data UTC: das 21h à meia-noite no Brasil ele já
+    // está no dia seguinte. Quem fazia o check-in nesse intervalo (18% deles,
+    // 129 em 60 dias) via "Check-in feito hoje!" no dia SEGUINTE inteiro, sem
+    // ter feito — e perdia o check-in do dia. O Brasil não usa mais horário de
+    // verão, então o -03:00 vale o ano todo.
+    const hojeBR = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(new Date());
+    const inicioDoDia = `${hojeBR}T00:00:00-03:00`;
 
     // Fetch matching stories (fire-and-forget — non-blocking)
     fetch('/api/meu-plano/stories', {
@@ -315,7 +325,7 @@ export default function HojePage() {
         .order('occurred_at', { ascending: false }).limit(30),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase as any).from('check_ins').select('id').eq('user_id', uid)
-        .gte('checked_at', today + 'T00:00:00').limit(1),
+        .gte('checked_at', inicioDoDia).limit(1),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase as any).from('photo_analyses').select('id', { count: 'exact', head: true }).eq('user_id', uid),
     ]);

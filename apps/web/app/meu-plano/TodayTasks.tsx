@@ -16,6 +16,7 @@ export default function TodayTasks() {
   const [token, setToken] = useState('');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -69,14 +70,16 @@ export default function TodayTasks() {
   async function toggle(task: string) {
     if (busy || !token) return;
     setBusy(task);
+    setErro(null);
     const doneId = doneMap[task];
     try {
       if (doneId) {
-        await fetch('/api/meu-plano/event', {
+        const r = await fetch('/api/meu-plano/event', {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({ event_id: doneId }),
         });
+        if (!r.ok) { setErro('Não consegui desmarcar agora. Tente de novo.'); return; }
         setDoneMap(m => { const n = { ...m }; delete n[task]; return n; });
       } else {
         const r = await fetch('/api/meu-plano/event', {
@@ -85,9 +88,19 @@ export default function TodayTasks() {
           body: JSON.stringify({ event_type: 'plan_task', notes: task }),
         });
         const d = await r.json().catch(() => ({}));
-        setDoneMap(m => ({ ...m, [task]: d.id ?? 'tmp' }));
+        // Só marca depois de o servidor confirmar, e só com o id real.
+        //
+        // Antes marcava o ✓ de qualquer jeito — inclusive quando a resposta era
+        // 401 (sessão expirada) ou 500 — e guardava 'tmp' no lugar do id. A
+        // cliente via a tarefa marcada, saía da tela e ao voltar tudo tinha
+        // sumido; o 'tmp' ainda impedia desmarcar depois. Era a reclamação mais
+        // repetida dos operadores ("seleciona o que fez no dia e depois some").
+        if (!r.ok || !d?.id) { setErro('Não consegui salvar agora. Tente de novo.'); return; }
+        setDoneMap(m => ({ ...m, [task]: d.id }));
       }
-    } catch { /* noop */ } finally { setBusy(null); }
+    } catch {
+      setErro('Falha de conexão. Tente de novo.');
+    } finally { setBusy(null); }
   }
 
   if (loading || tasks.length === 0) return null;
@@ -100,6 +113,15 @@ export default function TodayTasks() {
         <div style={{ fontSize: 14, fontWeight: 700, color: T.ink }}>💛 O que a Ju pediu hoje</div>
         <div style={{ fontSize: 11.5, color: T.inkMuted }}>Semana {week} · {doneCount}/{tasks.length}</div>
       </div>
+      {erro && (
+        <div style={{
+          marginBottom: 10, padding: '9px 11px', borderRadius: 10,
+          background: '#FFF4F2', border: '1px solid #F7C9BF',
+          fontSize: 12.5, color: '#9B3B23', lineHeight: 1.4,
+        }}>
+          {erro}
+        </div>
+      )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {tasks.map(task => {
           const done = !!doneMap[task];
