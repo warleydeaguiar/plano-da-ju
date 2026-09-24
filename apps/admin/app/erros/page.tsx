@@ -24,8 +24,12 @@ function ago(iso: string) {
 export default async function ErrosPage() {
   const sb = createAdminClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // 'info' fica de fora: é registro de comportamento normal (foto convertida no
+  // servidor, por exemplo). Misturado aqui, afogava os erros de verdade — eram
+  // 150 linhas de info contra 4 problemas reais na mesma semana.
   const { data } = await (sb.from('app_errors') as any)
     .select('id, route, severity, message, email, context, created_at')
+    .neq('severity', 'info')
     .order('created_at', { ascending: false })
     .limit(100);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -212,14 +212,33 @@ export default function OnboardingPage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const bySlot: Record<string, any> = Object.fromEntries(suData.uploads.map((u: any) => [u.slot, u]));
       const files: Record<string, File> = { front: frontC, back: backC, root: rootC };
+      // Três tentativas por foto, com espera crescente. "Failed to fetch" é
+      // queda momentânea de rede — e eram 39 casos em 14 dias, TODOS no
+      // Android, cada um derrubando o envio inteiro: a cliente tinha de
+      // escolher as três fotos de novo por causa de um tropeço de segundos.
+      async function subirComRetry(slot: string, u: { path: string; token: string }, file: File) {
+        const esperas = [0, 600, 1800];
+        let ultimo = '';
+        for (let tentativa = 0; tentativa < esperas.length; tentativa++) {
+          if (esperas[tentativa]) await new Promise(r => setTimeout(r, esperas[tentativa]));
+          const up = await supabase.storage.from('hair-photos').uploadToSignedUrl(u.path, u.token, file);
+          if (!up.error) {
+            // Só interessa saber das que precisaram de repetição: é o que diz
+            // se o retry está segurando o problema ou se ele piorou.
+            if (tentativa > 0) avisarFalhaDeFoto(`storage_ok_na_tentativa_${tentativa + 1}`, file, `upload_${slot}`);
+            return;
+          }
+          ultimo = up.error.message ?? 'erro';
+          setSubmitMsg(`Enviando suas fotos… (tentativa ${tentativa + 2})`);
+        }
+        avisarFalhaDeFoto(`storage:${ultimo}`, file, `upload_${slot}`);
+        throw new Error(motivoDoErroDeUpload(new Error(ultimo)));
+      }
+
       for (const slot of ['front', 'back', 'root']) {
         const u = bySlot[slot];
         if (!u) throw new Error('Falha ao preparar o envio das fotos.');
-        const up = await supabase.storage.from('hair-photos').uploadToSignedUrl(u.path, u.token, files[slot]);
-        if (up.error) {
-          avisarFalhaDeFoto(`storage:${up.error.message ?? 'erro'}`, files[slot], `upload_${slot}`);
-          throw new Error(motivoDoErroDeUpload(up.error));
-        }
+        await subirComRetry(slot, u, files[slot]);
       }
 
       const payload: Record<string, unknown> = {

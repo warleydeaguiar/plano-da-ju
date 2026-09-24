@@ -73,7 +73,11 @@ export async function prepararFoto(file: File, maxDim = 1600, quality = 0.82): P
     // Sem conversão aqui, segue o original: o servidor converte para JPEG e
     // descarta o que veio (lib/imagem-servidor). O único limite que resta é o
     // tamanho do bucket.
-    avisarFalhaDeFoto('convertido_no_servidor', file, 'preparo');
+    //
+    // Isto NÃO é falha — é o caminho normal desde que passamos a aceitar
+    // qualquer formato. Registrar como aviso enchia o painel de erros (150 em
+    // 7 dias, contra 4 erros de verdade) e ainda dizia "a cliente não
+    // conseguiu enviar a foto", o que era mentira: ela conseguiu.
     if (file.size <= 25 * 1024 * 1024) return file;
     throw new FotoNaoSuportada(
       'Essa foto é muito pesada (acima de 25 MB). Tente tirar uma foto nova pela câmera do aplicativo.',

@@ -464,7 +464,13 @@ export async function generatePlanWithClaude(
 
   let lastErr: unknown;
   for (let attempt = 1; attempt <= 2; attempt++) {
-    const dropPhoto = attempt === 2 && hadPhoto;
+    // A 2ª tentativa só descarta a foto quando a foto pode ser o problema.
+    // Se a 1ª falhou lendo o JSON da resposta (a IA fechou uma chave errada,
+    // por exemplo), jogar a foto fora piora o plano sem tratar a causa — o
+    // certo é repetir a mesma pergunta, que quase sempre sai bem na segunda.
+    const falhaDeLeitura = lastErr instanceof Error
+      && /JSON|Expected|truncada|não encontrado/i.test(lastErr.message);
+    const dropPhoto = attempt === 2 && hadPhoto && !falhaDeLeitura;
     try {
       return await requestPlan(dropPhoto);
     } catch (e) {
