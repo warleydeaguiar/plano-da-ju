@@ -240,7 +240,7 @@ function buildQuizBlock(quizAnswers: Record<string, unknown> | null): string {
 /**
  * Busca os produtos ativos do catálogo, priorizando os que casam com o tipo de cabelo.
  */
-async function loadCatalog(sb: SupabaseClient, hairType: string | null): Promise<CatalogProduct[]> {
+async function loadCatalog(sb: SupabaseClient): Promise<CatalogProduct[]> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data } = await (sb.from('products') as any)
     .select('id,name,brand,category,hair_types,is_priority,is_ybera')
@@ -249,12 +249,12 @@ async function loadCatalog(sb: SupabaseClient, hairType: string | null): Promise
     .order('is_priority', { ascending: false })
     .limit(50);
   const all: CatalogProduct[] = (data ?? []) as CatalogProduct[];
-  if (!hairType || all.length === 0) return all;
-
-  const h = hairType.toLowerCase();
-  const matching = all.filter(p => (p.hair_types ?? []).some(t => t.toLowerCase() === h));
-  const others = all.filter(p => !matching.includes(p));
-  return [...matching, ...others].slice(0, 30);
+  // ORDEM FIXA de propósito: o catálogo é a maior parte do prompt e só pode
+  // ficar em cache se for byte a byte igual entre as clientes. Antes ele era
+  // reordenado pelo tipo de cabelo de cada uma, o que dava um prompt diferente
+  // por cliente e impedia qualquer reaproveitamento. Cada linha já diz a que
+  // tipos o produto serve, e o prompt manda a IA filtrar por isso.
+  return all.slice(0, 30);
 }
 
 interface GenerateOptions {
@@ -311,9 +311,14 @@ export async function generatePlanWithClaude(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   opts?: { onUsage?: (usage: any) => void },
 ): Promise<GeneratedPlan> {
-  const catalog = await loadCatalog(sb, args.hairType ?? null);
+  const catalog = await loadCatalog(sb);
 
-  const fullPrompt = CONSTRAINED_PROMPT + buildCatalogBlock(catalog) + buildQuizBlock(args.quizAnswers);
+  // Bloco FIXO (instruções + catálogo) primeiro e marcado para cache: ele é
+  // igual em toda geração e responde por ~4.900 tokens de entrada. Relido do
+  // cache custa 10% do preço — o que importa nos lotes do cron, que geram
+  // vários planos seguidos dentro da janela de 5 minutos do cache.
+  const blocoFixo = CONSTRAINED_PROMPT + buildCatalogBlock(catalog);
+  const blocoVariavel = buildQuizBlock(args.quizAnswers);
 
   const hadPhoto = !!(args.photo.photoBase64 || args.photo.photoUrl || (args.photo.extraPhotoUrls?.some(Boolean)));
 
@@ -332,6 +337,8 @@ export async function generatePlanWithClaude(
   function buildContent(dropPhoto: boolean): any[] {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const content: any[] = [];
+    // O que não muda vem primeiro — é o pedaço que fica em cache.
+    content.push({ type: 'text', text: blocoFixo, cache_control: { type: 'ephemeral' } });
     if (!dropPhoto) {
       if (args.photo.photoBase64) {
         content.push({ type: 'image_url', image_url: { url: `data:${args.photo.photoMimeType || 'image/jpeg'};base64,${args.photo.photoBase64}` } });
@@ -349,7 +356,7 @@ export async function generatePlanWithClaude(
     if (nFotos === 0) {
       content.push({ type: 'text', text: 'SEM FOTO: a cliente NÃO enviou foto. Baseie TODO o plano no questionário. Em "analise_foto" preencha os scores com uma estimativa conservadora a partir das respostas e coloque em "observacoes": "Plano montado com base no seu questionário — a foto não foi enviada." A "mensagem_juliane" deve COMEÇAR dizendo com carinho que, como a foto não chegou, a Ju montou o plano pelas respostas, e convidar a enviar a foto depois pra ela ajustar.' });
     }
-    content.push({ type: 'text', text: fullPrompt });
+    content.push({ type: 'text', text: blocoVariavel });
     return content;
   }
 
