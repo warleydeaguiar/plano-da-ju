@@ -12,6 +12,7 @@ import { porPath, todosOsPaths, relacionados, faqDoPost, dataDeAtualizacao } fro
 import { metaDoConteudo, schemaDoPost } from '@/lib/seo';
 import { videosDaPagina } from '@/lib/video';
 import { extrairIndice, tempoDeLeitura, dividirPorSecoes } from '@/lib/artigo';
+import { prepararHtmlDoConteudo } from '@/lib/html-conteudo';
 
 export const revalidate = 3600; // literal: o Next analisa este export estaticamente
 export const dynamicParams = true;
@@ -60,9 +61,10 @@ export default async function Pagina({ params }: Props) {
   // uma dúvida específica e o plano responde justamente a ela. O corte cai
   // sempre antes de um H2, então nunca parte um parágrafo.
   const cortePlano = ehPost && indice.length >= 5 ? Math.ceil(indice.length / 2) : 0;
-  const blocos = cortePlano
+  const blocos = (cortePlano
     ? dividirPorSecoes(item.content_clean, [cortePlano])
-    : [item.content_clean || ''];
+    : [item.content_clean || '']
+  ).map(prepararHtmlDoConteudo);
 
   return (
     <>

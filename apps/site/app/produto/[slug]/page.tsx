@@ -6,6 +6,7 @@ import { porPath, todosOsPaths, dimensaoDaImagem, avaliacoesDoProduto } from '@/
 import { metaDoConteudo, schemaDoProduto } from '@/lib/seo';
 import { linkDoProduto } from '@/lib/whatsapp';
 import IconeWhatsapp from '../../components/IconeWhatsapp';
+import { prepararHtmlDoConteudo } from '@/lib/html-conteudo';
 
 export const revalidate = 3600; // literal: o Next analisa este export estaticamente
 export const dynamicParams = true;
@@ -110,7 +111,7 @@ export default async function PaginaProduto({ params }: Props) {
         <div
           className="artigo"
           style={{ marginTop: '3rem', maxWidth: 'var(--largura)' }}
-          dangerouslySetInnerHTML={{ __html: item.content_clean || '' }}
+          dangerouslySetInnerHTML={{ __html: prepararHtmlDoConteudo(item.content_clean) }}
         />
 
         <div style={{ maxWidth: 'var(--largura)' }}>

@@ -254,13 +254,14 @@ function Step1({ onNext, toastPeople }: { onNext: () => void; toastPeople: Testi
       {/* Hero (a imagem já traz selo, título e chamada — não repetimos em texto) */}
       <div style={{ width: '100%', borderRadius: 22, overflow: 'hidden', border: `1px solid ${T.line}`, background: T.paper }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        {/* WebP (87 KB) no lugar do PNG de 1,1 MB. width/height evitam o "pulo" do
-            layout enquanto carrega; fetchPriority alta porque é a imagem da 1ª dobra. */}
+        {/* WebP no lugar do PNG (2,2 MB → 233 KB). width/height evitam o "pulo"
+            do layout enquanto carrega; fetchPriority alta porque é a imagem da
+            1ª dobra. Trocada em 24/09/2026 pela arte da comparação de preço. */}
         <img
           src="/quiz/fashion-gold-hero.webp"
-          alt="Progressiva Fashion Gold com até 62% OFF — entre no grupo VIP do WhatsApp"
-          width={936}
-          height={812}
+          alt="Progressiva Fashion Gold: R$ 339,90 no site oficial e R$ 208,00 no grupo de promoções da Juliane"
+          width={941}
+          height={1672}
           fetchPriority="high"
           decoding="async"
           style={{ width: '100%', height: 'auto', display: 'block' }}

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Grade } from '../components/CardPost';
+import { GradeProdutos } from '../components/CardProduto';
 import { listar } from '@/lib/conteudo';
 import { SITE, BLOQUEAR_INDEXACAO } from '@/lib/seo';
 
@@ -21,7 +21,7 @@ export default async function Loja() {
         Cada produto aqui tem uma análise minha. A compra é feita no site do parceiro.
       </p>
       <div style={{ marginTop: '2rem' }}>
-        <Grade itens={produtos} />
+        <GradeProdutos itens={produtos} />
       </div>
     </section>
   );

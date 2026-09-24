@@ -73,6 +73,20 @@ body {
   border-radius: 10px;
 }
 
+/* O <figure> do WordPress vem com a largura do arquivo original (width="1024"
+   ou style="width:1024px"). Como a regra acima só alcançava a imagem, ela
+   obedecia ao figure de 1024px dentro de uma coluna de 335px e vazava a tela
+   no celular. O figure precisa encolher junto — `width: auto` derruba o
+   atributo, que pesa mais que a folha de estilo. */
+.artigo figure,
+.artigo .wp-caption,
+.artigo .wp-block-image {
+  max-width: 100%;
+  width: auto;
+  height: auto;
+  margin-inline: auto;
+}
+
 .artigo iframe { aspect-ratio: 16 / 9; width: 100%; }
 
 /* Tabela larga rola sozinha em vez de empurrar a página inteira. */
