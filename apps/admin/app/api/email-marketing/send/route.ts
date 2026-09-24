@@ -121,7 +121,7 @@ async function findEligibleRecipients(sb: any, seq: any, toleranceMinutes = 6): 
   // Sem esta saída, ela caía no caminho padrão e buscava LEADS recém-criados:
   // 3.276 pessoas que nunca compraram receberam "seu plano está pronto e
   // liberado no app" em 30 dias, clicaram e não acharam plano nenhum.
-  if (seq.anchor_event && seq.anchor_event !== 'purchase' && seq.anchor_event !== 'lead_created') {
+  if (seq.anchor_event && !['purchase', 'lead_created', 'plan_released'].includes(seq.anchor_event)) {
     return []
   }
   const totalMin = totalDelayMinutes(seq)
@@ -144,6 +144,29 @@ async function findEligibleRecipients(sb: any, seq: any, toleranceMinutes = 6): 
       to_name: p.full_name,
       session_id: p.quiz_session_id ?? null,
       anchor_at: p.subscription_activated_at,
+    }))
+  }
+
+  // Ancorado na ABERTURA do plano, não na compra.
+  //
+  // A régua de acompanhamento ("o combinado da primeira semana", "faz 30 dias
+  // que você começou") pressupõe que a cliente está seguindo o cronograma. Com
+  // o plano retido até a consulta, contar esses dias a partir do pagamento
+  // mandaria "abra o seu cronograma" para quem ainda não tem cronograma
+  // nenhum. O relógio certo é o da liberação.
+  if (seq.anchor_event === 'plan_released') {
+    const { data } = await sb.from('profiles')
+      .select('id, email, full_name, plano_liberado_em, quiz_session_id')
+      .eq('subscription_status', 'active')
+      .not('email', 'is', null)
+      .gte('plano_liberado_em', minIso)
+      .lte('plano_liberado_em', maxIso)
+    return (data ?? []).map((p: any) => ({
+      lead_id: null,
+      to_email: p.email,
+      to_name: p.full_name,
+      session_id: p.quiz_session_id ?? null,
+      anchor_at: p.plano_liberado_em,
     }))
   }
 
