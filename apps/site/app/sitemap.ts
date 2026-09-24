@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next';
-import { tudoParaSitemap, contar, dataDeAtualizacao } from '@/lib/conteudo';
+import { tudoParaSitemap, contar, dataDeAtualizacao, redirects } from '@/lib/conteudo';
 import { POR_PAGINA, caminhoDaPagina } from './blog/ListaBlog';
 import { SITE, categoriaIndexavel } from '@/lib/seo';
 
@@ -11,7 +11,13 @@ export const revalidate = 3600;
 const PESO: Record<string, number> = { post: 0.8, product: 0.6, page: 0.5, category: 0.4, product_cat: 0.4 };
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [itens, totalPosts] = await Promise.all([tudoParaSitemap(), contar('post')]);
+  const [itens, totalPosts, regras] = await Promise.all([tudoParaSitemap(), contar('post'), redirects()]);
+  // Caminho que redireciona não entra no sitemap: pedir rastreio de uma URL que
+  // responde 301 é sinal contraditório e vira "Página com redirecionamento" nas
+  // URLs enviadas do Search Console. Compara sem a barra final porque é assim
+  // que as regras são gravadas.
+  const semBarra = (p: string) => p.replace(/\/$/, '');
+  const redirecionados = new Set(regras.filter((r) => r.to_url).map((r) => semBarra(r.from_path)));
 
   const fixas: MetadataRoute.Sitemap = [
     { url: `${SITE}/`, changeFrequency: 'daily', priority: 1 },
@@ -32,6 +38,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Categoria fora do índice também sai do sitemap: pedir rastreio de uma
     // página marcada como noindex é sinal contraditório.
     .filter((i) => !i.categoria || categoriaIndexavel(i.categoria))
+    .filter((i) => !redirecionados.has(semBarra(i.path)))
     .map((i) => ({
       url: `${SITE}${i.path}`,
       // A revisão manual manda no lastmod: é o sinal que diz ao Google que
