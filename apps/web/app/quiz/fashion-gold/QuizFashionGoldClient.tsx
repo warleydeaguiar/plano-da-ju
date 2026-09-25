@@ -101,10 +101,14 @@ interface CTAProps {
 }
 function CTA({ children, onClick, variant = 'primary', disabled, loading, icon }: CTAProps) {
   const styles = {
+    // Dourado, não verde: a página inteira é dourada e vinho (a arte, a roleta,
+    // a barra de progresso) e o botão verde de WhatsApp era o único elemento
+    // fora dessa linha — além de prometer "WhatsApp" numa jornada que agora
+    // termina na loja.
     primary: {
-      background: disabled ? '#cfcfcf' : `linear-gradient(180deg, #1f9e4a 0%, ${T.greenDeep} 100%)`,
+      background: disabled ? '#cfcfcf' : `linear-gradient(180deg, #d9b878 0%, ${T.goldDeep} 100%)`,
       color: '#fff',
-      boxShadow: disabled ? 'none' : '0 6px 18px rgba(22,163,74,0.25), inset 0 1px 0 rgba(255,255,255,0.2)',
+      boxShadow: disabled ? 'none' : '0 8px 22px -6px rgba(138,109,47,0.55), inset 0 1px 0 rgba(255,255,255,0.28)',
     },
     dark: { background: T.ink, color: '#fff', boxShadow: '0 6px 18px rgba(0,0,0,0.18)' },
     outline: { background: 'transparent', color: T.ink, border: `1.5px solid ${T.ink}` },
@@ -264,7 +268,12 @@ function StepDescontoLiberado({ nome, href }: { nome: string; href: string }) {
       </div>
     }>
       <div style={{ textAlign: 'center', padding: '10px 0 4px' }}>
-        <div style={{ fontSize: 40, lineHeight: 1 }}>🎉</div>
+        <div style={{
+          width: 62, height: 62, borderRadius: '50%', margin: '0 auto',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'radial-gradient(circle at 35% 30%, #E4C99A, #8a6d2f)',
+          color: '#fff', fontSize: 28, boxShadow: '0 10px 24px -10px rgba(138,109,47,.8)',
+        }}>✓</div>
         <h2 style={{
           fontFamily: 'Playfair Display, serif', fontWeight: 600, fontSize: 25,
           color: T.ink, margin: '12px 0 6px', lineHeight: 1.25,
@@ -297,8 +306,8 @@ function StepDescontoLiberado({ nome, href }: { nome: string; href: string }) {
           à toa. */}
       <div style={{
         marginTop: 14, padding: '13px 15px', borderRadius: 14,
-        background: '#E9F9EE', border: '1px solid #A9E6BE',
-        fontSize: 13, color: '#1F7A55', lineHeight: 1.5, textAlign: 'center',
+        background: '#FFF8EE', border: `1px solid ${T.gold}`,
+        fontSize: 13, color: T.ink, lineHeight: 1.5, textAlign: 'center',
       }}>
         Vou te mandar no WhatsApp o convite do meu grupo de ofertas — é por lá que
         eu aviso das próximas promoções da Ybera.
@@ -585,14 +594,14 @@ function Step5({ onNext, phone, setPhone, toastPeople }: { onNext: () => void; p
         <p style={{ fontSize: 14, color: T.muted, lineHeight: 1.5, marginBottom: 24 }}>É por aqui que eu te mando o link com a condição da Progressiva Fashion Gold.</p>
         <label style={{ display: 'block' }}>
           <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, letterSpacing: 0.3 }}>Celular com DDD</div>
-          <div style={{ display: 'flex', alignItems: 'center', background: T.paper, border: `1.5px solid ${valid ? T.green : T.line}`, borderRadius: 14, padding: '0 14px', height: 56, transition: 'border-color 0.2s ease' }}>
+          <div style={{ display: 'flex', alignItems: 'center', background: T.paper, border: `1.5px solid ${valid ? T.gold : T.line}`, borderRadius: 14, padding: '0 14px', height: 56, transition: 'border-color 0.2s ease' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingRight: 10, marginRight: 10, borderRight: `1px solid ${T.line}`, height: 28 }}>
               <span style={{ fontSize: 18 }}>🇧🇷</span>
               <span style={{ fontWeight: 600, fontSize: 15 }}>+55</span>
             </div>
             <input autoFocus type="tel" value={display} onChange={e => setPhone(e.target.value)} placeholder="(11) 98765-4321"
               style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 16, fontFamily: fonts.ui, color: T.ink }} />
-            {valid && <svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="11" fill={T.green} /><path d="M6 11.5l3.5 3.5L16 8" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+            {valid && <svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="11" fill={T.goldDeep} /><path d="M6 11.5l3.5 3.5L16 8" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>}
           </div>
         </label>
         <div style={{ marginTop: 22, padding: 14, background: T.paper, border: `1px solid ${T.line}`, borderRadius: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -612,7 +621,10 @@ function Step5({ onNext, phone, setPhone, toastPeople }: { onNext: () => void; p
             <span style={{ color: T.ruby, fontWeight: 600 }}>95% · 5 restantes</span>
           </div>
           <div style={{ height: 6, background: '#ececec', borderRadius: 999, overflow: 'hidden' }}>
-            <div style={{ width: '95%', height: '100%', background: `linear-gradient(90deg, ${T.green}, ${T.ruby})` }} />
+            {/* Dourado → vinho, a mesma escala da roleta. O gradiente
+                verde→vermelho era o resto do desenho antigo e brigava com a
+                arte da página. */}
+            <div style={{ width: '95%', height: '100%', background: `linear-gradient(90deg, ${T.gold}, #9D174D)` }} />
           </div>
         </div>
       </div>
