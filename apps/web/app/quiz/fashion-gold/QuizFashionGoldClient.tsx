@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { newEventId, sendServerEvent } from '../../../lib/tracking-client'
+import { sortearLado, rotuloVariante, type ExperimentoAtivo } from '@/lib/ab'
+import RoletaFG from './RoletaFG'
 
 // ─── Design tokens ──────────────────────────────────────────
 const T = {
@@ -236,6 +238,125 @@ function Field({ label, value, onChange, placeholder, type = 'text' }: {
           style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 15, fontFamily: fonts.ui, color: T.ink }} />
       </div>
     </label>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════
+// TELA FINAL DA VARIANTE — desconto liberado + entrada no grupo
+// ═══════════════════════════════════════════════════════════
+/**
+ * Fecha o ciclo que a roleta abriu: mostra o desconto que ela conquistou e
+ * explica onde ele é entregue. O link com o preço fica no grupo, então este é
+ * o único caminho adiante — e o botão vai para a distribuição de grupos.
+ */
+function StepDescontoLiberado({ nome, href }: { nome: string; href: string }) {
+  const primeiro = (nome || '').trim().split(/\s+/)[0] ?? ''
+  return (
+    <StepShell step={4} total={4} footer={
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <a href={href} style={{ textDecoration: 'none' }}>
+          <CTA onClick={() => {}}>Entrar no grupo e pegar o link</CTA>
+        </a>
+        <div style={{ textAlign: 'center', fontSize: 11, color: T.muted }}>
+          O link com o valor promocional é enviado dentro do grupo
+        </div>
+      </div>
+    }>
+      <div style={{ textAlign: 'center', padding: '10px 0 4px' }}>
+        <div style={{ fontSize: 40, lineHeight: 1 }}>🎉</div>
+        <h2 style={{
+          fontFamily: 'Playfair Display, serif', fontWeight: 600, fontSize: 25,
+          color: T.ink, margin: '12px 0 6px', lineHeight: 1.25,
+        }}>
+          {primeiro ? `${primeiro}, seu desconto está garantido!` : 'Seu desconto está garantido!'}
+        </h2>
+      </div>
+
+      <div style={{
+        textAlign: 'center', padding: '24px 18px', borderRadius: 20, margin: '4px 0 16px',
+        background: 'linear-gradient(135deg,#FFF8EE,#F5E6D3)', border: `1px solid ${T.gold}`,
+      }}>
+        <div style={{ fontSize: 13, color: T.muted, textDecoration: 'line-through' }}>R$ 339,90</div>
+        <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 44, fontWeight: 700, color: T.ink, margin: '2px 0' }}>
+          R$ 208,00
+        </div>
+        <div style={{
+          display: 'inline-block', marginTop: 6, padding: '5px 14px', borderRadius: 99,
+          background: T.ink, color: '#FFF8EE', fontSize: 12.5, fontWeight: 800, letterSpacing: 0.5,
+        }}>
+          48% OFF garantido
+        </div>
+      </div>
+
+      <div style={{ fontSize: 14, color: T.ink, lineHeight: 1.6, textAlign: 'center' }}>
+        Agora é só entrar no grupo: é lá que eu mando o link com esse valor, e também
+        os avisos das próximas promoções da Ybera. 💛
+      </div>
+    </StepShell>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════
+// STEP 1-B — HERO COM ROLETA  (variante do teste A/B)
+// ═══════════════════════════════════════════════════════════
+/**
+ * Mesma promessa do hero padrão, com duas diferenças: a arte nova (que já traz
+ * o preço e o desconto) e a roleta no lugar do botão "Continuar".
+ *
+ * A ideia é trocar um clique passivo por uma ação — a pessoa descobre o próprio
+ * desconto antes de deixar os dados. O desconto revelado é o mesmo da campanha
+ * para todo mundo; a roleta é a forma de apresentá-lo.
+ */
+function Step1Roleta({ onGirou }: { onGirou: () => void }) {
+  const [revelado, setRevelado] = useState(false)
+  return (
+    <StepShell step={1} total={4} footer={
+      revelado ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <CTA onClick={onGirou}>Quero garantir meu desconto</CTA>
+          <div style={{ textAlign: 'center', fontSize: 11, color: T.muted }}>
+            Falta só confirmar seus dados para liberar o link
+          </div>
+        </div>
+      ) : (
+        <div style={{ textAlign: 'center', fontSize: 11.5, color: T.muted }}>
+          Gire a roleta para descobrir o seu desconto de hoje
+        </div>
+      )
+    }>
+      <div style={{ width: '100%', borderRadius: 22, overflow: 'hidden', border: `1px solid ${T.line}`, background: T.paper, marginBottom: 18 }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/quiz/fashion-gold-hero-b.webp"
+          alt="Progressiva Fashion Gold: de R$ 339,90 por R$ 208,00"
+          width={1080} height={1080}
+          fetchPriority="high" decoding="async"
+          style={{ width: '100%', height: 'auto', display: 'block' }}
+        />
+      </div>
+
+      {revelado ? (
+        <div style={{
+          textAlign: 'center', padding: '22px 18px', borderRadius: 20,
+          background: 'linear-gradient(135deg,#FFF8EE,#F5E6D3)', border: `1px solid ${T.gold}`,
+        }}>
+          <div style={{ fontSize: 11, letterSpacing: 1.6, textTransform: 'uppercase', color: T.goldDeep, fontWeight: 800 }}>
+            Desconto liberado
+          </div>
+          <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 40, fontWeight: 700, color: T.ink, margin: '6px 0 2px' }}>
+            48% OFF
+          </div>
+          <div style={{ fontSize: 15, color: T.ink, fontWeight: 600 }}>
+            A progressiva sai por <strong>R$ 208,00</strong>
+          </div>
+          <div style={{ fontSize: 12.5, color: T.muted, marginTop: 8, lineHeight: 1.5 }}>
+            De R$ 339,90 no site oficial. O link com esse valor é entregue dentro do grupo.
+          </div>
+        </div>
+      ) : (
+        <RoletaFG onPremio={() => setRevelado(true)} />
+      )}
+    </StepShell>
   )
 }
 
@@ -537,7 +658,7 @@ function Step7({ onSubmit, email, setEmail, loading }: {
 // ═══════════════════════════════════════════════════════════
 // QUIZ ROOT
 // ═══════════════════════════════════════════════════════════
-export default function QuizFashionGoldClient() {
+export default function QuizFashionGoldClient({ experimentos = [] }: { experimentos?: ExperimentoAtivo[] }) {
   const searchParams = useSearchParams()
   const [step, setStep] = useState(1)
   const [phone, setPhone] = useState('')
@@ -561,6 +682,21 @@ export default function QuizFashionGoldClient() {
     } catch { return `${Date.now()}-${Math.random().toString(36).slice(2)}` }
   }, [])
 
+  /**
+   * Lado do teste A/B desta visita.
+   *
+   * O rótulo (`flag_key:control` ou `flag_key:variant`) acompanha view, etapas
+   * e lead — é por ele que o painel /experimentos separa os dois grupos. Sem
+   * experimento rodando fica null e nada muda.
+   */
+  const experimento = experimentos[0] ?? null
+  const lado = useMemo(
+    () => (experimento && sessionId ? sortearLado(sessionId, experimento) : 'control'),
+    [experimento, sessionId],
+  )
+  const abVariant = experimento ? rotuloVariante(experimento, lado) : null
+  const mostraRoleta = lado === 'variant' && !!experimento
+
   // Rastrear view na montagem (com session_id → dá pra contar pessoas únicas)
   useEffect(() => {
     fetch('/api/quiz/view', {
@@ -569,6 +705,7 @@ export default function QuizFashionGoldClient() {
       body: JSON.stringify({
         quiz_slug: 'fashion-gold',
         session_id: sessionId,
+        ab_variant: abVariant,
         utm_source: searchParams.get('utm_source'),
         utm_campaign: searchParams.get('utm_campaign'),
       }),
@@ -582,7 +719,7 @@ export default function QuizFashionGoldClient() {
     fetch('/api/quiz/step-event', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ session_id: sessionId, quiz_slug: 'fashion-gold', step_index: step, step_id: ids[step] ?? `step_${step}`, event_type: 'viewed' }),
+      body: JSON.stringify({ session_id: sessionId, quiz_slug: 'fashion-gold', ab_variant: abVariant, step_index: step, step_id: ids[step] ?? `step_${step}`, event_type: 'viewed' }),
     }).catch(() => {})
   }, [step, sessionId])
 
@@ -601,7 +738,10 @@ export default function QuizFashionGoldClient() {
       .catch(() => { /* keep defaults */ })
   }, [])
 
-  const next = () => setStep(s => s + 1)
+  // Na variante da roleta o caminho é mais curto: quem girou já viu a oferta na
+  // arte e quer o desconto — as telas de "como funciona", sorteios e
+  // depoimentos só atrasam. Vai direto para os dados.
+  const next = () => setStep(s => (mostraRoleta && s === 1 ? 5 : s + 1))
 
   // A pessoa vai DIRETO para a distribuição de grupos (/g/entrar), que escolhe
   // um grupo com vaga e redireciona para o convite.
@@ -634,6 +774,12 @@ export default function QuizFashionGoldClient() {
       window.fbq('track', 'Lead', { content_name: 'Quiz Fashion Gold', content_category: 'fashion-gold', currency: 'BRL' }, { eventID: leadEventId })
     }
     sendServerEvent('Lead', { eventId: leadEventId, email, phone, contentName: 'Quiz Fashion Gold', contentCategory: 'fashion-gold', currency: 'BRL' })
+    if (mostraRoleta) {
+      // Variante: em vez de sair da página, mostra o desconto conquistado e o
+      // convite para o grupo — é lá que o link com o preço é entregue.
+      window.setTimeout(() => { setStep(8); setLoading(false) }, 500)
+      return
+    }
     const dest = entrarLink()
     // mantém o spinner; navega após o pixel ter tempo de sair
     window.setTimeout(() => { window.location.href = dest }, 700)
@@ -648,6 +794,8 @@ export default function QuizFashionGoldClient() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           quiz_slug: 'fashion-gold',
+          ab_variant: abVariant,
+          session_id: sessionId,
           name, email, phone,
           utm_source: searchParams.get('utm_source'),
           utm_medium: searchParams.get('utm_medium'),
@@ -673,13 +821,16 @@ export default function QuizFashionGoldClient() {
         html, body { background: ${T.bg}; }
         @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
-      {step === 1 && <Step1 onNext={next} toastPeople={toastPeople} />}
+      {step === 1 && (mostraRoleta
+        ? <Step1Roleta onGirou={next} />
+        : <Step1 onNext={next} toastPeople={toastPeople} />)}
       {step === 2 && <Step2 onNext={next} />}
       {step === 3 && <Step3 onNext={next} winner={winner} />}
       {step === 4 && <Step4 onNext={next} reviews={reviews} />}
       {step === 5 && <Step5 onNext={next} phone={phone} setPhone={setPhone} toastPeople={toastPeople} />}
       {step === 6 && <Step6 onNext={next} name={name} setName={setName} />}
       {step === 7 && <Step7 onSubmit={handleSubmit} email={email} setEmail={setEmail} loading={loading} />}
+      {step === 8 && <StepDescontoLiberado nome={name} href={entrarLink()} />}
     </>
   )
 }
