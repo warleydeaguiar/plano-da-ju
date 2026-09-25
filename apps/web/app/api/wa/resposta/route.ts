@@ -32,6 +32,7 @@ export const dynamic = 'force-dynamic';
  * (ver lib/chatwoot.ts), e empurrar é o caminho que já funciona.
  */
 
+const APP_URL = 'https://planodaju.julianecost.com';
 const LINK_OFERTA = process.env.NEXT_PUBLIC_OFERTA_URL || 'https://planodaju.julianecost.com/oferta';
 
 /** Só o que a CLIENTE mandou conta. Resposta da Juliane não abre janela nenhuma. */
@@ -117,6 +118,35 @@ export async function POST(req: NextRequest) {
       await notaPrivada(conversa, await notaDoQuiz(sb, digitos));
       await responder(conversa, digitos, esperaDoDiagnostico(primeiroNome(corpo)));
       return NextResponse.json({ ok: true, querDiagnostico: true, lead: lead ?? null });
+    }
+
+    // ── Botões da confirmação de entrada no grupo ────────────────────────
+    // A pergunta sobre o cabelo NÃO cabe no template: a Meta lê "me conta como
+    // está o seu cabelo" como marketing e reclassifica (foi o que aconteceu com
+    // a v1). Então o template só confirma a inscrição, e a pergunta sai aqui —
+    // dentro da janela de 24 h que o toque no botão acabou de abrir, em texto
+    // livre e sem custo por mensagem.
+    if (tipo === 'botao_entrei_grupo' || tipo === 'botao_nao_entrei') {
+      const nome = primeiroNome(corpo);
+      await marcarLead(sb, digitos, {
+        resposta_tipo: tipo, resposta_texto: texto.slice(0, 200), respondeu_em: agora,
+      });
+
+      if (tipo === 'botao_nao_entrei') {
+        // Link novo em vez de pedir para ela tentar de novo: a rota escolhe um
+        // grupo com vaga na hora, então um convite que falhou não se repete.
+        const link = `${APP_URL}/g/entrar?p=${encodeURIComponent(digitos)}`;
+        await responder(conversa, digitos,
+          `${nome ? `Ai, ${nome}, ` : ''}desculpa! Toca aqui que eu te coloco em um grupo com vaga agora: ${link}`);
+        await marcarConversa(conversa, 'grupo-sem-acesso');
+        return NextResponse.json({ ok: true, novoLinkDoGrupo: true });
+      }
+
+      await responder(conversa, digitos,
+        `${nome ? `Que bom, ${nome}! ` : 'Que bom! '}Já que você está no grupo, me conta uma coisa para eu te avisar do que interessa: `
+        + 'o que mais te incomoda no seu cabelo hoje — queda, quebra, volume, frizz ou ressecamento? 💛');
+      await marcarConversa(conversa, 'entrou-no-grupo');
+      return NextResponse.json({ ok: true, entrouNoGrupo: true });
     }
 
     // ── Cortesia UGC cobrada por engano ──────────────────────────────────

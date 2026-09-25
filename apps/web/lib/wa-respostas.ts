@@ -1,6 +1,6 @@
 import { ehPedidoDeBloqueio } from '@/lib/wa-optout';
 
-export type TipoResposta = 'botao_concluir' | 'botao_duvida' | 'botao_plano_wa' | 'botao_diagnostico' | 'bloqueio' | 'cortesia' | 'automatica' | 'recusa' | 'humana';
+export type TipoResposta = 'botao_concluir' | 'botao_duvida' | 'botao_plano_wa' | 'botao_diagnostico' | 'botao_entrei_grupo' | 'botao_nao_entrei' | 'bloqueio' | 'cortesia' | 'automatica' | 'recusa' | 'humana';
 
 const normalizar = (texto: unknown) =>
   String(texto ?? '')
@@ -39,6 +39,11 @@ export function classificarResposta(texto: unknown): TipoResposta {
   // Botão da primeira mensagem da régua: ela pediu o diagnóstico do quiz. Quem
   // responde é a atendente — aqui só abrimos a janela e marcamos a fila.
   if (t === 'quero meu diagnostico') return 'botao_diagnostico';
+  // Botões da confirmação de entrada no grupo. Qualquer um dos dois é uma
+  // mensagem DELA: abre a janela de 24 h, e é dentro dela que a conversa sobre
+  // o cabelo acontece — em texto livre, sem template e sem custo por mensagem.
+  if (t === 'consegui entrar') return 'botao_entrei_grupo';
+  if (t === 'nao consegui entrar') return 'botao_nao_entrei';
   if (t === 'tenho uma duvida') return 'botao_duvida';
   if (ehPedidoDeBloqueio(texto)) return 'bloqueio';
   if (CORTESIA_GRATIS.test(t) && !NEGACAO_CORTESIA.test(t)) return 'cortesia';
