@@ -16,7 +16,7 @@ function getServiceClient() {
   )
 }
 
-const TEMPLATE_GRUPO = process.env.WHATSAPP_GRUPO_TEMPLATE || 'confirmacao_grupo_promo_v1'
+const TEMPLATE_GRUPO = process.env.WHATSAPP_GRUPO_TEMPLATE || 'confirmacao_inscricao_grupo_v3'
 
 /**
  * Confirmação da entrada no grupo, por TEMPLATE.
