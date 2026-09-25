@@ -815,6 +815,11 @@ export default function QuizFashionGoldClient({ experimentos = [] }: { experimen
 
   return (
     <>
+      {/* Marcador de diagnóstico: diz, em produção, quantos experimentos o
+          servidor entregou e de que lado esta visita caiu. Sem isto, "a roleta
+          não apareceu" não distingue sorteio do lado control de experimento que
+          não chegou. */}
+      <div data-ab-exp={experimentos.length} data-ab-lado={abVariant ?? 'sem-experimento'} hidden />
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Inter:wght@400;500;600;700;800&display=swap');
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
