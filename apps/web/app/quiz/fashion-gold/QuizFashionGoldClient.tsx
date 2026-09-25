@@ -256,10 +256,10 @@ function StepDescontoLiberado({ nome, href }: { nome: string; href: string }) {
     <StepShell step={4} total={4} footer={
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <a href={href} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
-          <CTA onClick={() => {}}>Pegar minha progressiva com desconto</CTA>
+          <CTA onClick={() => {}}>Ver a progressiva na loja oficial</CTA>
         </a>
         <div style={{ textAlign: 'center', fontSize: 11, color: T.muted }}>
-          Você vai para a loja oficial da Ybera com o preço promocional
+          Loja oficial da Ybera · o preço do grupo eu te mando no WhatsApp
         </div>
       </div>
     }>
@@ -277,15 +277,14 @@ function StepDescontoLiberado({ nome, href }: { nome: string; href: string }) {
         textAlign: 'center', padding: '24px 18px', borderRadius: 20, margin: '4px 0 16px',
         background: 'linear-gradient(135deg,#FFF8EE,#F5E6D3)', border: `1px solid ${T.gold}`,
       }}>
-        <div style={{ fontSize: 13, color: T.muted, textDecoration: 'line-through' }}>R$ 339,90</div>
-        <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 44, fontWeight: 700, color: T.ink, margin: '2px 0' }}>
-          R$ 208,00
+        <div style={{ fontSize: 12, letterSpacing: 1.2, textTransform: 'uppercase', color: T.goldDeep, fontWeight: 800 }}>
+          Seu desconto
         </div>
-        <div style={{
-          display: 'inline-block', marginTop: 6, padding: '5px 14px', borderRadius: 99,
-          background: T.ink, color: '#FFF8EE', fontSize: 12.5, fontWeight: 800, letterSpacing: 0.5,
-        }}>
-          48% OFF garantido
+        <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 42, fontWeight: 700, color: T.ink, margin: '4px 0 2px' }}>
+          48% OFF
+        </div>
+        <div style={{ fontSize: 13.5, color: T.ink, lineHeight: 1.5 }}>
+          no grupo de ofertas — é lá que eu passo o valor promocional
         </div>
       </div>
 
@@ -363,10 +362,13 @@ function Step1Roleta({ onGirou }: { onGirou: () => void }) {
             48% OFF
           </div>
           <div style={{ fontSize: 15, color: T.ink, fontWeight: 600 }}>
-            A progressiva sai por <strong>R$ 208,00</strong>
+            no grupo de ofertas da Ju
           </div>
+          {/* O valor promocional é o do GRUPO — na loja oficial o produto está
+              R$ 339,90. Afirmar "sai por R$ 208" e mandar para a loja seria
+              prometer um preço que a página seguinte não cobra. */}
           <div style={{ fontSize: 12.5, color: T.muted, marginTop: 8, lineHeight: 1.5 }}>
-            De R$ 339,90 no site oficial. Confirme os seus dados para liberar o link com esse valor.
+            Confirme os seus dados para eu liberar o seu acesso.
           </div>
         </div>
       ) : (
