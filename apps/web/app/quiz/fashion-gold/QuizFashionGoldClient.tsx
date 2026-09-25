@@ -125,7 +125,7 @@ function CTA({ children, onClick, variant = 'primary', disabled, loading, icon }
       {loading ? (
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ width: 18, height: 18, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.7s linear infinite', display: 'inline-block' }} />
-          Abrindo grupo…
+          Liberando seu desconto…
         </span>
       ) : <>{icon}{children}</>}
     </button>
@@ -185,7 +185,7 @@ function SocialToast({ people }: { people: Testimonial[] }) {
       <Avatar url={p.photo_url} name={p.name} size={36} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontFamily: fonts.ui, fontSize: 13, color: T.ink, lineHeight: 1.3 }}>
-          <strong>{p.name}</strong> entrou no grupo
+          <strong>{p.name}</strong> pegou o desconto
         </div>
         <div style={{ fontFamily: fonts.ui, fontSize: 11, color: T.muted }}>{p.city} · agora mesmo</div>
       </div>
@@ -386,7 +386,7 @@ function Step1({ onNext, toastPeople }: { onNext: () => void; toastPeople: Testi
     <StepShell step={1} total={7} footer={
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <CTA onClick={onNext}>Continuar</CTA>
-        <div style={{ textAlign: 'center', fontSize: 11, color: T.muted }}>Grátis · Desconto adicional · Desconto exclusivo pra quem está no grupo</div>
+        <div style={{ textAlign: 'center', fontSize: 11, color: T.muted }}>Grátis · Link com desconto · Promoções antes de todo mundo</div>
       </div>
     }>
       {/* Hero (a imagem já traz selo, título e chamada — não repetimos em texto) */}
@@ -407,14 +407,14 @@ function Step1({ onNext, toastPeople }: { onNext: () => void; toastPeople: Testi
       </div>
 
       <div style={{ marginTop: 22, padding: 14, background: T.paper, borderRadius: 16, border: `1px solid ${T.line}` }}>
-        <div style={{ fontSize: 10, letterSpacing: 2, textAlign: 'center', color: T.ruby, fontWeight: 600, textTransform: 'uppercase', marginBottom: 8 }}>⏱ AS VAGAS SE ENCERRAM EM</div>
+        <div style={{ fontSize: 10, letterSpacing: 2, textAlign: 'center', color: T.ruby, fontWeight: 600, textTransform: 'uppercase', marginBottom: 8 }}>⏱ A PROMOÇÃO SE ENCERRA EM</div>
         <Countdown minutes={14} />
       </div>
 
       <div style={{ marginTop: 14, padding: '12px 14px', background: '#fff5f3', border: '1px solid #fbcdc4', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{ width: 28, height: 28, borderRadius: 999, background: T.ruby, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700 }}>5</div>
         <div style={{ flex: 1, fontSize: 12.5, color: T.ink, lineHeight: 1.4 }}>
-          Restam apenas <strong>5 vagas</strong> no grupo VIP de hoje.
+          Restam apenas <strong>5 descontos</strong> para hoje.
           <div style={{ height: 4, marginTop: 6, background: '#fbcdc4', borderRadius: 999, overflow: 'hidden' }}>
             <div style={{ width: '92%', height: '100%', background: T.ruby }} />
           </div>
@@ -431,8 +431,8 @@ function Step1({ onNext, toastPeople }: { onNext: () => void; toastPeople: Testi
 // ═══════════════════════════════════════════════════════════
 function Step2({ onNext }: { onNext: () => void }) {
   const items = [
-    { n: '01', t: 'Você entra no grupo', d: 'Acesso instantâneo ao WhatsApp VIP com todas as ofertas em primeira mão.' },
-    { n: '02', t: 'Recebe link com preço exclusivo', d: 'Descontos abaixo do site oficial — apenas para membros do grupo.' },
+    { n: '01', t: 'Você deixa o seu contato', d: 'Leva menos de um minuto: WhatsApp, nome e e-mail.' },
+    { n: '02', t: 'Recebe o link com a condição', d: 'Eu te mando o link da Progressiva Fashion Gold com o desconto.' },
     { n: '03', t: 'Compra direto no site oficial', d: 'Mesma garantia da Ybera Paris, com frete e devolução tradicionais.' },
   ]
   return (
@@ -440,7 +440,7 @@ function Step2({ onNext }: { onNext: () => void }) {
       <div style={{ paddingTop: 8 }}>
         <div style={{ fontSize: 11, letterSpacing: 3, color: T.goldDeep, fontWeight: 600, textTransform: 'uppercase' }}>Como funciona</div>
         <h2 style={{ fontFamily: fonts.display, fontWeight: 500, fontSize: 30, lineHeight: 1.1, margin: '6px 0 22px', letterSpacing: -0.4 }}>
-          Como funciona o <em style={{ color: T.goldDeep }}>grupo VIP</em>?
+          Como você recebe o <em style={{ color: T.goldDeep }}>desconto</em>
         </h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {items.map(it => (
@@ -579,7 +579,10 @@ function Step5({ onNext, phone, setPhone, toastPeople }: { onNext: () => void; p
         <h2 style={{ fontFamily: fonts.display, fontWeight: 500, fontSize: 28, lineHeight: 1.1, margin: '6px 0 12px', letterSpacing: -0.4 }}>
           Qual é o seu <em style={{ color: T.goldDeep }}>WhatsApp</em>?
         </h2>
-        <p style={{ fontSize: 14, color: T.muted, lineHeight: 1.5, marginBottom: 24 }}>Vamos enviar o link do grupo VIP direto no seu celular em até 60 segundos.</p>
+        {/* O funil mudou em 25/09/2026: o que vem depois dos dados é o LINK DO
+            PRODUTO com a condição, não a entrada no grupo. O convite do grupo
+            vai depois, por WhatsApp, e com confirmação. */}
+        <p style={{ fontSize: 14, color: T.muted, lineHeight: 1.5, marginBottom: 24 }}>É por aqui que eu te mando o link com a condição da Progressiva Fashion Gold.</p>
         <label style={{ display: 'block' }}>
           <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, letterSpacing: 0.3 }}>Celular com DDD</div>
           <div style={{ display: 'flex', alignItems: 'center', background: T.paper, border: `1.5px solid ${valid ? T.green : T.line}`, borderRadius: 14, padding: '0 14px', height: 56, transition: 'border-color 0.2s ease' }}>
@@ -601,11 +604,11 @@ function Step5({ onNext, phone, setPhone, toastPeople }: { onNext: () => void; p
             ))}
             <div style={{ width: 28, height: 28, borderRadius: 999, background: T.ink, color: '#fff', border: '2px solid #fff', marginLeft: -10, fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>+240</div>
           </div>
-          <div style={{ flex: 1, fontSize: 12, color: T.ink, lineHeight: 1.4 }}><strong>247 pessoas</strong> entraram nas últimas 24h</div>
+          <div style={{ flex: 1, fontSize: 12, color: T.ink, lineHeight: 1.4 }}><strong>247 pessoas</strong> pegaram o desconto nas últimas 24h</div>
         </div>
         <div style={{ marginTop: 14 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: T.muted, marginBottom: 6 }}>
-            <span>VAGAS PREENCHIDAS HOJE</span>
+            <span>DESCONTOS LIBERADOS HOJE</span>
             <span style={{ color: T.ruby, fontWeight: 600 }}>95% · 5 restantes</span>
           </div>
           <div style={{ height: 6, background: '#ececec', borderRadius: 999, overflow: 'hidden' }}>
@@ -634,7 +637,7 @@ function Step6({ onNext, name, setName }: { onNext: () => void; name: string; se
         <h2 style={{ fontFamily: fonts.display, fontWeight: 500, fontSize: 28, lineHeight: 1.1, margin: '6px 0 12px', letterSpacing: -0.4 }}>
           Como podemos te <em style={{ color: T.goldDeep }}>chamar</em>?
         </h2>
-        <p style={{ fontSize: 13.5, color: T.muted, lineHeight: 1.5, marginBottom: 22 }}>Personalizamos as ofertas e mensagens com seu nome.</p>
+        <p style={{ fontSize: 13.5, color: T.muted, lineHeight: 1.5, marginBottom: 22 }}>Para eu te chamar pelo nome quando mandar a condição.</p>
         <Field label="Seu nome" placeholder="Como prefere ser chamada" value={name} onChange={setName} />
       </div>
     </StepShell>
@@ -656,7 +659,7 @@ function Step7({ onSubmit, email, setEmail, loading }: {
             <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0012.04 2zm0 18.15h-.01a8.2 8.2 0 01-4.18-1.15l-.3-.18-3.11.82.83-3.04-.2-.31a8.18 8.18 0 01-1.26-4.38c0-4.54 3.7-8.23 8.24-8.23 2.2 0 4.27.86 5.83 2.42a8.183 8.183 0 012.41 5.83c0 4.54-3.7 8.24-8.25 8.24z" />
           </svg>
         }>
-          Entrar no grupo do WhatsApp
+          Liberar meu desconto
         </CTA>
         <div style={{ textAlign: 'center', fontSize: 10.5, color: T.muted }}>Ao continuar você concorda com os termos e a política de privacidade.</div>
       </div>
@@ -666,7 +669,7 @@ function Step7({ onSubmit, email, setEmail, loading }: {
         <h2 style={{ fontFamily: fonts.display, fontWeight: 500, fontSize: 28, lineHeight: 1.1, margin: '6px 0 12px', letterSpacing: -0.4 }}>
           Qual é o seu <em style={{ color: T.goldDeep }}>melhor e-mail</em>?
         </h2>
-        <p style={{ fontSize: 13.5, color: T.muted, lineHeight: 1.5, marginBottom: 22 }}>É por onde enviamos as promoções e o aviso dos sorteios.</p>
+        <p style={{ fontSize: 13.5, color: T.muted, lineHeight: 1.5, marginBottom: 22 }}>Mando o link da promoção por aqui também, caso você perca a mensagem do WhatsApp.</p>
         <Field label="E-mail" placeholder="seu@email.com" type="email" value={email} onChange={setEmail} />
       </div>
     </StepShell>
