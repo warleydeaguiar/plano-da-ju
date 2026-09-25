@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { cleanEmail } from '@/lib/email-hygiene'
+import { convidarParaGrupo } from '@/lib/convite-grupo'
 
 export const dynamic = 'force-dynamic'
 
@@ -81,5 +82,17 @@ export async function POST(req: NextRequest) {
     console.error('[quiz/lead] insert error:', insertError.message)
   }
 
-  return NextResponse.json({ invite_link: inviteLink })
+  // Convite do grupo pelo WhatsApp — só para o quiz que leva à oferta da Ybera,
+  // onde a página de obrigado passou a ser a loja. É aqui que o grupo entra: a
+  // pessoa recebe a pergunta se quer a vaga, em vez de ser empurrada para lá.
+  // Falha no envio não pode atrapalhar o lead, que é o que importa nesta rota.
+  let convite = 'nao_aplicavel'
+  if (quiz_slug === 'fashion-gold') {
+    try {
+      const r = await convidarParaGrupo(db, phone, name)
+      convite = r.motivo
+    } catch { convite = 'excecao' }
+  }
+
+  return NextResponse.json({ invite_link: inviteLink, convite })
 }

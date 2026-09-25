@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { newEventId, sendServerEvent } from '../../../lib/tracking-client'
 import { sortearLado, rotuloVariante, type ExperimentoAtivo } from '@/lib/ab'
 import RoletaFG from './RoletaFG'
+import { LINK_YBERA_FASHION_GOLD } from '@/lib/contact'
 
 // ─── Design tokens ──────────────────────────────────────────
 const T = {
@@ -254,11 +255,11 @@ function StepDescontoLiberado({ nome, href }: { nome: string; href: string }) {
   return (
     <StepShell step={4} total={4} footer={
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <a href={href} style={{ textDecoration: 'none' }}>
-          <CTA onClick={() => {}}>Entrar no grupo e pegar o link</CTA>
+        <a href={href} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+          <CTA onClick={() => {}}>Pegar minha progressiva com desconto</CTA>
         </a>
         <div style={{ textAlign: 'center', fontSize: 11, color: T.muted }}>
-          O link com o valor promocional é enviado dentro do grupo
+          Você vai para a loja oficial da Ybera com o preço promocional
         </div>
       </div>
     }>
@@ -289,8 +290,19 @@ function StepDescontoLiberado({ nome, href }: { nome: string; href: string }) {
       </div>
 
       <div style={{ fontSize: 14, color: T.ink, lineHeight: 1.6, textAlign: 'center' }}>
-        Agora é só entrar no grupo: é lá que eu mando o link com esse valor, e também
-        os avisos das próximas promoções da Ybera. 💛
+        Aproveite agora — essa condição é por tempo limitado. 💛
+      </div>
+
+      {/* O grupo não some do funil: ele vira o segundo passo, com convite pelo
+          WhatsApp. Dizer isso aqui evita que ela ache que o telefone foi pedido
+          à toa. */}
+      <div style={{
+        marginTop: 14, padding: '13px 15px', borderRadius: 14,
+        background: '#E9F9EE', border: '1px solid #A9E6BE',
+        fontSize: 13, color: '#1F7A55', lineHeight: 1.5, textAlign: 'center',
+      }}>
+        Vou te mandar no WhatsApp o convite do meu grupo de ofertas — é por lá que
+        eu aviso das próximas promoções da Ybera.
       </div>
     </StepShell>
   )
@@ -354,7 +366,7 @@ function Step1Roleta({ onGirou }: { onGirou: () => void }) {
             A progressiva sai por <strong>R$ 208,00</strong>
           </div>
           <div style={{ fontSize: 12.5, color: T.muted, marginTop: 8, lineHeight: 1.5 }}>
-            De R$ 339,90 no site oficial. O link com esse valor é entregue dentro do grupo.
+            De R$ 339,90 no site oficial. Confirme os seus dados para liberar o link com esse valor.
           </div>
         </div>
       ) : (
@@ -755,18 +767,14 @@ export default function QuizFashionGoldClient({ experimentos = [] }: { experimen
   // "enviar" — e a maioria não apertava; a conversa não começava e a mensagem
   // automática nunca chegava. Agora a confirmação vai por template (que não
   // precisa de janela aberta) e ela entra no grupo em um toque a menos.
-  const entrarLink = () => {
-    const p = new URLSearchParams();
-    const tel = (phone || '').replace(/\D/g, '');
-    if (tel.length >= 10) p.set('p', tel);
-    if ((name || '').trim()) p.set('n', (name || '').trim());
-    for (const k of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term']) {
-      const v = searchParams.get(k);
-      if (v) p.set(k, v);
-    }
-    const qs = p.toString();
-    return `/g/entrar${qs ? `?${qs}` : ''}`;
-  }
+  // Destino depois dos dados: a loja da Ybera, com o código de afiliada.
+  //
+  // Por muito tempo a página de obrigado mandava para o grupo de WhatsApp, e a
+  // maior parte das pessoas não entrava — o caminho terminava no vazio. Agora a
+  // oferta vem primeiro; o convite do grupo sai depois por WhatsApp (com
+  // confirmação) e por e-mail.
+  const destinoFinal = () => LINK_YBERA_FASHION_GOLD
+
 
   // Dispara o Lead (Pixel + CAPI com MESMO eventID → dedup) e SÓ DEPOIS navega
   // pra fora (wa.me). O redirect externo imediato abortava a requisição do Pixel
@@ -784,7 +792,7 @@ export default function QuizFashionGoldClient({ experimentos = [] }: { experimen
       window.setTimeout(() => { setStep(8); setLoading(false) }, 500)
       return
     }
-    const dest = entrarLink()
+    const dest = destinoFinal()
     // mantém o spinner; navega após o pixel ter tempo de sair
     window.setTimeout(() => { window.location.href = dest }, 700)
   }
@@ -839,7 +847,7 @@ export default function QuizFashionGoldClient({ experimentos = [] }: { experimen
       {step === 5 && <Step5 onNext={next} phone={phone} setPhone={setPhone} toastPeople={toastPeople} />}
       {step === 6 && <Step6 onNext={next} name={name} setName={setName} />}
       {step === 7 && <Step7 onSubmit={handleSubmit} email={email} setEmail={setEmail} loading={loading} />}
-      {step === 8 && <StepDescontoLiberado nome={name} href={entrarLink()} />}
+      {step === 8 && <StepDescontoLiberado nome={name} href={destinoFinal()} />}
     </>
   )
 }

@@ -1,6 +1,6 @@
 import { ehPedidoDeBloqueio } from '@/lib/wa-optout';
 
-export type TipoResposta = 'botao_concluir' | 'botao_duvida' | 'botao_plano_wa' | 'botao_diagnostico' | 'botao_entrei_grupo' | 'botao_nao_entrei' | 'bloqueio' | 'cortesia' | 'automatica' | 'recusa' | 'humana';
+export type TipoResposta = 'botao_concluir' | 'botao_duvida' | 'botao_plano_wa' | 'botao_diagnostico' | 'botao_entrei_grupo' | 'botao_nao_entrei' | 'botao_quer_grupo' | 'bloqueio' | 'cortesia' | 'automatica' | 'recusa' | 'humana';
 
 const normalizar = (texto: unknown) =>
   String(texto ?? '')
@@ -42,6 +42,9 @@ export function classificarResposta(texto: unknown): TipoResposta {
   // Botões da confirmação de entrada no grupo. Qualquer um dos dois é uma
   // mensagem DELA: abre a janela de 24 h, e é dentro dela que a conversa sobre
   // o cabelo acontece — em texto livre, sem template e sem custo por mensagem.
+  // Confirmação da vaga: o convite não manda o link de cara, pergunta antes.
+  // Quem toca aqui está pedindo o link — e o toque abre a janela de 24 h.
+  if (t === 'quero entrar no grupo') return 'botao_quer_grupo';
   if (t === 'consegui entrar') return 'botao_entrei_grupo';
   if (t === 'nao consegui entrar') return 'botao_nao_entrei';
   if (t === 'tenho uma duvida') return 'botao_duvida';

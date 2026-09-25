@@ -120,6 +120,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, querDiagnostico: true, lead: lead ?? null });
     }
 
+    // ── "Quero entrar no grupo": aí sim vai o link ───────────────────────
+    // O convite pergunta antes de mandar. Quem confirma recebe o link de
+    // /g/entrar, que escolhe na hora um grupo com vaga — assim ninguém recebe
+    // convite para grupo lotado, que era o jeito mais rápido de queimar a vaga.
+    if (tipo === 'botao_quer_grupo') {
+      const nome = primeiroNome(corpo);
+      await marcarLead(sb, digitos, {
+        resposta_tipo: tipo, resposta_texto: texto.slice(0, 200), respondeu_em: agora,
+      });
+      const link = `${APP_URL}/g/entrar?p=${encodeURIComponent(digitos)}`;
+      await responder(conversa, digitos,
+        `${nome ? `Perfeito, ${nome}! ` : 'Perfeito! '}Sua vaga está reservada 💛\n\n`
+        + `É só tocar aqui para entrar: ${link}\n\n`
+        + 'É nesse grupo que eu aviso quando os produtos entram em promoção de verdade.');
+      await marcarConversa(conversa, 'entrou-no-grupo');
+      return NextResponse.json({ ok: true, linkDoGrupoEnviado: true });
+    }
+
     // ── Botões da confirmação de entrada no grupo ────────────────────────
     // A pergunta sobre o cabelo NÃO cabe no template: a Meta lê "me conta como
     // está o seu cabelo" como marketing e reclassifica (foi o que aconteceu com
