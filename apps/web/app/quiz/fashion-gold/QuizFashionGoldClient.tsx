@@ -300,12 +300,16 @@ function StepDescontoLiberado({ nome, href }: { nome: string; href: string }) {
 // STEP 1-B — HERO COM ROLETA  (variante do teste A/B)
 // ═══════════════════════════════════════════════════════════
 /**
- * Mesma promessa do hero padrão, com duas diferenças: a arte nova (que já traz
- * o preço e o desconto) e a roleta no lugar do botão "Continuar".
+ * Mesma promessa do hero padrão, com duas diferenças: a arte da variante — que
+ * mostra a comparação de preço com os valores BORRADOS — e a roleta no lugar do
+ * botão "Continuar".
  *
- * A ideia é trocar um clique passivo por uma ação — a pessoa descobre o próprio
- * desconto antes de deixar os dados. O desconto revelado é o mesmo da campanha
- * para todo mundo; a roleta é a forma de apresentá-lo.
+ * A arte esconder o preço é o que dá sentido ao giro: a página inteira fala de
+ * um valor que só existe no grupo, e a roleta é o momento em que ele aparece.
+ * Revelar na imagem tiraria a razão de girar.
+ *
+ * O desconto é o mesmo da campanha para todo mundo; a roleta é a forma de
+ * apresentá-lo, não um sorteio.
  */
 function Step1Roleta({ onGirou }: { onGirou: () => void }) {
   const [revelado, setRevelado] = useState(false)
@@ -320,7 +324,7 @@ function Step1Roleta({ onGirou }: { onGirou: () => void }) {
         </div>
       ) : (
         <div style={{ textAlign: 'center', fontSize: 11.5, color: T.muted }}>
-          Gire a roleta para descobrir o seu desconto de hoje
+          O preço do grupo está escondido — gire a roleta para revelar
         </div>
       )
     }>
@@ -328,7 +332,7 @@ function Step1Roleta({ onGirou }: { onGirou: () => void }) {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/quiz/fashion-gold-hero-b.webp"
-          alt="Progressiva Fashion Gold: de R$ 339,90 por R$ 208,00"
+          alt="A progressiva mais famosa do Brasil entrou em promoção — preço exclusivo no grupo"
           width={1080} height={1080}
           fetchPriority="high" decoding="async"
           style={{ width: '100%', height: 'auto', display: 'block' }}
