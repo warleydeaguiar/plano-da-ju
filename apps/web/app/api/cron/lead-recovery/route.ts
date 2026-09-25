@@ -157,6 +157,17 @@ export async function GET(req: NextRequest) {
       qualidade: saude.qualidade, enviadas_hoje: saude.enviadasHoje, teto_hoje: saude.tetoHoje,
     });
   }
+  // O teto era conferido só na entrada, e o lote inteiro saía depois disso: com
+  // o número amarelo (teto 75) o dia fechou em 76. Passar do teto é justamente
+  // o que não pode acontecer quando a Meta já está de olho — então o lote
+  // encolhe para caber no que falta.
+  const cabeHoje = Math.max(0, saude.tetoHoje - saude.enviadasHoje);
+  if (cabeHoje <= 0) {
+    return NextResponse.json({
+      ok: true, pausado: true, motivo: `teto_diario:${saude.enviadasHoje}/${saude.tetoHoje}`,
+      qualidade: saude.qualidade, enviadas_hoje: saude.enviadasHoje, teto_hoje: saude.tetoHoje,
+    });
+  }
 
   const acessoDe = await acessoDosLeads(sb, candidatos);
   // Quem tocou em "Bloquear mensagens" (ou pediu para sair) não recebe mais nada.
@@ -174,7 +185,7 @@ export async function GET(req: NextRequest) {
   const ruins = new Set<string>();
   const falhas: { id: string; erro: string }[] = [];
 
-  for (const lead of candidatos) {
+  for (const lead of candidatos.slice(0, cabeHoje)) {
     const telefone = telefoneIntl(lead.phone);
 
     const acesso = acessoDe(lead);
