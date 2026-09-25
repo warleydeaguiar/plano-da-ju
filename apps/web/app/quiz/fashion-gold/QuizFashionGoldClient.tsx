@@ -199,23 +199,40 @@ function SocialToast({ people }: { people: Testimonial[] }) {
 }
 
 // ─── Step shell (footer sempre visível) ─────────────────────
-function StepShell({ step, total, children, footer }: {
+function StepShell({ step, total, children, footer, semBarras }: {
   step: number; total: number; children: React.ReactNode; footer?: React.ReactNode
+  /**
+   * Tela sem a barra de progresso no topo e sem o rodapé fixo.
+   *
+   * Existe por causa da roleta: no celular real, a barra do navegador em cima e
+   * a do sistema embaixo já comem altura, e a barra de progresso mais o rodapé
+   * grudado tiravam o resto — a roleta aparecia cortada. Aqui o conteúdo usa a
+   * tela inteira e rola normalmente.
+   */
+  semBarras?: boolean
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100svh', background: T.bg, fontFamily: fonts.ui, color: T.ink }}>
-      {/* Header — só a barra de progresso (logo Ybera removida) */}
-      <div style={{ padding: '28px 24px 0', display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Progress step={step} total={total} />
+      {!semBarras && (
+        <div style={{ padding: '28px 24px 0', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Progress step={step} total={total} />
+          </div>
         </div>
-      </div>
+      )}
       {/* Body — padding-bottom deixa espaço para o footer fixo */}
-      <div style={{ flex: 1, padding: '20px 24px', paddingBottom: footer ? '140px' : '24px', maxWidth: 480, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
+      <div style={{
+        flex: 1,
+        padding: semBarras ? '14px 16px 20px' : '20px 24px',
+        paddingBottom: footer && !semBarras ? '140px' : undefined,
+        maxWidth: 480, width: '100%', margin: '0 auto', boxSizing: 'border-box',
+      }}>
         {children}
+        {/* Sem barras, o rodapé anda junto com o conteúdo em vez de cobrir o
+            que está embaixo dele. */}
+        {semBarras && footer && <div style={{ marginTop: 16 }}>{footer}</div>}
       </div>
-      {/* Footer sticky — sempre visível */}
-      {footer && (
+      {footer && !semBarras && (
         <div style={{
           position: 'sticky', bottom: 0, zIndex: 20,
           padding: '12px 24px 36px',
@@ -257,7 +274,7 @@ function Field({ label, value, onChange, placeholder, type = 'text' }: {
 function StepDescontoLiberado({ nome, href }: { nome: string; href: string }) {
   const primeiro = (nome || '').trim().split(/\s+/)[0] ?? ''
   return (
-    <StepShell step={4} total={4} footer={
+    <StepShell step={4} total={4} semBarras footer={
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <a href={href} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
           <CTA onClick={() => {}}>Ver a progressiva na loja oficial</CTA>
@@ -334,7 +351,7 @@ function StepDescontoLiberado({ nome, href }: { nome: string; href: string }) {
 function Step1Roleta({ onGirou }: { onGirou: () => void }) {
   const [revelado, setRevelado] = useState(false)
   return (
-    <StepShell step={1} total={4} footer={
+    <StepShell step={1} total={4} semBarras footer={
       revelado ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <CTA onClick={onGirou}>Quero garantir meu desconto</CTA>
@@ -348,14 +365,28 @@ function Step1Roleta({ onGirou }: { onGirou: () => void }) {
         </div>
       )
     }>
-      <div style={{ width: '100%', borderRadius: 22, overflow: 'hidden', border: `1px solid ${T.line}`, background: T.paper, marginBottom: 18 }}>
+      {/* A arte é quadrada e a roleta é grande: em tela baixa as duas juntas não
+          cabiam e a roleta aparecia cortada pela barra do navegador. Limitar a
+          imagem por ALTURA (svh) faz o conjunto caber sem rolagem — em tela
+          alta ela volta ao tamanho cheio. */}
+      <div style={{
+        width: '100%', borderRadius: 22, overflow: 'hidden', border: `1px solid ${T.line}`,
+        background: T.paper, marginBottom: 14,
+      }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/quiz/fashion-gold-hero-b.webp"
           alt="A progressiva mais famosa do Brasil entrou em promoção — preço exclusivo no grupo"
           width={1080} height={1080}
           fetchPriority="high" decoding="async"
-          style={{ width: '100%', height: 'auto', display: 'block' }}
+          // Largura cheia sempre; em tela baixa a altura é limitada e o corte
+          // sai de baixo (`top`), que é onde a arte tem menos informação — o
+          // título e a comparação de preço continuam visíveis. Encolher a
+          // imagem inteira deixava tarja branca dos dois lados.
+          style={{
+            width: '100%', height: 'auto', maxHeight: '40svh',
+            objectFit: 'cover', objectPosition: 'center top', display: 'block',
+          }}
         />
       </div>
 

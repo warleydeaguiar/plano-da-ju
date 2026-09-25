@@ -70,7 +70,9 @@ export default function RoletaFG({ onPremio }: { onPremio: () => void }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18 }}>
-      <div style={{ position: 'relative', width: '100%', maxWidth: 300 }}>
+      {/* Também limitada pela altura da tela: numa tela baixa, 300px de roleta
+          mais a arte passavam do que cabe. */}
+      <div style={{ position: 'relative', width: '100%', maxWidth: 'min(300px, 40svh)' }}>
         {/* Ponteiro */}
         <div style={{
           position: 'absolute', top: -6, left: '50%', transform: 'translateX(-50%)', zIndex: 2,
