@@ -39,6 +39,7 @@ interface VariantStats {
   sales:        number
   // Taxas (calculadas)
   interactionRate: number   // interagiu / views
+  leadRate:        number   // leads / views
   saleRate:        number   // sales / views
   revenue:         number   // sales * PLAN_PRICE
 }
@@ -162,6 +163,7 @@ async function getExperimentStats(
       leads:           l,
       sales:           s,
       interactionRate: v > 0 ? i / v : 0,
+      leadRate:        v > 0 ? l / v : 0,
       saleRate:        v > 0 ? s / v : 0,
       revenue:         s * PLAN_PRICE,
     }
@@ -251,6 +253,9 @@ function ExperimentCard({
   // Interaction delta + sale delta
   const interactionDelta = stats ? pctDelta(stats.variant.interactionRate, stats.control.interactionRate) : null
   const saleDelta        = stats ? pctDelta(stats.variant.saleRate,        stats.control.saleRate)        : null
+  const leadDelta        = stats ? pctDelta(stats.variant.leadRate,        stats.control.leadRate)        : null
+  // Quiz de captação para o grupo: o resultado é o LEAD, não a venda.
+  const porLead = exp.target_quiz_slug === 'fashion-gold'
 
   return (
     <div style={{
@@ -313,7 +318,10 @@ function ExperimentCard({
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#FFF7EE' }}>
-                {['Variante', 'Visualizações', 'Interagiu', 'Taxa interação', 'Vendas', 'Taxa venda', 'Receita'].map((h, i) => (
+                {(porLead
+                  ? ['Variante', 'Visualizações', 'Leads', 'Taxa de lead', 'Interagiu', 'Taxa interação']
+                  : ['Variante', 'Visualizações', 'Interagiu', 'Taxa interação', 'Vendas', 'Taxa venda', 'Receita']
+                ).map((h, i) => (
                   <th key={i} style={{
                     padding: '11px 18px', textAlign: i === 0 ? 'left' : 'right',
                     fontSize: 11, color: gray, fontWeight: 600,
@@ -327,6 +335,7 @@ function ExperimentCard({
               <VariantRow
                 label={exp.control_name + ' (controle)'}
                 stats={stats.control}
+                porLead={porLead}
                 isControl
               />
               <VariantRow
@@ -334,6 +343,8 @@ function ExperimentCard({
                 stats={stats.variant}
                 interactionDelta={interactionDelta}
                 saleDelta={saleDelta}
+              porLead={porLead}
+                leadDelta={leadDelta}
               />
             </tbody>
           </table>
@@ -362,13 +373,15 @@ function ExperimentCard({
 }
 
 function VariantRow({
-  label, stats, isControl, interactionDelta, saleDelta,
+  label, stats, isControl, interactionDelta, saleDelta, leadDelta, porLead,
 }: {
   label: string
   stats: VariantStats
   isControl?: boolean
   interactionDelta?: { text: string; positive: boolean } | null
   saleDelta?:        { text: string; positive: boolean } | null
+  leadDelta?:        { text: string; positive: boolean } | null
+  porLead?: boolean
 }) {
   const cellStyle: React.CSSProperties = {
     padding: '14px 18px', textAlign: 'right',
@@ -385,6 +398,22 @@ function VariantRow({
         {label}
       </td>
       <td style={cellStyle}>{stats.views.toLocaleString('pt-BR')}</td>
+      {/* Quiz cujo objetivo é a ENTRADA NO GRUPO não tem venda para medir:
+          a coluna de vendas ficaria zerada e leria como fracasso. Ali o que
+          conta é o lead. */}
+      {porLead && (
+        <>
+          <td style={cellStyle}>{stats.leads.toLocaleString('pt-BR')}</td>
+          <td style={cellStyle}>
+            <strong style={{ color: stats.leadRate > 0 ? dark : gray }}>{pctStr(stats.leadRate)}</strong>
+            {leadDelta && (
+              <div style={{ fontSize: 11, fontWeight: 600, marginTop: 2, color: leadDelta.positive ? green : red }}>
+                {leadDelta.text}
+              </div>
+            )}
+          </td>
+        </>
+      )}
       <td style={cellStyle}>{stats.interagiu.toLocaleString('pt-BR')}</td>
       <td style={cellStyle}>
         <strong style={{ color: stats.interactionRate > 0 ? dark : gray }}>
@@ -396,20 +425,24 @@ function VariantRow({
           </div>
         )}
       </td>
-      <td style={cellStyle}>{stats.sales.toLocaleString('pt-BR')}</td>
-      <td style={cellStyle}>
-        <strong style={{ color: stats.saleRate > 0 ? dark : gray }}>
-          {pctStr(stats.saleRate)}
-        </strong>
-        {saleDelta && (
-          <div style={{ fontSize: 11, fontWeight: 600, marginTop: 2, color: saleDelta.positive ? green : red }}>
-            {saleDelta.text}
-          </div>
-        )}
-      </td>
-      <td style={{ ...cellStyle, fontWeight: 700, color: stats.revenue > 0 ? green : gray }}>
-        {brl(stats.revenue)}
-      </td>
+      {!porLead && <td style={cellStyle}>{stats.sales.toLocaleString('pt-BR')}</td>}
+      {!porLead && (
+        <>
+          <td style={cellStyle}>
+            <strong style={{ color: stats.saleRate > 0 ? dark : gray }}>
+              {pctStr(stats.saleRate)}
+            </strong>
+            {saleDelta && (
+              <div style={{ fontSize: 11, fontWeight: 600, marginTop: 2, color: saleDelta.positive ? green : red }}>
+                {saleDelta.text}
+              </div>
+            )}
+          </td>
+          <td style={{ ...cellStyle, fontWeight: 700, color: stats.revenue > 0 ? green : gray }}>
+            {brl(stats.revenue)}
+          </td>
+        </>
+      )}
     </tr>
   )
 }
