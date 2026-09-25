@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { telefonesBloqueados } from '@/lib/wa-optout'
+import { templateUtilitarioAprovado } from '@/lib/wa-templates'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -13,6 +14,47 @@ function getServiceClient() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { persistSession: false, autoRefreshToken: false } }
   )
+}
+
+const TEMPLATE_GRUPO = process.env.WHATSAPP_GRUPO_TEMPLATE || 'confirmacao_grupo_promo_v1'
+
+/**
+ * Confirmação da entrada no grupo, por TEMPLATE.
+ *
+ * O follow-up era mandado como texto livre — e texto livre só é entregue com a
+ * janela de 24 h aberta. Quem vem do quiz nunca falou com o número, então a
+ * janela não existe e a mensagem simplesmente não chegava: era o motivo de a
+ * "mensagem automática" não estar dando certo. Template é entregue sempre.
+ *
+ * Só sai se a Meta tiver aprovado como UTILITY — a mesma trava dos outros
+ * envios (MARKETING custa ~9× mais e não é o que esta mensagem é).
+ */
+async function enviarTemplateGrupo(phoneDigits: string, primeiroNome: string): Promise<boolean> {
+  const token = process.env.WHATSAPP_TOKEN
+  const pid = process.env.WHATSAPP_PHONE_NUMBER_ID
+  if (!token || !pid || !phoneDigits) return false
+  if (!(await templateUtilitarioAprovado(TEMPLATE_GRUPO))) return false
+  try {
+    const controller = new AbortController()
+    const t = setTimeout(() => controller.abort(), 6000)
+    const r = await fetch(`https://graph.facebook.com/v21.0/${pid}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to: phoneDigits,
+        type: 'template',
+        template: {
+          name: TEMPLATE_GRUPO,
+          language: { code: 'pt_BR' },
+          components: [{ type: 'body', parameters: [{ type: 'text', text: primeiroNome || 'tudo bem' }] }],
+        },
+      }),
+      signal: controller.signal,
+    })
+    clearTimeout(t)
+    return r.ok
+  } catch { return false }
 }
 
 /**
@@ -82,7 +124,12 @@ export async function GET(req: NextRequest) {
       // Quem pediu para não receber mensagens não recebe; na dúvida, não envia.
       let bloqueou = true
       try { bloqueou = (await telefonesBloqueados(db, [phoneDigits])).size > 0 } catch { /* não envia */ }
-      if (!bloqueou) await sendWhatsApp(phoneDigits, msg)
+      if (!bloqueou) {
+        // Template primeiro (chega mesmo sem janela aberta); o texto livre
+        // fica como reserva para enquanto a Meta não aprova o template.
+        const enviou = await enviarTemplateGrupo(phoneDigits, first)
+        if (!enviou) await sendWhatsApp(phoneDigits, msg)
+      }
     }
   }
 

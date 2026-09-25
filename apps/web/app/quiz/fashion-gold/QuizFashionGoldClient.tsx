@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { newEventId, sendServerEvent } from '../../../lib/tracking-client'
-import { JU_WHATSAPP } from '@/lib/contact';
 
 // ─── Design tokens ──────────────────────────────────────────
 const T = {
@@ -604,13 +603,25 @@ export default function QuizFashionGoldClient() {
 
   const next = () => setStep(s => s + 1)
 
-  // NOVO FUNIL: em vez de jogar direto num grupo, manda a pessoa iniciar uma
-  // conversa no nosso número OFICIAL (Cloud API) — isso abre a janela gratuita
-  // de 24h. A 1ª mensagem já vai pré-preenchida com o nome (dinâmico).
-  const WA_OFICIAL = JU_WHATSAPP;  // fonte única: lib/contact
-  const waEntrarLink = () => {
-    const msg = `Oi Ju, tudo bem? Meu nome é ${(name || '').trim()} e gostaria de participar dos seus grupos de promoção. Ainda tem vaga?`
-    return `https://wa.me/${WA_OFICIAL}?text=${encodeURIComponent(msg)}`
+  // A pessoa vai DIRETO para a distribuição de grupos (/g/entrar), que escolhe
+  // um grupo com vaga e redireciona para o convite.
+  //
+  // Antes ela era mandada para o wa.me do nosso número, com uma mensagem
+  // pronta, para abrir a janela de 24 h. Só que isso dependia de ela apertar
+  // "enviar" — e a maioria não apertava; a conversa não começava e a mensagem
+  // automática nunca chegava. Agora a confirmação vai por template (que não
+  // precisa de janela aberta) e ela entra no grupo em um toque a menos.
+  const entrarLink = () => {
+    const p = new URLSearchParams();
+    const tel = (phone || '').replace(/\D/g, '');
+    if (tel.length >= 10) p.set('p', tel);
+    if ((name || '').trim()) p.set('n', (name || '').trim());
+    for (const k of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term']) {
+      const v = searchParams.get(k);
+      if (v) p.set(k, v);
+    }
+    const qs = p.toString();
+    return `/g/entrar${qs ? `?${qs}` : ''}`;
   }
 
   // Dispara o Lead (Pixel + CAPI com MESMO eventID → dedup) e SÓ DEPOIS navega
@@ -623,7 +634,7 @@ export default function QuizFashionGoldClient() {
       window.fbq('track', 'Lead', { content_name: 'Quiz Fashion Gold', content_category: 'fashion-gold', currency: 'BRL' }, { eventID: leadEventId })
     }
     sendServerEvent('Lead', { eventId: leadEventId, email, phone, contentName: 'Quiz Fashion Gold', contentCategory: 'fashion-gold', currency: 'BRL' })
-    const dest = waEntrarLink()
+    const dest = entrarLink()
     // mantém o spinner; navega após o pixel ter tempo de sair
     window.setTimeout(() => { window.location.href = dest }, 700)
   }
