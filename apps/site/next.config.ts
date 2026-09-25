@@ -61,14 +61,17 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       // Subdomínio de um funil antigo. O DNS ainda aponta pra Vercel e o
-      // Google continua rastreando — sem dono, dava erro de conexão. Vai pro
-      // artigo do Fashion Gold, que é o assunto que o nome promete e a página
-      // de maior tráfego do site.
+      // Google continua rastreando — sem dono, dava erro de conexão.
+      //
+      // Desde 25/09/2026 leva ao QUIZ do Fashion Gold, e não mais ao artigo:
+      // quem digita esse endereço está atrás do produto, e o quiz é o caminho
+      // que entrega a promoção do grupo. Vale para qualquer caminho do
+      // subdomínio — ele existe só para esta campanha.
       {
         source: '/:path*',
         has: [{ type: 'host', value: 'progressivafashiongold.julianecost.com' }],
-        destination: 'https://julianecost.com/progressiva-fashion-gold-e-boa-atualizado/',
-        permanent: true,
+        destination: 'https://planodaju.julianecost.com/quiz/fashion-gold',
+        permanent: false,
       },
       // ── Lixo de URL herdado do WordPress ──────────────────────────────
       // O Google ainda rastreia esses padrões e desde 26/08 eles viraram uma
