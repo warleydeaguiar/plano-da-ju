@@ -24,9 +24,21 @@ const SEGMENTOS = [
   { label: '10% OFF', premio: false },
 ]
 const FATIA = 360 / SEGMENTOS.length
-// Dourado no prêmio; os outros alternam para dar contraste sem virar arco-íris.
-const FUNDO = ['#C9A877', '#3B2A1F', '#7A5C3A', '#3B2A1F', '#7A5C3A', '#3B2A1F', '#7A5C3A', '#3B2A1F']
-const TEXTO = ['#2A1E2C', '#F5E6D3', '#F5E6D3', '#F5E6D3', '#F5E6D3', '#F5E6D3', '#F5E6D3', '#F5E6D3']
+// Dourado no prêmio, vinho e rosa da marca nos outros. Os marrons anteriores
+// ficavam todos parecidos e a fatia premiada não se destacava.
+const FUNDO = ['#C9A877', '#5C1B3A', '#9D174D', '#5C1B3A', '#9D174D', '#5C1B3A', '#9D174D', '#5C1B3A']
+const TEXTO = ['#2A1E2C', '#FFF', '#FFF', '#FFF', '#FFF', '#FFF', '#FFF', '#FFF']
+
+/**
+ * Ângulo do meio da fatia, já no sistema do SVG (0° apontando para cima).
+ * O texto acompanha o raio; quando cairia de cabeça para baixo (metade
+ * esquerda da roda), gira 180° para continuar legível.
+ */
+function anguloDoTexto(i: number) {
+  const centro = i * FATIA - 90 + FATIA / 2
+  const invertido = centro > 90 && centro < 270
+  return { centro, rotacao: invertido ? centro + 180 : centro }
+}
 
 function ponto(graus: number, raio: number) {
   const rad = (graus * Math.PI) / 180
@@ -71,37 +83,53 @@ export default function RoletaFG({ onPremio }: { onPremio: () => void }) {
             // Curva longa no fim: a roleta desacelera como uma de verdade.
             transition: girando ? 'transform 4s cubic-bezier(0.15, 0.85, 0.2, 1)' : 'none',
           }}>
-            {SEGMENTOS.map((s, i) => (
-              <g key={i}>
-                <path d={fatia(i)} fill={FUNDO[i]} stroke="#FFF8EE" strokeWidth="2" />
-                <text
-                  x={ponto(i * FATIA - 90 + FATIA / 2, R * 0.66).x}
-                  y={ponto(i * FATIA - 90 + FATIA / 2, R * 0.66).y}
-                  fill={TEXTO[i]} fontSize={s.premio ? 17 : 14} fontWeight={s.premio ? 800 : 600}
-                  textAnchor="middle" dominantBaseline="middle"
-                  transform={`rotate(${i * FATIA + FATIA / 2} ${ponto(i * FATIA - 90 + FATIA / 2, R * 0.66).x} ${ponto(i * FATIA - 90 + FATIA / 2, R * 0.66).y})`}
-                >{s.label}</text>
-              </g>
-            ))}
+            {SEGMENTOS.map((s, i) => {
+              const { centro, rotacao } = anguloDoTexto(i)
+              const p = ponto(centro, R * 0.62)
+              return (
+                <g key={i}>
+                  <path d={fatia(i)} fill={FUNDO[i]} stroke="#FFF8EE" strokeWidth="2" />
+                  <text
+                    x={p.x} y={p.y}
+                    fill={TEXTO[i]} fontSize={s.premio ? 16 : 13} fontWeight={s.premio ? 900 : 600}
+                    textAnchor="middle" dominantBaseline="middle"
+                    transform={`rotate(${rotacao.toFixed(1)} ${p.x.toFixed(2)} ${p.y.toFixed(2)})`}
+                  >{s.label}</text>
+                </g>
+              )
+            })}
           </g>
           <circle cx={CX} cy={CY} r={R + 6} fill="none" stroke="#C9A877" strokeWidth="5" />
-          <circle cx={CX} cy={CY} r="26" fill="#FFF8EE" stroke="#C9A877" strokeWidth="3" />
         </svg>
-      </div>
 
-      <button
-        onClick={girar}
-        disabled={girando || jaGirou.current}
-        style={{
-          width: '100%', maxWidth: 340, padding: '17px 20px', borderRadius: 16, border: 'none',
-          background: girando ? '#B9A88E' : 'linear-gradient(135deg,#C9A877,#9C7B4F)',
-          color: '#fff', fontSize: 17, fontWeight: 800, letterSpacing: 0.3,
-          cursor: girando ? 'default' : 'pointer',
-          boxShadow: '0 14px 30px -14px rgba(156,123,79,.9)',
-        }}
-      >
-        {girando ? 'Girando…' : 'GIRAR E VER MEU DESCONTO'}
-      </button>
+        {/* O botão fica no EIXO da roleta, como numa roleta de verdade: é ele
+            que a pessoa aperta, e some assim que o giro começa para não brigar
+            com a animação. */}
+        <button
+          onClick={girar}
+          disabled={girando || jaGirou.current}
+          aria-label="Girar a roleta"
+          style={{
+            position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
+            width: 84, height: 84, borderRadius: '50%', zIndex: 3,
+            border: '4px solid #FFF8EE',
+            background: girando ? '#B9A88E' : 'radial-gradient(circle at 35% 30%, #E4C99A, #9C7B4F)',
+            color: '#2A1E2C', fontSize: 15, fontWeight: 900, letterSpacing: 0.5,
+            cursor: girando ? 'default' : 'pointer',
+            boxShadow: girando ? 'none' : '0 6px 18px -4px rgba(0,0,0,.45)',
+            // Pulsa enquanto ninguém tocou: é o convite para a ação.
+            animation: girando || jaGirou.current ? 'none' : 'pulsaGirar 1.6s ease-in-out infinite',
+          }}
+        >
+          {girando ? '...' : 'GIRAR'}
+        </button>
+        <style>{`
+          @keyframes pulsaGirar {
+            0%, 100% { box-shadow: 0 6px 18px -4px rgba(0,0,0,.45), 0 0 0 0 rgba(201,168,119,.55); }
+            50%      { box-shadow: 0 6px 18px -4px rgba(0,0,0,.45), 0 0 0 14px rgba(201,168,119,0); }
+          }
+        `}</style>
+      </div>
     </div>
   )
 }
