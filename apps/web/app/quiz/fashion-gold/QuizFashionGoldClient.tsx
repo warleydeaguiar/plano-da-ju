@@ -770,7 +770,20 @@ export default function QuizFashionGoldClient({ experimentos = [] }: { experimen
     [experimento, sessionId],
   )
   const abVariant = experimento ? rotuloVariante(experimento, lado) : null
-  const mostraRoleta = lado === 'variant' && !!experimento
+
+  /**
+   * A roleta é a página — não é mais uma variante.
+   *
+   * O teste fg_roleta (25 a 27/09/2026) fechou com 30,3% de conversão contra
+   * 12,9% do botão "Continuar": +17,4 pontos, p = 0,000014. Ganhou por dois
+   * motivos somados — mais gente age no primeiro passo, e o caminho até os
+   * dados tem três telas a menos.
+   *
+   * Está fixo em `true` de propósito: enquanto dependia do experimento estar
+   * rodando, encerrar o teste no painel devolveria todo mundo para a versão
+   * perdedora. A infraestrutura de A/B continua de pé para os próximos testes.
+   */
+  const mostraRoleta = true
 
   // Rastrear view na montagem (com session_id → dá pra contar pessoas únicas)
   useEffect(() => {
