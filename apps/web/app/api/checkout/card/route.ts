@@ -250,10 +250,18 @@ export async function POST(req: NextRequest) {
     );
 
     if (isRefused) {
-      const declineMsg =
-        lt?.acquirer_message ||
-        lt?.gateway_response?.errors?.[0]?.message ||
-        `Pagamento ${chargeStatus || orderStatus || 'recusado'}`;
+      // A Pagar.me às vezes devolve `acquirer_message: "Transação aprovada com
+      // sucesso"` (código 0000) numa transação `not_authorized` — mensagem que
+      // se contradiz. Registrar isso cru gerava a linha absurda "Pagamento
+      // recusado: Transação aprovada com sucesso" no painel, que não ajudava
+      // ninguém a entender o que houve.
+      const msgCrua = String(lt?.acquirer_message ?? '');
+      const contraditoria = /aprovad/i.test(msgCrua);
+      const declineMsg = contraditoria
+        ? `não autorizada pelo banco (a adquirente respondeu "${msgCrua}" com status ${txStatus || chargeStatus})`
+        : (msgCrua
+          || lt?.gateway_response?.errors?.[0]?.message
+          || `Pagamento ${chargeStatus || orderStatus || 'recusado'}`);
       await logCheckoutError({
         route: 'checkout/card',
         email: logEmail,
@@ -279,6 +287,10 @@ export async function POST(req: NextRequest) {
       order_id:     chargeId,
       status:       order.status,
       paid:         isReallyPaid,
+      // Diz ao front que a recusa JÁ é definitiva. Sem isto ele entrava em
+      // "Confirmando seu pagamento…" e ficava perguntando o status de uma
+      // ordem que já tinha nascido recusada.
+      recusado:     isRefused,
       // O front usa este valor no rastreamento: é o cobrado, não o exibido.
       amount:       PRICE_CENTS,
       redirect_url: isReallyPaid ? '/obrigado' : null,

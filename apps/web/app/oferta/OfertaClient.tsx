@@ -591,6 +591,13 @@ export default function OfertaClient() {
   const [manualState, setManualState] = useState('');
   const [cardOrderId, setCardOrderId] = useState('');
   const [cardPolling, setCardPolling] = useState(false);
+  /**
+   * O banco recusou a cobrança (diferente de campo faltando no formulário).
+   *
+   * Só neste caso o atalho do PIX aparece: quando o que falta é o CPF ou o
+   * número do cartão, oferecer PIX não resolve — o PIX pede CPF também.
+   */
+  const [cartaoRecusado, setCartaoRecusado] = useState(false);
 
   // Timer: 15 min frescos a cada visita
   const countdown = useOfferCountdown();
@@ -731,7 +738,8 @@ export default function OfertaClient() {
           router.push('/obrigado');
         } else if (data.failed) {
           setCardPolling(false);
-          setError('Não foi possível cobrar seu cartão. Verifique os dados ou tente outro método.');
+          setCartaoRecusado(true);
+          setError('Não foi possível cobrar seu cartão. Você pode tentar outro cartão — ou pagar no PIX, que cai na hora.');
           setStep('card_form');
         }
       } catch {}
@@ -1076,6 +1084,14 @@ export default function OfertaClient() {
         localStorage.setItem('purchase_data', JSON.stringify({ email, name, purchasedAt: Date.now(), amount: cobrado / 100, orderId: data.order_id }));
         await logEvent({ event_type: 'payment_confirmed', email, payment_type: 'card', amount_cents: cobrado });
         router.push('/obrigado');
+      } else if (data.recusado) {
+        setCartaoRecusado(true);
+        // O servidor já sabe que o banco não autorizou: não adianta ficar
+        // perguntando o status. Volta para o formulário com o caminho que
+        // resolve — 10 das 14 clientes que passaram por aqui nunca compraram,
+        // e quem gera o PIX paga em 84% dos casos.
+        setError('O seu banco não autorizou a compra no cartão. Você pode tentar outro cartão — ou pagar no PIX, que cai na hora.');
+        setStep('card_form');
       } else {
         // Order criado mas cobrança ainda pendente — inicia polling
         setCardOrderId(data.order_id);
@@ -1956,9 +1972,27 @@ export default function OfertaClient() {
 
             {/* Error */}
             {error && (
-              <p style={{ color: T.red, fontSize: 13, padding: '12px 16px', background: '#FEF2F2', borderRadius: 12, border: '1px solid #FECACA', marginBottom: 12 }}>
-                {error}
-              </p>
+              <div style={{ padding: '12px 16px', background: '#FEF2F2', borderRadius: 12, border: '1px solid #FECACA', marginBottom: 12 }}>
+                <p style={{ color: T.red, fontSize: 13, margin: 0 }}>{error}</p>
+                {/* Atalho para o PIX na recusa do cartão.
+                    Dizer "tente outro método" não basta: das 14 clientes que
+                    tiveram o cartão recusado, 10 nunca voltaram. Quem chega a
+                    gerar o PIX paga em 84% dos casos — então o caminho tem que
+                    estar a um toque. */}
+                {payType === 'card' && cartaoRecusado && (
+                  <button
+                    onClick={() => { setError(''); setCartaoRecusado(false); setPayType('pix'); }}
+                    style={{
+                      marginTop: 10, width: '100%', border: 'none', borderRadius: 10,
+                      padding: '12px 14px', cursor: 'pointer', fontFamily: fonts.ui,
+                      background: 'linear-gradient(135deg,#22A06B,#15803d)', color: '#fff',
+                      fontSize: 13.5, fontWeight: 800,
+                    }}
+                  >
+                    Pagar no PIX — cai na hora
+                  </button>
+                )}
+              </div>
             )}
 
             {/* CTA */}
