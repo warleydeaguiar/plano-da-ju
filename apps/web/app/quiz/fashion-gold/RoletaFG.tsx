@@ -1,5 +1,5 @@
 'use client'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 /**
  * Roleta do desconto da Progressiva Fashion Gold (variante B do teste).
@@ -53,7 +53,18 @@ function fatia(i: number) {
   return `M ${CX} ${CY} L ${a.x.toFixed(2)} ${a.y.toFixed(2)} A ${R} ${R} 0 0 1 ${b.x.toFixed(2)} ${b.y.toFixed(2)} Z`
 }
 
-export default function RoletaFG({ onPremio }: { onPremio: () => void }) {
+export default function RoletaFG({ onPremio, aoMontar }: {
+  onPremio: () => void
+  /**
+   * Entrega a função de girar para quem usa a roleta.
+   *
+   * Serve para a ARTE acima também girar: o Clarity mostrou 475 toques na
+   * imagem do hero (mais do que no próprio botão de avançar, que teve 405) —
+   * gente pedindo para ver o preço que a arte esconde. Sem isto, esse toque
+   * não fazia nada.
+   */
+  aoMontar?: (girar: () => void) => void
+}) {
   const [girando, setGirando] = useState(false)
   const [rotacao, setRotacao] = useState(0)
   const jaGirou = useRef(false)
@@ -67,6 +78,8 @@ export default function RoletaFG({ onPremio }: { onPremio: () => void }) {
     setRotacao(alvo)
     window.setTimeout(() => { setGirando(false); onPremio() }, 4200)
   }, [onPremio])
+
+  useEffect(() => { aoMontar?.(girar) }, [aoMontar, girar])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18 }}>

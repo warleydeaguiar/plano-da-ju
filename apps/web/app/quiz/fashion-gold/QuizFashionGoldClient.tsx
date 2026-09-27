@@ -350,6 +350,7 @@ function StepDescontoLiberado({ nome, href }: { nome: string; href: string }) {
  */
 function Step1Roleta({ onGirou }: { onGirou: () => void }) {
   const [revelado, setRevelado] = useState(false)
+  const girarRef = useRef<(() => void) | null>(null)
   return (
     <StepShell step={1} total={4} semBarras footer={
       revelado ? (
@@ -375,6 +376,9 @@ function Step1Roleta({ onGirou }: { onGirou: () => void }) {
       }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
+          onClick={() => { if (!revelado) girarRef.current?.() }}
+          role={revelado ? undefined : 'button'}
+          aria-label={revelado ? undefined : 'Girar a roleta e revelar o desconto'}
           src="/quiz/fashion-gold-hero-b.webp"
           alt="A progressiva mais famosa do Brasil entrou em promoção — preço exclusivo no grupo"
           width={1080} height={1080}
@@ -386,6 +390,7 @@ function Step1Roleta({ onGirou }: { onGirou: () => void }) {
           style={{
             width: '100%', height: 'auto', maxHeight: '40svh',
             objectFit: 'cover', objectPosition: 'center top', display: 'block',
+            cursor: revelado ? 'default' : 'pointer',
           }}
         />
       </div>
@@ -412,7 +417,7 @@ function Step1Roleta({ onGirou }: { onGirou: () => void }) {
           </div>
         </div>
       ) : (
-        <RoletaFG onPremio={() => setRevelado(true)} />
+        <RoletaFG onPremio={() => setRevelado(true)} aoMontar={(g) => { girarRef.current = g }} />
       )}
     </StepShell>
   )
@@ -430,7 +435,13 @@ function Step1({ onNext, toastPeople }: { onNext: () => void; toastPeople: Testi
       </div>
     }>
       {/* Hero (a imagem já traz selo, título e chamada — não repetimos em texto) */}
-      <div style={{ width: '100%', borderRadius: 22, overflow: 'hidden', border: `1px solid ${T.line}`, background: T.paper }}>
+      {/* A arte avança o passo: o mapa de calor mostrou 475 toques nela contra
+          405 no botão "Continuar" — era o elemento mais clicado da tela, e não
+          respondia. */}
+      <div
+        onClick={onNext}
+        style={{ width: '100%', borderRadius: 22, overflow: 'hidden', border: `1px solid ${T.line}`, background: T.paper, cursor: 'pointer' }}
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {/* WebP no lugar do PNG (2,2 MB → 233 KB). width/height evitam o "pulo"
             do layout enquanto carrega; fetchPriority alta porque é a imagem da
