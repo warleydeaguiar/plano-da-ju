@@ -21,8 +21,11 @@ import { PLAN_BASE_CENTS } from '@/lib/pricing';
 export const QUESTAO_GASTO = 'gasto_mensal';
 
 export const FAIXAS_GASTO = [
-  { id: 'ate_50',    label: 'Até R$ 50',            precoCents: 2990 },
-  { id: 'ate_100',   label: 'De R$ 50 a R$ 100',    precoCents: 3490 },
+  // 27/09/2026: as duas faixas de baixo caíram (29,90 → 19,90 e 34,90 → 24,90).
+  // Elas concentram 68% de quem responde e convertiam pior que a faixa de
+  // R$ 39,90 — sinal de que ali o preço pesava, não a vontade.
+  { id: 'ate_50',    label: 'Até R$ 50',            precoCents: 1990 },
+  { id: 'ate_100',   label: 'De R$ 50 a R$ 100',    precoCents: 2490 },
   { id: 'ate_300',   label: 'De R$ 100 a R$ 300',   precoCents: 3990 },
   { id: 'acima_300', label: 'Mais de R$ 300',       precoCents: 4490 },
 ] as const;
