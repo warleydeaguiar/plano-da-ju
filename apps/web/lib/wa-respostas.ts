@@ -45,6 +45,10 @@ export function classificarResposta(texto: unknown): TipoResposta {
   // Confirmação da vaga: o convite não manda o link de cara, pergunta antes.
   // Quem toca aqui está pedindo o link — e o toque abre a janela de 24 h.
   if (t === 'quero entrar no grupo') return 'botao_quer_grupo';
+  if (t === 'confirmar e receber o link') return 'botao_quer_grupo';
+  // A reserva (acesso_grupo_reservado_v1) também foi aprovada como UTILITY e
+  // fica de suplente: se o texto do convite mudar, o botão dela já é entendido.
+  if (t === 'receber o link') return 'botao_quer_grupo';
   if (t === 'consegui entrar') return 'botao_entrei_grupo';
   if (t === 'nao consegui entrar') return 'botao_nao_entrei';
   if (t === 'tenho uma duvida') return 'botao_duvida';

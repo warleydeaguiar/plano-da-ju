@@ -17,7 +17,13 @@ import { qualidadeDoNumero } from '@/lib/wa-saude';
  * sem precisar bloquear o número de verdade — que é o que machucaria a
  * qualidade do canal.
  */
-export const TEMPLATE_CONVITE = process.env.WHATSAPP_CONVITE_GRUPO_TEMPLATE || 'entrada_grupo_pendente_v1';
+/**
+ * A v1 foi aprovada como MARKETING e por isso nunca saiu (a trava só deixa
+ * passar UTILITY). O que puxou a categoria foi o corpo: falava em "grupo de
+ * ofertas" e em "vagas limitadas" — promoção e escassez. A v2 diz apenas que a
+ * solicitação DELA está pendente e pede a confirmação.
+ */
+export const TEMPLATE_CONVITE = process.env.WHATSAPP_CONVITE_GRUPO_TEMPLATE || 'entrada_grupo_pendente_v2';
 
 export async function convidarParaGrupo(
   sb: any,
