@@ -22,6 +22,7 @@ import {
   IconChat, iconForHairFeel,
 } from './icons';
 import AlunasPorDia, { type DiaAlunas } from './components/AlunasPorDia';
+import LeadsPorDia from './components/LeadsPorDia';
 
 export const dynamic = 'force-dynamic';
 
@@ -596,6 +597,7 @@ export default async function DashboardPage() {
     groupJoinsToday,
     groupJoinsYesterday,
     groupJoinsMonth,
+    leadsFgSerieRaw,
     totalClicks,
     clicksToday,
     clicksLast7,
@@ -662,13 +664,23 @@ export default async function DashboardPage() {
     (sb.from('wg_quiz_step_events') as any).select('session_id').eq('quiz_slug', 'plano-capilar').eq('step_index', 0).eq('event_type', 'answered').gte('created_at', yesterdayStartBR.toISOString()).lt('created_at', todayStartBR.toISOString()).limit(5000),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sb.from('wg_quiz_step_events') as any).select('session_id').eq('quiz_slug', 'plano-capilar').eq('step_index', 0).eq('event_type', 'answered').gte('created_at', day30agoBR.toISOString()).limit(20000),
-    // Grupos — joins e cliques
+    // Grupos — o retorno dos anúncios de "Grupos" é o LEAD do quiz.
+    //
+    // Antes estes três números vinham de `wg_member_events` (entrada confirmada
+    // no grupo, via webhook do Evolution). Esse webhook não registra nada desde
+    // 28/07/2026 — as instâncias de grupo estão fora do ar — então "cadastros"
+    // aparecia zerado e o custo por cadastro, infinito. E desde 25/09 o quiz
+    // nem passa pelo grupo: leva direto à loja da Ybera, e o grupo virou um
+    // convite posterior. O que o investimento produz hoje é lead.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (sb.from('wg_member_events') as any).select('*', { count: 'exact', head: true }).eq('action', 'join').gte('created_at', todayStartBR.toISOString()),
+    (sb.from('wg_quiz_leads') as any).select('*', { count: 'exact', head: true }).eq('quiz_slug', 'fashion-gold').gte('created_at', todayStartBR.toISOString()),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (sb.from('wg_member_events') as any).select('*', { count: 'exact', head: true }).eq('action', 'join').gte('created_at', yesterdayStartBR.toISOString()).lt('created_at', todayStartBR.toISOString()),
+    (sb.from('wg_quiz_leads') as any).select('*', { count: 'exact', head: true }).eq('quiz_slug', 'fashion-gold').gte('created_at', yesterdayStartBR.toISOString()).lt('created_at', todayStartBR.toISOString()),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (sb.from('wg_member_events') as any).select('*', { count: 'exact', head: true }).eq('action', 'join').gte('created_at', monthStartBR.toISOString()),
+    (sb.from('wg_quiz_leads') as any).select('*', { count: 'exact', head: true }).eq('quiz_slug', 'fashion-gold').gte('created_at', monthStartBR.toISOString()),
+    // Série diária para o gráfico (14 dias).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sb.from('wg_quiz_leads') as any).select('created_at').eq('quiz_slug', 'fashion-gold').gte('created_at', new Date(Date.now() - 14 * 86400000).toISOString()).limit(20000),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sb.from('wg_redirect_clicks') as any).select('*', { count: 'exact', head: true }),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -793,6 +805,25 @@ export default async function DashboardPage() {
   const gruposSpendToday      = metaAds.grupos.today;
   const gruposSpendYesterday  = metaAds.grupos.yesterday;
   const gruposSpendMonth      = metaAds.grupos.thisMonth;
+
+  /**
+   * Série de leads por dia (14 dias) para o gráfico do bloco de Grupos.
+   * Agrupada no fuso de São Paulo — agrupar em UTC jogaria tudo o que entra
+   * depois das 21h para o dia seguinte.
+   */
+  const leadsFgPorDia = (() => {
+    const mapa = new Map<string, number>();
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 86400000);
+      mapa.set(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(d), 0);
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const l of ((leadsFgSerieRaw as any)?.data ?? []) as Array<{ created_at: string }>) {
+      const dia = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(l.created_at));
+      if (mapa.has(dia)) mapa.set(dia, (mapa.get(dia) ?? 0) + 1);
+    }
+    return [...mapa.entries()].map(([dia, leads]) => ({ dia, leads }));
+  })();
 
   const joinsToday     = groupJoinsToday.count     ?? 0;
   const joinsYesterday = groupJoinsYesterday.count ?? 0;
@@ -1223,23 +1254,25 @@ export default async function DashboardPage() {
             sub={`ontem ${brl(gruposSpendYesterday)}`}
           />
           <StatCard
-            icon={IconUsers} label="Cadastros hoje" value={joinsToday}
+            icon={IconUsers} label="Leads hoje" value={joinsToday}
             accent={T.green} accentSoft={T.greenSoft} valueColor={T.green}
             sub={`ontem ${joinsYesterday}`}
           />
           <StatCard
-            icon={IconTarget} label="Custo/cadastro hoje"
+            icon={IconTarget} label="Custo/lead hoje"
             value={cpjToday !== null ? brl(cpjToday) : '—'}
             accent={T.pink} accentSoft={T.pinkSoft}
-            sub={cpjToday === null ? (joinsToday === 0 ? 'sem cadastros' : 'sem investimento') : 'CPA do dia'}
+            sub={cpjToday === null ? (joinsToday === 0 ? 'sem leads' : 'sem investimento') : 'CPL do dia'}
           />
           <StatCard
-            icon={IconTarget} label="Custo/cadastro mês"
+            icon={IconTarget} label="Custo/lead mês"
             value={cpjMonth !== null ? brl(cpjMonth) : '—'}
             accent={T.pink} accentSoft={T.pinkSoft}
-            sub={`${joinsMonth} cadastro${joinsMonth !== 1 ? 's' : ''} · ${brl(gruposSpendMonth)} gasto`}
+            sub={`${joinsMonth} lead${joinsMonth !== 1 ? 's' : ''} · ${brl(gruposSpendMonth)} gasto`}
           />
         </div>
+
+        <LeadsPorDia dias={leadsFgPorDia} titulo="Leads do quiz por dia — últimos 14 dias" />
 
         {/* KPIs Grupos — linha 2: vendas Ybera + comissão */}
         {yberaStatus === 'ok' ? (
@@ -1337,7 +1370,7 @@ export default async function DashboardPage() {
           </div>
           <div style={{ fontSize: 11.5, color: T.inkSoft, marginTop: 12, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
             <span style={{ color: T.alert, flexShrink: 0, marginTop: 1 }}><IconWarning size={14} /></span>
-            <span>Cliques ≠ cadastros. Nem todo quem clica entra no grupo. O CPA acima usa os cadastros confirmados (Evolution webhook).</span>
+            <span>Leads = cadastros no quiz (nome, WhatsApp e e-mail), que é o que os anúncios entregam hoje. A entrada no grupo deixou de ser medida aqui: o webhook do Evolution não registra nada desde 28/07 e, desde 25/09, o quiz leva direto à loja — o convite do grupo vai depois, por WhatsApp.</span>
           </div>
         </div>
 
