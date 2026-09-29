@@ -1207,6 +1207,9 @@ export default async function DashboardPage() {
             valueColor={profitMonth >= 0 ? T.green : T.danger}
           />
         </div>
+        <p style={{ fontSize: 11, color: T.inkMuted, margin: '-8px 0 0' }}>
+          Investimento já inclui o imposto que a Meta cobra sobre anúncios no Brasil ({(META_TAX_RATE * 100).toFixed(2).replace('.', ',')}%).
+        </p>
 
         {/* Plano — gráfico + campanhas */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>

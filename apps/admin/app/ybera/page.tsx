@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase'
 import { getGrupoAdSpend, getGrupoAdSpendPorMes } from '@/lib/meta-ads'
 import { fetchCurrentMonthOrders, fetchYberaOrders, groupByMonth, type YberaOrder } from '@/lib/ybera-api'
 import Sidebar from '../components/Sidebar'
+import { META_TAX_RATE } from '@/lib/meta-ads-quiz'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Ybera — Admin Plano da Ju' }
@@ -287,6 +288,9 @@ export default async function YberaPage() {
           <StatCard icon="💸" label="Custo por lead" value={curCPL > 0 ? `R$ ${curCPL.toFixed(2).replace('.', ',')}` : '—'}
             color={curCPL > 2 ? red : curCPL > 1.5 ? orange : green} />
         </div>
+        <p style={{ fontSize: 11, color: gray, margin: '-20px 0 24px' }}>
+          Todo investimento nesta página já inclui o imposto que a Meta cobra sobre anúncios no Brasil ({(META_TAX_RATE * 100).toFixed(2).replace('.', ',')}%).
+        </p>
 
         {/* ── Live: top products + recent orders ── */}
         {yberaConnected && liveOrders.length > 0 && (

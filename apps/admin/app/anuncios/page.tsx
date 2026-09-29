@@ -1,5 +1,6 @@
 import Sidebar from '../components/Sidebar';
 import { getCreativeAnalysis, type CreativePeriod, type CreativeRow } from '../../lib/meta-ads-creatives';
+import { META_TAX_RATE } from '../../lib/meta-ads-quiz';
 import { getCapiHealth, type CapiHealth } from '../../lib/capi-health';
 import { T, fonts, shadow, gradient } from '../theme';
 import {
@@ -291,7 +292,7 @@ function Section({ icon: Icon, accent, accentSoft, title, subtitle, mode, creati
       { icon: IconMegaphone, label: 'Criativos', value: intStr(creatives.length), sub: 'com investimento' },
       { icon: IconBag, label: 'Compras', value: intStr(totalPurchases), sub: 'no período', color: T.green },
       { icon: IconTarget, label: 'Melhor custo/compra', value: bestCpp !== null ? brl(bestCpp) : '—', sub: 'menor CPP', color: T.green },
-      { icon: IconMoney, label: 'Investido', value: brl(totalSpend), sub: 'no período' },
+      { icon: IconMoney, label: 'Investido', value: brl(totalSpend), sub: `no período · c/ imposto Meta ${(META_TAX_RATE * 100).toFixed(2).replace('.', ',')}%` },
     ];
   } else {
     const totalClicks = creatives.reduce((s, c) => s + c.link_clicks, 0);
@@ -301,7 +302,7 @@ function Section({ icon: Icon, accent, accentSoft, title, subtitle, mode, creati
       { icon: IconMegaphone, label: 'Criativos', value: intStr(creatives.length), sub: 'com investimento' },
       { icon: IconCursor, label: 'Cliques no link', value: intStr(totalClicks), sub: 'no período', color: T.blue },
       { icon: IconTarget, label: 'Melhor custo/clique', value: bestCpc !== null ? brl(bestCpc) : '—', sub: 'menor CPC' },
-      { icon: IconMoney, label: 'Investido', value: brl(totalSpend), sub: 'no período' },
+      { icon: IconMoney, label: 'Investido', value: brl(totalSpend), sub: `no período · c/ imposto Meta ${(META_TAX_RATE * 100).toFixed(2).replace('.', ',')}%` },
     ];
   }
 
