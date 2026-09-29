@@ -24,6 +24,7 @@ import {
 import AlunasPorDia, { type DiaAlunas } from './components/AlunasPorDia';
 import LeadsPorDia from './components/LeadsPorDia';
 import ConversaoPagamento from './components/ConversaoPagamento';
+import ConversaoPagamentoPorDia from './components/ConversaoPagamentoPorDia';
 
 export const dynamic = 'force-dynamic';
 
@@ -602,10 +603,11 @@ export default async function DashboardPage() {
     totalClicks,
     clicksToday,
     clicksLast7,
-    // Conversão de pagamento (cartão × PIX) — dia / semana / mês
+    // Conversão de pagamento (cartão × PIX) — dia / semana / mês, e série diária
     funilPagamentoDia,
     funilPagamentoSemana,
     funilPagamentoMes,
+    conversaoPagamentoSerieRaw,
     // App geral
     totalPlans,
     pendingPlansCount,
@@ -708,6 +710,8 @@ export default async function DashboardPage() {
     (sb as any).rpc('checkout_conversao_pagamento', { p_since: day7agoBR.toISOString() }),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sb as any).rpc('checkout_conversao_pagamento', { p_since: day30agoBR.toISOString() }),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sb as any).rpc('checkout_conversao_pagamento_serie', { p_dias: 14 }),
     // App
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sb.from('hair_plans') as any).select('*', { count: 'exact', head: true }).eq('week_number', 1),
@@ -870,6 +874,15 @@ export default async function DashboardPage() {
     semana: periodoPagamento(funilPagamentoSemana),
     mes:    periodoPagamento(funilPagamentoMes),
   };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const conversaoPagamentoSerie = (((conversaoPagamentoSerieRaw as any)?.data ?? []) as Array<{
+    dia: string; pix_started: number; pix_paid: number; card_started: number; card_paid: number;
+  }>).map(r => ({
+    dia: r.dia,
+    pixStarted: Number(r.pix_started ?? 0), pixPaid: Number(r.pix_paid ?? 0),
+    cardStarted: Number(r.card_started ?? 0), cardPaid: Number(r.card_paid ?? 0),
+  }));
 
   const joinsToday     = groupJoinsToday.count     ?? 0;
   const joinsYesterday = groupJoinsYesterday.count ?? 0;
@@ -1120,6 +1133,7 @@ export default async function DashboardPage() {
           semana={conversaoPagamento.semana}
           mes={conversaoPagamento.mes}
         />
+        <ConversaoPagamentoPorDia dias={conversaoPagamentoSerie} />
 
         {/* Alerta: planos travados na geração (quase sempre OpenRouter sem crédito) */}
         {stuckPlans > 0 && (
