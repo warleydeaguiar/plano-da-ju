@@ -23,6 +23,7 @@ import {
 } from './icons';
 import AlunasPorDia, { type DiaAlunas } from './components/AlunasPorDia';
 import LeadsPorDia from './components/LeadsPorDia';
+import ConversaoPagamento from './components/ConversaoPagamento';
 
 export const dynamic = 'force-dynamic';
 
@@ -601,6 +602,10 @@ export default async function DashboardPage() {
     totalClicks,
     clicksToday,
     clicksLast7,
+    // Conversão de pagamento (cartão × PIX) — dia / semana / mês
+    funilPagamentoDia,
+    funilPagamentoSemana,
+    funilPagamentoMes,
     // App geral
     totalPlans,
     pendingPlansCount,
@@ -687,6 +692,22 @@ export default async function DashboardPage() {
     (sb.from('wg_redirect_clicks') as any).select('*', { count: 'exact', head: true }).gte('created_at', todayStartBR.toISOString()),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sb.from('wg_redirect_clicks') as any).select('*', { count: 'exact', head: true }).gte('created_at', day7agoBR.toISOString()),
+    // Conversão de pagamento — RPC própria (checkout_conversao_pagamento),
+    // chamada 3× (dia/semana/mês). "Iniciou" NÃO é checkout_initiated (dispara
+    // no clique em "Quero meu plano agora", antes da escolha do método — fica
+    // sempre 'pix', o padrão do estado). Para cartão também não basta
+    // card_submitted sozinho: esse evento só é gravado quando a cobrança fica
+    // PENDENTE (precisa de polling) — cartão aprovado na hora pula direto pra
+    // payment_confirmed sem nunca passar por card_submitted, o que subestimava
+    // quem tentou e fazia a taxa passar de 100%. A RPC soma quem foi aprovado
+    // na hora e quem foi recusado pela ADQUIRENTE, sem contar quem só bateu
+    // num campo faltando no formulário (isso é abandono, não tentativa).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sb as any).rpc('checkout_conversao_pagamento', { p_since: todayStartBR.toISOString() }),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sb as any).rpc('checkout_conversao_pagamento', { p_since: day7agoBR.toISOString() }),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sb as any).rpc('checkout_conversao_pagamento', { p_since: day30agoBR.toISOString() }),
     // App
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sb.from('hair_plans') as any).select('*', { count: 'exact', head: true }).eq('week_number', 1),
@@ -824,6 +845,31 @@ export default async function DashboardPage() {
     }
     return [...mapa.entries()].map(([dia, leads]) => ({ dia, leads }));
   })();
+
+  /**
+   * Conversão de pagamento — cartão × PIX, dia / semana / mês.
+   *
+   * "Iniciou" é quem de fato tentou aquele método (pix_generated ou
+   * card_submitted), não quem clicou em "comprar" — nesse clique a forma de
+   * pagamento ainda não foi escolhida. "Taxa" é dessas tentativas para
+   * payment_confirmed do mesmo método.
+   */
+  type PeriodoPagamento = { pixIniciou: number; pixPagou: number; cardIniciou: number; cardPagou: number };
+  const periodoPagamento = (raw: unknown): PeriodoPagamento => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const d = (raw as any)?.data ?? {};
+    return {
+      pixIniciou:  Number(d.pix_started  ?? 0),
+      pixPagou:    Number(d.pix_paid     ?? 0),
+      cardIniciou: Number(d.card_started ?? 0),
+      cardPagou:   Number(d.card_paid    ?? 0),
+    };
+  };
+  const conversaoPagamento = {
+    dia:    periodoPagamento(funilPagamentoDia),
+    semana: periodoPagamento(funilPagamentoSemana),
+    mes:    periodoPagamento(funilPagamentoMes),
+  };
 
   const joinsToday     = groupJoinsToday.count     ?? 0;
   const joinsYesterday = groupJoinsYesterday.count ?? 0;
@@ -1067,6 +1113,13 @@ export default async function DashboardPage() {
             )}
           </div>
         </div>
+
+        {/* Conversão de pagamento — cartão × PIX, logo no topo (pedido do Warley, 29/09) */}
+        <ConversaoPagamento
+          dia={conversaoPagamento.dia}
+          semana={conversaoPagamento.semana}
+          mes={conversaoPagamento.mes}
+        />
 
         {/* Alerta: planos travados na geração (quase sempre OpenRouter sem crédito) */}
         {stuckPlans > 0 && (
