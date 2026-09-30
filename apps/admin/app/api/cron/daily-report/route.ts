@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { getQuizAdSpend } from '@/lib/meta-ads-quiz'
 import { fetchYberaOrders, salesOnDateBR, YBERA_COMMISSION_RATE } from '@/lib/ybera-api'
+import { resolveNotificacaoDiscord, marcarNotificacaoEnviada } from '@/lib/discord'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
 const PLAN_PRICE = 47
-const WEBHOOK = process.env.DISCORD_DAILY_REPORT_WEBHOOK ?? ''
+const WEBHOOK_FALLBACK = process.env.DISCORD_DAILY_REPORT_WEBHOOK ?? ''
 
 /**
  * GET /api/cron/daily-report
@@ -30,9 +31,11 @@ function intStr(v: number): string {
 }
 
 async function sendToDiscord(payload: unknown): Promise<{ ok: boolean; error?: string }> {
-  if (!WEBHOOK) return { ok: false, error: 'DISCORD_DAILY_REPORT_WEBHOOK not set' }
+  const { url, ativo } = await resolveNotificacaoDiscord('daily_report', WEBHOOK_FALLBACK)
+  if (!ativo) return { ok: true } // desligada no painel — não é erro
+  if (!url) return { ok: false, error: 'sem webhook (nem no painel, nem no env)' }
   try {
-    const res = await fetch(WEBHOOK, {
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -41,6 +44,7 @@ async function sendToDiscord(payload: unknown): Promise<{ ok: boolean; error?: s
       const txt = await res.text().catch(() => '')
       return { ok: false, error: `Discord ${res.status}: ${txt.slice(0, 200)}` }
     }
+    void marcarNotificacaoEnviada('daily_report')
     return { ok: true }
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'unknown' }

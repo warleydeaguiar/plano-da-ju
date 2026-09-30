@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
+import { resolveNotificacaoDiscord, marcarNotificacaoEnviada } from '@/lib/discord'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
-const WEBHOOK = process.env.DISCORD_CONTENT_IDEAS_WEBHOOK ?? ''
+const WEBHOOK_FALLBACK = process.env.DISCORD_CONTENT_IDEAS_WEBHOOK ?? ''
 
 /**
  * GET /api/cron/weekly-content-ideas
@@ -285,7 +286,9 @@ async function generateIdeas(data: AggregatedData): Promise<{ ok: true; ideas: C
 }
 
 async function sendToDiscord(ideas: ContentIdea[], data: AggregatedData): Promise<{ ok: boolean; error?: string }> {
-  if (!WEBHOOK) return { ok: false, error: 'DISCORD_CONTENT_IDEAS_WEBHOOK not set' }
+  const { url, ativo } = await resolveNotificacaoDiscord('content_ideas', WEBHOOK_FALLBACK)
+  if (!ativo) return { ok: true } // desligada no painel — não é erro
+  if (!url) return { ok: false, error: 'sem webhook (nem no painel, nem no env)' }
 
   const PINK = 0xEC4899
   const ICONS = ['🎬', '🎥', '📹', '🎞️', '🍿']
@@ -311,7 +314,7 @@ async function sendToDiscord(ideas: ContentIdea[], data: AggregatedData): Promis
   }))
 
   try {
-    const res = await fetch(WEBHOOK, {
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -322,6 +325,7 @@ async function sendToDiscord(ideas: ContentIdea[], data: AggregatedData): Promis
     if (!res.ok) {
       return { ok: false, error: `Discord ${res.status}: ${(await res.text()).slice(0, 200)}` }
     }
+    void marcarNotificacaoEnviada('content_ideas')
     return { ok: true }
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'desconhecido' }

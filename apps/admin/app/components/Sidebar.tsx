@@ -148,6 +148,7 @@ const NAV: NavGroup[] = [
     itens: [
       { icon: SbErros, label: 'Erros do sistema', href: '/erros' },
       { icon: SbSuporte, label: 'Feedback', href: '/feedback' },
+      { icon: SbConfig, label: 'Notificações Discord', href: '/notificacoes' },
       {
         icon: SbConfig, label: 'Configurações', href: '/configuracoes',
         children: [

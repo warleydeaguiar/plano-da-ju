@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
+import { resolveNotificacaoDiscord, marcarNotificacaoEnviada } from '@/lib/discord'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -12,7 +13,7 @@ export const maxDuration = 60
  * avança o marco. Assim, erros já corrigidos param de aparecer naturalmente
  * (sem apagar o histórico). ?dry=1 → não posta nem avança (pra testar).
  */
-const WEBHOOK = process.env.DISCORD_ERRORS_WEBHOOK
+const WEBHOOK_FALLBACK = process.env.DISCORD_ERRORS_WEBHOOK
   || 'https://discord.com/api/webhooks/1506986071236542625/nplexcvCuV2ZZP_uQuLWRKrzX2AeBe4E52j573i4WXJGkxy4VaSNFiFFsJItiXAgtADO'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -77,12 +78,16 @@ export async function GET(req: NextRequest) {
   }
 
   if (!dry) {
-    try {
-      await fetch(WEBHOOK, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ embeds: [embed] }),
-      })
-    } catch (e) { console.error('[error-digest] discord falhou', e) }
+    const { url, ativo } = await resolveNotificacaoDiscord('error_digest', WEBHOOK_FALLBACK)
+    if (ativo && url) {
+      try {
+        await fetch(url, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ embeds: [embed] }),
+        })
+        void marcarNotificacaoEnviada('error_digest')
+      } catch (e) { console.error('[error-digest] discord falhou', e) }
+    }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (sb.from('error_review_state') as any)
       .update({ last_reviewed_at: now }).eq('source', 'global')

@@ -5,7 +5,7 @@ import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { normalizeEmail, isValidEmailFormat } from '@/lib/normalize-email';
 import { extractFieldsFromQuiz } from '@/lib/quiz-to-profile';
 import { PLAN_BASE_CENTS } from '@/lib/pricing';
-import { sendDiscord } from '@/lib/discord';
+import { sendDiscordFor } from '@/lib/discord';
 import { logCheckoutError } from '@/lib/checkout-log';
 
 export const runtime = 'nodejs';
@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
     if (evErr) console.error('[pix comprovante] checkout_events', evErr);
 
     // ── Aviso pra conferência humana (não bloqueia a resposta) ──
-    sendDiscord([{
+    sendDiscordFor('pix_manual', process.env.DISCORD_SALES_WEBHOOK ?? '', [{
       title: '🧾 PIX manual — comprovante recebido (CONFERIR)',
       description: 'Acesso liberado automaticamente. Confira o comprovante e, se não bater, revogue o acesso.',
       color: 16769305, // amarelo
