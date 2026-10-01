@@ -125,6 +125,20 @@ export async function POST(req: NextRequest) {
 
     const userId = profile?.id ?? (await resolveAuthUserId(supabase, email));
 
+    // Linka com a sessão do quiz via wg_quiz_leads (email match) — mesmo
+    // padrão do webhook/pagarme. É esse campo que o painel /experimentos usa
+    // pra saber de qual lado do teste A/B (checkout próprio × Hotmart) essa
+    // venda veio.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: leadMatch } = await (supabase.from('wg_quiz_leads') as any)
+      .select('session_id')
+      .ilike('email', email)
+      .not('session_id', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const quizSessionId: string | null = leadMatch?.session_id ?? null;
+
     // Mesma ativação atômica do webhook/pagarme: só o request "vencedor"
     // transiciona o perfil de fora de 'active' para 'active'.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -140,6 +154,7 @@ export async function POST(req: NextRequest) {
         subscription_expires_at: new Date(
           Date.now() + 90 * 24 * 60 * 60 * 1000,
         ).toISOString(),
+        quiz_session_id: quizSessionId,
         hotmart_transaction_id: transactionId,
         plan_status: 'pending_photo',
         plan_requested_at: new Date().toISOString(),

@@ -10,6 +10,8 @@ import { buildConsultaData } from '@/lib/consulta';
 import Picture from '@/app/components/Picture';
 import dynamic from 'next/dynamic';
 import { JU_WHATSAPP_EXIBICAO } from '@/lib/contact';
+import { sortearLado, rotuloVariante, type ExperimentoAtivo } from '@/lib/ab';
+import { buildHotmartCheckoutUrl } from '@/lib/hotmart-checkout';
 
 /**
  * Carregado sob demanda, e não no pacote principal.
@@ -444,9 +446,38 @@ function OfferCard({ countdown, name, onBuy, precoCents = PLAN_BASE_CENTS }: {
 // ╔═══════════════════════════════════════════════════════════╗
 // ║              Main component                              ║
 // ╚═══════════════════════════════════════════════════════════╝
-export default function OfertaClient() {
+export default function OfertaClient({ experimentos = [] }: { experimentos?: ExperimentoAtivo[] }) {
   const router = useRouter();
   const [step, setStep] = useState<Step>('offer');
+
+  // Teste A/B checkout próprio × Hotmart (30/09/2026) — mesmo mecanismo do
+  // fashion-gold (lib/ab.ts), sticky pelo quiz_session_id. `lado` só fica
+  // definido depois que o localStorage é lido (client-only); até lá cai em
+  // 'control', que é o comportamento de sempre.
+  const experimento = experimentos[0] ?? null;
+  const [quizSessionId, setQuizSessionId] = useState('');
+  useEffect(() => {
+    try { setQuizSessionId(localStorage.getItem('quiz_session_id') ?? ''); } catch {}
+  }, []);
+  const lado = useMemo(
+    () => (experimento && quizSessionId ? sortearLado(quizSessionId, experimento) : 'control'),
+    [experimento, quizSessionId],
+  );
+  const abVariant = experimento ? rotuloVariante(experimento, lado) : null;
+
+  // Registra a visualização da oferta para o painel /experimentos medir
+  // "Views" por lado — só dispara uma vez, quando o experimento e a sessão
+  // do quiz já estiverem disponíveis.
+  const abViewLoggedRef = useRef(false);
+  useEffect(() => {
+    if (!experimento || !quizSessionId || abViewLoggedRef.current) return;
+    abViewLoggedRef.current = true;
+    fetch('/api/quiz/view', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ quiz_slug: 'plano-capilar', session_id: quizSessionId, ab_variant: abVariant }),
+    }).catch(() => {});
+  }, [experimento, quizSessionId, abVariant]);
 
   // Sempre que a etapa muda (ex.: offer → checkout), volta pro TOPO. Antes o
   // checkout abria NO MEIO da página (a posição de scroll de onde a pessoa
@@ -1119,6 +1150,39 @@ export default function OfertaClient() {
   const onBuy = () => {
     // Log evento de checkout iniciado
     logEvent({ event_type: 'checkout_initiated', email, payment_type: payType, amount_cents: precoAtual });
+
+    // Teste A/B checkout próprio × Hotmart: registra a "intenção de comprar"
+    // pro painel /experimentos medir Interagiu nos dois lados por igual,
+    // ANTES de ramificar — senão só o lado Hotmart teria esse dado.
+    if (experimento && quizSessionId) {
+      fetch('/api/quiz/step-event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: quizSessionId,
+          quiz_slug: 'plano-capilar',
+          step_index: 0,
+          step_id: experimento.target_step_id ?? 'comprar',
+          event_type: 'answered',
+          ab_variant: abVariant,
+        }),
+      }).catch(() => {});
+    }
+
+    if (experimento && lado === 'variant') {
+      // Lado Hotmart: manda pro checkout deles já com nome/email/telefone
+      // preenchidos. O Pixel/CAPI de InitiateCheckout NÃO dispara aqui — a
+      // própria página de pagamento da Hotmart já tem o pixel instalado
+      // (mesmo ID), disparar os dois contaria o evento em dobro.
+      const ans: Record<string, unknown> = quizAnswers;
+      const destino = buildHotmartCheckoutUrl({
+        email: (ans.email as string) ?? email ?? '',
+        name: (ans.name as string) ?? name ?? '',
+        phone: (ans.phone as string) ?? '',
+      });
+      window.location.href = destino;
+      return;
+    }
 
     // Pixel Meta — InitiateCheckout com Advanced Matching
     // eventID compartilhado entre Pixel e CAPI → deduplicação no Meta.
