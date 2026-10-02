@@ -27,7 +27,7 @@ async function experimentos(): Promise<ExperimentoAtivo[]> {
       .select('id, flag_key, target_step_id, traffic_pct, variant_content')
       .eq('target_quiz_slug', 'plano-capilar')
       .eq('status', 'running');
-    const limite = new Promise<{ data: null }>(r => setTimeout(() => r({ data: null }), 3000));
+    const limite = new Promise<{ data: null }>(r => setTimeout(() => r({ data: null }), 8000));
     const { data } = await Promise.race([consulta, limite]);
     return (data ?? []) as ExperimentoAtivo[];
   } catch {
