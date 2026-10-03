@@ -1,0 +1,237 @@
+.palco {
+  position: relative;
+  min-height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  isolation: isolate;
+}
+
+.video {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -2;
+}
+
+/* Escurece de forma despareja: mais forte nas bordas (onde fica o texto),
+   mais leve no meio (onde o vídeo respira). Sem isso o branco some em
+   trechos claros do vídeo. */
+.veu {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(180deg, rgba(20, 10, 14, 0.78) 0%, rgba(20, 10, 14, 0.25) 24%, rgba(20, 10, 14, 0.32) 68%, rgba(20, 10, 14, 0.85) 100%);
+}
+
+.conteudo {
+  position: relative;
+  width: 100%;
+  max-width: 26rem;
+  padding: 2.75rem 1.25rem 3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.item {
+  opacity: 0;
+  animation: subir 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes subir {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes aparecer {
+  from {
+    opacity: 0;
+    transform: scale(0.82);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.avatarAro {
+  position: relative;
+  display: inline-flex;
+  border-radius: 50%;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  animation: aparecer 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.avatarAro::before {
+  content: '';
+  position: absolute;
+  inset: -7px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, var(--rosa), #f3c6d4, var(--rosa));
+  z-index: -1;
+  animation: girar 9s linear infinite;
+  opacity: 0.9;
+}
+
+@keyframes girar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.nome {
+  font-size: 1.7rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 1rem 0 0.35rem;
+  color: #fff;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.45);
+  text-align: center;
+}
+
+.cargo {
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.88);
+  text-align: center;
+  max-width: 20rem;
+  margin: 0 auto;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.4);
+}
+
+.nav {
+  display: grid;
+  gap: 0.85rem;
+  width: 100%;
+  margin-top: 2.1rem;
+}
+
+.botao {
+  position: relative;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 0.9rem 1.25rem;
+  border-radius: 18px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1rem;
+  line-height: 1.25;
+  text-decoration: none;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+  transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+}
+
+.botao:active {
+  transform: scale(0.97);
+}
+
+@media (hover: hover) {
+  .botao:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.26);
+  }
+}
+
+.botaoDestaque {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--rosa) 0%, #d99aad 100%);
+  box-shadow: 0 10px 28px rgba(196, 120, 143, 0.55);
+}
+
+.botaoDestaque::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 0 0 rgba(246, 233, 236, 0.55);
+  animation: pulso 2.6s ease-out infinite;
+  pointer-events: none;
+}
+
+@keyframes pulso {
+  0% {
+    box-shadow: 0 0 0 0 rgba(246, 233, 236, 0.45);
+  }
+  70% {
+    box-shadow: 0 0 0 14px rgba(246, 233, 236, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(246, 233, 236, 0);
+  }
+}
+
+.redes {
+  display: flex;
+  justify-content: center;
+  gap: 0.7rem;
+  margin-top: 1.9rem;
+  flex-wrap: wrap;
+}
+
+.rede {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #fff;
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+
+.rede:active {
+  transform: scale(0.92);
+}
+
+@media (hover: hover) {
+  .rede:hover {
+    background: rgba(255, 255, 255, 0.24);
+    transform: translateY(-2px);
+  }
+}
+
+.rodape {
+  text-align: center;
+  font-size: 0.7rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.72);
+  margin-top: 2.4rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item,
+  .avatarAro,
+  .avatarAro::before,
+  .botaoDestaque::after {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

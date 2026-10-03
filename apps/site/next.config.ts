@@ -73,6 +73,12 @@ const nextConfig: NextConfig = {
         destination: 'https://planodaju.julianecost.com/quiz/fashion-gold',
         permanent: false,
       },
+      // A página do link da bio virou /bio/ (redesenho com vídeo de fundo,
+      // 2026-10-03) — o conteúdo editável no admin é o mesmo registro
+      // (`site_content.path` foi atualizado de /links/ para /bio/), só o
+      // endereço público mudou. O Instagram da Juliane ainda pode estar
+      // apontando pro endereço antigo.
+      { source: '/links', destination: '/bio', permanent: true },
       // ── Lixo de URL herdado do WordPress ──────────────────────────────
       // O Google ainda rastreia esses padrões e desde 26/08 eles viraram uma
       // enxurrada de 404 (45 páginas no Search Console, ~30 por dia). Todos

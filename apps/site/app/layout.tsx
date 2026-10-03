@@ -27,11 +27,11 @@ const NOMEADAS: Record<string, string> = {
 /**
  * Atalhos do rodapé, lidos da mesma página que alimenta o link da bio.
  *
- * Uma lista só, num lugar só: a Juliane edita /links/ no admin e o rodapé do
+ * Uma lista só, num lugar só: a Juliane edita /bio/ no admin e o rodapé do
  * site inteiro acompanha, sem deploy e sem duas listas para manter iguais.
  */
 async function atalhosDoRodape(): Promise<LinkRodape[]> {
-  const pagina = await porPath('/links/');
+  const pagina = await porPath('/bio/');
   const html = pagina?.content_clean ?? '';
   const vistos = new Set<string>();
   const saida: LinkRodape[] = [];

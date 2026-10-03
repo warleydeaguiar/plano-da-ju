@@ -17,11 +17,12 @@ const MENU = [
 /**
  * Páginas que se apresentam sozinhas, sem a moldura do site.
  *
- * A /links/ é o link da bio do Instagram: quem chega ali veio de um story ou
+ * A /bio/ é o link da bio do Instagram: quem chega ali veio de um story ou
  * do perfil, já sabe de quem é a página e quer tocar num botão. Menu de
- * navegação e rodapé de blog só empurram os botões para baixo da dobra.
+ * navegação e rodapé de blog só empurram os botões para baixo da dobra — e
+ * quebrariam a imersão do vídeo de fundo.
  */
-const SEM_MOLDURA = ['/links/'];
+const SEM_MOLDURA = ['/bio/'];
 
 export interface LinkRodape { href: string; rotulo: string }
 
