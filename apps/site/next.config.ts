@@ -78,7 +78,7 @@ const nextConfig: NextConfig = {
       // (`site_content.path` foi atualizado de /links/ para /bio/), só o
       // endereço público mudou. O Instagram da Juliane ainda pode estar
       // apontando pro endereço antigo.
-      { source: '/links', destination: '/bio', permanent: true },
+      { source: '/links/', destination: '/bio/', permanent: true },
       // ── Lixo de URL herdado do WordPress ──────────────────────────────
       // O Google ainda rastreia esses padrões e desde 26/08 eles viraram uma
       // enxurrada de 404 (45 páginas no Search Console, ~30 por dia). Todos
