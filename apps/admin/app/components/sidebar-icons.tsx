@@ -182,3 +182,12 @@ export const SbFunil: SidebarIcon = (p) => (
     <path d="M3.5 5h17l-6.3 7.3v5.4l-4.4 2.3v-7.7z" />
   </I>
 );
+
+// Link na Bio PRO — elos de corrente (link)
+export const SbLinkBio: SidebarIcon = (p) => (
+  <I {...p}>
+    <path d="M9.5 14.5l5-5" />
+    <path d="M8 16a3.5 3.5 0 0 1 0-5l1.8-1.8" />
+    <path d="M16 8a3.5 3.5 0 0 1 0 5l-1.8 1.8" opacity="0.7" />
+  </I>
+);

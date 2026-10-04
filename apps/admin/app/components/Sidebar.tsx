@@ -8,7 +8,7 @@ import { T, fonts, gradient } from '../theme';
 import {
   SbDashboard, SbPlanos, SbUsuarias, SbGrupos, SbFollowup, SbAnuncios, SbAnalytics,
   SbEmail, SbQuiz, SbStories, SbSuporte, SbChat, SbProdutos, SbYbera, SbExperimentos,
-  SbCheckout, SbErros, SbConfig, SbFunil, type SidebarIcon,
+  SbCheckout, SbErros, SbConfig, SbFunil, SbLinkBio, type SidebarIcon,
 } from './sidebar-icons';
 
 type NavItem = {
@@ -156,6 +156,14 @@ const NAV: NavGroup[] = [
           { label: 'Funcionários', href: '/funcionarios' },
         ],
       },
+    ],
+  },
+  {
+    // Produto separado do Plano Capilar (confirmado com o Warley): mesmo login,
+    // menu visualmente isolado, sem misturar itens com os grupos acima.
+    secao: 'Link na Bio PRO',
+    itens: [
+      { icon: SbLinkBio, label: 'Pedidos', href: '/link-bio-pro' },
     ],
   },
 ]

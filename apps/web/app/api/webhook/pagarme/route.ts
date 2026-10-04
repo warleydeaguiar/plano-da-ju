@@ -6,6 +6,31 @@ import { notifyNewSale } from '@/lib/discord';
 import { logCheckoutError } from '@/lib/checkout-log';
 import { PLAN_BASE_CENTS } from '@/lib/pricing';
 
+// ── Link na Bio PRO — produto separado do Plano Capilar ───────────────────
+// NUNCA toca `profiles`: só atualiza `bio_pro_orders`. Ver plano em
+// .claude/plans/juliane-cost-a-mutable-ripple.md. A ordem é criada sempre com
+// `metadata.source: 'bio-pro-web'` (apps/web/app/api/link-bio-pro/checkout/*),
+// que é o que o resto do webhook usa pra decidir se o evento é desse produto —
+// checado ANTES de qualquer lógica do Plano Capilar, pra nunca confundir uma
+// venda com a outra.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function handleBioProPaymentEvent(supabase: Awaited<ReturnType<typeof createServiceClient>>, data: any) {
+  const orderId: string | null = data.id ?? data.order_id ?? null;
+  const chargeId: string | null = data.charges?.[0]?.id ?? null;
+  if (!orderId) return;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase.from('bio_pro_orders') as any)
+    .update({
+      status_pagamento: 'pago',
+      pagarme_charge_id: chargeId,
+      pago_em: new Date().toISOString(),
+      atualizado_em: new Date().toISOString(),
+    })
+    .eq('pagarme_order_id', orderId)
+    .neq('status_pagamento', 'pago');
+}
+
 // Eventos do PagarMe que tratamos
 // IMPORTANTE: NÃO ativar perfil em 'subscription.created' — esse evento dispara
 // quando a assinatura é criada, ANTES da primeira cobrança ser aprovada.
@@ -52,6 +77,16 @@ export async function POST(req: NextRequest) {
       case 'order.paid':
       case 'charge.paid': {
         const data = body.data;
+
+        // Desvia ANTES de tocar `profiles` — ver handleBioProPaymentEvent acima.
+        // Segunda camada de segurança (além de metadata.source): código do item
+        // começando com 'bio-pro', pra cobrir um client antigo sem metadata.
+        const itemCode: string | undefined = data.items?.[0]?.code;
+        if (data.metadata?.source === 'bio-pro-web' || itemCode?.startsWith('bio-pro')) {
+          await handleBioProPaymentEvent(supabase, data);
+          break;
+        }
+
         const email = data.customer?.email;
         if (!email) break;
 
