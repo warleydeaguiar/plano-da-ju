@@ -5,31 +5,7 @@ import { getTrackingIdentity } from '@/lib/tracking-server';
 import { notifyNewSale } from '@/lib/discord';
 import { logCheckoutError } from '@/lib/checkout-log';
 import { PLAN_BASE_CENTS } from '@/lib/pricing';
-
-// ── Link na Bio PRO — produto separado do Plano Capilar ───────────────────
-// NUNCA toca `profiles`: só atualiza `bio_pro_orders`. Ver plano em
-// .claude/plans/juliane-cost-a-mutable-ripple.md. A ordem é criada sempre com
-// `metadata.source: 'bio-pro-web'` (apps/web/app/api/link-bio-pro/checkout/*),
-// que é o que o resto do webhook usa pra decidir se o evento é desse produto —
-// checado ANTES de qualquer lógica do Plano Capilar, pra nunca confundir uma
-// venda com a outra.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function handleBioProPaymentEvent(supabase: Awaited<ReturnType<typeof createServiceClient>>, data: any) {
-  const orderId: string | null = data.id ?? data.order_id ?? null;
-  const chargeId: string | null = data.charges?.[0]?.id ?? null;
-  if (!orderId) return;
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase.from('bio_pro_orders') as any)
-    .update({
-      status_pagamento: 'pago',
-      pagarme_charge_id: chargeId,
-      pago_em: new Date().toISOString(),
-      atualizado_em: new Date().toISOString(),
-    })
-    .eq('pagarme_order_id', orderId)
-    .neq('status_pagamento', 'pago');
-}
+import { ehEventoBioPro, marcarPedidoPago } from '@/lib/bio-pro';
 
 // Eventos do PagarMe que tratamos
 // IMPORTANTE: NÃO ativar perfil em 'subscription.created' — esse evento dispara
@@ -78,12 +54,23 @@ export async function POST(req: NextRequest) {
       case 'charge.paid': {
         const data = body.data;
 
-        // Desvia ANTES de tocar `profiles` — ver handleBioProPaymentEvent acima.
-        // Segunda camada de segurança (além de metadata.source): código do item
-        // começando com 'bio-pro', pra cobrir um client antigo sem metadata.
-        const itemCode: string | undefined = data.items?.[0]?.code;
-        if (data.metadata?.source === 'bio-pro-web' || itemCode?.startsWith('bio-pro')) {
-          await handleBioProPaymentEvent(supabase, data);
+        // Link na Bio PRO (produto separado) desvia ANTES de qualquer lógica do
+        // Plano Capilar — nunca toca `profiles`. Ver lib/bio-pro.ts.
+        if (ehEventoBioPro(data)) {
+          const id: unknown = data.id;
+          try {
+            await marcarPedidoPago(supabase, {
+              sessionId: data.metadata?.session_id ?? data.order?.metadata?.session_id,
+              orderId: data.order?.id ?? (typeof id === 'string' && id.startsWith('or_') ? id : undefined),
+              chargeId: typeof id === 'string' && id.startsWith('ch_') ? id : data.charges?.[0]?.id,
+            }, { origem: `webhook ${eventType}` });
+          } catch (err) {
+            // 500 de propósito: a Pagar.me reenvia. Responder 200 aqui (como o
+            // resto do webhook faz) perderia um pagamento de verdade em silêncio.
+            console.error('[webhook/pagarme bio-pro]', err);
+            await logCheckoutError({ route: 'webhook/pagarme bio-pro', email: logEmail, err, context: { webhook_event: eventType } });
+            return NextResponse.json({ error: 'retry' }, { status: 500 });
+          }
           break;
         }
 
@@ -274,6 +261,9 @@ export async function POST(req: NextRequest) {
       // ── Cobrança recusada — log para análise ──────────────────
       case 'charge.payment_failed': {
         const data = body.data;
+        // Recusa do Link na Bio PRO já é registrada pela própria rota de
+        // checkout — não entra nas métricas de falha do Plano Capilar.
+        if (ehEventoBioPro(data)) break;
         const email = data.customer?.email;
         if (!email) break;
 

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { T } from '../../theme'
+import { rotuloEtapa, rotuloPergunta, rotuloProfissao } from '../rotulos'
 
 interface Imagem {
   slot?: string
@@ -27,6 +28,19 @@ interface Pedido {
   entregue_em: string | null
   notas_internas: string | null
   criado_em: string
+  etapa_id?: string | null
+}
+
+const PAGAMENTO_LABEL: Record<string, string> = { pendente: 'Não pagou', pago: 'Pago', falhou: 'Cartão recusado', cancelado: 'Cancelado' }
+
+function linkWhats(tel: string | null, nome: string | null, pago: boolean) {
+  const d = (tel ?? '').replace(/\D/g, '')
+  if (d.length < 10) return null
+  const n = (nome ?? '').trim().split(/\s+/)[0] || ''
+  const msg = pago
+    ? `Oi${n ? `, ${n}` : ''}! Aqui é a Juliane 💛 Recebi seu pedido do Link na Bio PRO e já estou montando a sua bio.`
+    : `Oi${n ? `, ${n}` : ''}! Aqui é a Juliane 💛 Vi que você começou a montar seu Link na Bio PRO e não finalizou. Posso te ajudar com alguma dúvida?`
+  return `https://wa.me/${d.startsWith('55') ? d : `55${d}`}?text=${encodeURIComponent(msg)}`
 }
 
 const fmtData = (iso: string | null) => (iso ? new Date(iso).toLocaleString('pt-BR') : '—')
@@ -85,7 +99,7 @@ export default function PedidoClient({ pedido }: { pedido: Pedido }) {
     setStatus(novo)
     const ok = await atualizar({ status_entrega: novo })
     if (ok) {
-      setEntregueEm(novo === 'entregue' ? new Date().toISOString() : entregueEm)
+      setEntregueEm(novo === 'entregue' ? new Date().toISOString() : null)
     } else {
       setStatus(anterior)
     }
@@ -95,8 +109,10 @@ export default function PedidoClient({ pedido }: { pedido: Pedido }) {
     await atualizar({ notas_internas: notas })
   }
 
-  const respostasEntries = Object.entries(pedido.respostas ?? {})
+  const respostasEntries = Object.entries(pedido.respostas ?? {}).filter(([k]) => k !== 'profissao')
   const imagens = pedido.imagens ?? []
+  const pago = pedido.status_pagamento === 'pago'
+  const wa = linkWhats(pedido.telefone, pedido.nome, pago)
 
   return (
     <main className="dash-main" style={{ marginLeft: 234, flex: 1, overflowY: 'auto', padding: '2rem 2.5rem 4rem' }}>
@@ -106,11 +122,17 @@ export default function PedidoClient({ pedido }: { pedido: Pedido }) {
         <div>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: T.ink }}>{pedido.nome || 'Sem nome'}</h1>
           <p style={{ color: T.inkMuted, fontSize: '0.85rem', marginTop: '0.3rem' }}>
-            Pedido em {fmtData(pedido.criado_em)} · pago em {fmtData(pedido.pago_em)}
-            {pedido.metodo_pagamento ? ` · ${pedido.metodo_pagamento}` : ''}
+            Começou em {fmtData(pedido.criado_em)}
+            {pago ? ` · pago em ${fmtData(pedido.pago_em)}` : ` · ${PAGAMENTO_LABEL[pedido.status_pagamento] ?? pedido.status_pagamento} (parou em: ${rotuloEtapa(pedido.etapa_id)})`}
+            {pedido.metodo_pagamento ? ` · ${pedido.metodo_pagamento === 'credit_card' ? 'cartão' : 'PIX'}` : ''}
             {' · R$ '}{(pedido.valor_centavos / 100).toFixed(2).replace('.', ',')}
           </p>
         </div>
+        {wa && (
+          <a href={wa} target="_blank" rel="noopener noreferrer" style={{ background: '#25D366', color: '#fff', fontWeight: 700, fontSize: '0.88rem', padding: '0.6rem 1.1rem', borderRadius: 10, textDecoration: 'none' }}>
+            Chamar no WhatsApp
+          </a>
+        )}
       </header>
 
       {/* contato */}
@@ -120,7 +142,7 @@ export default function PedidoClient({ pedido }: { pedido: Pedido }) {
           <div><p style={rotuloStyle}>Nome</p><p style={valorStyle}>{pedido.nome || '—'}</p></div>
           <div><p style={rotuloStyle}>E-mail</p><p style={valorStyle}>{pedido.email || '—'}</p></div>
           <div><p style={rotuloStyle}>Telefone</p><p style={valorStyle}>{pedido.telefone || '—'}</p></div>
-          <div><p style={rotuloStyle}>Profissão</p><p style={valorStyle}>{pedido.profissao || '—'}</p></div>
+          <div><p style={rotuloStyle}>Profissão</p><p style={valorStyle}>{rotuloProfissao(pedido.profissao)}</p></div>
         </div>
       </section>
 
@@ -136,8 +158,8 @@ export default function PedidoClient({ pedido }: { pedido: Pedido }) {
                 display: 'flex', gap: '0.75rem', fontSize: '0.9rem',
                 borderBottom: `1px solid ${T.borderSoft}`, paddingBottom: '0.5rem',
               }}>
-                <span style={{ fontWeight: 700, color: T.inkSoft, minWidth: '11rem' }}>{chave}</span>
-                <span style={{ color: T.ink }}>{formatarValor(valor)}</span>
+                <span style={{ fontWeight: 700, color: T.inkSoft, minWidth: '11rem' }}>{rotuloPergunta(chave)}</span>
+                <span style={{ color: T.ink, whiteSpace: 'pre-wrap' }}>{formatarValor(valor)}</span>
               </div>
             ))}
           </div>
@@ -171,8 +193,8 @@ export default function PedidoClient({ pedido }: { pedido: Pedido }) {
         )}
       </section>
 
-      {/* status de entrega */}
-      <section style={{ background: T.surface, border: `1px solid ${T.champagne}`, borderRadius: 14, padding: '1.25rem', marginTop: '1.25rem' }}>
+      {/* status de entrega — só existe pra pedido pago */}
+      {pago && (<section style={{ background: T.surface, border: `1px solid ${T.champagne}`, borderRadius: 14, padding: '1.25rem', marginTop: '1.25rem' }}>
         <p style={{ fontWeight: 700, color: T.ink, marginBottom: '0.75rem' }}>Status da entrega</p>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           {(['pendente', 'em_producao', 'entregue'] as const).map((s) => (
@@ -197,7 +219,7 @@ export default function PedidoClient({ pedido }: { pedido: Pedido }) {
             Entregue em {fmtData(entregueEm)}
           </p>
         )}
-      </section>
+      </section>)}
 
       {/* notas internas */}
       <section style={{ background: T.surface, border: `1px solid ${T.champagne}`, borderRadius: 14, padding: '1.25rem', marginTop: '1.25rem' }}>

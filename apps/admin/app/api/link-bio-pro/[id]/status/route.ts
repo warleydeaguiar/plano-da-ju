@@ -35,7 +35,7 @@ export async function PATCH(
   const update: Record<string, unknown> = { atualizado_em: agora }
   if (status_entrega !== undefined) {
     update.status_entrega = status_entrega
-    if (status_entrega === 'entregue') update.entregue_em = agora
+    update.entregue_em = status_entrega === 'entregue' ? agora : null
   }
   if (notas_internas !== undefined) update.notas_internas = notas_internas
 
