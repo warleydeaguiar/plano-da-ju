@@ -50,7 +50,9 @@ export function extrairLinks(html: string | null): { principais: LinkBio[]; rede
   const vistos = new Set<string>();
 
   for (const m of (html || '').matchAll(/<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)) {
-    const href = m[1].trim();
+    // No HTML o `&` de query string vem escrito `&amp;`/`&#038;` — sem decodificar,
+    // link de afiliado com 2+ parâmetros perde o da comissão.
+    const href = m[1].trim().replace(/&amp;|&#0?38;/gi, '&');
     const bruto = semTags(m[2]);
     if (!href || !bruto || vistos.has(href)) continue;
     vistos.add(href);

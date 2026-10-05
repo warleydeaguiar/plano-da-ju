@@ -145,11 +145,18 @@
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  animation-name: entrar, brilho;
+  /* Entrada SEM blur: `filter` animado num texto com background-clip:text
+     some com o texto no Safari. */
+  animation-name: entrarNome, brilho;
   animation-duration: 0.9s, 7s;
   animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1), linear;
   animation-iteration-count: 1, infinite;
   animation-fill-mode: both, none;
+}
+
+@keyframes entrarNome {
+  from { opacity: 0; translate: 0 16px; }
+  to { opacity: 1; translate: 0 0; }
 }
 
 @keyframes brilho {

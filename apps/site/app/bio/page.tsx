@@ -73,7 +73,7 @@ export default async function LinkNaBio() {
                 aria-label={r.rotulo}
                 className={styles.rede}
               >
-                <IconeRede href={r.href} tamanho={19} />
+                <IconeRede href={r.href} tamanho={19} rotulo={r.rotulo} />
               </a>
             ))}
           </div>

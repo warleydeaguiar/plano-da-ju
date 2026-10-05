@@ -36,12 +36,26 @@ export function IconeTikTok({ tamanho = 20 }: { tamanho?: number }) {
   );
 }
 
-/** Escolhe o ícone pela URL da rede; null se não reconhecer. */
-export function IconeRede({ href, tamanho = 20 }: { href: string; tamanho?: number }) {
+export function IconeFacebook({ tamanho = 20 }: { tamanho?: number }) {
+  return (
+    <Svg
+      tamanho={tamanho}
+      path="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a8.68 8.68 0 0 1 1.141.195v3.325a8.623 8.623 0 0 0-.653-.036 26.805 26.805 0 0 0-.733-.009c-.707 0-1.259.096-1.675.309a1.686 1.686 0 0 0-.679.622c-.258.42-.374.995-.374 1.752v1.297h3.919l-.386 2.103-.287 1.564h-3.246v8.245C19.396 23.238 24 18.179 24 12.044c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.628 3.874 10.35 9.101 11.647Z"
+    />
+  );
+}
+
+/**
+ * Escolhe o ícone pela URL da rede. Rede sem ícone (Kwai, etc.) vira a inicial
+ * do nome — botão redondo vazio não diz nada pra quem vê.
+ */
+export function IconeRede({ href, tamanho = 20, rotulo }: { href: string; tamanho?: number; rotulo?: string }) {
   if (/instagram\.com/i.test(href)) return <IconeInstagram tamanho={tamanho} />;
   if (/tiktok\.com/i.test(href)) return <IconeTikTok tamanho={tamanho - 1} />;
   if (/youtube\.com|youtu\.be/i.test(href)) return <IconeYoutube tamanho={tamanho} />;
-  return null;
+  if (/facebook\.com|fb\.com/i.test(href)) return <IconeFacebook tamanho={tamanho} />;
+  const inicial = (rotulo ?? '').trim().charAt(0).toUpperCase();
+  return inicial ? <span aria-hidden style={{ fontWeight: 800, fontSize: tamanho * 0.8, lineHeight: 1 }}>{inicial}</span> : null;
 }
 
 export function IconeYoutube({ tamanho = 20 }: { tamanho?: number }) {

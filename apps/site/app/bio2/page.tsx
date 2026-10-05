@@ -84,7 +84,7 @@ export default async function Bio2() {
           <div className={`${s.redes} ${s.entra}`} style={atraso(base + principais.length * 0.09 + 0.1)}>
             {redes.map((r) => (
               <a key={r.href} href={r.href} target="_blank" rel="noopener noreferrer" aria-label={r.rotulo} className={s.rede}>
-                <IconeRede href={r.href} tamanho={19} />
+                <IconeRede href={r.href} tamanho={19} rotulo={r.rotulo} />
               </a>
             ))}
           </div>
