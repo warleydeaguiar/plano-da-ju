@@ -1,15 +1,12 @@
 import type { Metadata } from 'next';
-import { porPath } from '@/lib/conteudo';
 import { SITE } from '@/lib/seo';
+import { carregarBio, VIDEO_FUNDO, POSTER_FUNDO, type LinkBio as Link } from '@/lib/bio';
 import { CARGO, FotoAutora } from '../components/BoxAutora';
 import IconeWhatsapp from '../components/IconeWhatsapp';
-import { IconeInstagram, IconeTikTok, IconeYoutube } from '../components/IconesRedes';
+import { IconeRede } from '../components/IconesRedes';
 import styles from './bio.module.css';
 
 export const revalidate = 3600; // literal: o Next analisa este export estaticamente
-
-const VIDEO_FUNDO = 'https://db.planodaju.julianecost.com/storage/v1/object/public/site-conteudo/bio/video-fundo.mp4';
-const POSTER_FUNDO = 'https://db.planodaju.julianecost.com/storage/v1/object/public/site-conteudo/bio/video-fundo-poster.jpg';
 
 /**
  * Fora do índice de propósito, como já era no WordPress (path antigo
@@ -23,69 +20,8 @@ export const metadata: Metadata = {
   alternates: { canonical: `${SITE}/bio/` },
 };
 
-interface Link {
-  href: string;
-  rotulo: string;
-  emoji: string | null;
-}
-
-const REDES_CONHECIDAS = /instagram\.com|tiktok\.com|youtube\.com|youtu\.be|facebook\.com|kwai/i;
-
-/** Emoji solto no começo do rótulo vira ícone; o texto fica limpo. */
-const EMOJI_NA_FRENTE = /^\s*([\p{Extended_Pictographic}️‍]+)\s*/u;
-
-const NOMEADAS: Record<string, string> = {
-  amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', hellip: '…',
-  ndash: '–', mdash: '—', rsquo: '’', ldquo: '“', rdquo: '”',
-};
-
-const semTags = (html: string) =>
-  html
-    .replace(/<[^>]+>/g, '')
-    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
-    .replace(/&([a-z]+);/gi, (inteiro, nome) => NOMEADAS[String(nome).toLowerCase()] ?? inteiro)
-    .replace(/\s+/g, ' ')
-    .trim();
-
-/**
- * Os links vêm do conteúdo, não de uma lista no código.
- *
- * Assim a Juliane muda a ordem, o texto e o destino pelo editor do admin —
- * que é o que ela vai querer fazer toda vez que abrir uma campanha nova —
- * sem depender de deploy. O desenho fica aqui; o conteúdo fica com ela.
- */
-function extrairLinks(html: string | null): { principais: Link[]; redes: Link[] } {
-  const principais: Link[] = [];
-  const redes: Link[] = [];
-  const vistos = new Set<string>();
-
-  for (const m of (html || '').matchAll(/<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)) {
-    const href = m[1].trim();
-    const bruto = semTags(m[2]);
-    if (!href || !bruto || vistos.has(href)) continue;
-    vistos.add(href);
-
-    const emoji = bruto.match(EMOJI_NA_FRENTE);
-    const link: Link = {
-      href,
-      rotulo: bruto.replace(EMOJI_NA_FRENTE, '').trim() || bruto,
-      emoji: emoji ? emoji[1] : null,
-    };
-    (REDES_CONHECIDAS.test(href) ? redes : principais).push(link);
-  }
-  return { principais, redes };
-}
-
-function iconeDaRede(href: string) {
-  if (/instagram\.com/i.test(href)) return <IconeInstagram tamanho={19} />;
-  if (/tiktok\.com/i.test(href)) return <IconeTikTok tamanho={18} />;
-  if (/youtube\.com|youtu\.be/i.test(href)) return <IconeYoutube tamanho={19} />;
-  return null;
-}
-
 export default async function LinkNaBio() {
-  const item = await porPath('/bio/');
-  const { principais, redes } = extrairLinks(item?.content_clean ?? null);
+  const { principais, redes } = await carregarBio();
 
   return (
     <div className={styles.palco}>
@@ -137,7 +73,7 @@ export default async function LinkNaBio() {
                 aria-label={r.rotulo}
                 className={styles.rede}
               >
-                {iconeDaRede(r.href)}
+                <IconeRede href={r.href} tamanho={19} />
               </a>
             ))}
           </div>

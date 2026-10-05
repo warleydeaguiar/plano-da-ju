@@ -22,7 +22,7 @@ const MENU = [
  * navegação e rodapé de blog só empurram os botões para baixo da dobra — e
  * quebrariam a imersão do vídeo de fundo.
  */
-const SEM_MOLDURA = ['/bio/'];
+const SEM_MOLDURA = ['/bio/', '/bio1/', '/bio2/', '/bio3/'];
 
 export interface LinkRodape { href: string; rotulo: string }
 

@@ -1,0 +1,364 @@
+.palco {
+  --fundo: #fff8f4;
+  --tinta: #2a1f2d;
+  --suave: #7b6a72;
+  --rosa: #ee5d8a;
+  min-height: 100dvh;
+  color: var(--tinta);
+  background:
+    radial-gradient(40rem 28rem at 110% -5%, #ffd9e6 0%, transparent 60%),
+    radial-gradient(36rem 30rem at -20% 40%, #e9e0ff 0%, transparent 60%),
+    radial-gradient(30rem 24rem at 120% 100%, #d6f3e6 0%, transparent 60%),
+    var(--fundo);
+  display: flex;
+  justify-content: center;
+}
+
+.grade {
+  width: 100%;
+  max-width: 27rem;
+  padding: 1rem 0.9rem 2.5rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-auto-rows: 74px;
+  grid-auto-flow: row dense;
+  gap: 10px;
+}
+
+/* --------------------------------------------------------------- bloco */
+.bloco {
+  position: relative;
+  border-radius: 24px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 10px 30px -18px rgba(80, 30, 60, 0.35);
+  border: 1px solid rgba(42, 31, 45, 0.06);
+  opacity: 0;
+  animation: pop 0.75s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+a.bloco {
+  color: inherit;
+  text-decoration: none;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+}
+
+a.bloco:active {
+  transform: scale(0.96);
+}
+
+@media (hover: hover) {
+  a.bloco:hover {
+    transform: translateY(-4px) rotate(-0.6deg);
+    box-shadow: 0 20px 40px -20px rgba(80, 30, 60, 0.5);
+  }
+  a.bloco:hover .seta {
+    transform: rotate(45deg) scale(1.08);
+  }
+}
+
+/* translate/scale soltos (não `transform`) pra o hover/toque continuar funcionando
+   depois que a animação termina com fill-mode forwards. */
+@keyframes pop {
+  from { opacity: 0; translate: 0 22px; scale: 0.92; }
+  to { opacity: 1; translate: 0 0; scale: 1; }
+}
+
+.cobre {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.seta {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--tinta);
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* -------------------------------------------------------------- perfil */
+.perfil {
+  grid-column: span 2;
+  grid-row: span 4;
+}
+
+.perfil .cobre {
+  object-position: 50% 22%;
+  animation: respirar 9s ease-in-out infinite alternate;
+}
+
+@keyframes respirar {
+  from { transform: scale(1.02); }
+  to { transform: scale(1.1); }
+}
+
+.perfil::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 45%, rgba(20, 12, 30, 0.75) 100%);
+}
+
+.chip {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 2;
+  padding: 0.38rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.legenda {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 14px;
+  z-index: 2;
+  color: #fff;
+}
+
+.nome {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.cargo {
+  margin: 0.35rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  font-weight: 500;
+  opacity: 0.88;
+}
+
+/* ---------------------------------------------------- link principal */
+.principal {
+  grid-column: 1;
+  grid-row: span 2;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 6px;
+  color: #fff !important;
+  background: linear-gradient(150deg, #ff8fb1 0%, var(--rosa) 50%, #b5398f 100%);
+  border: 0;
+}
+
+.principal .seta {
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+.emojiGrande {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  font-size: 2.1rem;
+  line-height: 1;
+  animation: flutuar 3.2s ease-in-out infinite;
+}
+
+@keyframes flutuar {
+  0%, 100% { transform: translateY(0) rotate(-6deg); }
+  50% { transform: translateY(-6px) rotate(6deg); }
+}
+
+.rotuloForte {
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+/* --------------------------------------------------------------- vídeo */
+.video {
+  grid-column: 2;
+  grid-row: span 3;
+  background: #1a1018;
+}
+
+.etiqueta {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  z-index: 2;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--tinta);
+  background: rgba(255, 255, 255, 0.88);
+}
+
+/* -------------------------------------------------------------- número */
+.numero {
+  grid-column: 1;
+  grid-row: span 1;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: var(--tinta);
+  color: #fff;
+}
+
+.numero strong {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  background: linear-gradient(90deg, #ffb3c9, #ffe2a8);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.numero span {
+  margin-top: 3px;
+  font-size: 0.66rem;
+  line-height: 1.25;
+  opacity: 0.75;
+}
+
+/* --------------------------------------------------------- demais links */
+.link {
+  grid-row: span 2;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.largo {
+  grid-column: span 2;
+  grid-row: span 1;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+}
+
+.largo .emoji {
+  position: static;
+  animation: none;
+}
+
+.largo .seta {
+  top: 50%;
+  margin-top: -15px;
+}
+
+.emoji {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  font-size: 1.8rem;
+  line-height: 1;
+  color: #1c9b55;
+}
+
+.rotulo {
+  position: relative;
+  z-index: 2;
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  padding-right: 2rem;
+}
+
+.pessego { background: #ffe3d3; }
+.lilas { background: #eadfff; }
+.menta { background: #d9f5e6; }
+.manteiga { background: #fff1c2; }
+
+.loja::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 35%, rgba(30, 18, 10, 0.7) 100%);
+}
+
+.loja .rotulo {
+  color: #fff;
+}
+
+/* --------------------------------------------------------------- redes */
+.redes {
+  grid-column: span 2;
+  grid-row: span 1;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 6px;
+  padding: 8px;
+}
+
+.rede {
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--tinta);
+  text-decoration: none;
+  background: #f6eff2;
+  transition: background 0.25s ease, color 0.25s ease, transform 0.25s ease;
+}
+
+.rede:active {
+  transform: scale(0.95);
+}
+
+@media (hover: hover) {
+  .rede:hover {
+    background: var(--tinta);
+    color: #fff;
+  }
+}
+
+.rodape {
+  grid-column: span 2;
+  margin: 0.6rem 0 0;
+  text-align: center;
+  font-size: 0.68rem;
+  line-height: 1.55;
+  color: var(--suave);
+  opacity: 0;
+  animation: pop 0.75s ease forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bloco,
+  .rodape,
+  .perfil .cobre,
+  .emojiGrande {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+}

@@ -36,6 +36,14 @@ export function IconeTikTok({ tamanho = 20 }: { tamanho?: number }) {
   );
 }
 
+/** Escolhe o ícone pela URL da rede; null se não reconhecer. */
+export function IconeRede({ href, tamanho = 20 }: { href: string; tamanho?: number }) {
+  if (/instagram\.com/i.test(href)) return <IconeInstagram tamanho={tamanho} />;
+  if (/tiktok\.com/i.test(href)) return <IconeTikTok tamanho={tamanho - 1} />;
+  if (/youtube\.com|youtu\.be/i.test(href)) return <IconeYoutube tamanho={tamanho} />;
+  return null;
+}
+
 export function IconeYoutube({ tamanho = 20 }: { tamanho?: number }) {
   return (
     <Svg
