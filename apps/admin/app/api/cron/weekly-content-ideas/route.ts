@@ -335,6 +335,11 @@ async function sendToDiscord(ideas: ContentIdea[], data: AggregatedData): Promis
 export async function GET(_req: NextRequest) {
   const sb = createAdminClient()
 
+  // Desligada no painel (/notificacoes): para ANTES de chamar a IA — só checar
+  // na hora de enviar gastava uma geração toda semana pra nada.
+  const { ativo } = await resolveNotificacaoDiscord('content_ideas', WEBHOOK_FALLBACK)
+  if (!ativo) return NextResponse.json({ ok: true, skipped: 'notificação desligada no painel' })
+
   // 1) Agrega dados
   const data = await aggregate(sb)
 
