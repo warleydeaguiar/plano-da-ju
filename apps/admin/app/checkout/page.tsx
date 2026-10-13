@@ -294,7 +294,7 @@ export default async function CheckoutFunnelPage({
           </div>
         </div>
 
-        {/* Conversão por preço (preço dinâmico) */}
+        {/* Conversão por faixa de gasto (preço único R$97 desde 13/10/26) */}
         <PrecoSection linhas={faixas} days={days} />
 
         {/* Eventos recentes */}

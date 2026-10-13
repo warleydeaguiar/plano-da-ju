@@ -7,7 +7,7 @@ import { resolveNotificacaoDiscord, marcarNotificacaoEnviada } from '@/lib/disco
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
-const PLAN_PRICE = 47
+const PLAN_PRICE = 97 // preço único desde 13/10/26 (antes variava por faixa)
 const WEBHOOK_FALLBACK = process.env.DISCORD_DAILY_REPORT_WEBHOOK ?? ''
 
 /**

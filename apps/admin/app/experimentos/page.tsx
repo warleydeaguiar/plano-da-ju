@@ -11,7 +11,7 @@ const blue   = '#2563EB'
 const gray   = '#7C6B7E'
 const dark   = '#2A1E2C'
 
-const PLAN_PRICE = 47
+const PLAN_PRICE = 97 // preço único desde 13/10/26 (antes variava por faixa)
 
 // ── Types ──────────────────────────────────────────────────────────
 interface Experiment {

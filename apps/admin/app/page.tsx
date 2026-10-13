@@ -448,14 +448,14 @@ function PrecoDinamicoSection({ linhas }: { linhas: FaixaPreco[] }) {
   return (
     <div style={{ ...cardStyle, padding: '22px 24px' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: T.ink }}>Preço dinâmico — qual faixa vende mais</div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: T.ink }}>Faixa de gasto — qual converte mais</div>
         <div style={{ fontSize: 12, color: T.inkMuted }}>
           {comprasFaixas} venda{comprasFaixas === 1 ? '' : 's'} · {brl(receitaFaixas)} nas faixas novas
         </div>
       </div>
       <div style={{ fontSize: 12, color: T.inkSoft, marginBottom: 16, lineHeight: 1.5 }}>
-        Conversão = compras ÷ leads com e-mail. A pergunta do gasto entrou em 15/09, então as
-        faixas têm poucos dias de vida; &quot;não respondeu&quot; cobre 30 dias e serve só de régua.
+        Preço único de R$ 97 (de R$ 197) desde 13/10 — a faixa é só o que a cliente declarou gastar com cabelo.
+        Conversão = compras ÷ leads com e-mail. Ticket médio = o que foi pago de verdade ÷ compras.
       </div>
 
       {melhor && (
@@ -464,7 +464,7 @@ function PrecoDinamicoSection({ linhas }: { linhas: FaixaPreco[] }) {
           padding: '10px 14px', marginBottom: 16, fontSize: 13, color: T.ink,
         }}>
           Melhor conversão com amostra razoável: <strong>{ROTULO_FAIXA[melhor.faixa] ?? melhor.faixa}</strong>
-          {' '}({brl(n(melhor.preco_cents) / 100)}) — {((conv(melhor) ?? 0) * 100).toFixed(1)}% de {n(melhor.leads)} leads.
+          {' '}— {((conv(melhor) ?? 0) * 100).toFixed(1)}% de {n(melhor.leads)} leads.
         </div>
       )}
 
@@ -474,12 +474,12 @@ function PrecoDinamicoSection({ linhas }: { linhas: FaixaPreco[] }) {
           <thead>
             <tr>
               <th style={{ ...th, textAlign: 'left' }}>Faixa de gasto</th>
-              <th style={th}>Preço</th>
               <th style={th}>Respostas</th>
               <th style={th}>Leads</th>
               <th style={th}>Iniciaram</th>
               <th style={th}>Compras</th>
               <th style={th}>Conversão</th>
+              <th style={th}>Ticket médio</th>
               <th style={th}>Receita</th>
             </tr>
           </thead>
@@ -494,7 +494,6 @@ function PrecoDinamicoSection({ linhas }: { linhas: FaixaPreco[] }) {
                     {ROTULO_FAIXA[l.faixa] ?? l.faixa}
                     {ehBase && <div style={{ fontSize: 11, color: T.inkMuted, fontWeight: 400 }}>base de comparação · 30 dias</div>}
                   </td>
-                  <td style={{ ...td, fontWeight: 700 }}>{brl(n(l.preco_cents) / 100)}</td>
                   <td style={td}>
                     {ehBase ? '—' : n(l.respostas).toLocaleString('pt-BR')}
                     {!ehBase && totalRespostas > 0 && (
@@ -510,6 +509,7 @@ function PrecoDinamicoSection({ linhas }: { linhas: FaixaPreco[] }) {
                     {c === null ? '—' : `${(c * 100).toFixed(1)}%`}
                     {poucos && <div style={{ fontSize: 10, color: T.inkMuted, fontWeight: 400 }}>amostra pequena</div>}
                   </td>
+                  <td style={{ ...td, fontWeight: 700 }}>{n(l.compras) ? brl(n(l.receita_cents) / 100 / n(l.compras)) : '—'}</td>
                   <td style={td}>{brl(n(l.receita_cents) / 100)}</td>
                 </tr>
               );
