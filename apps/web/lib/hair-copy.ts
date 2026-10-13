@@ -12,7 +12,7 @@ export interface FunilCopy {
   kicker: string;         // eyebrow curto
   dor: string;            // framing da dor específica
   promessa: string;       // transformação prometida
-  provaSocial: string;    // "+3.500 mulheres cacheadas..."
+  provaSocial: string;    // "+3.985 mulheres cacheadas..."
   argumento: string;      // o "específico > genérico"
 }
 
@@ -27,7 +27,7 @@ const PORTIPO: Record<string, Omit<FunilCopy, 'perfil'>> = {
     kicker: 'Plano pro seu cabelo crespo',
     dor: 'Crespo que resseca, encolhe e quebra não é falta de cuidado — é falta do cronograma certo pra ELE.',
     promessa: 'definição, hidratação e crescimento com força, sem quebra',
-    provaSocial: '+3.500 mulheres de cabelo crespo já recuperaram os fios',
+    provaSocial: '+3.985 mulheres de cabelo crespo já recuperaram os fios',
     argumento: 'Isso é pro seu crespo — não uma receita genérica que serve pra todo mundo e não resolve pra ninguém.',
   },
   cacheado: {
@@ -36,7 +36,7 @@ const PORTIPO: Record<string, Omit<FunilCopy, 'perfil'>> = {
     kicker: 'Plano pros seus cachos',
     dor: 'Cachos sem definição e com frizz não voltam com produto aleatório — voltam com nutrição e o cronograma do cacheado.',
     promessa: 'cachos marcados, com brilho e sem frizz',
-    provaSocial: '+3.500 mulheres cacheadas já recuperaram os cachos',
+    provaSocial: '+3.985 mulheres cacheadas já recuperaram os cachos',
     argumento: 'Isso é pros seus cachos — não uma solução genérica igual pra todo tipo de cabelo.',
   },
   ondulado: {
@@ -45,7 +45,7 @@ const PORTIPO: Record<string, Omit<FunilCopy, 'perfil'>> = {
     kicker: 'Plano pro seu cabelo ondulado',
     dor: 'Onda que some, raiz oleosa e ponta seca ao mesmo tempo? Ondulado pede equilíbrio — não receita de liso nem de cacho.',
     promessa: 'ondas definidas e leves, sem frizz e sem peso',
-    provaSocial: '+3.500 mulheres de cabelo ondulado já recuperaram os fios',
+    provaSocial: '+3.985 mulheres de cabelo ondulado já recuperaram os fios',
     argumento: 'Isso é pro seu ondulado — não uma receita genérica que ignora que seu cabelo é único.',
   },
   liso: {
@@ -54,7 +54,7 @@ const PORTIPO: Record<string, Omit<FunilCopy, 'perfil'>> = {
     kicker: 'Plano pro seu cabelo liso',
     dor: 'Liso que engordura na raiz e resseca nas pontas não precisa de mais produto — precisa do cuidado certo pro fio liso.',
     promessa: 'raiz leve, brilho e pontas saudáveis',
-    provaSocial: '+3.500 mulheres de cabelo liso já recuperaram os fios',
+    provaSocial: '+3.985 mulheres de cabelo liso já recuperaram os fios',
     argumento: 'Isso é pro seu liso — não uma solução genérica igual pra todo tipo de cabelo.',
   },
   // Override de LOIRA (cor = loiro) — público de dor altíssima
@@ -64,7 +64,7 @@ const PORTIPO: Record<string, Omit<FunilCopy, 'perfil'>> = {
     kicker: 'Plano pro seu cabelo loiro',
     dor: 'Loiro que fica amarelado, ressecado e quebradiço não é culpa sua — é falta do cuidado certo pra cabelo descolorido.',
     promessa: 'loiro iluminado, hidratado e forte, sem quebra',
-    provaSocial: '+3.500 loiras já recuperaram os fios',
+    provaSocial: '+3.985 loiras já recuperaram os fios',
     argumento: 'Isso é pro seu loiro — não uma receita genérica que ignora o que a descoloração faz no fio.',
   },
 };
@@ -75,7 +75,7 @@ const DEFAULT: Omit<FunilCopy, 'perfil'> = {
   kicker: 'Seu plano personalizado',
   dor: 'Cabelo ressecado, sem brilho e quebrando não é falta de cuidado — é falta do cronograma certo pro SEU caso.',
   promessa: 'fios fortes, hidratados e com brilho de verdade',
-  provaSocial: '+3.500 mulheres já recuperaram os fios',
+  provaSocial: '+3.985 mulheres já recuperaram os fios',
   argumento: 'Isso é pro SEU cabelo — não uma solução genérica igual pra todo mundo.',
 };
 

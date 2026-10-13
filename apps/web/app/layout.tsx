@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   description: 'Descubra o plano ideal para recuperar seu cabelo em 90 dias. Diagnóstico personalizado pela especialista Juliane Cost.',
   openGraph: {
     title: 'Plano da Ju — Diagnóstico Capilar Gratuito',
-    description: 'Mais de 3.500 mulheres transformadas. Descubra o plano ideal para o seu cabelo.',
+    description: '3.985 clientes transformadas. Descubra o plano ideal para o seu cabelo.',
     type: 'website',
   },
   // PWA — permite instalar o app na tela inicial

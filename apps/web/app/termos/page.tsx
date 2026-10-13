@@ -2,16 +2,16 @@ import type { Metadata } from 'next';
 import { JU_WHATSAPP_EXIBICAO } from '@/lib/contact';
 
 export const metadata: Metadata = {
-  title: 'Termos de Uso — Plano Capilar | Juliane Cost',
+  title: 'Termos de Uso — Consulta com a Tricologista | Juliane Cost',
   description:
-    'Condições de uso, entrega, garantia e política de reembolso do Plano Capilar personalizado.',
+    'Condições de uso, entrega e garantia incondicional de 7 dias da Consulta com a Tricologista Juliane Cost.',
   robots: { index: true, follow: true },
 };
 
-const ATUALIZADO_EM = '21 de setembro de 2026';
+const ATUALIZADO_EM = '13 de outubro de 2026';
 // Sobe a cada mudança no texto: a própria página diz qual versão vale para a
 // compra, e manter 1.0 depois de trocar telefone e horário tornaria isso falso.
-const VERSAO = '1.1';
+const VERSAO = '2.0';
 
 const T = {
   bg: '#FFFAF5',
@@ -119,7 +119,7 @@ export default function TermosPage() {
               letterSpacing: '-0.02em',
             }}
           >
-            Termos de Uso do Plano Capilar
+            Termos de Uso da Consulta com a Tricologista
           </h1>
           <div style={{ fontSize: 13.5, color: T.inkMuted }}>
             Versão {VERSAO} · Atualizado em {ATUALIZADO_EM}
@@ -137,29 +137,26 @@ export default function TermosPage() {
           {/* Resumo */}
           <Destaque titulo="Em resumo">
             <div style={{ marginBottom: 8 }}>
-              O Plano Capilar é um <strong>produto digital e personalizado</strong>, produzido individualmente
-              para você <strong>depois</strong> da confirmação do pagamento.
+              Você contrata a <strong>Consulta com a Tricologista Juliane Cost</strong>: a análise do seu caso
+              (questionário, foto do cabelo e conversa pelo WhatsApp) e o seu{' '}
+              <strong>plano capilar personalizado de 90 dias</strong>, montado na consulta.
             </div>
             <div style={{ marginBottom: 8 }}>
-              A <strong>garantia de 7 dias</strong> assegura que você vai receber o seu Plano: enquanto ele não
-              for entregue, você pode desistir e receber 100% do valor de volta.
+              Você tem <strong>garantia incondicional de 7 dias</strong>: se não gostar, por qualquer motivo,
+              devolvemos <strong>100% do valor</strong> — inclusive depois de o plano ser entregue.
             </div>
-            <div>
-              Depois que o Plano personalizado é criado e entregue a você,{' '}
-              <strong>não é possível fazer reembolso</strong>, porque é um conteúdo feito sob medida, que não
-              pode ser devolvido nem revertido.
-            </div>
+            <div>O pagamento é único: sem assinatura, sem renovação e sem cobrança recorrente.</div>
           </Destaque>
 
           <P>
-            Este documento reúne as condições de contratação e uso do Plano Capilar. Ele foi escrito em
-            linguagem simples, e traz as leis que se aplicam a cada ponto. Ao contratar o Plano Capilar, você
-            declara que leu e concorda com o que está aqui.
+            Este documento reúne as condições de contratação e uso da Consulta com a Tricologista Juliane
+            Cost e do plano capilar que sai dela. Ele foi escrito em linguagem simples, e traz as leis que se
+            aplicam a cada ponto. Ao contratar, você declara que leu e concorda com o que está aqui.
           </P>
 
           <Secao n={1} titulo="Quem oferece o serviço">
             <P>
-              O Plano Capilar é oferecido por <strong>julianecost.com</strong>, inscrita no CNPJ nº
+              A Consulta é oferecida por <strong>julianecost.com</strong>, inscrita no CNPJ nº
               20.227.193/0001-18, com endereço na Avenida Quinze de Novembro, 609, Jardim Petrópolis, Contagem
               — MG, CEP 32.185-122.
             </P>
@@ -174,29 +171,27 @@ export default function TermosPage() {
             </Lei>
           </Secao>
 
-          <Secao n={2} titulo="O que é o Plano Capilar">
+          <Secao n={2} titulo="O que você contrata">
             <P>
-              O Plano Capilar é um <strong>produto digital, individual e personalizado</strong>. Ele não é um
-              e-book pronto, nem um material padronizado vendido em série: cada Plano é elaborado
-              especificamente para uma pessoa, a partir das informações que ela mesma fornece.
+              A <strong>Consulta com a Tricologista Juliane Cost</strong> é um serviço individual e
+              personalizado, prestado de forma digital. Ela inclui:
             </P>
             <Lista
               itens={[
                 <>
-                  <strong>É montado a partir dos seus dados:</strong> as respostas do questionário (tipo de
-                  fio, rotina, química, quedas, objetivos) e a foto do seu cabelo que você envia.
+                  <strong>Análise do seu caso:</strong> as respostas do questionário (tipo de fio, rotina,
+                  química, quedas, objetivos) e a foto do seu cabelo que você envia.
                 </>,
                 <>
-                  <strong>É entregue de forma digital</strong>, na sua área de cliente / aplicativo, com login
-                  e senha pessoais. Não existe produto físico, nem envio de itens pelos Correios.
+                  <strong>Conversa com a Juliane pelo WhatsApp</strong>, para entender o seu caso.
                 </>,
                 <>
-                  <strong>Tem acompanhamento de 90 dias</strong>, com o cronograma, as orientações e os
-                  materiais correspondentes ao seu caso.
+                  <strong>Plano capilar personalizado de 90 dias</strong>, montado a partir da consulta, com o
+                  cronograma, as orientações e a indicação dos produtos certos para o seu cabelo.
                 </>,
                 <>
-                  <strong>É único e não reaproveitável:</strong> o conteúdo produzido para você não serve para
-                  outra pessoa e não retorna ao estoque, porque estoque não existe.
+                  <strong>Entrega digital</strong>, na sua área de cliente / aplicativo, com login e senha
+                  pessoais. Não existe produto físico, nem envio de itens pelos Correios.
                 </>,
               ]}
             />
@@ -206,9 +201,10 @@ export default function TermosPage() {
             <Lista
               itens={[
                 <>
-                  Você responde ao questionário e recebe a oferta com o <strong>valor exato</strong> do Plano.
-                  O preço válido é sempre o exibido na tela de finalização, no momento da compra — promoções,
-                  cupons e condições especiais têm prazo e regras próprias, informadas ali.
+                  Você responde ao questionário e recebe a oferta com o <strong>valor exato</strong> da
+                  Consulta. O preço válido é sempre o exibido na tela de finalização, no momento da compra.
+                  No cartão parcelado incidem juros, e o valor de cada parcela e o total são mostrados antes
+                  do pagamento.
                 </>,
                 <>
                   O pagamento é processado por instituição de pagamento parceira (PIX ou cartão de crédito). A
@@ -216,13 +212,12 @@ export default function TermosPage() {
                   recorrente.
                 </>,
                 <>
-                  <strong>Só depois da confirmação do pagamento</strong> o seu Plano começa a ser produzido.
-                  Em seguida você cria a sua senha e envia a foto do cabelo — etapa necessária para a
-                  personalização.
+                  <strong>Depois da confirmação do pagamento</strong> você cria a sua senha e envia a foto do
+                  cabelo — etapa necessária para a consulta e a personalização do plano.
                 </>,
                 <>
-                  Concluída a produção, o Plano fica disponível na sua área de cliente e você é avisada. A
-                  partir desse momento, o serviço está <strong>integralmente executado</strong>.
+                  Concluída a consulta, o seu plano de 90 dias fica disponível na sua área de cliente e você é
+                  avisada.
                 </>,
               ]}
             />
@@ -230,23 +225,19 @@ export default function TermosPage() {
 
           <Secao n={4} titulo="Aceite destes termos no momento da compra">
             <P>
-              Estes Termos de Uso são aceitos <strong>no ato da compra</strong>. Ao concluir o pagamento do
-              Plano Capilar, você declara, de forma livre e informada, que:
+              Estes Termos de Uso são aceitos <strong>no ato da compra</strong>. Ao concluir o pagamento, você
+              declara, de forma livre e informada, que:
             </P>
             <Lista
               itens={[
                 <>leu e compreendeu estas condições, que ficam permanentemente disponíveis nesta página;</>,
                 <>
-                  está contratando um <strong>conteúdo digital personalizado</strong>, produzido sob medida
-                  para você após a confirmação do pagamento;
+                  está contratando um <strong>serviço digital personalizado</strong>, prestado a partir das
+                  informações que você fornece;
                 </>,
                 <>
-                  <strong>solicita expressamente o início imediato</strong> da elaboração e da entrega do seu
-                  Plano, sem aguardar qualquer prazo de reflexão;
-                </>,
-                <>
-                  está ciente de que, <strong>depois de o Plano ser criado e disponibilizado a você</strong>,
-                  não cabe reembolso, nos termos do item 6.
+                  <strong>solicita o início imediato</strong> da consulta e da elaboração do seu plano, sem
+                  prejuízo da garantia de 7 dias do item 5.
                 </>,
               ]}
             />
@@ -256,65 +247,25 @@ export default function TermosPage() {
             </P>
           </Secao>
 
-          <Secao n={5} titulo="Garantia de 7 dias: o que ela cobre">
-            <Destaque titulo="A garantia protege a entrega">
-              A garantia de 7 dias existe para você ter a segurança de que{' '}
-              <strong>vai receber o Plano que comprou</strong>. Enquanto o seu Plano não tiver sido entregue,
-              você pode desistir e receber <strong>100% do valor pago de volta</strong>, sem discussão.
+          <Secao n={5} titulo="Garantia incondicional de 7 dias">
+            <Destaque titulo="Não gostou? Devolvemos 100%">
+              Dentro de <strong>7 dias corridos contados da compra</strong>, se você não gostar da consulta
+              ou do seu plano, <strong>por qualquer motivo</strong>, basta pedir e devolvemos{' '}
+              <strong>100% do valor pago</strong> — sem perguntas, sem burocracia e{' '}
+              <strong>mesmo que o plano já tenha sido entregue</strong>.
             </Destaque>
-            <P>Na prática, dentro dos 7 dias corridos contados da compra, você tem direito à devolução integral se:</P>
-            <Lista
-              itens={[
-                <>o seu Plano não for entregue no prazo informado;</>,
-                <>houver falha nossa que impeça o acesso ao conteúdo e não a resolvermos; ou</>,
-                <>
-                  você simplesmente mudar de ideia <strong>antes</strong> de o Plano personalizado ser criado
-                  e disponibilizado para você.
-                </>,
-              ]}
-            />
             <P>
-              A garantia <strong>não</strong> é um período de teste do conteúdo já recebido: ela cobre a
-              entrega, não o arrependimento depois da entrega. Uma vez que o Plano personalizado foi criado e
-              está disponível na sua área de cliente, o serviço foi cumprido e não há reembolso.
+              A garantia é um compromisso nosso com o seu resultado: o risco da compra fica conosco, não com
+              você. Ela vale uma vez por cliente e não se aplica a casos de uso indevido descritos no item 9
+              (compartilhamento de acesso, revenda ou reprodução do conteúdo).
             </P>
           </Secao>
 
-          <Secao n={6} titulo="Por que não há reembolso depois da entrega">
-            <P>
-              O Plano Capilar não é um produto de prateleira. Ele é{' '}
-              <strong>criado do zero para uma única pessoa</strong>, com base na foto e nas respostas dela, e
-              é entregue em formato digital — ou seja, seu conteúdo é conhecido integralmente no instante em
-              que é recebido.
-            </P>
-            <P>Por isso, uma vez entregue:</P>
-            <Lista
-              itens={[
-                <>
-                  <strong>não pode ser devolvido</strong> — não existe item físico a restituir, e o conteúdo
-                  já foi visto;
-                </>,
-                <>
-                  <strong>não pode ser revertido</strong> — o trabalho de análise e montagem já foi executado
-                  e não é desfeito;
-                </>,
-                <>
-                  <strong>não pode ser revendido nem reaproveitado</strong> — foi feito sob medida para você e
-                  não serve para outra pessoa.
-                </>,
-              ]}
-            />
-            <P>
-              Devolver o valor nessa situação significaria entregar o conteúdo de graça, o que caracteriza
-              enriquecimento sem causa de quem recebeu — vedado pelo Código Civil, art. 884.
-            </P>
-          </Secao>
-
-          <Secao n={7} titulo="A lei que se aplica ao reembolso">
+          <Secao n={6} titulo="A lei que se aplica">
             <P>
               O <strong>Código de Defesa do Consumidor (Lei nº 8.078/1990), art. 49</strong>, garante ao
               consumidor o direito de desistir da compra feita fora do estabelecimento comercial — como pela
-              internet — no prazo de <strong>7 dias</strong> contados da contratação ou do recebimento:
+              internet — no prazo de <strong>7 dias</strong>:
             </P>
             <Lei>
               <em>
@@ -325,77 +276,53 @@ export default function TermosPage() {
               </em>
             </Lei>
             <P>
-              <strong>Nós respeitamos integralmente esse direito</strong> — é exatamente o que a nossa
-              garantia do item 5 assegura: enquanto o serviço não tiver sido executado e entregue, dentro dos
-              7 dias, você desiste e recebe tudo de volta.
+              A nossa garantia do item 5 <strong>cumpre e amplia</strong> esse direito: dentro dos 7 dias, a
+              devolução é integral em qualquer situação, antes ou depois da entrega do plano.
             </P>
             <P>
-              A restituição deixa de ser cabível quando o serviço personalizado{' '}
-              <strong>já foi integralmente prestado a seu pedido</strong>. Isso se apoia em:
-            </P>
-            <Lista
-              itens={[
-                <>
-                  <strong>CDC, art. 49, parágrafo único</strong> — a devolução dos valores pressupõe a
-                  desistência do contrato; com o conteúdo personalizado já produzido e entregue, não há
-                  prestação a devolver, e o objeto do contrato se exauriu.
-                </>,
-                <>
-                  <strong>Código Civil, arts. 593 e seguintes</strong> (contrato de prestação de serviço) — o
-                  serviço efetivamente prestado é devido a quem o executou.
-                </>,
-                <>
-                  <strong>Código Civil, art. 884</strong> — ninguém pode enriquecer-se sem causa à custa de
-                  outrem, o que ocorreria ao manter o conteúdo e reaver o preço.
-                </>,
-                <>
-                  <strong>CDC, art. 6º, III, e Decreto nº 7.962/2013, art. 5º</strong> — o consumidor deve ser
-                  informado de forma clara e prévia sobre as características do serviço e sobre as condições
-                  de reembolso. É a função desta página, apresentada antes e no momento da compra.
-                </>,
-              ]}
-            />
-            <P>
-              Em qualquer hipótese, permanecem garantidos os direitos do consumidor em caso de{' '}
-              <strong>vício ou defeito</strong> do serviço (CDC, arts. 18 e 20): se o Plano entregue estiver
+              Depois dos 7 dias, permanecem garantidos os direitos do consumidor em caso de{' '}
+              <strong>vício ou defeito</strong> do serviço (CDC, arts. 18 e 20): se o plano entregue estiver
               incompleto, inacessível ou em desacordo com o que foi oferecido, corrigimos, refazemos ou
-              devolvemos o valor.
+              devolvemos o valor. As condições de reembolso são informadas de forma clara e prévia, como
+              exigem o <strong>CDC, art. 6º, III</strong>, e o <strong>Decreto nº 7.962/2013, art. 5º</strong>.
             </P>
           </Secao>
 
-          <Secao n={8} titulo="Como pedir o reembolso quando ele é devido">
+          <Secao n={7} titulo="Como pedir o reembolso">
             <Lista
               itens={[
                 <>
-                  Fale com a gente pelo WhatsApp <strong>{JU_WHATSAPP_EXIBICAO}</strong>, de segunda a sexta, das 8h
-                  às 17h30, informando o nome, o e-mail usado na compra e o motivo.
+                  Fale com a gente pelo WhatsApp <strong>{JU_WHATSAPP_EXIBICAO}</strong> (segunda a sexta, das
+                  8h às 17h30) ou responda qualquer e-mail nosso, informando o nome e o e-mail usado na compra.
+                  Dentro dos 7 dias não é preciso dizer o motivo.
                 </>,
                 <>Respondemos em até 2 dias úteis.</>,
                 <>
-                  Confirmado o direito, a devolução é feita <strong>pelo mesmo meio de pagamento</strong>: no
-                  PIX, em até 5 dias úteis; no cartão de crédito, o estorno aparece conforme o prazo da
-                  administradora, normalmente em até 2 faturas.
+                  A devolução é feita <strong>pelo mesmo meio de pagamento</strong>: no PIX, em até 5 dias
+                  úteis; no cartão de crédito, o estorno aparece conforme o prazo da administradora,
+                  normalmente em até 2 faturas.
                 </>,
               ]}
             />
           </Secao>
 
-          <Secao n={9} titulo="Natureza do serviço: não é consulta médica">
+          <Secao n={8} titulo="Natureza do serviço: não é consulta médica">
             <P>
-              O Plano Capilar é um material de <strong>orientação sobre cuidados capilares e cosméticos</strong>.
-              Ele <strong>não</strong> é consulta médica, não constitui diagnóstico, prescrição ou tratamento
-              de saúde, e <strong>não substitui</strong> a avaliação de médica dermatologista ou de outro
-              profissional habilitado.
+              A Consulta com a Tricologista e o diagnóstico capilar são uma avaliação{' '}
+              <strong>estética e cosmética</strong> dos fios e do couro cabeludo, com orientação sobre
+              cuidados capilares e produtos. Ela <strong>não</strong> é consulta médica, não constitui
+              diagnóstico de doença, prescrição ou tratamento de saúde, e <strong>não substitui</strong> a
+              avaliação de médica dermatologista ou de outro profissional de saúde habilitado.
             </P>
             <P>
               Resultados variam de pessoa para pessoa e dependem da constância na rotina, da saúde geral, de
-              fatores hormonais, genéticos e do uso correto dos produtos. Não prometemos resultado específico
-              nem cura de qualquer condição. Em caso de queda intensa, feridas, dor, descamação, alergia ou
-              qualquer sinal clínico, procure uma profissional de saúde.
+              fatores hormonais, genéticos e do uso correto dos produtos. Não prometemos cura de qualquer
+              condição. Em caso de queda intensa, feridas, dor, descamação, alergia ou qualquer sinal
+              clínico, procure uma profissional de saúde.
             </P>
           </Secao>
 
-          <Secao n={10} titulo="Uso pessoal e direitos autorais">
+          <Secao n={9} titulo="Uso pessoal e direitos autorais">
             <P>
               O acesso é <strong>pessoal e intransferível</strong>. O conteúdo do Plano — textos, cronogramas,
               vídeos, materiais de apoio e a plataforma — é protegido pela{' '}
@@ -408,7 +335,7 @@ export default function TermosPage() {
             </P>
           </Secao>
 
-          <Secao n={11} titulo="Seus dados e a sua foto">
+          <Secao n={10} titulo="Seus dados e a sua foto">
             <P>
               Tratamos os seus dados pessoais conforme a{' '}
               <strong>Lei nº 13.709/2018 (LGPD)</strong>. As respostas do questionário e a foto do seu cabelo
@@ -433,7 +360,7 @@ export default function TermosPage() {
             />
           </Secao>
 
-          <Secao n={12} titulo="Acesso, prazo e suporte">
+          <Secao n={11} titulo="Acesso, prazo e suporte">
             <P>
               O acompanhamento é de <strong>90 dias</strong> a partir da entrega do Plano, com suporte pelos
               canais oficiais nos horários de atendimento. Podemos atualizar a plataforma, melhorar materiais
@@ -445,7 +372,7 @@ export default function TermosPage() {
             </P>
           </Secao>
 
-          <Secao n={13} titulo="Alterações destes termos">
+          <Secao n={12} titulo="Alterações destes termos">
             <P>
               Podemos atualizar estes Termos para refletir melhorias no serviço ou mudanças na legislação. A
               versão válida para a sua compra é a que estava publicada nesta página{' '}
@@ -454,7 +381,7 @@ export default function TermosPage() {
             </P>
           </Secao>
 
-          <Secao n={14} titulo="Legislação aplicável e foro">
+          <Secao n={13} titulo="Legislação aplicável e foro">
             <P>
               Estes Termos são regidos pelas leis brasileiras, em especial o Código de Defesa do Consumidor
               (Lei nº 8.078/1990), o Código Civil (Lei nº 10.406/2002), o Marco Civil da Internet (Lei nº

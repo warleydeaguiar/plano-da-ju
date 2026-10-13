@@ -8,6 +8,11 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      // 13/10/26: o funil antigo (/quiz/v1 → /oferta/v1) foi juntado ao atual —
+      // tinha preço, nome do produto e garantia desatualizados e ainda cobrava.
+      // A query (utm_*) é repassada pelo próprio Next.
+      { source: '/quiz/v1', destination: '/quiz', permanent: false },
+      { source: '/oferta/v1', destination: '/oferta', permanent: false },
       // grupos.julianecost.com é linkado de dentro dos posts do blog (WordPress)
       // e estava dando 404. Manda tudo pro quiz do Fashion Gold.
       {

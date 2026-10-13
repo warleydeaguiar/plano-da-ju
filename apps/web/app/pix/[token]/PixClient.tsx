@@ -136,7 +136,7 @@ export default function PixClient({ token }: { token: string }) {
           </div>
           <div style={{ textAlign: 'left' }}>
             <div style={{ fontSize: 14, fontWeight: 800, color: T.ink, lineHeight: 1.2 }}>Juliane Cost</div>
-            <div style={{ fontSize: 11.5, color: T.inkSoft }}>Tricologista · +3.500 alunas</div>
+            <div style={{ fontSize: 11.5, color: T.inkSoft }}>Tricologista · 3.985 clientes</div>
           </div>
         </div>
 

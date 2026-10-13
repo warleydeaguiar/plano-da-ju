@@ -10,8 +10,6 @@ import { buildConsultaData } from '@/lib/consulta';
 import Picture from '@/app/components/Picture';
 import dynamic from 'next/dynamic';
 import { JU_WHATSAPP_EXIBICAO } from '@/lib/contact';
-import { sortearLado, rotuloVariante, type ExperimentoAtivo } from '@/lib/ab';
-import { buildHotmartCheckoutUrl } from '@/lib/hotmart-checkout';
 import { FAIXAS_GASTO } from '@/lib/preco-dinamico';
 import { PRODUTO_ENTREGA } from '@/lib/produto';
 
@@ -449,38 +447,9 @@ function OfferCard({ countdown, name, onBuy, precoCents = PLAN_BASE_CENTS }: {
 // ╔═══════════════════════════════════════════════════════════╗
 // ║              Main component                              ║
 // ╚═══════════════════════════════════════════════════════════╝
-export default function OfertaClient({ experimentos = [] }: { experimentos?: ExperimentoAtivo[] }) {
+export default function OfertaClient() {
   const router = useRouter();
   const [step, setStep] = useState<Step>('offer');
-
-  // Teste A/B checkout próprio × Hotmart (30/09/2026) — mesmo mecanismo do
-  // fashion-gold (lib/ab.ts), sticky pelo quiz_session_id. `lado` só fica
-  // definido depois que o localStorage é lido (client-only); até lá cai em
-  // 'control', que é o comportamento de sempre.
-  const experimento = experimentos[0] ?? null;
-  const [quizSessionId, setQuizSessionId] = useState('');
-  useEffect(() => {
-    try { setQuizSessionId(localStorage.getItem('quiz_session_id') ?? ''); } catch {}
-  }, []);
-  const lado = useMemo(
-    () => (experimento && quizSessionId ? sortearLado(quizSessionId, experimento) : 'control'),
-    [experimento, quizSessionId],
-  );
-  const abVariant = experimento ? rotuloVariante(experimento, lado) : null;
-
-  // Registra a visualização da oferta para o painel /experimentos medir
-  // "Views" por lado — só dispara uma vez, quando o experimento e a sessão
-  // do quiz já estiverem disponíveis.
-  const abViewLoggedRef = useRef(false);
-  useEffect(() => {
-    if (!experimento || !quizSessionId || abViewLoggedRef.current) return;
-    abViewLoggedRef.current = true;
-    fetch('/api/quiz/view', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ quiz_slug: 'plano-capilar', session_id: quizSessionId, ab_variant: abVariant }),
-    }).catch(() => {});
-  }, [experimento, quizSessionId, abVariant]);
 
   // Sempre que a etapa muda (ex.: offer → checkout), volta pro TOPO. Antes o
   // checkout abria NO MEIO da página (a posição de scroll de onde a pessoa
@@ -1154,39 +1123,6 @@ export default function OfertaClient({ experimentos = [] }: { experimentos?: Exp
     // Log evento de checkout iniciado
     logEvent({ event_type: 'checkout_initiated', email, payment_type: payType, amount_cents: precoAtual });
 
-    // Teste A/B checkout próprio × Hotmart: registra a "intenção de comprar"
-    // pro painel /experimentos medir Interagiu nos dois lados por igual,
-    // ANTES de ramificar — senão só o lado Hotmart teria esse dado.
-    if (experimento && quizSessionId) {
-      fetch('/api/quiz/step-event', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          session_id: quizSessionId,
-          quiz_slug: 'plano-capilar',
-          step_index: 0,
-          step_id: experimento.target_step_id ?? 'comprar',
-          event_type: 'answered',
-          ab_variant: abVariant,
-        }),
-      }).catch(() => {});
-    }
-
-    if (experimento && lado === 'variant') {
-      // Lado Hotmart: manda pro checkout deles já com nome/email/telefone
-      // preenchidos. O Pixel/CAPI de InitiateCheckout NÃO dispara aqui — a
-      // própria página de pagamento da Hotmart já tem o pixel instalado
-      // (mesmo ID), disparar os dois contaria o evento em dobro.
-      const ans: Record<string, unknown> = quizAnswers;
-      const destino = buildHotmartCheckoutUrl({
-        email: (ans.email as string) ?? email ?? '',
-        name: (ans.name as string) ?? name ?? '',
-        phone: (ans.phone as string) ?? '',
-      });
-      window.location.href = destino;
-      return;
-    }
-
     // Pixel Meta — InitiateCheckout com Advanced Matching
     // eventID compartilhado entre Pixel e CAPI → deduplicação no Meta.
     const ans: any = quizAnswers;
@@ -1336,7 +1272,7 @@ export default function OfertaClient({ experimentos = [] }: { experimentos?: Exp
               </div>
               <div style={{ textAlign: 'left' }}>
                 <div style={{ fontSize: 14, fontWeight: 800, color: T.ink, lineHeight: 1.2 }}>Juliane Cost</div>
-                <div style={{ fontSize: 11.5, color: T.inkSoft }}>Tricologista · +3.500 alunas</div>
+                <div style={{ fontSize: 11.5, color: T.inkSoft }}>Tricologista · 3.985 clientes</div>
               </div>
             </div>
 
@@ -2517,7 +2453,7 @@ export default function OfertaClient({ experimentos = [] }: { experimentos?: Exp
               </div>
               <div style={{ fontSize: 12.5, color: T.inkSoft, marginBottom: 8, fontFamily: fonts.ui }}>Tricologista</div>
               <div style={{ fontSize: 13, color: T.ink, lineHeight: 1.5, fontFamily: fonts.ui }}>
-                Sou eu que analiso a sua foto e monto o seu plano, um por um. +3.500 mulheres já cuidam do cabelo comigo. 💗
+                Sou eu que analiso a sua foto e monto o seu plano, um por um. 3.985 mulheres já cuidam do cabelo comigo. 💗
               </div>
             </div>
           </div>
@@ -2542,11 +2478,11 @@ export default function OfertaClient({ experimentos = [] }: { experimentos?: Exp
               { q: 'Vou ter que comprar muito produto caro?', a: 'Não. Eu indico o que o SEU cabelo realmente precisa — nem mais, nem menos. E como tenho parceria com as marcas, você entra no meu grupo fechado de promoções e compra os produtos que eu indico com preço abaixo do mercado. Muita gente até economiza, porque para de comprar por impulso o que não serve.' },
               { q: 'Quando eu recebo meu plano?', a: 'Rapidinho! Assim que você paga, já entra no app. Aí você envia uma foto do seu cabelo (é a primeira coisa que aparece) e eu analiso a sua foto junto com as suas respostas. Em até 30 minutos eu libero seu plano completo e você é avisada. É bem pertinho — no mesmo dia você já começa.' },
               { q: 'É a Juliane mesmo que monta o meu plano?', a: 'Sou eu, sim. Sou tricologista e é o meu trabalho olhar cada caso. Não é um resultado automático genérico — cada plano sai da análise do seu cabelo. Tanto que casos mais complexos (com química, queda, porosidade alta) levam mais tempo pra eu montar, porque eu realmente olho pro seu caso.' },
-              { q: 'É confiável? Não é golpe?', a: 'Entendo total a desconfiança, tem muita coisa ruim na internet. Eu sou tricologista, tenho meu Instagram com milhares de mulheres acompanhando, mostro meu próprio cabelo desde a raiz (não uso mega hair) e tenho +3.500 alunas. Pagamento é feito em ambiente seguro e, se você não gostar, tem garantia — devolvo 100% do seu dinheiro, sem perguntas.' },
+              { q: 'É confiável? Não é golpe?', a: 'Entendo total a desconfiança, tem muita coisa ruim na internet. Eu sou tricologista, tenho meu Instagram com milhares de mulheres acompanhando, mostro meu próprio cabelo desde a raiz (não uso mega hair) e já atendi 3.985 clientes. O pagamento é feito em ambiente seguro e você tem garantia incondicional de 7 dias: se não gostar, por qualquer motivo, eu devolvo 100% do seu dinheiro.' },
               { q: 'E se eu tiver dúvidas depois?', a: 'Você não fica sozinha. Tem suporte por WhatsApp pra tirar dúvidas ao longo do caminho — se ficar na dúvida de algum passo ou produto, é só me chamar que eu te ajudo. 💗' },
               { q: 'Os produtos são difíceis de achar?', a: 'Não! São produtos que você encontra com facilidade, e os que eu indico ficam disponíveis no meu grupo de promoções com preço especial. Nada de fórmula secreta impossível de comprar.' },
               { q: 'É pagamento único ou cobra todo mês?', a: `Pagamento único, uma vez só. São ${brlCents(precoAtual)} e pronto — nada de mensalidade, nada de cobrança recorrente te pegando de surpresa depois. Você paga uma vez e tem acesso ao seu plano.` },
-              { q: 'Como funciona a garantia e os termos de uso?', a: 'O seu plano é um material digital feito sob medida pra você, montado depois que o pagamento é confirmado e a sua foto chega. A garantia de 7 dias existe pra te dar segurança de que você VAI receber o seu plano: enquanto ele não for entregue, é só me avisar que eu devolvo 100% do valor. Depois que o plano personalizado é criado e liberado no app, ele não pode ser devolvido nem desfeito — por isso não tem reembolso a partir daí. Se tiver qualquer problema de acesso ou o conteúdo vier incompleto, eu resolvo ou devolvo o seu dinheiro. Está tudo detalhado, com as leis que se aplicam, nos Termos de Uso.', link: { texto: 'Ler os Termos de Uso', href: '/termos' } },
+              { q: 'Como funciona a garantia e os termos de uso?', a: 'É simples: você tem 7 dias de garantia incondicional, contados da compra. Fez a consulta, recebeu o plano e não gostou? Por qualquer motivo, é só me chamar no WhatsApp ou mandar um e-mail dentro desses 7 dias que eu devolvo 100% do valor — sem perguntas e sem burocracia, mesmo que o plano já tenha sido entregue. O risco é todo meu. Está tudo detalhado nos Termos de Uso.', link: { texto: 'Ler os Termos de Uso', href: '/termos' } },
             ].map((f: { q: string; a: string; link?: { texto: string; href: string } }, i, arrF) => (
               <div key={i} style={{ borderBottom: i < arrF.length - 1 ? `1px solid ${T.border}` : 'none' }}>
                 <button
@@ -2618,7 +2554,7 @@ export default function OfertaClient({ experimentos = [] }: { experimentos?: Exp
             boxShadow: `0 12px 28px ${T.pinkDeep}33`,
           }}>
             <div style={{ fontSize: 16, fontFamily: fonts.display, fontWeight: 600, marginBottom: 6, letterSpacing: -0.2 }}>
-              Sem Riscos: Resultados ou seu dinheiro de volta em 7 dias.
+              Garantia incondicional de 7 dias: não gostou, eu devolvo 100%.
             </div>
             <div style={{ fontSize: 14, opacity: 0.95, letterSpacing: 2 }}>
               ★★★★★
@@ -2630,11 +2566,11 @@ export default function OfertaClient({ experimentos = [] }: { experimentos?: Exp
             background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)',
             padding: '16px 18px', borderRadius: 16, border: `1px solid ${T.border}`,
           }}>
-            Nós acreditamos tanto na <strong style={{ color: T.ink }}>Consulta com a Tricologista Juliane Cost</strong> que oferecemos garantia.
+            Eu acredito tanto na minha <strong style={{ color: T.ink }}>Consulta com a Tricologista Juliane Cost</strong> que o risco fica todo comigo.
             <br /><br />
-            Você terá <strong style={{ color: T.ink }}>100% do seu dinheiro</strong>, sem complicações e sem perguntas.
+            Você tem <strong style={{ color: T.ink }}>7 dias de garantia incondicional</strong>: faça a consulta, receba o seu plano de 90 dias e, se não gostar por <strong style={{ color: T.ink }}>qualquer motivo</strong>, eu devolvo <strong style={{ color: T.ink }}>100% do seu dinheiro</strong> — sem perguntas, sem burocracia, mesmo depois de o plano ser entregue.
             <br /><br />
-            E em compensação nós, podemos somente continuar te ajudando a ver os seus resultados e o seu cabelo se transforma. Aproveite essa oportunidade que está aqui agora!
+            Ou você transforma o seu cabelo, ou não paga nada. 💗
           </div>
 
           {/* Payment methods */}
@@ -2664,7 +2600,7 @@ export default function OfertaClient({ experimentos = [] }: { experimentos?: Exp
             <div style={{ marginBottom: 12 }}>CNPJ: 20.227.193/0001-18</div>
             <div style={{ marginBottom: 12 }}>
               <a href="/termos" target="_blank" rel="noopener noreferrer" style={{ color: T.inkSoft, textDecoration: 'underline' }}>
-                Termos de Uso do Plano Capilar
+                Termos de Uso
               </a>
             </div>
             <div style={{ fontSize: 11, color: T.inkMuted }}>© 2026 julianecost.com — Todos os direitos reservados.</div>

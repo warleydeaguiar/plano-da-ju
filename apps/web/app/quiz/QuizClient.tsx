@@ -957,7 +957,7 @@ function InfoBio({ photoSrc, beforeSrc }: { photoSrc: string; beforeSrc: string 
         <br /><br />
         Sou formada em <strong style={{ color: T.ink, fontWeight: 700 }}>Tricologia</strong> (Ciência que estuda os cabelos) pela Faculdade Unyleya.
         <br /><br />
-        Já ajudei mais de <strong style={{ color: T.ink, fontWeight: 700 }}>3 mil mulheres em 12 países diferentes</strong> a alcançar o cabelo dos sonhos, mais longo, com pontas cheias e mais brilhante apenas mudando hábitos e comprando os produtos certos.
+        Já ajudei mais de <strong style={{ color: T.ink, fontWeight: 700 }}>3.985 mulheres em 12 países diferentes</strong> a alcançar o cabelo dos sonhos, mais longo, com pontas cheias e mais brilhante apenas mudando hábitos e comprando os produtos certos.
         <br /><br />
         Como tricologista, o meu maior inimigo é a <strong style={{ color: T.ink, fontWeight: 700 }}>indústria de produtos para cabelo</strong>. As marcas gastam tanto com marketing que o produto bom fica caro — e a indústria mente pra você pra vender cada vez mais caro. Por isso tanta mulher gasta mil, dois mil reais com cabelo e não chega lá.
         <br /><br />
@@ -1283,6 +1283,16 @@ function InfoScreen({ q, onContinue, images }: { q: QuizStep; onContinue: () => 
 
 // ─── Tela: loading com prova social ───────────────────────────
 function LoadingScreen({ q, images }: { q: QuizStep; images: Record<string, string> }) {
+  // Número REAL de quem chegou a esta tela nas últimas 24h (/api/prova-social).
+  // Abaixo de 10 (madrugada, anúncio desligado) volta para o total de clientes.
+  const [diagnosticos24h, setDiagnosticos24h] = useState(0)
+  useEffect(() => {
+    fetch('/api/prova-social')
+      .then((r) => r.json())
+      .then((d) => setDiagnosticos24h(Number(d?.diagnosticos_24h) || 0))
+      .catch(() => {})
+  }, [])
+
   // Barra própria: anima 0 → 100% em exatamente 5 segundos (linear)
   const [barStarted, setBarStarted] = useState(false)
   useEffect(() => {
@@ -1325,7 +1335,7 @@ function LoadingScreen({ q, images }: { q: QuizStep; images: Record<string, stri
           fontFamily: fonts.display, fontSize: 34, fontWeight: 700,
           color: T.gold, letterSpacing: -1, lineHeight: 1,
         }}>
-          3.500 mulheres
+          3.985 mulheres
         </div>
         <div style={{
           fontFamily: fonts.display, fontSize: 17, fontWeight: 600,
@@ -1361,10 +1371,12 @@ function LoadingScreen({ q, images }: { q: QuizStep; images: Record<string, stri
         border: '1px solid #F3F4F6',
       }}>
         <div style={{ fontSize: 15, fontFamily: fonts.ui, color: T.ink, lineHeight: 1.4 }}>
-          <strong>46 mulheres</strong> compraram nos ultimos minutos
+          {diagnosticos24h >= 10
+            ? <><strong>{diagnosticos24h} mulheres</strong> fizeram o diagnóstico nas últimas 24h</>
+            : <><strong>3.985 mulheres</strong> já fizeram o plano capilar comigo</>}
         </div>
         <div style={{ fontSize: 13, color: T.inkSoft, fontFamily: fonts.ui, marginTop: 2 }}>
-          A consulta com a tricologista Juliane Cost
+          Com a tricologista Juliane Cost
         </div>
       </div>
 
@@ -1912,7 +1924,7 @@ function MiniTestiScreen({ q, name, onContinue }: { q: QuizStep; name: string; o
         Depoimentos das meninas
       </div>
       <div style={{ fontSize: 12, color: T.inkSoft, marginBottom: 14, fontFamily: fonts.ui }}>
-        Hoje somos mais de 43 mil mulheres que aplicam esse método personalizado e individual
+        Hoje somos 3.985 mulheres que aplicam esse método personalizado e individual
       </div>
 
       {/* Depoimentos em VÍDEO (carrossel, clica pra tocar) — acima do texto */}

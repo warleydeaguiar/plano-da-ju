@@ -1,41 +1,14 @@
 import { Metadata } from 'next';
-import { createClient } from '@supabase/supabase-js';
 import OfertaClient from './OfertaClient';
-import type { ExperimentoAtivo } from '@/lib/ab';
 
 export const metadata: Metadata = {
   title: 'Sua Consulta com a Juliane — Plano da Ju',
   description: 'Sua Consulta com a Tricologista Juliane Cost e o seu plano capilar de 90 dias.',
 };
 
-export const dynamic = 'force-dynamic';
-
-/**
- * Experimentos rodando nesta oferta — mesmo padrão do /quiz/fashion-gold:
- * lidos no servidor, timeout curto, fail-open (lista vazia nunca trava a
- * página de pagamento).
- */
-async function experimentos(): Promise<ExperimentoAtivo[]> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return [];
-  try {
-    const sb = createClient(url, key, { auth: { persistSession: false } });
-    const consulta = (sb.from('wg_experiments') as never as {
-      select: (s: string) => { eq: (k: string, v: string) => { eq: (k: string, v: string) => Promise<{ data: ExperimentoAtivo[] | null }> } }
-    })
-      .select('id, flag_key, target_step_id, traffic_pct, variant_content')
-      .eq('target_quiz_slug', 'plano-capilar')
-      .eq('status', 'running');
-    const limite = new Promise<{ data: null }>(r => setTimeout(() => r({ data: null }), 8000));
-    const { data } = await Promise.race([consulta, limite]);
-    return (data ?? []) as ExperimentoAtivo[];
-  } catch {
-    return [];
-  }
-}
-
-export default async function OfertaPage() {
-  const exps = await experimentos();
-  return <OfertaClient experimentos={exps} />;
+// 13/10/26: o teste A/B checkout próprio × Hotmart foi encerrado — a oferta usa
+// só o checkout próprio (Pagar.me). O webhook da Hotmart continua no ar para
+// receber reembolsos/cancelamentos de quem comprou por lá durante o teste.
+export default function OfertaPage() {
+  return <OfertaClient />;
 }

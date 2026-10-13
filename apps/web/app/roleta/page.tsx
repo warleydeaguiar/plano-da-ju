@@ -295,7 +295,7 @@ export default function RoletaPage() {
               </span>
             </h1>
             <p style={{ color: T.inkSoft, fontSize: 14, marginTop: 10, marginBottom: 0, lineHeight: 1.55 }}>
-              É o mês de <strong style={{ color: T.ink }}>aniversário do Plano da Ju</strong>! Pra comemorar as <strong style={{ color: T.ink }}>+30 mil clientes</strong>, liberei uma condição exclusiva só neste mês. Gire e descubra seu desconto 🎁
+              É o mês de <strong style={{ color: T.ink }}>aniversário do Plano da Ju</strong>! Pra comemorar as <strong style={{ color: T.ink }}>3.985 clientes</strong>, liberei uma condição exclusiva só neste mês. Gire e descubra seu desconto 🎁
             </p>
           </div>
 
@@ -310,7 +310,7 @@ export default function RoletaPage() {
           }}>
             <span style={{ fontSize: 15 }}>🎉</span>
             <span style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>
-              Mais de <span style={{ color: T.pinkDeep }}>30 mil</span> clientes já transformaram o cabelo com a Ju
+              <span style={{ color: T.pinkDeep }}>3.985</span> clientes já transformaram o cabelo com a Ju
             </span>
           </div>
 

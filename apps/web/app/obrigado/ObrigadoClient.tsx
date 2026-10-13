@@ -360,7 +360,7 @@ export default function ObrigadoClient() {
           <p style={{ fontSize: 14, color: T.inkSoft, lineHeight: 1.7 }}>
             {params.get('cortesia') === '1'
               ? 'Seu Plano da Ju é uma cortesia da parceria — você não paga nada. Crie sua senha e já entre no seu plano. 💛'
-              : 'Crie sua senha agora e já entre no seu plano personalizado.'}
+              : 'Crie sua senha e envie a foto do seu cabelo — é com ela que eu começo a sua consulta. Fique de olho no WhatsApp: eu vou te chamar por lá. 💛'}
           </p>
         </div>
 

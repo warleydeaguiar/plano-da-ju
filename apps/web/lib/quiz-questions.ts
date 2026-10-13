@@ -125,7 +125,7 @@ export const QUIZ_STEPS: QuizStep[] = [
   {
     id: 'info_3500',
     kind: 'info',
-    title: '3500 mulheres já usaram nosso plano capilar',
+    title: '3.985 mulheres já fizeram o plano capilar comigo',
     body: 'Já foram avaliadas por nós e conseguiram o cabelo dos seus sonhos',
     media: 'before_after',
     ctaText: 'Continuar',
