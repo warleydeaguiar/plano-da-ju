@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { fotoParaIA } from '@/lib/imagem-servidor';
+import { buildConsultaData } from '@/lib/consulta';
 
 // Tipo do produto que vai entrar no prompt
 interface CatalogProduct {
@@ -295,6 +296,136 @@ function enforceProductRules(plan: GeneratedPlan, catalog: CatalogProduct[]): vo
   plan.produtos_indicados = out;
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// CORTESIA SEM IA (13/10/26). Os planos de cortesia (subscription_type =
+// 'parceria') passaram de 600/mês e o Warley quer custo de IA zero para eles
+// (teto de R$20/mês somando todos). Aqui o plano sai das MESMAS regras do
+// CONSTRAINED_PROMPT, aplicadas em código a partir do quiz: âncora pelo
+// incômodo nº1, lavagens pelo couro, cronograma H/N/R, 5–6 produtos Ybera,
+// carta da Ju. A foto NÃO é analisada — por isso nenhum texto diz "vi suas fotos".
+// ════════════════════════════════════════════════════════════════════════════
+function primeiroNomeDe(full?: string | null): string {
+  const n = (full ?? '').trim().split(/\s+/)[0] ?? '';
+  return n.length > 1 ? n.charAt(0).toUpperCase() + n.slice(1).toLowerCase() : '';
+}
+
+function listaQuiz(v: unknown): string[] {
+  return Array.isArray(v) ? v.map(String) : (v != null && v !== '' ? [String(v)] : []);
+}
+
+export function generatePlanSemIA(
+  catalog: CatalogProduct[],
+  args: { quizAnswers: Record<string, unknown> | null; hairType?: string | null; nome?: string | null },
+): GeneratedPlan {
+  const qa = (args.quizAnswers ?? {}) as Record<string, unknown>;
+  const d = buildConsultaData({ quiz_answers: qa, full_name: args.nome ?? null, hair_type: args.hairType ?? null });
+  const nome = primeiroNomeDe(args.nome);
+  const tipoId = String(qa['tipo'] ?? args.hairType ?? '').toLowerCase();
+  const corId = String(qa['cor'] ?? '').toLowerCase();
+  const incomodos = listaQuiz(qa['incomoda']).map(s => s.toLowerCase());
+  const inc1 = incomodos[0] ?? '';
+  const quimicas = listaQuiz(qa['quimica']).map(s => s.toLowerCase()).filter(q => q && q !== 'nenhuma');
+  const temDanoQuimico = quimicas.some(q => ['progressiva', 'descolor', 'relax', 'decap', 'mechas'].includes(q));
+  const temQueda = incomodos.some(x => x === 'queda' || x === 'cresc');
+  const loira = corId === 'loiro' || quimicas.includes('descolor') || quimicas.includes('mechas');
+  const grisalha = corId === 'grisalho';
+  const cachos = tipoId === 'cacheado' || tipoId === 'crespo';
+
+  // Couro → lavagens (PASSO 3)
+  const oleo = String(qa['oleosidade'] ?? '').toLowerCase();
+  const couro = ['seco', 'normal', 'oleoso'].includes(oleo) ? oleo : 'normal';
+  const lavagens = couro === 'oleoso' ? 4 : couro === 'seco' ? 2 : 3;
+
+  // Cronograma (PASSO 4) — semana 12 sempre R
+  const secura = inc1 === 'pontas' || couro === 'seco' || d.porosidadeAlta || grisalha;
+  const cronograma =
+    (inc1 === 'quebra' || temDanoQuimico) ? ['R', 'H', 'N', 'R', 'H', 'N', 'R', 'H', 'N', 'R', 'H', 'R']
+    : secura ? ['H', 'N', 'H', 'N', 'H', 'R', 'H', 'N', 'H', 'N', 'H', 'R']
+    : (inc1 === 'frizz' || inc1 === 'volume') ? ['H', 'N', 'R', 'H', 'N', 'R', 'H', 'N', 'R', 'H', 'N', 'R']
+    : ['H', 'N', 'H', 'R', 'H', 'N', 'H', 'R', 'H', 'N', 'H', 'R'];
+
+  // Produtos (busca por nome — sobrevive a troca de id no catálogo)
+  const acha = (re: RegExp, cat?: string) =>
+    catalog.find(p => re.test(p.name) && (!cat || p.category === cat) && (p.is_ybera === true || /ybera|fashion\s*gold/i.test(p.brand ?? '')));
+  const alt = (re: RegExp) => catalog.find(p => re.test(p.name) && p.is_ybera !== true && !/ybera|fashion\s*gold/i.test(p.brand ?? ''))?.id ?? null;
+
+  const antiqueda = acha(/100\s*Tim/i);
+  const kit = (loira || grisalha ? acha(/Kit Loiro Perfeito/i) : null)
+    ?? (tipoId === 'liso' ? acha(/Kit Liso Perfeito/i) : null)
+    ?? acha(/Kit Cuidados Profundos/i);
+  const shampoo = (temQueda ? acha(/Shampoo Vello/i) : null) ?? acha(/Shampoo Multifun/i) ?? acha(/Shampoo/i, 'limpeza');
+  const mirra = acha(/[ÓO]leo de Mirra/i);
+  const leave = (loira ? acha(/Leave-?in.*Loiro/i) : null)
+    ?? (cachos ? acha(/Leave-?in.*Cacho/i) : null)
+    ?? (grisalha ? acha(/Leave-?in.*Loiro/i) : null)
+    ?? acha(/Leave-?in Universal/i);
+  const vello = acha(/Soro Vello/i);
+
+  const ancora = temQueda && (inc1 === 'queda' || inc1 === 'cresc') ? antiqueda
+    : (inc1 === 'pontas') ? mirra
+    : kit;
+
+  const problema = d.problema;
+  const motivos: Record<string, string> = {
+    [antiqueda?.id ?? '-']: 'Age de dentro pra fora na raiz — é o seu aliado nº1 contra a queda e pra acelerar o crescimento.',
+    [kit?.id ?? '-']: `É o kit do seu cronograma: hidratação, nutrição e reconstrução na ordem certa pro seu ${d.tipo.toLowerCase()}.`,
+    [shampoo?.id ?? '-']: couro === 'oleoso' ? 'Limpa a raiz oleosa sem ressecar os comprimentos.' : 'Limpa o couro com suavidade, sem tirar a hidratação dos fios.',
+    [mirra?.id ?? '-']: 'Sela as pontas, devolve brilho e segura a umidade depois de cada lavagem.',
+    [leave?.id ?? '-']: cachos ? 'Define os cachos e controla o frizz o dia todo.' : (loira || grisalha) ? 'Protege e mantém o tom do seu loiro/grisalho bonito.' : 'Dá deslize, controla o frizz e protege o fio ao longo do dia.',
+    [vello?.id ?? '-']: 'Fortalece a raiz e estimula o crescimento — massageia direto no couro.',
+  };
+  const alternativas: Record<string, string | null> = {
+    [mirra?.id ?? '-']: alt(/[ÓO]leo Extraordin|Argan/i),
+    [leave?.id ?? '-']: alt(/Leave-?in|Uso Obrigat/i),
+    [kit?.id ?? '-']: alt(/M[áa]scara/i),
+  };
+
+  // 5 a 6 itens: se o âncora coincidiu com o kit (ou faltou algo no catálogo),
+  // completa com a máscara e o finalizador da casa.
+  const reserva = [acha(/M[áa]scara Mirracura/i), acha(/Finishing Spray/i)];
+  const ordem = [ancora, kit, shampoo, mirra, leave, vello, ...reserva]
+    .filter((p): p is CatalogProduct => !!p)
+    .filter((p, i, a) => a.findIndex(x => x.id === p.id) === i)
+    .slice(0, 6);
+  const plan: GeneratedPlan = {
+    diagnostico: `${nome ? nome + ', o' : 'O'} seu ${d.tipo.toLowerCase()} tem ${couro === 'oleoso' ? 'a raiz oleosa' : couro === 'seco' ? 'o couro seco e os fios ressecados' : 'o couro equilibrado'}${d.temQuimica ? `, com ${d.quimica.join(', ')} no histórico` : ''}. O foco nº1 do seu plano é ${problema} — é por ele que o cronograma começa.`,
+    tipo_cabelo: d.tipo && d.tipo !== 'seu cabelo' ? d.tipo : (args.hairType ?? 'Liso'),
+    analise_foto: {
+      frizz_score: incomodos.includes('frizz') || incomodos.includes('volume') ? 4 : 3,
+      brilho_score: 3,
+      hidratacao_score: secura ? 2 : 3,
+      pontas_score: incomodos.includes('pontas') || incomodos.includes('quebra') ? 2 : 3,
+      porosidade_aparente: d.porosidadeAlta ? 'alta' : 'média',
+      observacoes: 'Montei o seu plano a partir das suas respostas e do seu histórico de química.',
+    },
+    incomodo_principal: problema,
+    produto_ancora: ancora?.name,
+    semanas: [],
+    produtos_essenciais: [],
+    diarios: [
+      'Óleo de Mirra: 2–3 gotas nas pontas com o cabelo úmido',
+      'Tônico Vello: aplique no couro e massageie 1 min, sem enxaguar',
+      ...(temQueda ? ['100Tímetros: 1 cápsula por dia'] : []),
+    ],
+    produtos_indicados: ordem.map(p => ({ produto_id: p.id, motivo: motivos[p.id] ?? '', alternativa_id: alternativas[p.id] ?? null })),
+    carta_ju: [
+      `Oi${nome ? ' ' + nome : ''}, tudo bem?`,
+      'Li com calma as suas respostas e montei o seu plano pensando no seu caso.',
+      `O que mais te incomoda hoje é ${problema}${d.temQuimica ? `, e com ${d.quimica.join(', ')} no histórico o fio pede ainda mais cuidado` : ''}. Isso não é culpa sua: faltava o método certo, na ordem certa, pro seu ${d.tipo.toLowerCase()}.`,
+      'Eu também já passei por isso — comprava produto atrás de produto e nada mudava. O que virou o jogo foi a constância com os produtos certos.',
+      'Quanto antes você começar, mais rápido o seu cabelo responde. Siga o cronograma semana a semana que eu estou com você.',
+      'Dá uma olhada nos produtos que eu escolhi pra você logo abaixo.\n\nBeijos da Ju 💛',
+    ].join('\n\n'),
+    mensagem_juliane: `${nome ? nome + ', m' : 'M'}ontei o seu cronograma de 90 dias começando pelo que mais te incomoda: ${problema}.\n\n${NOTA_FIXA}`,
+  };
+  enforceProductRules(plan, catalog);
+  plan.semanas = assembleSemanas(couro, lavagens, cronograma, resolveNames(catalog, plan.produtos_indicados ?? []), temQueda);
+  plan.produtos_essenciais = (plan.produtos_indicados ?? [])
+    .map(pi => catalog.find(c => c.id === pi.produto_id)?.name)
+    .filter((n): n is string => !!n);
+  return plan;
+}
+
 /**
  * Chama a IA (constrained) com a foto + quiz + catálogo real e retorna o plano
  * estruturado — a IA decide os códigos e escreve os textos únicos; as 12 semanas
@@ -312,6 +443,22 @@ export async function generatePlanWithClaude(
   opts?: { onUsage?: (usage: any) => void },
 ): Promise<GeneratedPlan> {
   const catalog = await loadCatalog(sb);
+
+  // Cortesia (parceria) nunca chama IA — ver generatePlanSemIA.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: perfil } = await (sb.from('profiles') as any)
+    .select('subscription_type, full_name')
+    .eq('email', args.email.trim().toLowerCase())
+    .maybeSingle();
+  if (perfil?.subscription_type === 'parceria') {
+    // Catálogo inteiro aqui (sem o corte de 30 do prompt da IA, que deixa o
+    // Soro Vello de fora): sem IA, tamanho de catálogo não custa nada.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: todos } = await (sb.from('products') as any)
+      .select('id,name,brand,category,hair_types,is_priority,is_ybera')
+      .eq('active', true).is('parent_product_id', null).limit(200);
+    return generatePlanSemIA((todos ?? catalog) as CatalogProduct[], { quizAnswers: args.quizAnswers, hairType: args.hairType, nome: perfil.full_name });
+  }
 
   // Bloco FIXO (instruções + catálogo) primeiro e marcado para cache: ele é
   // igual em toda geração e responde por ~4.900 tokens de entrada. Relido do

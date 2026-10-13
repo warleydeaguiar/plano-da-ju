@@ -156,7 +156,7 @@ export async function POST(req: NextRequest) {
     // salva os scores (analise_foto). Evita pagar 2x a mesma análise de imagem.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: profile } = await (supabase.from('profiles') as any)
-      .select('email, plan_status, photo_url, plan_without_photo')
+      .select('email, plan_status, photo_url, plan_without_photo, subscription_type')
       .eq('id', user.id)
       .single();
     const planKey = process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_API_KEY;
@@ -176,7 +176,10 @@ export async function POST(req: NextRequest) {
       raw_response: null as unknown,
     };
 
-    if (!willGeneratePlan && process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_API_KEY.startsWith('X')) {
+    // Cortesia (parceria) não paga análise de imagem nem nas fotos de progresso
+    // (custo de IA zero para cortesias — pedido de 13/10/26). A foto é salva igual.
+    const cortesia = profile?.subscription_type === 'parceria';
+    if (!willGeneratePlan && !cortesia && process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_API_KEY.startsWith('X')) {
       try {
         const visionRes = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
