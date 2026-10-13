@@ -117,7 +117,7 @@ export const QUIZ_STEPS: QuizStep[] = [
     id: 'info_juliane',
     kind: 'info',
     title: 'Planos Personalizados',
-    body: 'Os planos capilares são desenvolvidos pessoalmente por mim **Juliane Cost**.\n\nFormada em Tricologia, e com anos de experiência, e muitos casos de sucesso! Você será a próxima',
+    body: 'Os planos capilares são desenvolvidos pessoalmente por mim **Juliane Cost**.\n\nFormada em Tricologia, e com anos de experiência, e muitos casos de sucesso! Eu te mostro o que realmente funciona pro seu cabelo — e o que é **só marketing da indústria**. Você será a próxima',
     media: 'juliane_video',
     ctaText: 'Continuar',
   },
@@ -412,7 +412,7 @@ export const QUIZ_STEPS: QuizStep[] = [
     id: 'plan_ready',
     kind: 'plan_ready',
     title: 'Seu Plano está pronto',
-    subtitle: 'Com base nas suas respostas, esperamos que você recupere a saúde dos seus fios, aumente o volume, tenha mais hidratação e menos oleosidade desnecessária',
+    subtitle: 'Com base nas suas respostas, esperamos que você recupere a saúde dos seus fios, aumente o volume, tenha mais hidratação e menos oleosidade desnecessária — só com produtos que valem o que custam, sem pagar por marketing.',
     ctaText: 'Continuar',
   },
   // ── 31 — mini depoimentos

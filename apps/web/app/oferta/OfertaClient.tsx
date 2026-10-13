@@ -2212,6 +2212,19 @@ export default function OfertaClient({ experimentos = [] }: { experimentos?: Exp
             );
           })()}
 
+          {/* A indústria — versão curta, ANTES do primeiro preço: quem compra
+              logo de cara não chega no bloco completo do meio da página. */}
+          <div style={{
+            display: 'flex', gap: 12, alignItems: 'flex-start',
+            background: '#fff', border: `1px solid ${T.border}`, borderLeft: `4px solid ${T.pinkDeep}`,
+            borderRadius: 14, padding: '14px 16px', marginBottom: 22,
+          }}>
+            <span style={{ fontSize: 20, lineHeight: 1.2, flexShrink: 0 }}>🧪</span>
+            <div style={{ fontSize: 14, color: T.inkSoft, lineHeight: 1.55, fontFamily: fonts.ui }}>
+              <strong style={{ color: T.ink }}>A indústria do cabelo mente pra você.</strong> Tem produto de R$&nbsp;500 que é só marketing — e um igual ou melhor por R$&nbsp;70. No seu plano eu te mostro <strong style={{ color: T.pinkDeep }}>o que realmente vale o preço</strong> pro seu cabelo.
+            </div>
+          </div>
+
           {/* First offer */}
           {cupomInfo && (
             <div style={{
