@@ -367,14 +367,15 @@ export const QUIZ_STEPS: QuizStep[] = [
     media: 'depoimentos',
     ctaText: 'Também quero ter resultados',
   },
-  // ── 25b — gasto mensal: é esta resposta que define o preço do plano
-  // (ver lib/preco-dinamico.ts). Fica ANTES da captura de telefone/e-mail para
-  // já estar salva mesmo se a pessoa abandonar antes de virar lead.
+  // ── 25b — gasto mensal: não muda mais o preço (R$97 para todas desde
+  // 13/10/26), mas fica como dado da cliente e alimenta o bloco "a indústria"
+  // da oferta. Fica ANTES da captura de telefone/e-mail para já estar salva
+  // mesmo se a pessoa abandonar antes de virar lead.
   {
     id: 'gasto_mensal',
     kind: 'single',
     title: 'Quanto você gasta por mês com produtos para cabelo?',
-    subtitle: 'Assim eu monto o seu plano dentro do que cabe no seu bolso.',
+    subtitle: 'A indústria quer que você gaste cada vez mais. Eu vou te mostrar onde dá pra gastar menos — e ter resultado.',
     options: FAIXAS_GASTO.map((f) => ({ id: f.id, label: f.label })),
   },
   // ── 26 — loading

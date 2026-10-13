@@ -12,6 +12,7 @@ import dynamic from 'next/dynamic';
 import { JU_WHATSAPP_EXIBICAO } from '@/lib/contact';
 import { sortearLado, rotuloVariante, type ExperimentoAtivo } from '@/lib/ab';
 import { buildHotmartCheckoutUrl } from '@/lib/hotmart-checkout';
+import { FAIXAS_GASTO } from '@/lib/preco-dinamico';
 
 /**
  * Carregado sob demanda, e não no pacote principal.
@@ -2289,6 +2290,54 @@ export default function OfertaClient({ experimentos = [] }: { experimentos?: Exp
             <CheckItem color={T.pink}>Para quem já se sente frustrada com produtos de cabelo que não funcionam</CheckItem>
             <CheckItem color={T.pink}>Para todas que <strong>NÃO querem gastar dinheiro com produtos caros que não funcionam</strong></CheckItem>
           </div>
+
+          {/* A indústria × a composição — o porquê da Juliane, logo antes de
+              "quanto você já gastou": primeiro a causa, depois a conta. */}
+          {(() => {
+            const g = String((quizAnswers as Record<string, unknown>)?.gasto_mensal ?? '');
+            const faixa = FAIXAS_GASTO.find((f) => f.id === g)?.label;
+            return (
+              <div style={{
+                background: '#fff', border: `1px solid ${T.border}`, borderRadius: 18,
+                padding: '22px 20px', marginBottom: 22, boxShadow: '0 8px 22px rgba(190,24,93,0.06)',
+              }}>
+                <div style={{ fontSize: 11.5, fontWeight: 800, color: T.pinkDeep, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 10, fontFamily: fonts.ui }}>
+                  🧪 O que ninguém te conta
+                </div>
+                <div style={{ fontSize: 21, fontFamily: fonts.display, color: T.ink, lineHeight: 1.3, fontWeight: 600, marginBottom: 14, letterSpacing: -0.3 }}>
+                  Como tricologista, o meu maior inimigo é a <em style={{ color: T.pinkDeep }}>indústria do cabelo</em>.
+                </div>
+                <div style={{ fontSize: 14.5, color: T.inkSoft, lineHeight: 1.65, fontFamily: fonts.ui }}>
+                  As marcas gastam tanto com marketing que o produto bom fica caro — e muitas vezes o que você paga é a propaganda, não a fórmula. <strong style={{ color: T.ink }}>A indústria mente pra você</strong> pra vender cada vez mais caro e lucrar com isso.
+                  <br /><br />
+                  É por isso que tanta mulher gasta <strong style={{ color: T.ink }}>mil, dois mil reais</strong> cuidando do cabelo e não chega lá.
+                  {faixa && (
+                    <>
+                      {' '}Você me contou que gasta <strong style={{ color: T.ink }}>{faixa.charAt(0).toLowerCase() + faixa.slice(1)}</strong> por mês com cabelo — boa parte disso pode estar indo pra propaganda.
+                    </>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: 10, margin: '16px 0' }}>
+                  <div style={{ flex: 1, background: T.cream, borderRadius: 12, padding: '12px 10px', textAlign: 'center', border: `1px solid ${T.border}` }}>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: '#B0A0B2', fontFamily: fonts.display, textDecoration: 'line-through', lineHeight: 1 }}>R$ 500</div>
+                    <div style={{ fontSize: 11.5, color: T.inkSoft, marginTop: 5, lineHeight: 1.35, fontFamily: fonts.ui }}>produto que é só marketing</div>
+                  </div>
+                  <div style={{ flex: 1, background: '#EAF7EE', borderRadius: 12, padding: '12px 10px', textAlign: 'center', border: '1px solid #BFE8CC' }}>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: '#166534', fontFamily: fonts.display, lineHeight: 1 }}>R$ 70</div>
+                    <div style={{ fontSize: 11.5, color: '#166534', marginTop: 5, lineHeight: 1.35, fontFamily: fonts.ui }}>composição igual — ou até melhor</div>
+                  </div>
+                </div>
+
+                <div style={{ fontSize: 14.5, color: T.inkSoft, lineHeight: 1.65, fontFamily: fonts.ui }}>
+                  Mas tem menina que já descobriu: <strong style={{ color: T.ink }}>o que vale é a composição</strong>, nas quantidades certas, pro seu tipo de cabelo. Foi por isso que eu estudei Tricologia — hoje eu sei exatamente o que funciona em cada cabelo e quais produtos valem o preço que custam.
+                </div>
+                <div style={{ fontSize: 14.5, color: T.ink, lineHeight: 1.6, fontFamily: fonts.ui, marginTop: 14, padding: '12px 14px', background: `linear-gradient(135deg, ${T.rose}, ${T.cream})`, borderRadius: 12 }}>
+                  Com a minha consulta você resolve o seu cabelo de uma vez por todas, <strong>economiza</strong> — e <strong style={{ color: T.pinkDeep }}>nunca mais é enganada</strong> pela indústria. 💗
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Ancoragem de valor + custo de não agir — logo antes do preço */}
           <div style={{

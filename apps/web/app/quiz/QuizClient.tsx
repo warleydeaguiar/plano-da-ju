@@ -959,9 +959,11 @@ function InfoBio({ photoSrc, beforeSrc }: { photoSrc: string; beforeSrc: string 
         <br /><br />
         Já ajudei mais de <strong style={{ color: T.ink, fontWeight: 700 }}>3 mil mulheres em 12 países diferentes</strong> a alcançar o cabelo dos sonhos, mais longo, com pontas cheias e mais brilhante apenas mudando hábitos e comprando os produtos certo.
         <br /><br />
-        Eu sei que é difícil cuidar do cabelo, principalmente quando não sabemos o que realmente nosso cabelo precisa. Muita gente na internet indica produtos milagrosos que no fim só te fazem perder tempo e dinheiro.
+        Como tricologista, o meu maior inimigo é a <strong style={{ color: T.ink, fontWeight: 700 }}>indústria de produtos para cabelo</strong>. As marcas gastam tanto com marketing que o produto bom fica caro — e a indústria mente pra você pra vender cada vez mais caro. Por isso tanta mulher gasta mil, dois mil reais com cabelo e não chega lá.
         <br /><br />
-        Por isso eu criei um <strong style={{ color: T.ink, fontWeight: 700 }}>plano personalizado e individualizado</strong> com base nas suas respostas ao meu questionário — vou montar um plano capilar feito sob medida para você. Nada de milhares de produtos caros!
+        Mas tem menina que já descobriu: <strong style={{ color: T.ink, fontWeight: 700 }}>o que vale é a composição</strong>, nas quantidades certas, pra cada tipo de cabelo. Foi por isso que eu estudei Tricologia e me apaixonei: tem produto de R$ 500 que é só marketing, e existe um igual ou até melhor por R$ 70.
+        <br /><br />
+        Por isso eu criei um <strong style={{ color: T.ink, fontWeight: 700 }}>plano personalizado e individualizado</strong> com base nas suas respostas ao meu questionário — vou montar um plano capilar feito sob medida para você, com os produtos que realmente valem o que custam. Você resolve o seu cabelo, economiza e nunca mais é enganada.
         <br /><br />
         Esse plano vai te mostrar que cuidar do cabelo pode ser fácil e prazeroso. E o melhor: os resultados serão visíveis e duradouros.
         <br /><br />

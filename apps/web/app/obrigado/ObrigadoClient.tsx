@@ -75,6 +75,33 @@ function LoadingScreen({ message }: { message: string }) {
   );
 }
 
+// Reforço da decisão logo DEPOIS do botão de criar senha — nunca antes, pra
+// não empurrar o formulário (é ele que leva a cliente até a foto e o plano).
+function ForaDaIndustria() {
+  return (
+    <div style={{
+      marginTop: 32, background: T.cardBg, border: `1px solid ${T.border}`,
+      borderRadius: 20, padding: '22px 20px',
+    }}>
+      <div style={{ fontSize: 11, fontWeight: 800, color: T.pinkDeep, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
+        💗 Você fez a escolha certa
+      </div>
+      <div style={{ fontSize: 19, fontFamily: fonts.display, fontWeight: 600, color: T.ink, lineHeight: 1.3, marginBottom: 12, letterSpacing: -0.2 }}>
+        A partir de hoje, a indústria não escolhe mais por você.
+      </div>
+      <p style={{ fontSize: 14, color: T.inkSoft, lineHeight: 1.65, margin: 0 }}>
+        Como tricologista, o meu maior inimigo é a indústria de produtos para cabelo: as marcas gastam tanto com marketing que o produto bom fica caro, e muita gente gasta mil, dois mil reais sem chegar no cabelo que quer.
+      </p>
+      <p style={{ fontSize: 14, color: T.inkSoft, lineHeight: 1.65, margin: '12px 0 0' }}>
+        O que vale é a <strong style={{ color: T.ink }}>composição</strong>, nas quantidades certas pro seu tipo de cabelo. No seu plano eu vou te mostrar exatamente isso — e quais produtos valem o que custam. Tem produto de R$ 500 que é só marketing, e um igual ou até melhor por R$ 70.
+      </p>
+      <p style={{ fontSize: 14, color: T.ink, lineHeight: 1.6, margin: '14px 0 0', fontWeight: 600 }}>
+        Você vai resolver o seu cabelo, economizar, e nunca mais ser enganada. 💗
+      </p>
+    </div>
+  );
+}
+
 // Loga evento do funil
 async function logEvent(data: { event_type: string; email?: string; metadata?: Record<string, unknown> }) {
   if (typeof window === 'undefined') return;
@@ -311,6 +338,8 @@ export default function ObrigadoClient() {
           >
             Criar senha e acessar meu plano →
           </button>
+
+          <ForaDaIndustria />
         </div>
       </div>
     );
@@ -378,6 +407,8 @@ export default function ObrigadoClient() {
         <p style={{ textAlign: 'center', color: T.inkMuted, fontSize: 11, marginTop: 16, lineHeight: 1.6 }}>
           Use essa senha sempre que entrar no app Plano da Ju
         </p>
+
+        <ForaDaIndustria />
       </div>
     </div>
   );
