@@ -16,7 +16,7 @@ import { telefoneDoCliente } from '@/lib/telefone-cliente';
 
 // Preço vem da fonte única (lib/pricing) — nunca hardcode aqui, senão o valor
 // cobrado diverge do que a cliente vê na página.
-const PRICE_PADRAO = PLAN_BASE_CENTS; // R$34,90 (pagamento único, sem cupom)
+const PRICE_PADRAO = PLAN_BASE_CENTS; // R$97 (pagamento único, sem cupom)
 
 export const runtime = 'nodejs';
 // Headroom pro retry do QR (a PagarMe às vezes demora pra popular o copia-e-cola).

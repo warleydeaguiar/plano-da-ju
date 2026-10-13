@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { enrichIdentity, newEventId, sendServerEvent } from '@/lib/tracking-client';
 import { pixelMatchingPayload, pixelPhone } from '@/lib/pixel-pii';
-import { installmentInfo, brlCents, MAX_INSTALLMENTS, PLAN_BASE_CENTS } from '@/lib/pricing';
+import { installmentInfo, brlCents, MAX_INSTALLMENTS, PLAN_BASE_CENTS, PLAN_ANCHOR_CENTS } from '@/lib/pricing';
 import { getFunilCopy } from '@/lib/hair-copy';
 import { buildConsultaData } from '@/lib/consulta';
 import Picture from '@/app/components/Picture';
@@ -416,7 +416,7 @@ function OfferCard({ countdown, name, onBuy, precoCents = PLAN_BASE_CENTS }: {
             </div>
           </div>
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-            <div style={{ fontSize: 11, color: T.inkMuted, textDecoration: 'line-through', marginBottom: 1, fontFamily: fonts.ui }}>R$ 149,90</div>
+            <div style={{ fontSize: 11, color: T.inkMuted, textDecoration: 'line-through', marginBottom: 1, fontFamily: fonts.ui }}>{brlCents(PLAN_ANCHOR_CENTS)}</div>
             <div style={{
               fontFamily: fonts.display, fontSize: 26, fontWeight: 700,
               background: `linear-gradient(135deg, ${T.pinkDeep}, ${T.pink})`,
@@ -1714,7 +1714,7 @@ export default function OfertaClient({ experimentos = [] }: { experimentos?: Exp
                   <div style={{ fontSize: 12, color: T.inkSoft, marginTop: 2 }}>Tricologista Juliane Cost</div>
                   <div style={{ marginTop: 6 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                      <span style={{ fontSize: 11.5, color: T.inkMuted, textDecoration: 'line-through', fontFamily: fonts.ui }}>de R$ 149,90</span>
+                      <span style={{ fontSize: 11.5, color: T.inkMuted, textDecoration: 'line-through', fontFamily: fonts.ui }}>de {brlCents(PLAN_ANCHOR_CENTS)}</span>
                       <span style={{ fontSize: 10, fontWeight: 700, color: '#166534', background: '#EAF7EE', borderRadius: 5, padding: '1px 6px' }}>🎂 aniversário</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
@@ -2317,7 +2317,7 @@ export default function OfertaClient({ experimentos = [] }: { experimentos?: Exp
               </div>
               <div style={{ flex: 1, background: `linear-gradient(135deg, ${T.pinkDeep}, ${T.pink})`, borderRadius: 12, padding: '12px 10px', textAlign: 'center', boxShadow: `0 6px 16px ${T.pink}44` }}>
                 <div style={{ fontSize: 10.5, fontWeight: 700, color: 'rgba(255,255,255,0.85)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4, fontFamily: fonts.ui }}>Plano da Ju</div>
-                <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.75)', textDecoration: 'line-through', lineHeight: 1, marginBottom: 2, fontFamily: fonts.ui }}>de R$ 149,90</div>
+                <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.75)', textDecoration: 'line-through', lineHeight: 1, marginBottom: 2, fontFamily: fonts.ui }}>de {brlCents(PLAN_ANCHOR_CENTS)}</div>
                 <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', fontFamily: fonts.display, lineHeight: 1 }}>{brlCents(precoAtual)}<span style={{ fontSize: 12 }}> uma vez</span></div>
                 <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', marginTop: 4, lineHeight: 1.35, fontFamily: fonts.ui }}>feito exatamente pro seu cabelo</div>
               </div>

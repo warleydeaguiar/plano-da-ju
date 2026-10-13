@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { JU_WHATSAPP_EXIBICAO } from '@/lib/contact';
+import { PLAN_BASE_CENTS, PLAN_ANCHOR_CENTS, brlCents } from '@/lib/pricing';
 
 // ─── Design tokens ───────────────────────────────────────────
 const T = {
@@ -187,8 +188,8 @@ function OfferCard({ countdown, name, onBuy }: { countdown: string; name: string
             </div>
           </div>
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-            <div style={{ fontSize: 11, color: T.inkSoft, textDecoration: 'line-through' }}>R$ 99,90</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: T.pinkDeep, lineHeight: 1 }}>R$ 34,90</div>
+            <div style={{ fontSize: 11, color: T.inkSoft, textDecoration: 'line-through' }}>{brlCents(PLAN_ANCHOR_CENTS)}</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: T.pinkDeep, lineHeight: 1 }}>{brlCents(PLAN_BASE_CENTS)}</div>
             <div style={{ fontSize: 9, color: T.inkSoft, marginTop: 2 }}>pagamento único</div>
           </div>
         </div>
@@ -422,7 +423,7 @@ export default function OfertaClient() {
           <h1 style={{ fontSize: 22, fontWeight: 800, color: T.ink, marginBottom: 6 }}>
             {payType === 'card' ? 'Dados do cartão' : 'Pagar com PIX'}
           </h1>
-          <p style={{ color: T.inkSoft, fontSize: 14, marginBottom: 24 }}>R$34,90 — pagamento único</p>
+          <p style={{ color: T.inkSoft, fontSize: 14, marginBottom: 24 }}>{brlCents(PLAN_BASE_CENTS)} — pagamento único</p>
 
           {payType === 'card' ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -454,7 +455,7 @@ export default function OfertaClient() {
               onClick={payType === 'card' ? handleCard : handlePix}
               disabled={payType === 'card' ? !isCardComplete : cpf.replace(/\D/g, '').length < 11}
             >
-              🔒 {payType === 'card' ? 'PAGAR R$34,90' : 'GERAR PIX — R$34,90'}
+              🔒 {payType === 'card' ? `PAGAR ${brlCents(PLAN_BASE_CENTS)}` : `GERAR PIX — ${brlCents(PLAN_BASE_CENTS)}`}
             </GreenButton>
           </div>
           <p style={{ textAlign: 'center', marginTop: 12, fontSize: 11, color: T.inkSoft }}>

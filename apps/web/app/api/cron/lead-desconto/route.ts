@@ -5,7 +5,7 @@ import { saudeDoCanal } from '@/lib/wa-saude';
 import { telefonesBloqueados, finalTelefone } from '@/lib/wa-optout';
 import { precoDoCliente } from '@/lib/preco-servidor';
 import { conferirCupom } from '@/lib/cupom';
-import { brlCents } from '@/lib/pricing';
+import { brlCents, PLAN_BASE_CENTS } from '@/lib/pricing';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -100,6 +100,15 @@ export async function GET(req: NextRequest) {
   if (!ok) return NextResponse.json({ error: 'não autorizado' }, { status: 401 });
 
   const dry = req.nextUrl.searchParams.get('dry') === '1';
+
+  // Desde 13/10/26 o plano é R$97 sem desconto abaixo disso (VOLTA15 desligado).
+  // Sem cupom valendo, a mensagem viraria "em vez de R$97, fica por R$97" —
+  // então nada sai, e ninguém é marcado (a fila volta se um cupom for ligado).
+  const cupomVale = await conferirCupom(CUPOM, PLAN_BASE_CENTS);
+  if (!cupomVale || cupomVale.descontoCents <= 0) {
+    return NextResponse.json({ ok: true, pausado: true, motivo: `cupom ${CUPOM} inativo ou sem desconto` });
+  }
+
   const sb = await createServiceClient();
   const agora = Date.now();
 

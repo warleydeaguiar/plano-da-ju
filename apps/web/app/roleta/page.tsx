@@ -39,7 +39,7 @@ const N_SEG = 8
 /**
  * Os 8 prêmios. O primeiro — o que sempre sai — mostra o preço DESTA cliente,
  * vindo da faixa de gasto que ela respondeu no quiz. A âncora riscada
- * (R$149,90) é a mesma para todas, então o percentual muda junto com o preço.
+ * (PLAN_ANCHOR_CENTS) vem de lib/pricing — hoje "de R$197 por R$97", 51% OFF.
  */
 function segmentos(precoCents: number) {
   return [
@@ -80,7 +80,7 @@ function segPath(i: number): string {
 //   R = (-90 - (-67,5)) + 6×360 = -22,5 + 2160 = 2137,5°
 const SPIN_TOTAL_DEG = 2137.5
 // Fase 1 para ~36° antes do prêmio: o ponteiro "quase para" no 5% vizinho
-// (segmento 7). Depois um creep lento leva até o 77% (segmento 0). Mais emoção.
+// (segmento 7). Depois um creep lento leva até o prêmio (segmento 0). Mais emoção.
 const PHASE1_DEG = SPIN_TOTAL_DEG - 36
 
 // ─── Countdown helper ─────────────────────────────────────────
@@ -189,7 +189,7 @@ export default function RoletaPage() {
     setSpinTransition('transform 3.3s cubic-bezier(0.13, 0.85, 0.18, 1)')
     setRotation(PHASE1_DEG)
 
-    // FASE 2 — creep lento: sai do 5% e cai no prêmio maior (77%).
+    // FASE 2 — creep lento: sai do 5% e cai no prêmio maior (segmento 0).
     spinTimerRef.current = setTimeout(() => {
       setSpinTransition('transform 2.1s cubic-bezier(0.45, 0.05, 0.35, 1)')
       setRotation(SPIN_TOTAL_DEG)
