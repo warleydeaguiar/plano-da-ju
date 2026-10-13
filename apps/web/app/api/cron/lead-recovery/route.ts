@@ -39,19 +39,16 @@ export const maxDuration = 60;
 // Medição da v5 em 21 dias: 961 enviadas, 7,5% responderam, 4,4% pediram para
 // parar. Pedir algo é o que faz a primeira mensagem valer a pena receber.
 const TEMPLATE_DIAG   = process.env.WHATSAPP_LEAD_TEMPLATE_DIAG || 'diagnostico_quiz_v1';
-const TEMPLATE_NOVO   = process.env.WHATSAPP_LEAD_TEMPLATE_V4 || 'inscricao_pendente_util_v4';
 // v5 = mesmo texto da v2 SEM o preço. Com o preço dinâmico (faixa de gasto do
 // quiz), "o pagamento de R$ 34,90" seria falso para três das quatro faixas.
 const TEMPLATE_SEM_PRECO = process.env.WHATSAPP_LEAD_TEMPLATE_V5 || 'inscricao_pendente_util_v5';
-const TEMPLATE_ATUAL  = process.env.WHATSAPP_LEAD_TEMPLATE_V2 || 'inscricao_pendente_util_v2';
-const TEMPLATE_ANTIGO = process.env.WHATSAPP_LEAD_TEMPLATE || 'inscricao_pendente';
+// 13/10/26: o produto virou "Consulta com a Tricologista" a R$97. A v5 ainda
+// fala em "Plano Capilar"; a consulta_pendente_v1 é o mesmo texto falando da
+// consulta e entra sozinha quando a Meta aprovar como UTILITY. As versões com
+// "R$ 34,90" (util, util_v2, util_v4 e inscricao_pendente) SAÍRAM da fila:
+// melhor não enviar do que prometer o preço antigo.
+const TEMPLATE_CONSULTA = process.env.WHATSAPP_LEAD_TEMPLATE_CONSULTA || 'consulta_pendente_v1';
 
-/** Metade dos leads, sempre a mesma metade: o sorteio é o id, não o relógio. */
-function ehGrupoNovo(id: string): boolean {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-  return h % 2 === 0;
-}
 const TEMPLATE_LANG = process.env.WHATSAPP_LEAD_TEMPLATE_LANG || 'pt_BR';
 const MIN_IDADE_MIN = 20;
 const MAX_IDADE_HORAS = 3;
@@ -179,7 +176,7 @@ export async function GET(req: NextRequest) {
   // Só entram se a Meta confirmar APROVADO **e** UTILITY (a v3 foi aprovada como
   // MARKETING; sem esta checagem o gasto saltaria ~9×).
   const diagVale = await templateUtilitarioAprovado(TEMPLATE_DIAG);
-  const novoVale = await templateUtilitarioAprovado(TEMPLATE_NOVO);
+  const consultaVale = await templateUtilitarioAprovado(TEMPLATE_CONSULTA);
   const semPrecoVale = await templateUtilitarioAprovado(TEMPLATE_SEM_PRECO);
   // Template que a Meta recusar nesta execução (erro 132xxx) não é tentado de novo.
   const ruins = new Set<string>();
@@ -210,14 +207,12 @@ export async function GET(req: NextRequest) {
 
     if (dry) { enviados++; continue; }
 
-    // Ordem: diagnóstico (quando a Meta aprovar) → versão em teste (metade dos
-    // leads) → versão sem preço → atual → antiga.
+    // Ordem: diagnóstico (quando a Meta aprovar como UTILITY) → consulta →
+    // v5 (sem preço). Nenhum template com preço entra mais na fila.
     const fila = [
       ...(diagVale ? [TEMPLATE_DIAG] : []),
-      ...(novoVale && ehGrupoNovo(lead.id) ? [TEMPLATE_NOVO] : []),
+      ...(consultaVale ? [TEMPLATE_CONSULTA] : []),
       ...(semPrecoVale ? [TEMPLATE_SEM_PRECO] : []),
-      TEMPLATE_ATUAL,
-      TEMPLATE_ANTIGO,
     ].filter((t) => !ruins.has(t));
 
     let r: { ok: boolean; erro?: string; codigo?: number } = { ok: false, erro: 'sem_template' };
@@ -251,7 +246,7 @@ export async function GET(req: NextRequest) {
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
   return NextResponse.json({
-    ok: true, dry, templates: porTemplate, testeNovo: novoVale,
+    ok: true, dry, templates: porTemplate, consultaAprovada: consultaVale,
     candidatos: candidatos.length, enviados, pulados,
     falhas: falhas.slice(0, 5),
   });
