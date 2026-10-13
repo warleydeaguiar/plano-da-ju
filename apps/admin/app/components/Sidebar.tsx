@@ -8,7 +8,7 @@ import { T, fonts, gradient } from '../theme';
 import {
   SbDashboard, SbPlanos, SbUsuarias, SbGrupos, SbFollowup, SbAnuncios, SbAnalytics,
   SbEmail, SbQuiz, SbStories, SbSuporte, SbChat, SbProdutos, SbYbera, SbExperimentos,
-  SbCheckout, SbErros, SbConfig, SbFunil, SbLinkBio, type SidebarIcon,
+  SbCheckout, SbErros, SbConfig, SbFunil, SbLinkBio, SbVendas, type SidebarIcon,
 } from './sidebar-icons';
 
 type NavItem = {
@@ -47,6 +47,7 @@ const NAV: NavGroup[] = [
   {
     secao: 'Vendas',
     itens: [
+      { icon: SbVendas, label: 'Todas as vendas', href: '/vendas' },
       {
         icon: SbCheckout, label: 'Checkout', href: '/checkout',
         children: [
