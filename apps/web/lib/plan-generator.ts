@@ -255,7 +255,9 @@ async function loadCatalog(sb: SupabaseClient): Promise<CatalogProduct[]> {
   // reordenado pelo tipo de cabelo de cada uma, o que dava um prompt diferente
   // por cliente e impedia qualquer reaproveitamento. Cada linha já diz a que
   // tipos o produto serve, e o prompt manda a IA filtrar por isso.
-  return all.slice(0, 30);
+  // 13/10/26: era slice(0, 30) e o Soro Vello (31º) ficava fora — o prompt
+  // mandava indicá-lo e a IA não tinha como. O catálogo ativo tem ~36 itens.
+  return all.slice(0, 50);
 }
 
 interface GenerateOptions {
