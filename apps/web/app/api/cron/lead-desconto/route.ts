@@ -60,7 +60,7 @@ function telefoneIntl(bruto?: string | null): string {
 
 function mensagem(nome: string, precoBaseCents: number, precoComCupomCents: number): string {
   return (
-    `Oi ${nome}! Vi que você ainda não finalizou a sua inscrição no Plano Capilar 💛\n\n`
+    `Oi ${nome}! Vi que você ainda não finalizou a sua inscrição na consulta com a Juliane 💛\n\n`
     // O "em vez de" é o preço DELA (a faixa que respondeu no quiz), senão a
     // mensagem prometeria um desconto sobre um valor que ela nunca viu.
     + `Separei um desconto pra você: em vez de ${brlCents(precoBaseCents)}, fica por ${brlCents(precoComCupomCents)}.\n\n`

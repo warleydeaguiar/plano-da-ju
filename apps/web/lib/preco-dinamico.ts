@@ -11,10 +11,10 @@ import { PLAN_BASE_CENTS } from '@/lib/pricing';
 export const QUESTAO_GASTO = 'gasto_mensal';
 
 export const FAIXAS_GASTO = [
-  { id: 'ate_50',    label: 'Até R$ 50' },
-  { id: 'ate_100',   label: 'De R$ 50 a R$ 100' },
-  { id: 'ate_300',   label: 'De R$ 100 a R$ 300' },
-  { id: 'acima_300', label: 'Mais de R$ 300' },
+  { id: 'ate_50',    label: 'Até R$ 50' },
+  { id: 'ate_100',   label: 'De R$ 50 a R$ 100' },
+  { id: 'ate_300',   label: 'De R$ 100 a R$ 300' },
+  { id: 'acima_300', label: 'Mais de R$ 300' },
 ] as const;
 
 export type FaixaGasto = (typeof FAIXAS_GASTO)[number]['id'];

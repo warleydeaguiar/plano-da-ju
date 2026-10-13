@@ -100,7 +100,7 @@ export const QUIZ_STEPS: QuizStep[] = [
   {
     id: 'quimica',
     kind: 'multi',
-    title: 'Quais tipos de quimica voce fez nos ultimos 6 meses?',
+    title: 'Quais tipos de química você fez nos últimos 6 meses?',
     options: [
       { id: 'progressiva', label: 'Progressiva com formol' },
       { id: 'descolor',    label: 'Descolorante' },
@@ -108,7 +108,7 @@ export const QUIZ_STEPS: QuizStep[] = [
       { id: 'relax',       label: 'Relaxamento' },
       { id: 'botox',       label: 'Botox ou Selagem' },
       { id: 'decap',       label: 'Decapagem' },
-      { id: 'mechas',      label: 'Mechas/Luzes/' },
+      { id: 'mechas',      label: 'Mechas/Luzes' },
       { id: 'nenhuma',     label: 'Nenhuma' },
     ],
   },
@@ -116,8 +116,8 @@ export const QUIZ_STEPS: QuizStep[] = [
   {
     id: 'info_juliane',
     kind: 'info',
-    title: 'Planos Personalizados',
-    body: 'Os planos capilares são desenvolvidos pessoalmente por mim **Juliane Cost**.\n\nFormada em Tricologia, e com anos de experiência, e muitos casos de sucesso! Eu te mostro o que realmente funciona pro seu cabelo — e o que é **só marketing da indústria**. Você será a próxima',
+    title: 'Consulta com a Tricologista',
+    body: 'Na minha consulta eu monto pessoalmente o seu plano capilar — sou eu, **Juliane Cost**.\n\nSou formada em Tricologia, com anos de experiência e muitos casos de sucesso. Eu te mostro o que realmente funciona pro seu cabelo — e o que é **só marketing da indústria**. Você será a próxima',
     media: 'juliane_video',
     ctaText: 'Continuar',
   },
@@ -134,7 +134,7 @@ export const QUIZ_STEPS: QuizStep[] = [
   {
     id: 'corte_quimico',
     kind: 'single',
-    title: 'Já teve corte quimico?',
+    title: 'Já teve corte químico?',
     options: [
       { id: 'sim', label: 'Sim' },
       { id: 'nao', label: 'Não' },
@@ -190,8 +190,8 @@ export const QUIZ_STEPS: QuizStep[] = [
     kind: 'single',
     title: 'Seus fios estão quebradiços ou elásticos?',
     options: [
-      { id: 'quebradicos', label: 'Quebradicos' },
-      { id: 'elasticos',   label: 'Elasticos' },
+      { id: 'quebradicos', label: 'Quebradiços' },
+      { id: 'elasticos',   label: 'Elásticos' },
       { id: 'normais',     label: 'Normais' },
     ],
   },
@@ -253,7 +253,7 @@ export const QUIZ_STEPS: QuizStep[] = [
   {
     id: 'agua',
     kind: 'single',
-    title: 'Quantos litros de agua você bebe por dia?',
+    title: 'Quantos litros de água você bebe por dia?',
     options: [
       { id: '1',  label: '1 Litro' },
       { id: '2',  label: '2 Litros' },
@@ -412,7 +412,7 @@ export const QUIZ_STEPS: QuizStep[] = [
     id: 'plan_ready',
     kind: 'plan_ready',
     title: 'Seu diagnóstico está pronto',
-    subtitle: 'Com base nas suas respostas, esperamos que você recupere a saúde dos seus fios, aumente o volume, tenha mais hidratação e menos oleosidade desnecessária — só com produtos que valem o que custam, sem pagar por marketing.',
+    subtitle: 'Com base nas suas respostas, esperamos que você recupere a saúde dos seus fios, aumente o volume e tenha mais brilho e hidratação — só com produtos que valem o que custam, sem pagar por marketing.',
     ctaText: 'Continuar',
   },
   // ── 31 — mini depoimentos

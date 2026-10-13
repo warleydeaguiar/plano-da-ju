@@ -330,7 +330,7 @@ export async function POST(req: NextRequest) {
       } catch (e) { console.error('[pix immediate email]', e); }
       try {
         if (_phoneIntl) {
-          await sendSms(_phoneIntl, `${_first}, seu PIX do Plano da Ju foi gerado! O codigo esta no seu e-mail e no WhatsApp. Finalize o pagamento pra Juliane comecar seu plano capilar.`);
+          await sendSms(_phoneIntl, `${_first}, seu PIX do Plano da Ju foi gerado! O codigo esta no seu e-mail. Finalize o pagamento pra garantir sua consulta com a Juliane.`);
         }
       } catch (e) { console.error('[pix immediate sms]', e); }
     });

@@ -4,7 +4,7 @@ import QuizClient from './QuizClient';
 
 export const metadata: Metadata = {
   title: 'Diagnóstico Capilar Gratuito — Plano da Ju',
-  description: 'Responda 15 perguntas e descubra o plano perfeito para o seu cabelo.',
+  description: 'Responda o quiz, receba o seu diagnóstico e conheça a consulta com a tricologista Juliane Cost.',
 };
 
 // Cache curto — experimentos não mudam toda hora, mas queremos updates rápidos

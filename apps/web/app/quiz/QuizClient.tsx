@@ -957,7 +957,7 @@ function InfoBio({ photoSrc, beforeSrc }: { photoSrc: string; beforeSrc: string 
         <br /><br />
         Sou formada em <strong style={{ color: T.ink, fontWeight: 700 }}>Tricologia</strong> (Ciência que estuda os cabelos) pela Faculdade Unyleya.
         <br /><br />
-        Já ajudei mais de <strong style={{ color: T.ink, fontWeight: 700 }}>3 mil mulheres em 12 países diferentes</strong> a alcançar o cabelo dos sonhos, mais longo, com pontas cheias e mais brilhante apenas mudando hábitos e comprando os produtos certo.
+        Já ajudei mais de <strong style={{ color: T.ink, fontWeight: 700 }}>3 mil mulheres em 12 países diferentes</strong> a alcançar o cabelo dos sonhos, mais longo, com pontas cheias e mais brilhante apenas mudando hábitos e comprando os produtos certos.
         <br /><br />
         Como tricologista, o meu maior inimigo é a <strong style={{ color: T.ink, fontWeight: 700 }}>indústria de produtos para cabelo</strong>. As marcas gastam tanto com marketing que o produto bom fica caro — e a indústria mente pra você pra vender cada vez mais caro. Por isso tanta mulher gasta mil, dois mil reais com cabelo e não chega lá.
         <br /><br />
@@ -971,7 +971,7 @@ function InfoBio({ photoSrc, beforeSrc }: { photoSrc: string; beforeSrc: string 
         <br /><br />
         Imagine como será daqui a <strong style={{ color: T.ink, fontWeight: 700 }}>90 dias</strong>: tendo seu cabelo mais bonito do que nunca!
         <br /><br />
-        Agora é a sua vez de se transformar o seu cabelo, como outras centenas de mulheres.
+        Agora é a sua vez de transformar o seu cabelo, como milhares de outras mulheres.
       </div>
 
       {/* Minha transformação — before photo */}
@@ -1384,7 +1384,7 @@ function LoadingScreen({ q, images }: { q: QuizStep; images: Record<string, stri
           @Ketley.Lorrayne
         </div>
         <div style={{ fontSize: 13, color: '#6B7280', fontFamily: fonts.ui, lineHeight: 1.55 }}>
-          Meu cabelo estava caindo muito, depois que escolhi os produtos certo com a Ju eu consegui recuperar meu cabelo, e ainda peguei vários descontos! Jú você é a melhor!
+          Meu cabelo estava caindo muito, depois que escolhi os produtos certos com a Ju eu consegui recuperar meu cabelo, e ainda peguei vários descontos! Jú você é a melhor!
         </div>
       </div>
     </div>
@@ -1655,13 +1655,13 @@ function LevelScreen({ q, onContinue }: {
       </div>
 
       <div style={{ fontSize: 14, fontFamily: fonts.display, fontWeight: 600, color: T.ink, marginBottom: 12, textAlign: 'center', letterSpacing: -0.2 }}>
-        Análise dos motivos pelas quais você não tem o cabelo dos seus sonhos
+        Análise dos motivos pelos quais você não tem o cabelo dos seus sonhos
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18 }}>
         {[
           { icon: '🧠', title: 'Melhorar a alimentação', desc: 'Você precisa de algumas vitaminas para que seu cabelo seja mais forte' },
           { icon: '📋', title: 'Rotina de cuidados', desc: 'Você precisa ter um cronograma de cuidados personalizado' },
-          { icon: '🎯', title: 'Comprar os produtos certos', desc: 'Pare de gastar dinheiro com produtos baratos que não te ajudam em nada' },
+          { icon: '🎯', title: 'Comprar os produtos certos', desc: 'Pare de pagar caro por marketing — o que vale é a composição certa pro seu cabelo' },
         ].map((c, i) => (
           <div key={i} style={{
             background: 'rgba(255,255,255,0.85)',
@@ -1711,7 +1711,7 @@ function PlanReadyScreen({ q, answers, name, onContinue }: { q: QuizStep; answer
           color: T.pinkDeep, letterSpacing: 1, textTransform: 'uppercase',
           margin: '0 0 14px',
         }}>
-          {name ? `${name}, seu diagnóstico está pronto` : 'Seu diagnóstico está pronto'}
+          {name ? `${name.trim().split(/\s+/)[0]}, seu diagnóstico está pronto` : 'Seu diagnóstico está pronto'}
         </h2>
       </div>
       <h3 style={{

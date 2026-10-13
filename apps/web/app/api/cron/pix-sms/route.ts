@@ -39,9 +39,9 @@ function toIntlPhone(raw?: string | null): string {
 // WhatsApp/e-mail, onde estao o codigo PIX e a oferta. Mensagem por toque.
 function smsText(name: string, touch: number): string {
   if (touch === 2) {
-    return `${name}, seu plano capilar da Juliane ainda ta te esperando! Ainda da tempo de garantir. Chama a gente no WhatsApp que a gente finaliza com voce.`;
+    return `${name}, sua consulta com a Juliane ainda ta te esperando! Ainda da tempo de garantir. Chama a gente no WhatsApp que a gente finaliza com voce.`;
   }
-  return `${name}, ultima chamada! A Juliane preparou seu plano personalizado. Responde nosso WhatsApp hoje que a gente destrava seu acesso.`;
+  return `${name}, ultima chamada! A Juliane separou um horario pra sua consulta. Responde nosso WhatsApp hoje que a gente destrava seu acesso.`;
 }
 
 export async function GET(req: NextRequest) {

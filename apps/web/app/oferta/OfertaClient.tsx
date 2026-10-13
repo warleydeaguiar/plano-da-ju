@@ -428,7 +428,7 @@ function OfferCard({ countdown, name, onBuy, precoCents = PLAN_BASE_CENTS }: {
               lineHeight: 1.05, letterSpacing: -0.5,
             }}>{`${MAX_INSTALLMENTS}x de ${brlCents(installmentInfo(MAX_INSTALLMENTS, precoCents).perCents)}`}</div>
             <div style={{ fontSize: 9, color: T.inkSoft, marginTop: 3, fontFamily: fonts.ui }}>
-              ou à vista <strong style={{ color: T.ink }}>{brlCents(precoCents)}</strong>
+              com juros · ou à vista <strong style={{ color: T.ink }}>{brlCents(precoCents)}</strong>
             </div>
           </div>
         </div>
@@ -1659,7 +1659,7 @@ export default function OfertaClient({ experimentos = [] }: { experimentos?: Exp
     // Cartão: até 3x. 1x à vista (sem juros), 2x/3x COM juros (2,99% a.m.)
     const INSTALLMENTS = [1, 2, 3].map(n => ({
       n,
-      label: installPerStr(n, precoAtual) + (n === 1 ? ' (à vista)' : ''),
+      label: installPerStr(n, precoAtual) + (n === 1 ? ' (à vista)' : ` com juros (total ${brlCents(installmentInfo(n, precoAtual).totalCents)})`),
     }));
     const installAmt = installPerStr(installments, precoAtual);
 
@@ -1727,7 +1727,7 @@ export default function OfertaClient({ experimentos = [] }: { experimentos?: Exp
                         WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
                         lineHeight: 1,
                       }}>{installPerStr(MAX_INSTALLMENTS, precoAtual)}</span>
-                      <span style={{ fontSize: 10, color: T.inkSoft, fontFamily: fonts.ui }}>no cartão</span>
+                      <span style={{ fontSize: 10, color: T.inkSoft, fontFamily: fonts.ui }}>no cartão, com juros</span>
                     </div>
                     <div style={{ fontSize: 10, color: T.inkSoft, marginTop: 2 }}>{`ou à vista ${brlCents(precoAtual)}`}</div>
                   </div>
@@ -2420,7 +2420,7 @@ export default function OfertaClient({ experimentos = [] }: { experimentos?: Exp
             marginBottom: 26,
           }}>
             <CheckItem color={T.pink}><strong>Consulta com a Juliane por ligação no WhatsApp</strong> para ela entender o seu caso</CheckItem>
-            <CheckItem color={T.pink}><strong>Plano capilar de 90 dias</strong> montado na consulta, com base nos produtos que você já tem</CheckItem>
+            <CheckItem color={T.pink}><strong>Plano capilar de 90 dias</strong> montado na consulta, com os produtos certos pro seu cabelo</CheckItem>
             <CheckItem color={T.pink}>Lista de compras prática para sempre ter os produtos necessários em casa</CheckItem>
             <CheckItem color={T.pink}>Checklist semanal de Hábitos para seu cabelo</CheckItem>
             <CheckItem color={T.pink}>Acesso a um grupo exclusivo de descontos em produtos para cabelo</CheckItem>

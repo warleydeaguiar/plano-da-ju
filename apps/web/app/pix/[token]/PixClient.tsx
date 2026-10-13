@@ -155,7 +155,7 @@ export default function PixClient({ token }: { token: string }) {
         }}>
           {data.amount_cents ? (
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
-              <span style={{ fontSize: 13, color: T.inkSoft }}>Valor do seu plano</span>
+              <span style={{ fontSize: 13, color: T.inkSoft }}>Valor da sua consulta</span>
               <strong style={{ ...display, fontSize: 24, color: T.pinkDeep, letterSpacing: -0.5 }}>
                 {brl(data.amount_cents)}
               </strong>
@@ -167,7 +167,7 @@ export default function PixClient({ token }: { token: string }) {
           }}>
             <span style={{ fontSize: 15 }}>⚡</span>
             <span style={{ fontSize: 12.5, color: T.greenDeep, fontWeight: 700, textAlign: 'left', lineHeight: 1.35 }}>
-              Acesso imediato: assim que o PIX cair, seu plano libera na hora — automático, sem enviar comprovante.
+              Acesso imediato: assim que o PIX cair, seu acesso libera na hora — automático, sem enviar comprovante.
             </span>
           </div>
         </div>

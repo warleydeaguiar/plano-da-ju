@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Plano da Ju',
     short_name: 'Plano da Ju',
-    description: 'Seu plano capilar personalizado da Juliane Cost.',
+    description: 'Sua consulta com a Tricologista Juliane Cost e o seu plano capilar de 90 dias.',
     start_url: '/meu-plano',
     scope: '/',
     display: 'standalone',
