@@ -40,6 +40,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .single()
     if (!profile) return NextResponse.json({ error: 'Profile não encontrado' }, { status: 404 })
 
+    // Cortesia (parceria) não usa IA — custo zero pedido em 13/10/26. O plano
+    // dela é montado por regras no app (generatePlanSemIA), inclusive quando o
+    // cron de recuperação refaz um plano travado.
+    if (profile.subscription_type === 'parceria') {
+      return NextResponse.json({
+        error: 'Cortesia: o plano é montado automaticamente sem IA (custo zero). A geração com IA fica só para clientes pagantes.',
+      }, { status: 400 })
+    }
+
     // Foto não é obrigatória — se não tem, gera só com base no quiz
     const hasPhoto = Boolean(profile.photo_url)
     if (!hasPhoto && !profile.quiz_answers) {
