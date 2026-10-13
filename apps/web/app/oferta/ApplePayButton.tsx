@@ -45,7 +45,7 @@ export default function ApplePayButton({ amountCents, getPayer, canPay, onNeedIn
       const pr: PaymentRequest = stripe.paymentRequest({
         country: 'BR',
         currency: 'brl',
-        total: { label: 'Plano Capilar — Juliane Cost', amount: amountCents },
+        total: { label: 'Consulta com a Tricologista Juliane Cost', amount: amountCents },
         requestPayerName: false,
         requestPayerEmail: false,
       });

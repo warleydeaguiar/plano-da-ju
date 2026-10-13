@@ -148,7 +148,7 @@ export async function POST(req: NextRequest) {
       items: [
         {
           amount: PRICE_CENTS,
-          description: 'Plano da Ju — Plano Capilar Personalizado',
+          description: 'Plano da Ju — Consulta com a Tricologista Juliane Cost',
           quantity: 1,
           code: 'plano-da-ju-card',
         },

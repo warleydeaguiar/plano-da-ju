@@ -355,7 +355,7 @@ export const QUIZ_STEPS: QuizStep[] = [
   {
     id: 'info_bio',
     kind: 'info',
-    title: 'Quem está por trás do seu plano?',
+    title: 'Quem vai fazer a sua consulta?',
     media: 'juliane_bio',
     ctaText: 'Continuar',
   },
@@ -411,7 +411,7 @@ export const QUIZ_STEPS: QuizStep[] = [
   {
     id: 'plan_ready',
     kind: 'plan_ready',
-    title: 'Seu Plano está pronto',
+    title: 'Seu diagnóstico está pronto',
     subtitle: 'Com base nas suas respostas, esperamos que você recupere a saúde dos seus fios, aumente o volume, tenha mais hidratação e menos oleosidade desnecessária — só com produtos que valem o que custam, sem pagar por marketing.',
     ctaText: 'Continuar',
   },

@@ -4,8 +4,8 @@ import OfertaClient from './OfertaClient';
 import type { ExperimentoAtivo } from '@/lib/ab';
 
 export const metadata: Metadata = {
-  title: 'Seu Plano Está Pronto — Plano da Ju',
-  description: 'Acesse agora o seu plano capilar personalizado.',
+  title: 'Sua Consulta com a Juliane — Plano da Ju',
+  description: 'Sua Consulta com a Tricologista Juliane Cost e o seu plano capilar de 90 dias.',
 };
 
 export const dynamic = 'force-dynamic';

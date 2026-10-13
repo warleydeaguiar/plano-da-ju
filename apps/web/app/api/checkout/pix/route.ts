@@ -66,7 +66,7 @@ function pixEmailHtml(first: string, code: string, qrImg?: string): string {
         <p style="font-size:16px;margin:0 0 12px">Oi, ${first}! 💛</p>
         <p style="font-size:14px;line-height:1.6;color:#7A6A6D;margin:0 0 18px">
           Seu PIX do <strong>Plano da Ju</strong> foi gerado. É só pagar com o código abaixo
-          que a Juliane já começa a montar o seu plano capilar personalizado. <strong>O PIX expira em 1 hora.</strong>
+          que a Juliane já começa a preparar a sua consulta e o seu plano capilar de 90 dias. <strong>O PIX expira em 1 hora.</strong>
         </p>
         ${qrImg ? `<div style="text-align:center;margin:0 0 18px"><img src="${qrImg}" alt="QR Code PIX" width="180" height="180" style="border-radius:12px"/></div>` : ''}
         <div style="font-size:11px;font-weight:700;color:#BE185D;text-transform:uppercase;letter-spacing:.5px;margin:0 0 6px">PIX copia e cola</div>
@@ -206,7 +206,7 @@ export async function POST(req: NextRequest) {
       items: [
         {
           amount: PRICE_CENTS,
-          description: 'Plano da Ju — Plano Capilar Personalizado',
+          description: 'Plano da Ju — Consulta com a Tricologista Juliane Cost',
           quantity: 1,
           code: 'plano-da-ju-pix',
         },

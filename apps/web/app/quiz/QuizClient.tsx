@@ -963,7 +963,7 @@ function InfoBio({ photoSrc, beforeSrc }: { photoSrc: string; beforeSrc: string 
         <br /><br />
         Mas tem menina que já descobriu: <strong style={{ color: T.ink, fontWeight: 700 }}>o que vale é a composição</strong>, nas quantidades certas, pra cada tipo de cabelo. Foi por isso que eu estudei Tricologia e me apaixonei: tem produto de R$ 500 que é só marketing, e existe um igual ou até melhor por R$ 70.
         <br /><br />
-        Por isso eu criei um <strong style={{ color: T.ink, fontWeight: 700 }}>plano personalizado e individualizado</strong> com base nas suas respostas ao meu questionário — vou montar um plano capilar feito sob medida para você, com os produtos que realmente valem o que custam. Você resolve o seu cabelo, economiza e nunca mais é enganada.
+        Por isso eu criei a minha <strong style={{ color: T.ink, fontWeight: 700 }}>consulta</strong>: com base nas suas respostas ao meu questionário e na sua foto, eu monto um plano capilar de 90 dias feito sob medida para você, com os produtos que realmente valem o que custam. Você resolve o seu cabelo, economiza e nunca mais é enganada.
         <br /><br />
         Esse plano vai te mostrar que cuidar do cabelo pode ser fácil e prazeroso. E o melhor: os resultados serão visíveis e duradouros.
         <br /><br />
@@ -1364,7 +1364,7 @@ function LoadingScreen({ q, images }: { q: QuizStep; images: Record<string, stri
           <strong>46 mulheres</strong> compraram nos ultimos minutos
         </div>
         <div style={{ fontSize: 13, color: T.inkSoft, fontFamily: fonts.ui, marginTop: 2 }}>
-          O plano capilar personalizado
+          A consulta com a tricologista Juliane Cost
         </div>
       </div>
 
@@ -1711,14 +1711,14 @@ function PlanReadyScreen({ q, answers, name, onContinue }: { q: QuizStep; answer
           color: T.pinkDeep, letterSpacing: 1, textTransform: 'uppercase',
           margin: '0 0 14px',
         }}>
-          {name ? `${name}, seu plano está pronto` : 'Seu plano está pronto'}
+          {name ? `${name}, seu diagnóstico está pronto` : 'Seu diagnóstico está pronto'}
         </h2>
       </div>
       <h3 style={{
         fontSize: 22, fontFamily: fonts.display, fontWeight: 600, color: T.ink,
         textAlign: 'center', lineHeight: 1.25, margin: '0 0 14px', letterSpacing: -0.3,
       }}>
-        Montamos um plano <em style={{ color: T.pinkDeep }}>exclusivo</em> {temTipo ? <>pro seu <strong style={{ fontWeight: 700 }}>{d.tipo.toLowerCase()}</strong></> : 'para você'} ter um cabelo cheio, sem frizz e hidratado em até <strong style={{ fontWeight: 700 }}>90 dias</strong>
+        Na consulta eu monto um plano <em style={{ color: T.pinkDeep }}>exclusivo</em> {temTipo ? <>pro seu <strong style={{ fontWeight: 700 }}>{d.tipo.toLowerCase()}</strong></> : 'para você'} ter um cabelo cheio, sem frizz e hidratado em até <strong style={{ fontWeight: 700 }}>90 dias</strong>
       </h3>
       {q.subtitle && (
         <div style={{ fontSize: 14, color: T.inkSoft, lineHeight: 1.6, textAlign: 'center', marginBottom: 18, fontFamily: fonts.ui }}>
@@ -1747,7 +1747,7 @@ function PlanReadyScreen({ q, answers, name, onContinue }: { q: QuizStep; answer
             ))}
           </div>
           <div style={{ fontSize: 11.5, color: T.inkSoft, marginTop: 12, lineHeight: 1.45, fontFamily: fonts.ui, borderTop: `1px dashed ${T.pinkSoft}`, paddingTop: 10 }}>
-            Seu plano foi montado <strong style={{ color: T.pinkDeep }}>exatamente pra isso</strong> — não é receita genérica. 💗
+            Na sua consulta, o plano vai ser montado <strong style={{ color: T.pinkDeep }}>exatamente pra isso</strong> — não é receita genérica. 💗
           </div>
         </div>
       )}
@@ -1903,7 +1903,7 @@ function MiniTestiScreen({ q, name, onContinue }: { q: QuizStep; name: string; o
         <strong style={{ color: T.pinkDeep, fontWeight: 700 }}>{name || 'Você'}</strong>, você será a próxima <em style={{ fontStyle: 'italic' }}>transformação</em>
       </div>
       <div style={{ fontSize: 14, color: T.inkSoft, lineHeight: 1.6, marginBottom: 18, fontFamily: fonts.ui }}>
-        Você vai conquistar o cabelo dos seus sonhos com o plano capilar que eu fiz para você completamente adaptável a sua jornada!
+        Você vai conquistar o cabelo dos seus sonhos com o plano capilar de 90 dias que eu vou montar na sua consulta, adaptado à sua jornada!
       </div>
       <div style={{
         fontSize: 16, fontFamily: fonts.display, fontWeight: 600, color: T.ink,

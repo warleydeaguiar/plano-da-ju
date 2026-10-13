@@ -13,6 +13,7 @@ import { JU_WHATSAPP_EXIBICAO } from '@/lib/contact';
 import { sortearLado, rotuloVariante, type ExperimentoAtivo } from '@/lib/ab';
 import { buildHotmartCheckoutUrl } from '@/lib/hotmart-checkout';
 import { FAIXAS_GASTO } from '@/lib/preco-dinamico';
+import { PRODUTO_ENTREGA } from '@/lib/produto';
 
 /**
  * Carregado sob demanda, e não no pacote principal.
@@ -413,7 +414,8 @@ function OfferCard({ countdown, name, onBuy, precoCents = PLAN_BASE_CENTS }: {
               fontSize: 18, fontFamily: fonts.display, fontWeight: 600, color: T.ink,
               lineHeight: 1.2, letterSpacing: -0.3,
             }}>
-              Plano Capilar Personalizado para <em style={{ color: T.pinkDeep }}>{name || 'você'}</em>
+              Consulta com a Tricologista <em style={{ color: T.pinkDeep }}>Juliane Cost</em>
+              <div style={{ fontSize: 12.5, fontFamily: fonts.ui, fontWeight: 500, color: T.inkSoft, marginTop: 4, letterSpacing: 0 }}>+ o seu {PRODUTO_ENTREGA}{name ? `, ${name}` : ''}</div>
             </div>
           </div>
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -438,7 +440,7 @@ function OfferCard({ countdown, name, onBuy, precoCents = PLAN_BASE_CENTS }: {
         }}>
           ⚡ PIX à vista · 💳 Cartão em até 3x
         </div>
-        <GreenButton onClick={onBuy} variant="green">Quero meu plano agora →</GreenButton>
+        <GreenButton onClick={onBuy} variant="green">Quero minha consulta agora →</GreenButton>
       </div>
     </div>
   );
@@ -1354,7 +1356,7 @@ export default function OfertaClient({ experimentos = [] }: { experimentos?: Exp
               display: 'flex', flexDirection: 'column', gap: 8,
             }}>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
-                <span style={{ fontSize: 13, color: T.inkSoft }}>Valor do seu plano</span>
+                <span style={{ fontSize: 13, color: T.inkSoft }}>Valor da sua consulta</span>
                 <strong style={{ fontSize: 24, color: T.pinkDeep, fontFamily: fonts.display, letterSpacing: -0.5 }}>
                   {brlCents(precoAtual)}
                 </strong>
@@ -1365,7 +1367,7 @@ export default function OfertaClient({ experimentos = [] }: { experimentos?: Exp
               }}>
                 <span style={{ fontSize: 15 }}>⚡</span>
                 <span style={{ fontSize: 12.5, color: T.greenDeep, fontWeight: 700, textAlign: 'left', lineHeight: 1.35 }}>
-                  Acesso imediato: assim que o PIX cair, seu plano libera na hora — automático, sem enviar comprovante.
+                  Acesso imediato: assim que o PIX cair, seu acesso libera na hora — automático, sem enviar comprovante.
                 </span>
               </div>
             </div>
@@ -1710,9 +1712,9 @@ export default function OfertaClient({ experimentos = [] }: { experimentos?: Exp
               <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 15, fontWeight: 700, color: T.ink, lineHeight: 1.3 }}>
-                    Plano Capilar Personalizado
+                    Consulta com a Tricologista
                   </div>
-                  <div style={{ fontSize: 12, color: T.inkSoft, marginTop: 2 }}>Tricologista Juliane Cost</div>
+                  <div style={{ fontSize: 12, color: T.inkSoft, marginTop: 2 }}>Juliane Cost · {PRODUTO_ENTREGA}</div>
                   <div style={{ marginTop: 6 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
                       <span style={{ fontSize: 11.5, color: T.inkMuted, textDecoration: 'line-through', fontFamily: fonts.ui }}>de {brlCents(PLAN_ANCHOR_CENTS)}</span>
@@ -2134,8 +2136,8 @@ export default function OfertaClient({ experimentos = [] }: { experimentos?: Exp
           {/* Plano completo + grupo */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 22 }}>
             {[
-              { title: 'Plano completo profissional', desc: 'Rotina capilar, indicação de produtos, análise de cabelo, tirar dúvidas pelo WhatsApp', icon: '✨' },
-              { title: 'Grupo de promoções com descontos exclusivos', desc: 'Só com o desconto especial da Ju você já recupera o valor investido no plano capilar. 💰', icon: '💝' },
+              { title: 'Consulta + plano de 90 dias', desc: 'Análise do seu cabelo, ligação com a Juliane no WhatsApp, rotina e indicação de produtos', icon: '✨' },
+              { title: 'Grupo de promoções com descontos exclusivos', desc: 'Só com o desconto especial da Ju você já recupera o valor investido na consulta. 💰', icon: '💝' },
             ].map((c, i) => (
               <div key={i} style={{
                 background: `linear-gradient(135deg, ${T.rose}, ${T.cream})`,
@@ -2163,7 +2165,11 @@ export default function OfertaClient({ experimentos = [] }: { experimentos?: Exp
             fontSize: 24, fontFamily: fonts.display, color: T.ink, fontWeight: 600,
             textAlign: 'center', marginBottom: 22, lineHeight: 1.25, letterSpacing: -0.3,
           }}>
-            <em style={{ color: T.pinkDeep }}>{name || 'Você'}</em>, seu <span style={{ color: T.pinkDeep }}>{getFunilCopy(quizAnswers).planoNome}</span> está pronto! ✨
+            <em style={{ color: T.pinkDeep }}>{name || 'Você'}</em>, seu diagnóstico está pronto! ✨
+          </div>
+          {/* O produto é a consulta; o plano de 90 dias é o que sai dela. */}
+          <div style={{ fontSize: 15, color: T.ink, textAlign: 'center', margin: '-10px auto 14px', maxWidth: 380, lineHeight: 1.5, fontFamily: fonts.ui }}>
+            O próximo passo é a sua <strong style={{ color: T.pinkDeep }}>Consulta com a Tricologista Juliane Cost</strong> — onde eu monto o seu <strong>{getFunilCopy(quizAnswers).planoNome}</strong> de 90 dias.
           </div>
           {/* Argumento "específico > genérico" — dinâmico pelo perfil (hair-copy.ts) */}
           <div style={{ fontSize: 13.5, color: T.inkSoft, textAlign: 'center', margin: '-8px auto 22px', maxWidth: 360, lineHeight: 1.5 }}>
@@ -2206,7 +2212,7 @@ export default function OfertaClient({ experimentos = [] }: { experimentos?: Exp
                   ))}
                 </div>
                 <div style={{ fontSize: 11.5, color: T.inkSoft, marginTop: 13, lineHeight: 1.45, fontFamily: fonts.ui, borderTop: `1px dashed ${T.pinkSoft}`, paddingTop: 11 }}>
-                  Não é um plano genérico — eu montei a rotina e a indicação de produtos olhando <strong style={{ color: T.pinkDeep }}>pro seu cabelo</strong>, e não pro de todo mundo. 💗
+                  Não vai ser um plano genérico — na consulta eu monto a rotina e a indicação de produtos olhando <strong style={{ color: T.pinkDeep }}>pro seu cabelo</strong>, e não pro de todo mundo. 💗
                 </div>
               </div>
             );
@@ -2221,7 +2227,7 @@ export default function OfertaClient({ experimentos = [] }: { experimentos?: Exp
           }}>
             <span style={{ fontSize: 20, lineHeight: 1.2, flexShrink: 0 }}>🧪</span>
             <div style={{ fontSize: 14, color: T.inkSoft, lineHeight: 1.55, fontFamily: fonts.ui }}>
-              <strong style={{ color: T.ink }}>A indústria do cabelo mente pra você.</strong> Tem produto de R$&nbsp;500 que é só marketing — e um igual ou melhor por R$&nbsp;70. No seu plano eu te mostro <strong style={{ color: T.pinkDeep }}>o que realmente vale o preço</strong> pro seu cabelo.
+              <strong style={{ color: T.ink }}>A indústria do cabelo mente pra você.</strong> Tem produto de R$&nbsp;500 que é só marketing — e um igual ou melhor por R$&nbsp;70. Na consulta eu te mostro <strong style={{ color: T.pinkDeep }}>o que realmente vale o preço</strong> pro seu cabelo.
             </div>
           </div>
 
@@ -2232,7 +2238,7 @@ export default function OfertaClient({ experimentos = [] }: { experimentos?: Exp
               padding: '12px 16px', marginBottom: 14, textAlign: 'center',
               fontFamily: fonts.ui, fontSize: 14, fontWeight: 700,
             }}>
-              ✓ Seu desconto está aplicado — o plano sai por {brlCents(cupomInfo.preco_cents)}
+              ✓ Seu desconto está aplicado — a consulta sai por {brlCents(cupomInfo.preco_cents)}
             </div>
           )}
           <OfferCard countdown={countdown} name={name} onBuy={onBuy} precoCents={precoAtual} />
@@ -2243,13 +2249,13 @@ export default function OfertaClient({ experimentos = [] }: { experimentos?: Exp
             lineHeight: 1.4, fontWeight: 500, textAlign: 'center', marginBottom: 26,
             letterSpacing: -0.2,
           }}>
-            Mulheres como você obtiveram excelentes resultados utilizando o nosso{' '}
+            Mulheres como você obtiveram excelentes resultados com a{' '}
             <em style={{
               fontWeight: 600,
               background: `linear-gradient(135deg, ${T.pinkDeep}, ${T.gold})`,
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
             }}>
-              Plano Capilar Personalizado da Tricologista Ju Cost
+              Consulta com a Tricologista Juliane Cost
             </em>
           </div>
 
@@ -2258,7 +2264,7 @@ export default function OfertaClient({ experimentos = [] }: { experimentos?: Exp
             fontSize: 19, fontFamily: fonts.display, color: T.pinkDeep,
             fontWeight: 600, marginBottom: 14, letterSpacing: -0.2,
           }}>
-            A vida antes de ter um plano personalizado para seu cabelo:
+            A vida antes da consulta com a tricologista:
           </div>
           <div style={{
             background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)',
@@ -2374,11 +2380,11 @@ export default function OfertaClient({ experimentos = [] }: { experimentos?: Exp
             <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
               <div style={{ flex: 1, background: 'rgba(255,255,255,0.55)', borderRadius: 12, padding: '12px 10px', textAlign: 'center', border: `1px solid ${T.pinkSoft}` }}>
                 <div style={{ fontSize: 10.5, fontWeight: 700, color: T.inkSoft, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4, fontFamily: fonts.ui }}>Comprando no escuro</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: '#B0A0B2', fontFamily: fonts.display, textDecoration: 'line-through', lineHeight: 1 }}>+R$150<span style={{ fontSize: 12 }}>/mês</span></div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#B0A0B2', fontFamily: fonts.display, textDecoration: 'line-through', lineHeight: 1 }}>+R$350<span style={{ fontSize: 12 }}>/mês</span></div>
                 <div style={{ fontSize: 11, color: T.inkSoft, marginTop: 4, lineHeight: 1.35, fontFamily: fonts.ui }}>em produto que não resolve</div>
               </div>
               <div style={{ flex: 1, background: `linear-gradient(135deg, ${T.pinkDeep}, ${T.pink})`, borderRadius: 12, padding: '12px 10px', textAlign: 'center', boxShadow: `0 6px 16px ${T.pink}44` }}>
-                <div style={{ fontSize: 10.5, fontWeight: 700, color: 'rgba(255,255,255,0.85)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4, fontFamily: fonts.ui }}>Plano da Ju</div>
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: 'rgba(255,255,255,0.85)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4, fontFamily: fonts.ui }}>Consulta com a Ju</div>
                 <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.75)', textDecoration: 'line-through', lineHeight: 1, marginBottom: 2, fontFamily: fonts.ui }}>de {brlCents(PLAN_ANCHOR_CENTS)}</div>
                 <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', fontFamily: fonts.display, lineHeight: 1 }}>{brlCents(precoAtual)}<span style={{ fontSize: 12 }}> uma vez</span></div>
                 <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', marginTop: 4, lineHeight: 1.35, fontFamily: fonts.ui }}>feito exatamente pro seu cabelo</div>
@@ -2386,7 +2392,7 @@ export default function OfertaClient({ experimentos = [] }: { experimentos?: Exp
             </div>
 
             <div style={{ fontSize: 15, color: T.ink, lineHeight: 1.6, fontFamily: fonts.ui, background: 'rgba(255,255,255,0.6)', borderRadius: 12, padding: '14px 16px', borderLeft: `4px solid ${T.pinkDeep}`, marginBottom: 12 }}>
-              O <strong style={{ color: T.pinkDeep }}>Plano da Ju você paga uma única vez</strong> e começa a resolver seu problema de vez. Custa <strong>menos que um mês de produto errado</strong> — e resolve de verdade. 💗
+              A <strong style={{ color: T.pinkDeep }}>consulta você paga uma única vez</strong> e começa a resolver seu problema de vez. Custa <strong>menos que um mês de produto errado</strong> — e resolve de verdade. 💗
             </div>
 
             {/* O valor volta rápido — descontos exclusivos nos produtos + grupo fechado */}
@@ -2413,8 +2419,8 @@ export default function OfertaClient({ experimentos = [] }: { experimentos?: Exp
             border: `1px solid ${T.pinkSoft}`, borderRadius: 18, padding: '18px 18px',
             marginBottom: 26,
           }}>
-            <CheckItem color={T.pink}><strong>Uma ligação no WhatsApp com a Juliane</strong> para ela entender o seu caso</CheckItem>
-            <CheckItem color={T.pink}>Plano capilar para você seguir nos próximos 90 dias com base nos produtos que você já tem</CheckItem>
+            <CheckItem color={T.pink}><strong>Consulta com a Juliane por ligação no WhatsApp</strong> para ela entender o seu caso</CheckItem>
+            <CheckItem color={T.pink}><strong>Plano capilar de 90 dias</strong> montado na consulta, com base nos produtos que você já tem</CheckItem>
             <CheckItem color={T.pink}>Lista de compras prática para sempre ter os produtos necessários em casa</CheckItem>
             <CheckItem color={T.pink}>Checklist semanal de Hábitos para seu cabelo</CheckItem>
             <CheckItem color={T.pink}>Acesso a um grupo exclusivo de descontos em produtos para cabelo</CheckItem>
@@ -2530,7 +2536,7 @@ export default function OfertaClient({ experimentos = [] }: { experimentos?: Exp
           }}>
             {[
               { q: 'Como funciona a ligação com a Juliane?', a: 'Depois da compra eu te ligo no WhatsApp pra entender o seu caso antes de montar o plano: como está o seu cabelo hoje, o que você já usou, o que funcionou e o que não funcionou. É rápido e é essa conversa que faz o plano sair no ponto pro seu fio, em vez de ser uma rotina genérica. Se você não puder falar na hora, a gente reagenda — não tem problema.' },
-              { q: 'Funciona de verdade ou é só mais um produto?', a: 'Não é produto, é um plano. Eu sou tricologista e analiso o SEU cabelo (sua foto + o que você respondeu) pra montar uma rotina de cuidados semana a semana e te dizer exatamente o que usar e quando. O que estraga a maioria dos cabelos não é falta de produto caro — é fazer a coisa errada na hora errada. É isso que a gente organiza. Já são +3.500 mulheres cuidando do cabelo comigo assim.' },
+              { q: 'Funciona de verdade ou é só mais um produto?', a: 'Não é produto, é uma consulta. Eu sou tricologista e analiso o SEU cabelo (sua foto + o que você respondeu) pra montar uma rotina de cuidados semana a semana e te dizer exatamente o que usar e quando. O que estraga a maioria dos cabelos não é falta de produto caro — é fazer a coisa errada na hora errada. É isso que a gente organiza. Já são +3.500 mulheres cuidando do cabelo comigo assim.' },
               { q: 'Serve pro MEU tipo de cabelo?', a: 'Serve, e é exatamente esse o ponto: o plano é feito pro seu caso. Liso, ondulado, cacheado ou crespo, com ou sem química, oleoso ou ressecado — eu monto a rotina olhando pro seu cabelo, não uma receita genérica igual pra todo mundo. Por isso peço suas respostas e sua foto antes de liberar.' },
               { q: 'Eu faço progressiva / tenho química no cabelo. Posso fazer?', a: 'Pode, sim! Cabelo com progressiva, tintura, descoloração, mechas ou relaxamento é justamente onde um plano certo faz mais diferença — porque a química exige cuidado redobrado pra não quebrar. Eu levo isso em conta e monto a rotina respeitando a sua química. Você não precisa cortar nem parar nada.' },
               { q: 'Vou ter que comprar muito produto caro?', a: 'Não. Eu indico o que o SEU cabelo realmente precisa — nem mais, nem menos. E como tenho parceria com as marcas, você entra no meu grupo fechado de promoções e compra os produtos que eu indico com preço abaixo do mercado. Muita gente até economiza, porque para de comprar por impulso o que não serve.' },
@@ -2624,7 +2630,7 @@ export default function OfertaClient({ experimentos = [] }: { experimentos?: Exp
             background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)',
             padding: '16px 18px', borderRadius: 16, border: `1px solid ${T.border}`,
           }}>
-            Nós acreditamos tanto no nosso transformador do <strong style={{ color: T.ink }}>Plano Capilar Personalizado da Tricologista</strong> que oferecemos garantia.
+            Nós acreditamos tanto na <strong style={{ color: T.ink }}>Consulta com a Tricologista Juliane Cost</strong> que oferecemos garantia.
             <br /><br />
             Você terá <strong style={{ color: T.ink }}>100% do seu dinheiro</strong>, sem complicações e sem perguntas.
             <br /><br />

@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
       currency: 'brl',
       // 'card' cobre Apple Pay e Google Pay (wallets rodam sobre o método cartão).
       payment_method_types: ['card'],
-      description: 'Plano Capilar Personalizado — Juliane Cost',
+      description: 'Consulta com a Tricologista Juliane Cost',
       receipt_email: email,
       metadata: {
         email,
