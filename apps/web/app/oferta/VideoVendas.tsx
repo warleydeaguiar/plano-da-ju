@@ -20,6 +20,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  *
  * Rede de segurança: se depois do toque o vídeo não começar em 3 s, damos o
  * play por mensagem; se só tocar mudo, aparece "Toque para ouvir".
+ *
+ * AUTOPLAY (14/10/26, Warley: "a página anterior já conta como interação"):
+ * o vídeo tenta começar sozinho COM som — no Chrome/Android, quem veio da
+ * roleta (clique + navegação sem recarregar) costuma ter o som liberado. Se o
+ * navegador recusar (iPhone, navegador do Instagram, link direto do WhatsApp),
+ * toca MUDO com um "Toque para ouvir" grande, que liga o som e volta ao começo.
+ * Se nem mudo tocar (modo economia do iPhone), a capa fica e o toque no meio
+ * continua começando com som.
  */
 export const VSL_YOUTUBE_ID = 'trmyz41uviA';
 /** Liga o vídeo na oferta. */
@@ -36,7 +44,7 @@ export default function VideoVendas({
   ctaTexto = 'Quero minha consulta →',
 }: {
   onCta: () => void;
-  onEvento: (tipo: 'vsl_play' | 'vsl_progresso', metadata?: Record<string, unknown>) => void;
+  onEvento: (tipo: 'vsl_play' | 'vsl_progresso' | 'vsl_som', metadata?: Record<string, unknown>) => void;
   ctaTexto?: string;
 }) {
   const quadro = useRef<HTMLIFrameElement>(null);
@@ -49,6 +57,7 @@ export default function VideoVendas({
   const [comecou, setComecou] = useState(false); // já tocou alguma vez → capa sai
   const marcados = useRef(new Set<number>());
   const tocou = useRef(false);
+  const [autoMudo, setAutoMudo] = useState(false); // autoplay só saiu mudo
   const legendaOff = useRef(false);
 
   useEffect(() => { setMontar(true); }, []);
@@ -74,7 +83,7 @@ export default function VideoVendas({
           if ((info.playerState === 1 || info.playerState === 3) && !tocou.current) {
             tocou.current = true;
             setComecou(true);
-            onEvento('vsl_play');
+            onEvento('vsl_play', { autoplay: true, mudo: !!info.muted });
           }
           // O vídeo já tem legenda gravada; a do YouTube (traduzida para o idioma
           // do navegador) aparecia por cima. Só depois de TOCAR de verdade —
@@ -94,10 +103,27 @@ export default function VideoVendas({
   const aoCarregar = useCallback(() => {
     const assinar = () => quadro.current?.contentWindow?.postMessage(JSON.stringify({ event: 'listening', id: 1 }), '*');
     assinar();
-    window.setTimeout(assinar, 500);
+    comandar('playVideo'); // autoplay COM som (se o navegador deixar)
+    window.setTimeout(() => { assinar(); if (!tocou.current) comandar('playVideo'); }, 500);
     window.setTimeout(assinar, 1_500);
     window.setTimeout(assinar, 3_000);
-  }, []);
+    // Som recusado → toca MUDO (vídeo andando segura mais do que vídeo parado).
+    window.setTimeout(() => {
+      if (tocou.current) return;
+      comandar('mute');
+      comandar('playVideo');
+      setAutoMudo(true);
+    }, 2_500);
+  }, [comandar]);
+
+  /** Toque da pessoa: liga o som e volta ao começo (ela perdeu o início mudo). */
+  const ligarSom = useCallback(() => {
+    comandar('unMute');
+    comandar('seekTo', [0, true]);
+    comandar('playVideo');
+    setAutoMudo(false);
+    onEvento('vsl_som');
+  }, [comandar, onEvento]);
 
   // Rede de segurança: o toque foi dentro do iframe (a janela perde o foco) mas
   // o vídeo não começou em 3 s → damos o play por mensagem.
@@ -119,12 +145,12 @@ export default function VideoVendas({
     for (const m of MARCOS) {
       if ((pct >= m || (m === 100 && estado === 0)) && !marcados.current.has(m)) {
         marcados.current.add(m);
-        onEvento('vsl_progresso', { pct: m, segundos: Math.round(tempo) });
+        onEvento('vsl_progresso', { pct: m, segundos: Math.round(tempo), mudo: mudo || autoMudo });
       }
     }
-  }, [tempo, duracao, estado, onEvento]);
+  }, [tempo, duracao, estado, onEvento, mudo, autoMudo]);
 
-  const src = `https://www.youtube.com/embed/${VSL_YOUTUBE_ID}?controls=0&rel=0&modestbranding=1`
+  const src = `https://www.youtube.com/embed/${VSL_YOUTUBE_ID}?autoplay=1&controls=0&rel=0&modestbranding=1`
     + `&playsinline=1&iv_load_policy=3&fs=0&disablekb=1&cc_load_policy=0&enablejsapi=1`
     + (typeof window !== 'undefined' ? `&origin=${encodeURIComponent(window.location.origin)}` : '');
 
@@ -143,7 +169,7 @@ export default function VideoVendas({
 
   function tocarNoVideo() {
     if (terminou) return;
-    if (mudo) { comandar('unMute'); comandar('playVideo'); return; }
+    if (mudo || autoMudo) { ligarSom(); return; }
     comandar(tocando ? 'pauseVideo' : 'playVideo');
   }
 
@@ -223,13 +249,14 @@ export default function VideoVendas({
           </button>
         )}
 
-        {comecou && mudo && !terminou && (
+        {comecou && (mudo || autoMudo) && !terminou && (
           <button
-            onClick={(e) => { e.stopPropagation(); comandar('unMute'); comandar('playVideo'); }}
+            onClick={(e) => { e.stopPropagation(); ligarSom(); }}
             style={{
-              position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
-              background: 'rgba(0,0,0,0.72)', color: '#fff', border: 'none', borderRadius: 99,
-              padding: '8px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+              position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+              background: 'rgba(190,24,93,0.92)', color: '#fff', border: '3px solid #fff', borderRadius: 99,
+              padding: '14px 22px', fontSize: 16, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap',
+              boxShadow: '0 10px 30px rgba(0,0,0,0.35)', animation: 'vslSom 1.6s ease-in-out infinite',
             }}
           >
             🔊 Toque para ouvir
@@ -253,7 +280,8 @@ export default function VideoVendas({
           </div>
         )}
       </div>
-      <style>{`@keyframes vslPulse { 0%,100% { transform: translate(-50%,-50%) scale(1); } 50% { transform: translate(-50%,-50%) scale(1.07); } }`}</style>
+      <style>{`@keyframes vslPulse { 0%,100% { transform: translate(-50%,-50%) scale(1); } 50% { transform: translate(-50%,-50%) scale(1.07); } }
+@keyframes vslSom { 0%,100% { transform: translate(-50%,-50%) scale(1); } 50% { transform: translate(-50%,-50%) scale(1.06); } }`}</style>
     </div>
   );
 }

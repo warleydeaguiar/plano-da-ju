@@ -1125,7 +1125,7 @@ export default function OfertaClient() {
     }
   }
 
-  const logVsl = useCallback((tipo: 'vsl_play' | 'vsl_progresso', metadata?: Record<string, unknown>) => {
+  const logVsl = useCallback((tipo: 'vsl_play' | 'vsl_progresso' | 'vsl_som', metadata?: Record<string, unknown>) => {
     logEvent({ event_type: tipo, email: email || undefined, metadata });
   }, [email]);
 

@@ -7,6 +7,7 @@ const VALID_EVENT_TYPES = new Set([
   // Vídeo de vendas da oferta: play e quanto assistiu (25/50/75/100%).
   'vsl_play',
   'vsl_progresso',
+  'vsl_som', // tocou em "Toque para ouvir" depois do autoplay mudo
   'checkout_initiated',
   'pix_generated',
   'card_submitted',
