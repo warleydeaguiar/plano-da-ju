@@ -17,8 +17,8 @@ export const VSL_YOUTUBE_ID = 'trmyz41uviA';
  * Liga o vídeo na oferta. Fica DESLIGADO enquanto o YouTube processa o upload
  * (sem isso a cliente veria "estamos processando este vídeo" no meio da oferta).
  */
-export const VSL_ATIVO = false;
-/** Orientação do vídeo. ⚠️ Medir no YouTube quando terminar de processar. */
+export const VSL_ATIVO = true; // processado em 14/10/26 13:13 — 3min05s
+/** Orientação medida no YouTube (formato 1280×720) — horizontal. */
 export const VSL_VERTICAL = false;
 
 const MARCOS = [25, 50, 75, 100];
