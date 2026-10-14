@@ -3,7 +3,7 @@ import { createServiceClient } from '@/lib/supabase/server';
 import { acessoDosLeads } from '@/lib/acesso-lead';
 import { saudeDoCanal } from '@/lib/wa-saude';
 import { telefonesBloqueados, finalTelefone } from '@/lib/wa-optout';
-import { templateUtilitarioAprovado } from '@/lib/wa-templates';
+import { templateUtilitarioAprovado, templateMarketingAprovado } from '@/lib/wa-templates';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -49,6 +49,30 @@ const TEMPLATE_SEM_PRECO = process.env.WHATSAPP_LEAD_TEMPLATE_V5 || 'inscricao_p
 // melhor não enviar do que prometer o preço antigo.
 const TEMPLATE_CONSULTA = process.env.WHATSAPP_LEAD_TEMPLATE_CONSULTA || 'consulta_pendente_v1';
 
+// ── PROMOÇÃO 50% (14/10/26) ────────────────────────────────────────────────
+// Pedido do Warley: recuperação por WhatsApp como MARKETING, "de R$97 pela
+// metade", 2h depois de a pessoa não comprar. Continua UMA mensagem por pessoa
+// (regra de 21/09, depois do aviso de spam da Meta): quando este template está
+// aprovado, ele SUBSTITUI a mensagem de "consulta pendente" — não é a segunda.
+// Até a aprovação, o fluxo antigo segue igual.
+const TEMPLATE_PROMO = process.env.WHATSAPP_LEAD_TEMPLATE_PROMO || 'consulta_50off_v1';
+const PROMO_PRECO_CENTS = 4850;          // R$ 48,50 = metade de R$ 97
+const PROMO_VALIDADE_H = 24;             // a copy promete 24h — o cupom expira junto
+const PROMO_MIN_IDADE_MIN = 120;         // "2 horas depois de não comprar"
+const PROMO_MAX_IDADE_HORAS = 14;        // cobre quem fez o quiz à noite e recebe às 8h
+// Marketing de madrugada vira denúncia. Fora deste horário (Brasília) nada sai;
+// quem completou as 2h à noite recebe às 8h.
+const PROMO_HORA_INICIO = 8;
+const PROMO_HORA_FIM = 21;
+// PIX gerado vale 1h: quem está com um PIX aberto pode estar pagando os R$97
+// agora — recebe a promoção depois, se não pagar.
+const PIX_VALIDADE_MS = 60 * 60_000;
+
+/** Cupom só desta pessoa (código único, poucos usos), que expira junto com a promessa da copy. */
+function codigoCupom(): string {
+  return 'J50' + globalThis.crypto.randomUUID().replace(/-/g, '').slice(0, 7).toUpperCase();
+}
+
 const TEMPLATE_LANG = process.env.WHATSAPP_LEAD_TEMPLATE_LANG || 'pt_BR';
 const MIN_IDADE_MIN = 20;
 const MAX_IDADE_HORAS = 3;
@@ -73,7 +97,7 @@ function telefoneIntl(bruto?: string | null): string {
   return `55${d}`;
 }
 
-async function enviarTemplate(telefone: string, nome: string, template: string): Promise<{ ok: boolean; erro?: string; codigo?: number }> {
+async function enviarTemplate(telefone: string, nome: string, template: string, sufixoBotao?: string): Promise<{ ok: boolean; erro?: string; codigo?: number }> {
   const token = process.env.WHATSAPP_TOKEN;
   const pid = process.env.WHATSAPP_PHONE_NUMBER_ID;
   if (!token || !pid) return { ok: false, erro: 'sem_token' };
@@ -88,8 +112,12 @@ async function enviarTemplate(telefone: string, nome: string, template: string):
         template: {
           name: template,
           language: { code: TEMPLATE_LANG },
-          // {{1}} do corpo = primeiro nome. O botão é URL fixa, sem variável.
-          components: [{ type: 'body', parameters: [{ type: 'text', text: nome }] }],
+          // {{1}} do corpo = primeiro nome. Na promoção, o botão de link leva o
+          // cupom da pessoa no fim da URL (oferta?cupom={{1}}).
+          components: [
+            { type: 'body', parameters: [{ type: 'text', text: nome }] },
+            ...(sufixoBotao ? [{ type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: sufixoBotao }] }] : []),
+          ],
         },
       }),
     });
@@ -117,8 +145,15 @@ export async function GET(req: NextRequest) {
   const sb = await createServiceClient();
 
   const agora = Date.now();
-  const ateAqui = new Date(agora - MIN_IDADE_MIN * 60_000).toISOString();
-  const desdeAqui = new Date(agora - MAX_IDADE_HORAS * 3600_000).toISOString();
+  const promo = await templateMarketingAprovado(TEMPLATE_PROMO);
+  if (promo) {
+    const horaBR = (new Date(agora).getUTCHours() + 21) % 24; // UTC-3
+    if (horaBR < PROMO_HORA_INICIO || horaBR >= PROMO_HORA_FIM) {
+      return NextResponse.json({ ok: true, pausado: true, motivo: `fora_do_horario:${horaBR}h`, modo: 'promo' });
+    }
+  }
+  const ateAqui = new Date(agora - (promo ? PROMO_MIN_IDADE_MIN : MIN_IDADE_MIN) * 60_000).toISOString();
+  const desdeAqui = new Date(agora - (promo ? PROMO_MAX_IDADE_HORAS : MAX_IDADE_HORAS) * 3600_000).toISOString();
 
   /* eslint-disable @typescript-eslint/no-explicit-any */
   const { data: leads, error } = await (sb.from('wg_quiz_leads') as any)
@@ -167,6 +202,26 @@ export async function GET(req: NextRequest) {
   }
 
   const acessoDe = await acessoDosLeads(sb, candidatos);
+
+  // Segunda trava contra mandar desconto pra quem comprou: além do perfil ativo
+  // (acessoDosLeads), o PAGAMENTO registrado pelo e-mail — cobre o intervalo em
+  // que o webhook já confirmou e o perfil ainda não virou. E quem está com PIX
+  // aberto espera (não recebe "metade do preço" enquanto paga os R$97).
+  const emailsLote = [...new Set(candidatos.map((l) => String(l.email ?? '').toLowerCase().trim()).filter(Boolean))];
+  const pagouPorEmail = new Set<string>();
+  const pixAberto = new Set<string>();
+  if (emailsLote.length) {
+    const { data: evs } = await (sb.from('checkout_events') as any)
+      .select('email, event_type, created_at')
+      .in('email', emailsLote)
+      .in('event_type', ['payment_confirmed', 'pix_generated'])
+      .gte('created_at', new Date(agora - 30 * 86400_000).toISOString());
+    for (const e of (evs ?? []) as any[]) {
+      const em = String(e.email ?? '').toLowerCase().trim();
+      if (e.event_type === 'payment_confirmed') pagouPorEmail.add(em);
+      else if (agora - new Date(e.created_at).getTime() < PIX_VALIDADE_MS) pixAberto.add(em);
+    }
+  }
   // Quem tocou em "Bloquear mensagens" (ou pediu para sair) não recebe mais nada.
   const bloqueados = await telefonesBloqueados(sb, candidatos.map((l) => l.phone));
 
@@ -185,8 +240,11 @@ export async function GET(req: NextRequest) {
   for (const lead of candidatos.slice(0, cabeHoje)) {
     const telefone = telefoneIntl(lead.phone);
 
-    const acesso = acessoDe(lead);
+    const emailLead = String(lead.email ?? '').toLowerCase().trim();
+    const acesso = acessoDe(lead) ?? (emailLead && pagouPorEmail.has(emailLead) ? 'pago' : null);
     const bloqueou = !!telefone && bloqueados.has(finalTelefone(telefone));
+    // PIX aberto: não marca nada — volta na próxima rodada e é conferida de novo.
+    if (!acesso && !bloqueou && emailLead && pixAberto.has(emailLead)) { pulados++; continue; }
     if (!telefone || bloqueou || acesso) {
       pulados++;
       // Marca como resolvido: comprou (ou não tem telefone), não precisa voltar
@@ -207,9 +265,24 @@ export async function GET(req: NextRequest) {
 
     if (dry) { enviados++; continue; }
 
-    // Ordem: diagnóstico (quando a Meta aprovar como UTILITY) → consulta →
-    // v5 (sem preço). Nenhum template com preço entra mais na fila.
+    // Promoção: cupom próprio desta pessoa (expira com a copy).
+    let cupom: string | undefined;
+    if (promo) {
+      cupom = codigoCupom();
+      const { error: errCupom } = await (sb.from('cupons') as any).insert({
+        codigo: cupom, tipo: 'preco_final', valor_cents: PROMO_PRECO_CENTS, ativo: true,
+        // 3 usos, não 1: o uso conta quando o PIX é GERADO. Quem gera, deixa
+        // expirar e tenta de novo pagaria R$97 calada se o cupom já tivesse acabado.
+        usos_max: 3, expira_em: new Date(agora + PROMO_VALIDADE_H * 3600_000).toISOString(),
+        descricao: `Recuperação WhatsApp 50% · lead ${lead.id}`,
+      });
+      if (errCupom) { falhas.push({ id: lead.id, erro: 'cupom: ' + errCupom.message }); continue; }
+    }
+
+    // Ordem: promoção (se aprovada como MARKETING) → diagnóstico (UTILITY) →
+    // consulta → v5 (sem preço). Nenhum template com preço antigo entra.
     const fila = [
+      ...(promo ? [TEMPLATE_PROMO] : []),
       ...(diagVale ? [TEMPLATE_DIAG] : []),
       ...(consultaVale ? [TEMPLATE_CONSULTA] : []),
       ...(semPrecoVale ? [TEMPLATE_SEM_PRECO] : []),
@@ -218,7 +291,7 @@ export async function GET(req: NextRequest) {
     let r: { ok: boolean; erro?: string; codigo?: number } = { ok: false, erro: 'sem_template' };
     let usado = '';
     for (const t of fila) {
-      r = await enviarTemplate(telefone, primeiroNome(lead.name), t);
+      r = await enviarTemplate(telefone, primeiroNome(lead.name), t, t === TEMPLATE_PROMO ? cupom : undefined);
       usado = t;
       if (r.ok) break;
       // 132xxx = problema do template (não aprovado, pausado, inexistente).
@@ -246,7 +319,7 @@ export async function GET(req: NextRequest) {
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
   return NextResponse.json({
-    ok: true, dry, templates: porTemplate, consultaAprovada: consultaVale,
+    ok: true, dry, modo: promo ? 'promo_50' : 'padrao', templates: porTemplate, consultaAprovada: consultaVale,
     candidatos: candidatos.length, enviados, pulados,
     falhas: falhas.slice(0, 5),
   });

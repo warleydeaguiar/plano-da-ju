@@ -367,8 +367,11 @@ function CrossItem({ children }: { children: React.ReactNode }) {
 }
 
 // ─── Card de oferta ──────────────────────────────────────────
-function OfferCard({ countdown, name, onBuy, precoCents = PLAN_BASE_CENTS }: {
+function OfferCard({ countdown, name, onBuy, precoCents = PLAN_BASE_CENTS, ancoraCents = PLAN_ANCHOR_CENTS }: {
   countdown: string; name: string; onBuy: () => void;
+  /** Preço riscado. Com cupom é o preço normal (R$97): a mensagem diz "de R$97
+   *  por R$48,50" e a página tem que dizer o mesmo, não "de R$197". */
+  ancoraCents?: number;
   /** Preço vigente. Com cupom no link, é o do cupom — senão a pessoa que
    *  clicou na mensagem prometendo R$14,90 leria R$34,90 na oferta inteira e
    *  só descobriria o desconto lá no fim do formulário. */
@@ -418,7 +421,7 @@ function OfferCard({ countdown, name, onBuy, precoCents = PLAN_BASE_CENTS }: {
             </div>
           </div>
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-            <div style={{ fontSize: 11, color: T.inkMuted, textDecoration: 'line-through', marginBottom: 1, fontFamily: fonts.ui }}>{brlCents(PLAN_ANCHOR_CENTS)}</div>
+            <div style={{ fontSize: 11, color: T.inkMuted, textDecoration: 'line-through', marginBottom: 1, fontFamily: fonts.ui }}>{brlCents(ancoraCents)}</div>
             <div style={{
               fontFamily: fonts.display, fontSize: 26, fontWeight: 700,
               background: `linear-gradient(135deg, ${T.pinkDeep}, ${T.pink})`,
@@ -527,6 +530,8 @@ export default function OfertaClient() {
 
   /** Preço que a cliente deve VER. Com cupom aplicado, é o do cupom. */
   const precoAtual = cupomInfo?.preco_cents ?? precoBase;
+  // Com cupom, o riscado é o preço normal ("de R$97 por R$48,50"); sem cupom, a âncora de R$197.
+  const ancoraAtual = cupomInfo ? precoBase : PLAN_ANCHOR_CENTS;
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -1658,7 +1663,7 @@ export default function OfertaClient() {
                   <div style={{ fontSize: 12, color: T.inkSoft, marginTop: 2 }}>Juliane Cost · {PRODUTO_ENTREGA}</div>
                   <div style={{ marginTop: 6 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                      <span style={{ fontSize: 11.5, color: T.inkMuted, textDecoration: 'line-through', fontFamily: fonts.ui }}>de {brlCents(PLAN_ANCHOR_CENTS)}</span>
+                      <span style={{ fontSize: 11.5, color: T.inkMuted, textDecoration: 'line-through', fontFamily: fonts.ui }}>de {brlCents(ancoraAtual)}</span>
                       <span style={{ fontSize: 10, fontWeight: 700, color: '#166534', background: '#EAF7EE', borderRadius: 5, padding: '1px 6px' }}>🎂 aniversário</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
@@ -2182,10 +2187,10 @@ export default function OfertaClient() {
               padding: '12px 16px', marginBottom: 14, textAlign: 'center',
               fontFamily: fonts.ui, fontSize: 14, fontWeight: 700,
             }}>
-              ✓ Seu desconto está aplicado — a consulta sai por {brlCents(cupomInfo.preco_cents)}
+              ✓ {Math.round((1 - cupomInfo.preco_cents / precoBase) * 100)}% OFF aplicado — de {brlCents(precoBase)} por {brlCents(cupomInfo.preco_cents)}
             </div>
           )}
-          <OfferCard countdown={countdown} name={name} onBuy={onBuy} precoCents={precoAtual} />
+          <OfferCard countdown={countdown} name={name} onBuy={onBuy} precoCents={precoAtual} ancoraCents={ancoraAtual} />
 
           {/* Social proof */}
           <div style={{
@@ -2329,7 +2334,7 @@ export default function OfertaClient() {
               </div>
               <div style={{ flex: 1, background: `linear-gradient(135deg, ${T.pinkDeep}, ${T.pink})`, borderRadius: 12, padding: '12px 10px', textAlign: 'center', boxShadow: `0 6px 16px ${T.pink}44` }}>
                 <div style={{ fontSize: 10.5, fontWeight: 700, color: 'rgba(255,255,255,0.85)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4, fontFamily: fonts.ui }}>Consulta com a Ju</div>
-                <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.75)', textDecoration: 'line-through', lineHeight: 1, marginBottom: 2, fontFamily: fonts.ui }}>de {brlCents(PLAN_ANCHOR_CENTS)}</div>
+                <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.75)', textDecoration: 'line-through', lineHeight: 1, marginBottom: 2, fontFamily: fonts.ui }}>de {brlCents(ancoraAtual)}</div>
                 <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', fontFamily: fonts.display, lineHeight: 1 }}>{brlCents(precoAtual)}<span style={{ fontSize: 12 }}> uma vez</span></div>
                 <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', marginTop: 4, lineHeight: 1.35, fontFamily: fonts.ui }}>feito exatamente pro seu cabelo</div>
               </div>
@@ -2349,7 +2354,7 @@ export default function OfertaClient() {
           </div>
 
           {/* Second offer */}
-          <OfferCard countdown={countdown} name={name} onBuy={onBuy} precoCents={precoAtual} />
+          <OfferCard countdown={countdown} name={name} onBuy={onBuy} precoCents={precoAtual} ancoraCents={ancoraAtual} />
 
           {/* O que você vai ter */}
           <div style={{

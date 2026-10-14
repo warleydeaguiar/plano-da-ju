@@ -37,3 +37,34 @@ export async function templateUtilitarioAprovado(nome: string): Promise<boolean>
   cache.set(nome, { ate: agora + 10 * 60_000, ok });
   return ok;
 }
+
+/**
+ * O template está APROVADO na categoria MARKETING? (14/10/26: a promoção de
+ * 50% da recuperação é marketing de propósito — o Warley aceitou pagar a
+ * tarifa cheia por uma copy de oferta.) Mesmo cache de 10 minutos.
+ */
+const cacheMkt = new Map<string, { ate: number; ok: boolean }>();
+
+export async function templateMarketingAprovado(nome: string): Promise<boolean> {
+  const agora = Date.now();
+  const guardado = cacheMkt.get(nome);
+  if (guardado && guardado.ate > agora) return guardado.ok;
+
+  const token = process.env.WHATSAPP_TOKEN;
+  const waba = process.env.WHATSAPP_WABA_ID || '616707188181921';
+  let ok = false;
+  if (token) {
+    try {
+      const r = await fetch(
+        `https://graph.facebook.com/v21.0/${waba}/message_templates`
+        + `?name=${encodeURIComponent(nome)}&fields=name,status,category&access_token=${encodeURIComponent(token)}`,
+        { next: { revalidate: 0 } },
+      );
+      const j: any = await r.json();
+      const t = (j?.data ?? []).find((x: any) => x?.name === nome);
+      ok = t?.status === 'APPROVED' && t?.category === 'MARKETING';
+    } catch { ok = false; }
+  }
+  cacheMkt.set(nome, { ate: agora + 10 * 60_000, ok });
+  return ok;
+}
