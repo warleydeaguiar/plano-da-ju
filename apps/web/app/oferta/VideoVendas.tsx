@@ -80,7 +80,10 @@ export default function VideoVendas({
         if (info.muted !== undefined) setMudo(!!info.muted);
         if (info.playerState !== undefined) {
           setEstado(info.playerState);
-          if ((info.playerState === 1 || info.playerState === 3) && !tocou.current) {
+          // Só "tocando" (1) conta: "carregando" (3) seguido de "não iniciado" (-1)
+          // é o que alguns navegadores fazem ao RECUSAR o autoplay — tirar a capa
+          // ali deixava um quadro preto na oferta.
+          if (info.playerState === 1 && !tocou.current) {
             tocou.current = true;
             setComecou(true);
             onEvento('vsl_play', { autoplay: true, mudo: !!info.muted });
@@ -114,6 +117,13 @@ export default function VideoVendas({
       comandar('playVideo');
       setAutoMudo(true);
     }, 2_500);
+    // Nem mudo tocou (ex.: modo economia do iPhone) → devolve o som e deixa a
+    // capa: o toque no meio cai no player e começa COM som, como antes.
+    window.setTimeout(() => {
+      if (tocou.current) return;
+      comandar('unMute');
+      setAutoMudo(false);
+    }, 5_000);
   }, [comandar]);
 
   /** Toque da pessoa: liga o som e volta ao começo (ela perdeu o início mudo). */
