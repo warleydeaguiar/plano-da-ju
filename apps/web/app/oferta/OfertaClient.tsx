@@ -12,6 +12,7 @@ import dynamic from 'next/dynamic';
 import { JU_WHATSAPP_EXIBICAO } from '@/lib/contact';
 import { FAIXAS_GASTO } from '@/lib/preco-dinamico';
 import { PRODUTO_ENTREGA } from '@/lib/produto';
+import VideoVendas, { VSL_ATIVO } from './VideoVendas';
 
 /**
  * Carregado sob demanda, e não no pacote principal.
@@ -1119,6 +1120,10 @@ export default function OfertaClient() {
     }
   }
 
+  const logVsl = useCallback((tipo: 'vsl_play' | 'vsl_progresso', metadata?: Record<string, unknown>) => {
+    logEvent({ event_type: tipo, email: email || undefined, metadata });
+  }, [email]);
+
   const onBuy = () => {
     // Log evento de checkout iniciado
     logEvent({ event_type: 'checkout_initiated', email, payment_type: payType, amount_cents: precoAtual });
@@ -2111,6 +2116,9 @@ export default function OfertaClient() {
           <div style={{ fontSize: 13.5, color: T.inkSoft, textAlign: 'center', margin: '-8px auto 22px', maxWidth: 360, lineHeight: 1.5 }}>
             {getFunilCopy(quizAnswers).argumento}
           </div>
+
+          {/* Vídeo de vendas (VSL) — logo depois do diagnóstico, antes do resumo e do preço */}
+          {VSL_ATIVO && <VideoVendas onCta={onBuy} onEvento={logVsl} />}
 
           {/* Resumo do SEU caso — mostra que o plano é feito pra ESSA pessoa (dados do quiz) */}
           {(() => {

@@ -4,6 +4,9 @@ import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 
 const VALID_EVENT_TYPES = new Set([
   'offer_viewed',
+  // Vídeo de vendas da oferta: play e quanto assistiu (25/50/75/100%).
+  'vsl_play',
+  'vsl_progresso',
   'checkout_initiated',
   'pix_generated',
   'card_submitted',
