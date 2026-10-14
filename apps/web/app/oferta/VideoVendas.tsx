@@ -18,8 +18,9 @@ export const VSL_YOUTUBE_ID = 'trmyz41uviA';
  * (sem isso a cliente veria "estamos processando este vídeo" no meio da oferta).
  */
 export const VSL_ATIVO = true; // processado em 14/10/26 13:13 — 3min05s
-/** Orientação medida no YouTube (formato 1280×720) — horizontal. */
-export const VSL_VERTICAL = false;
+/** Vídeo VERTICAL (9:16) — confirmado pelo Warley e na tela; a medição pela página
+ * do YouTube pegou o tamanho de outro elemento (1280×720) e enganou. */
+export const VSL_VERTICAL = true;
 
 const MARCOS = [25, 50, 75, 100];
 
