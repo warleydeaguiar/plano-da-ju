@@ -55,11 +55,72 @@ const fonts = {
 
 type Step = 'offer' | 'card_form' | 'pix_qr' | 'pix_confirmed' | 'loading';
 const LOADING_MESSAGES = [
-  'Conectando com o servidor…',
-  'Verificando seus dados…',
-  'Gerando o QR Code PIX…',
+  'Reservando a sua consulta de hoje…',
+  'Gerando o seu código PIX…',
+  'Conferindo a segurança do pagamento…',
   'Quase pronto!',
 ];
+const LOADING_CARTAO = [
+  'Reservando a sua consulta de hoje…',
+  'Enviando para o seu banco…',
+  'Confirmando o pagamento…',
+  'Quase pronto!',
+];
+
+/**
+ * Tela de espera do pagamento (15/10/26). Antes dizia "Conectando com o
+ * servidor…" — a cliente não sabe o que é isso nem precisa saber. Agora é a
+ * Juliane "preparando" o pagamento, com mensagens que andam e o selo de
+ * pagamento seguro: confiança no momento em que ela está entregando o dinheiro.
+ */
+function CarregandoJu({ pix, foto }: { pix: boolean; foto: string }) {
+  const msgs = pix ? LOADING_MESSAGES : LOADING_CARTAO;
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setI((x) => Math.min(x + 1, msgs.length - 1)), 1800);
+    return () => clearInterval(t);
+  }, [msgs.length]);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18, maxWidth: 340, textAlign: 'center' }}>
+      <style>{`@keyframes juGira { to { transform: rotate(360deg); } }
+@keyframes juPulsa { 0%,100% { box-shadow: 0 0 0 0 rgba(236,72,153,0.35); } 50% { box-shadow: 0 0 0 14px rgba(236,72,153,0); } }
+@keyframes juBarra { from { width: 8%; } to { width: 92%; } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }`}</style>
+      <div style={{ position: 'relative', width: 116, height: 116 }}>
+        <div style={{
+          position: 'absolute', inset: 0, borderRadius: '50%',
+          background: `conic-gradient(${T.pink}, ${T.gold}, ${T.pinkDeep}, ${T.pink})`,
+          animation: 'juGira 1.6s linear infinite',
+        }} />
+        <div style={{
+          position: 'absolute', inset: 5, borderRadius: '50%', overflow: 'hidden', border: '3px solid #fff',
+          background: '#fff', animation: 'juPulsa 1.8s ease-in-out infinite',
+        }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={foto} alt="Juliane Cost" style={{
+            width: '100%', height: '100%', objectFit: 'cover',
+            objectPosition: '43% 20%', transform: 'scale(1.9)', transformOrigin: '43% 28%',
+          }} />
+        </div>
+      </div>
+      <div>
+        <p style={{ color: T.ink, fontSize: 20, fontWeight: 700, margin: '0 0 6px', fontFamily: fonts.display, lineHeight: 1.25 }}>
+          {pix ? 'A Juliane está gerando o seu PIX' : 'Processando o seu pagamento'}
+        </p>
+        <p key={i} style={{ color: T.pinkDeep, fontSize: 14, fontWeight: 600, margin: 0, animation: 'fadeIn 0.4s ease' }}>
+          {msgs[i]}
+        </p>
+      </div>
+      <div style={{ width: 220, height: 6, background: T.pinkSoft, borderRadius: 99, overflow: 'hidden' }}>
+        <div style={{ height: '100%', background: `linear-gradient(90deg, ${T.pink}, ${T.pinkDeep})`, borderRadius: 99, animation: 'juBarra 7s ease-out forwards' }} />
+      </div>
+      <div style={{ fontSize: 12, color: T.inkSoft, lineHeight: 1.5 }}>
+        🔒 Pagamento 100% seguro · processado pela Pagar.me
+        <br />Juliane Cost · Tricologista · 3.985 clientes
+      </div>
+    </div>
+  );
+}
 
 // Gera um session_id único por visita (rastreia o funil)
 function getSessionId(): string {
@@ -1125,6 +1186,18 @@ export default function OfertaClient() {
     }
   }
 
+  // Cronômetro de 3 MINUTOS da tela do PIX (15/10/26, pedido do Warley pra
+  // aumentar a urgência). ⚠️ Não é a validade do código (o PIX vale 1h): a tela
+  // fala em garantir a consulta de HOJE, e quando zera diz que o código ainda
+  // funciona — afirmar que o código expirou seria falso e faria gente desistir
+  // de um PIX válido.
+  const RESERVA_MS = 3 * 60_000;
+  const [reservaAte, setReservaAte] = useState(0);
+  useEffect(() => {
+    if (step === 'pix_qr' && pixQrCode && !reservaAte) setReservaAte(Date.now() + RESERVA_MS);
+    if (step !== 'pix_qr' && reservaAte) setReservaAte(0);
+  }, [step, pixQrCode, reservaAte, RESERVA_MS]);
+
   // Quem sai para o app do banco vê a aba piscar o lembrete com o tempo que
   // falta — o caminho de volta para a tela que confirma o pagamento.
   useEffect(() => {
@@ -1133,10 +1206,10 @@ export default function OfertaClient() {
     let t: number | undefined;
     const atualizar = () => {
       if (!document.hidden) { document.title = original; return; }
-      const s = Math.max(0, Math.floor((pixExpiresAt - Date.now()) / 1000));
+      const s = Math.max(0, Math.floor((reservaAte - Date.now()) / 1000));
       const mm = String(Math.floor(s / 60)).padStart(2, '0');
       const ss = String(s % 60).padStart(2, '0');
-      document.title = pixExpiresAt > 0 ? `⏰ Falta pagar seu PIX — ${mm}:${ss}` : '⏰ Falta pagar seu PIX';
+      document.title = s > 0 ? `⏰ Falta pagar seu PIX — ${mm}:${ss}` : '⏰ Falta pagar seu PIX';
     };
     const aoMudar = () => {
       if (t) window.clearInterval(t);
@@ -1149,7 +1222,7 @@ export default function OfertaClient() {
       if (t) window.clearInterval(t);
       document.title = original;
     };
-  }, [step, pixQrCode, pixExpiresAt]);
+  }, [step, pixQrCode, reservaAte]);
 
   const logVsl = useCallback((tipo: 'vsl_play' | 'vsl_progresso' | 'vsl_som', metadata?: Record<string, unknown>) => {
     logEvent({ event_type: tipo, email: email || undefined, metadata });
@@ -1226,19 +1299,7 @@ export default function OfertaClient() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column',
           gap: 24, padding: 24, fontFamily: fonts.ui,
         }}>
-          <div style={{
-            width: 64, height: 64, border: `4px solid ${T.pinkSoft}`,
-            borderTopColor: T.pink, borderRadius: '50%', animation: 'spin 0.9s linear infinite',
-          }} />
-          <div style={{ textAlign: 'center' }}>
-            <p style={{
-              color: T.ink, fontSize: 18, fontWeight: 700, marginBottom: 6,
-              fontFamily: fonts.display,
-            }}>
-              {loadingMsg}
-            </p>
-            <p style={{ color: T.inkSoft, fontSize: 13 }}>Isso pode levar alguns segundos…</p>
-          </div>
+          <CarregandoJu pix={payType === 'pix'} foto={images['oferta_ju_pagamento'] || '/images/juliane-consultorio.jpg'} />
         </div>
       </>
     );
@@ -1269,8 +1330,6 @@ export default function OfertaClient() {
   if (step === 'pix_qr') {
     const isExpired = pixExpired || (pixExpiresAt > 0 && Date.now() >= pixExpiresAt);
     const secondsLeft = Math.max(0, Math.floor((pixExpiresAt - Date.now()) / 1000));
-    const mmExp = String(Math.floor(secondsLeft / 60)).padStart(2, '0');
-    const ssExp = String(secondsLeft % 60).padStart(2, '0');
     return (
       <>
         <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -1279,100 +1338,61 @@ export default function OfertaClient() {
           minHeight: '100vh',
           background: `radial-gradient(circle at 30% 0%, ${T.rose}, transparent 50%), ${T.bg}`,
           display: 'flex', flexDirection: 'column', alignItems: 'center',
-          padding: '40px 24px', fontFamily: fonts.ui,
+          padding: '14px 18px 32px', fontFamily: fonts.ui,
         }}>
           <style>{`@keyframes pixPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.025); } }`}</style>
           <div style={{ maxWidth: 420, width: '100%', textAlign: 'center' }}>
-            {/* Quem está com o app do banco aberto precisa saber para QUEM
-                está pagando. A foto da Juliane no consultório é a mesma cara
-                que a cliente viu no quiz e na oferta. */}
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center',
-              marginBottom: 16,
-            }}>
-              <div style={{
-                width: 56, height: 56, borderRadius: '50%', overflow: 'hidden',
-                border: '3px solid #fff', boxShadow: `0 8px 20px ${T.pinkDeep}22`,
-                flexShrink: 0,
-              }}>
-                {/* A foto é do consultório inteiro; o scale aproxima o rosto,
-                    senão num círculo de 56px ela vira um borrão de escritório. */}
+            {/* COMPACTO (15/10/26): no iPhone, com a barra do navegador, o botão de
+                copiar tem que aparecer SEM rolar. Juliane + cronômetro + título +
+                preço numa faixa curta; o resto vai para baixo do botão. */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'center', marginBottom: 10 }}>
+              <div style={{ width: 38, height: 38, borderRadius: '50%', overflow: 'hidden', border: '2px solid #fff', boxShadow: `0 4px 12px ${T.pinkDeep}22`, flexShrink: 0 }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={images['oferta_ju_pagamento'] || '/images/juliane-consultorio.jpg'}
-                  alt="Juliane Cost, tricologista"
-                  style={{
-                    width: '100%', height: '100%', objectFit: 'cover',
-                    objectPosition: '43% 20%', transform: 'scale(1.9)', transformOrigin: '43% 28%',
-                  }}
-                />
+                <img src={images['oferta_ju_pagamento'] || '/images/juliane-consultorio.jpg'} alt="Juliane Cost, tricologista"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: '43% 20%', transform: 'scale(1.9)', transformOrigin: '43% 28%' }} />
               </div>
-              <div style={{ textAlign: 'left' }}>
-                <div style={{ fontSize: 14, fontWeight: 800, color: T.ink, lineHeight: 1.2 }}>Juliane Cost</div>
-                <div style={{ fontSize: 11.5, color: T.inkSoft }}>Tricologista · 3.985 clientes</div>
+              <div style={{ textAlign: 'left', fontSize: 12.5, color: T.inkSoft, lineHeight: 1.25 }}>
+                <strong style={{ color: T.ink, fontSize: 13.5 }}>Juliane Cost</strong><br />Tricologista · 3.985 clientes
               </div>
             </div>
 
-            {/* URGÊNCIA no topo (15/10/26): a taxa de pagamento do PIX caiu de 71%
-                para 50% com o preço de R$97. O cronômetro é o REAL do código (1h)
-                e antes ficava escondido embaixo do QR. */}
-            {pixExpiresAt > 0 && !!pixQrCode && !isExpired && (
-              <div style={{
-                background: secondsLeft <= 300 ? '#B91C1C' : `linear-gradient(135deg, ${T.pinkDeep}, #9D174D)`,
-                color: '#fff', borderRadius: 16, padding: '12px 16px 14px', marginBottom: 16,
-                boxShadow: `0 10px 24px ${T.pinkDeep}40`, animation: secondsLeft <= 300 ? 'pixPulse 1.2s ease-in-out infinite' : undefined,
-              }}>
-                <div style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.92 }}>
-                  {secondsLeft <= 300 ? '⚠️ Seu código está acabando' : '⏰ Sua consulta está reservada por'}
+            {!!pixQrCode && reservaAte > 0 && (() => {
+              const sRes = Math.max(0, Math.floor((reservaAte - Date.now()) / 1000));
+              const mmRes = String(Math.floor(sRes / 60)).padStart(2, '0');
+              const ssRes = String(sRes % 60).padStart(2, '0');
+              const acabou = sRes === 0;
+              return (
+                <div style={{
+                  background: acabou || sRes <= 60 ? '#B91C1C' : `linear-gradient(135deg, ${T.pinkDeep}, #9D174D)`,
+                  color: '#fff', borderRadius: 12, padding: '9px 12px 10px', marginBottom: 12,
+                  animation: sRes <= 60 ? 'pixPulse 1.1s ease-in-out infinite' : undefined,
+                }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, lineHeight: 1.3 }}>
+                    {acabou
+                      ? '⏰ Tempo esgotado — mas seu código ainda funciona. Pague agora para não perder sua consulta de hoje.'
+                      : <>⏰ Pague em <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, monospace', fontSize: 17 }}>{mmRes}:{ssRes}</span> para garantir sua consulta hoje</>}
+                  </div>
+                  {!acabou && (
+                    <div style={{ height: 4, background: 'rgba(255,255,255,0.25)', borderRadius: 99, overflow: 'hidden', marginTop: 7 }}>
+                      <div style={{ height: '100%', width: `${(sRes / 180) * 100}%`, background: '#fff', borderRadius: 99, transition: 'width 1s linear' }} />
+                    </div>
+                  )}
                 </div>
-                <div style={{ fontSize: 40, fontWeight: 800, lineHeight: 1.05, fontFamily: 'ui-monospace, SFMono-Regular, monospace', letterSpacing: 2, margin: '2px 0 8px' }}>
-                  {mmExp}:{ssExp}
-                </div>
-                <div style={{ height: 6, background: 'rgba(255,255,255,0.25)', borderRadius: 99, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${Math.min(100, (secondsLeft / 3600) * 100)}%`, background: '#fff', borderRadius: 99, transition: 'width 1s linear' }} />
-                </div>
-                <div style={{ fontSize: 12, marginTop: 8, opacity: 0.95, lineHeight: 1.4 }}>
-                  Pague agora: quando o tempo acaba, o código deixa de valer e você precisa refazer o pagamento.
-                </div>
-              </div>
-            )}
+              );
+            })()}
 
-            <h1 style={{
-              fontSize: 27, fontWeight: 700, color: T.ink, marginBottom: 6,
-              fontFamily: fonts.display, letterSpacing: -0.5, lineHeight: 1.15,
-            }}>Falta só 1 passo{name ? `, ${name.trim().split(/\s+/)[0]}` : ''}! 🎉</h1>
-            <p style={{ color: T.inkSoft, fontSize: 14.5, marginBottom: 14, lineHeight: 1.5 }}>
-              {pixQrCode
-                ? <>Pague o PIX <strong style={{ color: T.ink }}>agora</strong> e a sua consulta com a Juliane é liberada <strong style={{ color: T.ink }}>na hora</strong>.</>
-                : 'Só um instante — estamos gerando seu código'}
-            </p>
-
-            {/* Valor com âncora + garantia: com R$97, a hesitação é "e se eu não gostar?". */}
-            <div style={{
-              background: '#fff', border: `2px solid ${T.pinkSoft}`,
-              borderRadius: 16, padding: '14px 18px', marginBottom: 16,
-              display: 'flex', flexDirection: 'column', gap: 10,
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                <div style={{ textAlign: 'left' }}>
-                  <div style={{ fontSize: 12.5, color: T.inkSoft }}>Consulta com a Tricologista</div>
-                  <div style={{ fontSize: 12, color: T.inkMuted, textDecoration: 'line-through' }}>de {brlCents(ancoraAtual)}</div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 10, marginBottom: 12, textAlign: 'left' }}>
+              <div>
+                <div style={{ fontSize: 21, fontWeight: 700, color: T.ink, fontFamily: fonts.display, lineHeight: 1.15, letterSpacing: -0.3 }}>
+                  Falta só 1 passo{name ? `, ${name.trim().split(/\s+/)[0]}` : ''}! 🎉
                 </div>
-                <strong style={{ fontSize: 28, color: T.pinkDeep, fontFamily: fonts.display, letterSpacing: -0.5 }}>
-                  {brlCents(precoAtual)}
-                </strong>
+                <div style={{ fontSize: 12.5, color: T.inkSoft, marginTop: 3 }}>
+                  {pixQrCode ? 'Pague o PIX e sua consulta libera na hora.' : 'Só um instante — estamos gerando seu código'}
+                </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#E7F8F0', borderRadius: 10, padding: '9px 12px' }}>
-                <span style={{ fontSize: 15 }}>⚡</span>
-                <span style={{ fontSize: 12.5, color: T.greenDeep, fontWeight: 700, textAlign: 'left', lineHeight: 1.35 }}>
-                  Acesso na hora: o PIX cai e seu acesso libera sozinho — sem enviar comprovante.
-                </span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: T.cream, borderRadius: 10, padding: '9px 12px' }}>
-                <span style={{ fontSize: 15 }}>🛡️</span>
-                <span style={{ fontSize: 12.5, color: T.ink, fontWeight: 600, textAlign: 'left', lineHeight: 1.35 }}>
-                  Garantia incondicional de 7 dias: não gostou, a Juliane devolve 100%.
-                </span>
+              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                <div style={{ fontSize: 11.5, color: T.inkMuted, textDecoration: 'line-through' }}>{brlCents(ancoraAtual)}</div>
+                <div style={{ fontSize: 23, fontWeight: 800, color: T.pinkDeep, fontFamily: fonts.display, lineHeight: 1 }}>{brlCents(precoAtual)}</div>
               </div>
             </div>
 
@@ -1511,6 +1531,15 @@ export default function OfertaClient() {
               {pixCopied ? '✓ CÓDIGO COPIADO!' : '📋 COPIAR CÓDIGO PIX'}
             </button>)}
 
+            {pixQrCode && (
+              <div style={{
+                background: '#FFF7ED', border: '1px solid #FDBA74', borderRadius: 12,
+                padding: '10px 12px', marginBottom: 12, fontSize: 13, color: '#9A3412', fontWeight: 700, lineHeight: 1.45,
+              }}>
+                📅 Tem consulta disponível para hoje, pague agora e faça a consulta imediatamente antes que a agenda feche.
+              </div>
+            )}
+
             {/* Depois de copiar: o próximo passo, sem pensar. */}
             {pixQrCode && pixCopied && (
               <div style={{
@@ -1521,6 +1550,23 @@ export default function OfertaClient() {
                 <div style={{ fontSize: 13, color: '#166534', lineHeight: 1.55 }}>
                   Abra o app do banco → <strong>PIX</strong> → <strong>Pix Copia e Cola</strong> → cole o código e confirme.
                   Depois volte aqui: a confirmação aparece sozinha.
+                </div>
+              </div>
+            )}
+
+            {pixQrCode && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14, textAlign: 'left' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#E7F8F0', borderRadius: 10, padding: '9px 12px' }}>
+                  <span style={{ fontSize: 15 }}>⚡</span>
+                  <span style={{ fontSize: 12.5, color: T.greenDeep, fontWeight: 700, lineHeight: 1.35 }}>
+                    Acesso na hora: o PIX cai e seu acesso libera sozinho — sem enviar comprovante.
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: T.cream, borderRadius: 10, padding: '9px 12px' }}>
+                  <span style={{ fontSize: 15 }}>🛡️</span>
+                  <span style={{ fontSize: 12.5, color: T.ink, fontWeight: 600, lineHeight: 1.35 }}>
+                    Garantia incondicional de 7 dias: não gostou, a Juliane devolve 100%.
+                  </span>
                 </div>
               </div>
             )}
