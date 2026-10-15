@@ -1125,6 +1125,32 @@ export default function OfertaClient() {
     }
   }
 
+  // Quem sai para o app do banco vê a aba piscar o lembrete com o tempo que
+  // falta — o caminho de volta para a tela que confirma o pagamento.
+  useEffect(() => {
+    if (step !== 'pix_qr' || !pixQrCode) return;
+    const original = document.title;
+    let t: number | undefined;
+    const atualizar = () => {
+      if (!document.hidden) { document.title = original; return; }
+      const s = Math.max(0, Math.floor((pixExpiresAt - Date.now()) / 1000));
+      const mm = String(Math.floor(s / 60)).padStart(2, '0');
+      const ss = String(s % 60).padStart(2, '0');
+      document.title = pixExpiresAt > 0 ? `⏰ Falta pagar seu PIX — ${mm}:${ss}` : '⏰ Falta pagar seu PIX';
+    };
+    const aoMudar = () => {
+      if (t) window.clearInterval(t);
+      atualizar();
+      if (document.hidden) t = window.setInterval(atualizar, 1000);
+    };
+    document.addEventListener('visibilitychange', aoMudar);
+    return () => {
+      document.removeEventListener('visibilitychange', aoMudar);
+      if (t) window.clearInterval(t);
+      document.title = original;
+    };
+  }, [step, pixQrCode, pixExpiresAt]);
+
   const logVsl = useCallback((tipo: 'vsl_play' | 'vsl_progresso' | 'vsl_som', metadata?: Record<string, unknown>) => {
     logEvent({ event_type: tipo, email: email || undefined, metadata });
   }, [email]);
@@ -1255,6 +1281,7 @@ export default function OfertaClient() {
           display: 'flex', flexDirection: 'column', alignItems: 'center',
           padding: '40px 24px', fontFamily: fonts.ui,
         }}>
+          <style>{`@keyframes pixPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.025); } }`}</style>
           <div style={{ maxWidth: 420, width: '100%', textAlign: 'center' }}>
             {/* Quem está com o app do banco aberto precisa saber para QUEM
                 está pagando. A foto da Juliane no consultório é a mesma cara
@@ -1286,34 +1313,65 @@ export default function OfertaClient() {
               </div>
             </div>
 
+            {/* URGÊNCIA no topo (15/10/26): a taxa de pagamento do PIX caiu de 71%
+                para 50% com o preço de R$97. O cronômetro é o REAL do código (1h)
+                e antes ficava escondido embaixo do QR. */}
+            {pixExpiresAt > 0 && !!pixQrCode && !isExpired && (
+              <div style={{
+                background: secondsLeft <= 300 ? '#B91C1C' : `linear-gradient(135deg, ${T.pinkDeep}, #9D174D)`,
+                color: '#fff', borderRadius: 16, padding: '12px 16px 14px', marginBottom: 16,
+                boxShadow: `0 10px 24px ${T.pinkDeep}40`, animation: secondsLeft <= 300 ? 'pixPulse 1.2s ease-in-out infinite' : undefined,
+              }}>
+                <div style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.92 }}>
+                  {secondsLeft <= 300 ? '⚠️ Seu código está acabando' : '⏰ Sua consulta está reservada por'}
+                </div>
+                <div style={{ fontSize: 40, fontWeight: 800, lineHeight: 1.05, fontFamily: 'ui-monospace, SFMono-Regular, monospace', letterSpacing: 2, margin: '2px 0 8px' }}>
+                  {mmExp}:{ssExp}
+                </div>
+                <div style={{ height: 6, background: 'rgba(255,255,255,0.25)', borderRadius: 99, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${Math.min(100, (secondsLeft / 3600) * 100)}%`, background: '#fff', borderRadius: 99, transition: 'width 1s linear' }} />
+                </div>
+                <div style={{ fontSize: 12, marginTop: 8, opacity: 0.95, lineHeight: 1.4 }}>
+                  Pague agora: quando o tempo acaba, o código deixa de valer e você precisa refazer o pagamento.
+                </div>
+              </div>
+            )}
+
             <h1 style={{
-              fontSize: 26, fontWeight: 600, color: T.ink, marginBottom: 8,
-              fontFamily: fonts.display, letterSpacing: -0.4,
-            }}>Pague via PIX</h1>
-            <p style={{ color: T.inkSoft, fontSize: 14, marginBottom: 14 }}>
-              {pixQrCode ? 'Escaneie o QR Code ou copie o código abaixo' : 'Só um instante — estamos gerando seu código'}
+              fontSize: 27, fontWeight: 700, color: T.ink, marginBottom: 6,
+              fontFamily: fonts.display, letterSpacing: -0.5, lineHeight: 1.15,
+            }}>Falta só 1 passo{name ? `, ${name.trim().split(/\s+/)[0]}` : ''}! 🎉</h1>
+            <p style={{ color: T.inkSoft, fontSize: 14.5, marginBottom: 14, lineHeight: 1.5 }}>
+              {pixQrCode
+                ? <>Pague o PIX <strong style={{ color: T.ink }}>agora</strong> e a sua consulta com a Juliane é liberada <strong style={{ color: T.ink }}>na hora</strong>.</>
+                : 'Só um instante — estamos gerando seu código'}
             </p>
 
-            {/* Valor + acesso imediato: as duas dúvidas de quem está com o app
-                do banco na mão ("quanto?" e "quando libera?"). */}
+            {/* Valor com âncora + garantia: com R$97, a hesitação é "e se eu não gostar?". */}
             <div style={{
-              background: 'rgba(255,255,255,0.9)', border: `1px solid ${T.border}`,
+              background: '#fff', border: `2px solid ${T.pinkSoft}`,
               borderRadius: 16, padding: '14px 18px', marginBottom: 16,
-              display: 'flex', flexDirection: 'column', gap: 8,
+              display: 'flex', flexDirection: 'column', gap: 10,
             }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
-                <span style={{ fontSize: 13, color: T.inkSoft }}>Valor da sua consulta</span>
-                <strong style={{ fontSize: 24, color: T.pinkDeep, fontFamily: fonts.display, letterSpacing: -0.5 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ fontSize: 12.5, color: T.inkSoft }}>Consulta com a Tricologista</div>
+                  <div style={{ fontSize: 12, color: T.inkMuted, textDecoration: 'line-through' }}>de {brlCents(ancoraAtual)}</div>
+                </div>
+                <strong style={{ fontSize: 28, color: T.pinkDeep, fontFamily: fonts.display, letterSpacing: -0.5 }}>
                   {brlCents(precoAtual)}
                 </strong>
               </div>
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 8, background: '#E7F8F0',
-                borderRadius: 10, padding: '9px 12px',
-              }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#E7F8F0', borderRadius: 10, padding: '9px 12px' }}>
                 <span style={{ fontSize: 15 }}>⚡</span>
                 <span style={{ fontSize: 12.5, color: T.greenDeep, fontWeight: 700, textAlign: 'left', lineHeight: 1.35 }}>
-                  Acesso imediato: assim que o PIX cair, seu acesso libera na hora — automático, sem enviar comprovante.
+                  Acesso na hora: o PIX cai e seu acesso libera sozinho — sem enviar comprovante.
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: T.cream, borderRadius: 10, padding: '9px 12px' }}>
+                <span style={{ fontSize: 15 }}>🛡️</span>
+                <span style={{ fontSize: 12.5, color: T.ink, fontWeight: 600, textAlign: 'left', lineHeight: 1.35 }}>
+                  Garantia incondicional de 7 dias: não gostou, a Juliane devolve 100%.
                 </span>
               </div>
             </div>
@@ -1436,37 +1494,58 @@ export default function OfertaClient() {
               </div>
             )}
 
-            {pixQrCodeUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={pixQrCodeUrl} alt="QR Code PIX" style={{
-                width: 220, height: 220, borderRadius: 18, marginBottom: 24,
-                border: `4px solid #fff`, boxShadow: `0 16px 36px ${T.pinkDeep}1A`,
-              }} />
-            )}
-            {pixQrCode && (<div style={{
-              background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(12px)',
-              borderRadius: 18, padding: 16, marginBottom: 20, border: `1px solid ${T.border}`,
-            }}>
-              <p style={{ color: T.inkSoft, fontSize: 11, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1, fontWeight: 700 }}>Código PIX (copia e cola)</p>
-              <p style={{ color: T.ink, fontSize: 11, wordBreak: 'break-all', lineHeight: 1.6, fontFamily: 'ui-monospace, monospace' }}>
-                {pixQrCode.slice(0, 80)}…
-              </p>
-            </div>)}
+            {/* Botão de copiar PRIMEIRO: no celular ninguém escaneia a própria tela. */}
             {pixQrCode && (<button
               onClick={() => { navigator.clipboard.writeText(pixQrCode); setPixCopied(true); }}
               style={{
                 width: '100%',
                 background: pixCopied
                   ? `linear-gradient(135deg, ${T.green}, ${T.greenDeep})`
-                  : `linear-gradient(135deg, ${T.pink}, ${T.pinkDeep})`,
-                border: 'none', borderRadius: 14, padding: 18, fontSize: 15, fontWeight: 700,
-                color: '#fff', cursor: 'pointer', marginBottom: 16, fontFamily: fonts.ui,
-                boxShadow: pixCopied ? `0 8px 20px ${T.green}44` : `0 8px 20px ${T.pink}44`,
-                transition: 'all 0.25s',
+                  : `linear-gradient(135deg, #22C55E, #16A34A)`,
+                border: 'none', borderRadius: 16, padding: '20px 18px', fontSize: 18, fontWeight: 800,
+                color: '#fff', cursor: 'pointer', marginBottom: 12, fontFamily: fonts.ui, letterSpacing: 0.3,
+                boxShadow: '0 10px 26px rgba(22,163,74,0.38)',
+                animation: pixCopied ? undefined : 'pixPulse 1.6s ease-in-out infinite',
               }}
             >
-              {pixCopied ? '✓ Código copiado!' : '📋 Copiar código PIX'}
+              {pixCopied ? '✓ CÓDIGO COPIADO!' : '📋 COPIAR CÓDIGO PIX'}
             </button>)}
+
+            {/* Depois de copiar: o próximo passo, sem pensar. */}
+            {pixQrCode && pixCopied && (
+              <div style={{
+                background: '#ECFDF5', border: '2px solid #86EFAC', borderRadius: 14,
+                padding: '14px 16px', marginBottom: 16, textAlign: 'left',
+              }}>
+                <div style={{ fontSize: 14, fontWeight: 800, color: '#166534', marginBottom: 6 }}>Agora é só colar no seu banco 👇</div>
+                <div style={{ fontSize: 13, color: '#166534', lineHeight: 1.55 }}>
+                  Abra o app do banco → <strong>PIX</strong> → <strong>Pix Copia e Cola</strong> → cole o código e confirme.
+                  Depois volte aqui: a confirmação aparece sozinha.
+                </div>
+              </div>
+            )}
+
+            {pixQrCode && (<div style={{
+              background: 'rgba(255,255,255,0.85)', borderRadius: 14, padding: 14, marginBottom: 16, border: `1px solid ${T.border}`,
+            }}>
+              <p style={{ color: T.inkSoft, fontSize: 10.5, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1, fontWeight: 700 }}>Código PIX (copia e cola)</p>
+              <p style={{ color: T.ink, fontSize: 11, wordBreak: 'break-all', lineHeight: 1.6, fontFamily: 'ui-monospace, monospace', margin: 0 }}>
+                {pixQrCode.slice(0, 80)}…
+              </p>
+            </div>)}
+
+            {pixQrCodeUrl && (
+              <details style={{ marginBottom: 18 }}>
+                <summary style={{ fontSize: 12.5, color: T.inkSoft, cursor: 'pointer', fontWeight: 600 }}>
+                  Pagando pelo computador? Toque para ver o QR Code
+                </summary>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={pixQrCodeUrl} alt="QR Code PIX" style={{
+                  width: 200, height: 200, borderRadius: 16, marginTop: 12,
+                  border: `4px solid #fff`, boxShadow: `0 12px 28px ${T.pinkDeep}1A`,
+                }} />
+              </details>
+            )}
 
             {error && (
               <div style={{
@@ -1493,33 +1572,6 @@ export default function OfertaClient() {
                   </p>
                 </div>
 
-                {/* Contagem regressiva do código. Anda de segundo em segundo e
-                    fica âmbar nos últimos 5 minutos. */}
-                {pixExpiresAt > 0 && !!pixQrCode && (
-                  <div style={{
-                    background: secondsLeft <= 300 ? '#FEF3C7' : 'rgba(255,255,255,0.7)',
-                    border: `1px solid ${secondsLeft <= 300 ? '#FDE68A' : T.border}`,
-                    borderRadius: 12, padding: '12px 16px', marginBottom: 16,
-                  }}>
-                    <div style={{
-                      fontSize: 10.5, letterSpacing: 1.2, textTransform: 'uppercase',
-                      fontWeight: 800, color: secondsLeft <= 300 ? '#92400E' : T.inkSoft, marginBottom: 4,
-                    }}>
-                      {secondsLeft <= 300 ? 'Este código está acabando' : 'Este código vale por'}
-                    </div>
-                    <div style={{
-                      fontSize: 30, fontWeight: 800, lineHeight: 1,
-                      fontFamily: 'ui-monospace, SFMono-Regular, monospace',
-                      color: secondsLeft <= 300 ? '#B45309' : T.ink, letterSpacing: 1,
-                    }}>
-                      {mmExp}:{ssExp}
-                    </div>
-                    <div style={{ fontSize: 11.5, color: secondsLeft <= 300 ? '#92400E' : T.inkSoft, marginTop: 5 }}>
-                      Depois disso é preciso gerar outro código — e a sua vaga volta para a fila.
-                    </div>
-                  </div>
-                )}
-
                 {/* Passo a passo: tira a dúvida de quem nunca pagou por copia e cola. */}
                 <div style={{
                   background: 'rgba(255,255,255,0.7)', border: `1px solid ${T.border}`,
@@ -1539,6 +1591,24 @@ export default function OfertaClient() {
                       <span style={{ fontSize: 12.5, color: T.inkSoft, lineHeight: 1.45 }}>{passo}</span>
                     </div>
                   ))}
+                </div>
+
+                {/* O que vem depois + prova social: tira o "e agora?" de quem hesita. */}
+                <div style={{
+                  background: '#fff', border: `1px solid ${T.border}`, borderRadius: 14,
+                  padding: '14px 16px', marginTop: 12, textAlign: 'left',
+                }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: T.ink, marginBottom: 8 }}>Assim que o PIX cair:</div>
+                  {[
+                    '✅ Seu acesso é liberado na hora',
+                    '📸 Você envia a foto do seu cabelo',
+                    '💬 A Juliane faz a sua consulta e monta o seu plano de 90 dias',
+                  ].map((t) => (
+                    <div key={t} style={{ fontSize: 12.5, color: T.inkSoft, lineHeight: 1.6 }}>{t}</div>
+                  ))}
+                  <div style={{ fontSize: 12, color: T.inkMuted, marginTop: 10, borderTop: `1px dashed ${T.border}`, paddingTop: 10 }}>
+                    ⭐ 3.985 mulheres já cuidam do cabelo com a Juliane.
+                  </div>
                 </div>
               </>
             ) : (
