@@ -89,7 +89,7 @@ async function getExperimentStats(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   sb: any,
   exp: Experiment,
-): Promise<{ control: VariantStats; variant: VariantStats }> {
+): Promise<{ control: VariantStats; variant: VariantStats; ambos: number }> {
   // Fetch rows that contain ab_variant for this experiment.
   // Como ab_variant é uma string com formato "flag_key:side", usamos ilike.
   const since = exp.started_at ?? '1970-01-01'
@@ -124,6 +124,9 @@ async function getExperimentStats(
       .eq('subscription_status', 'active')
       .not('quiz_session_id', 'is', null)
       .gte('subscription_activated_at', since)
+      // Só vendas feitas ENQUANTO o teste rodava: sem teto, quem comprou depois
+      // (já sem teste nenhum) entrava para o lado em que tinha estado.
+      .lte('subscription_activated_at', exp.ended_at ?? new Date().toISOString())
       .limit(50000),
   ])
 
@@ -131,6 +134,15 @@ async function getExperimentStats(
   const views     = tallyVariants(viewsRes.data ?? [], exp.flag_key)
   const interagiu = tallyVariants(stepEventsRes.data ?? [], exp.flag_key)
   const leads     = tallyVariants(leadsRes.data ?? [], exp.flag_key)
+
+  // 15/10/26: sessão que viu OS DOIS lados (vazamento) sai da comparação. Antes
+  // ela ia inteira para o lado "variant" — e essas sessões, que voltam várias
+  // vezes, compram ~10× mais: o teste Hotmart apareceu como +85% em vendas
+  // quando, só com quem viu um lado, o checkout próprio converteu ~60% MAIS.
+  const ambosSet = new Set([...views.control].filter((sid) => views.variant.has(sid)))
+  for (const t of [views, interagiu, leads]) {
+    for (const sid of ambosSet) { t.control.delete(sid); t.variant.delete(sid) }
+  }
 
   // Vendas: precisa cruzar quiz_session_id com qual lado a sessão estava
   // Pegamos os session_ids ativos de profile, e checamos qual lado eles
@@ -152,6 +164,8 @@ async function getExperimentStats(
     else if (side === 'variant') salesVariant++
   }
 
+  const ambos = ambosSet.size
+
   function build(side: 'control' | 'variant'): VariantStats {
     const v = side === 'control' ? views.control.size : views.variant.size
     const i = side === 'control' ? interagiu.control.size : interagiu.variant.size
@@ -169,7 +183,7 @@ async function getExperimentStats(
     }
   }
 
-  return { control: build('control'), variant: build('variant') }
+  return { control: build('control'), variant: build('variant'), ambos }
 }
 
 // ── Page ──────────────────────────────────────────────────────────
@@ -240,7 +254,7 @@ function ExperimentCard({
   stats,
 }: {
   exp: Experiment
-  stats: { control: VariantStats; variant: VariantStats } | null
+  stats: { control: VariantStats; variant: VariantStats; ambos: number } | null
 }) {
   const statusConfig: Record<Experiment['status'], { label: string; color: string; bg: string }> = {
     draft:      { label: 'Rascunho',  color: gray,   bg: '#F3EBE1' },
@@ -360,6 +374,11 @@ function ExperimentCard({
               <>📊 Variante {interactionDelta.positive ? 'ganhou' : 'perdeu'} {Math.abs(parseFloat(interactionDelta.text))}% em <strong>interação</strong> e {saleDelta.positive ? 'ganhou' : 'perdeu'} {Math.abs(parseFloat(saleDelta.text))}% em <strong>vendas</strong>. Use mais dados pra decidir (≥300/lado).</>
             ) : (
               <>📊 Aguardando primeiros dados nas duas variantes.</>
+            )}
+            {stats.ambos > 0 && (
+              <div style={{ marginTop: 6 }}>
+                ⚠️ {stats.ambos.toLocaleString('pt-BR')} sessões viram os dois lados (vazamento) e ficaram fora da comparação — contá-las num lado distorcia o resultado.
+              </div>
             )}
           </div>
         </div>
