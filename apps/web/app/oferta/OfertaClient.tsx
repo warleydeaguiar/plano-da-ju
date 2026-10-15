@@ -2011,10 +2011,11 @@ export default function OfertaClient() {
             {/* CTA */}
             <GreenButton
               onClick={payType === 'card' ? handleCard : handlePix}
-              // Para CARTÃO mantém clicável: o handler valida e registra o
-              // bloqueio (capta vendas perdidas) mostrando o que faltou.
-              // Para PIX exige CPF válido — pedido explícito de UX.
-              disabled={isSubmitting || (payType === 'pix' && !isValidCpf(cpf))}
+              // CPF válido libera o botão nos DOIS meios (15/10/26: no cartão o
+              // botão ficava clicável e a venda travava em "faltou: CPF" — 9
+              // pessoas em 30 dias só por isso). Os outros campos do cartão
+              // continuam validados no handler, que registra o que faltou.
+              disabled={isSubmitting || !isValidCpf(cpf)}
             >
               {isSubmitting
                 ? '⏳ Processando…'
@@ -2023,13 +2024,13 @@ export default function OfertaClient() {
                   : `🔒 Pagar ${installAmt}`}
             </GreenButton>
 
-            {/* Hint: explica por que o botão PIX está desabilitado.
+            {/* Hint: explica por que o botão está desabilitado (PIX e cartão).
                 Sem isso o cliente via um botão "morto" e não sabia o motivo
-                (origem de vários bloqueios "faltou: CPF" no PIX). */}
-            {payType === 'pix' && !isSubmitting && !isValidCpf(cpf) && (
+                (origem dos bloqueios "faltou: CPF"). */}
+            {!isSubmitting && !isValidCpf(cpf) && (
               <p style={{ textAlign: 'center', marginTop: 10, fontSize: 12.5, color: T.pinkDeep, fontWeight: 600, fontFamily: fonts.ui }}>
                 {cpf.replace(/\D/g, '').length === 0
-                  ? '☝ Preencha seu CPF acima para liberar o PIX'
+                  ? `☝ Preencha seu CPF acima para liberar ${payType === 'pix' ? 'o PIX' : 'o pagamento'}`
                   : '☝ Confira o CPF — ainda está incompleto ou inválido'}
               </p>
             )}
