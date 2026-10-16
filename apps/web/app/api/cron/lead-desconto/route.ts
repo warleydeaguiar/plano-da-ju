@@ -120,6 +120,7 @@ export async function GET(req: NextRequest) {
     // Dentro da janela: passou disso, texto livre não é entregue.
     .gte('respondeu_em', new Date(agora - JANELA_HORAS * 3600_000).toISOString())
     .is('desconto_enviado_em', null)
+    .eq('quiz_slug', 'plano-capilar') // só o quiz da consulta (o dos grupos é outro funil)
     .not('phone', 'is', null)
     .order('respondeu_em', { ascending: true })
     .limit(LOTE);

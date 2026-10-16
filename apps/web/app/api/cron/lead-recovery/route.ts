@@ -159,6 +159,10 @@ export async function GET(req: NextRequest) {
   const { data: leads, error } = await (sb.from('wg_quiz_leads') as any)
     .select('id, name, email, phone, created_at, inscricao_wa_tentativas')
     .is('inscricao_wa_enviada_em', null)
+    // Só o quiz da CONSULTA: quem veio do quiz dos grupos (fashion-gold, Ybera)
+    // pediu promoção de produto — "sua consulta está pendente" não é para ela
+    // (42 receberam por engano até 16/10/2026).
+    .eq('quiz_slug', 'plano-capilar')
     .lt('inscricao_wa_tentativas', MAX_TENTATIVAS)
     .not('phone', 'is', null)
     .gte('created_at', desdeAqui)

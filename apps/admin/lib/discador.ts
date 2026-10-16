@@ -206,6 +206,7 @@ export async function processarFila(sb: any, { seco = false } = {}): Promise<Res
   // Quiz sem checkout: leads que nunca abriram o pagamento.
   const { data: leads } = await (sb.from('wg_quiz_leads') as any)
     .select('email, created_at')
+    .eq('quiz_slug', 'plano-capilar') // o quiz dos grupos (fashion-gold) é outro funil: não liga
     .gte('created_at', desde)
     .lte('created_at', new Date(agora - p.espera_quiz_min * 60_000).toISOString())
     .not('phone', 'is', null).not('email', 'is', null)
