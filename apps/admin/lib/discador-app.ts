@@ -300,7 +300,7 @@ export async function registrarEvento(ap: Aparelho, chamadaId: number, e: Evento
   if (e.evento === 'sms') {
     const ok = !!(e as any).ok
     await (sb.from('discador_sms') as any)
-      .update({ ok, erro: ok ? null : String((e as any).erro ?? 'falhou no celular').slice(0, 300), enviado_em: agora })
+      .update({ ok, erro: ok ? null : (String((e as any).erro ?? '').trim() || 'falhou no celular').slice(0, 300), enviado_em: agora })
       .eq('id', Number((e as any).sms_id)).eq('tarefa_id', ch.tarefa_id)
     if (ok) await (sb.from('discador_chamadas') as any).update({ sms_enviado_em: agora }).eq('id', ch.id)
     return { ok: true }
