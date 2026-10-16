@@ -146,7 +146,8 @@ export async function buildPersonalizationVars(
     email: lead.email,
 
     // Cabelo
-    tipo_cabelo: tipo || 'seu tipo de cabelo',
+    // Os e-mails dizem "seu cabelo {tipo_cabelo}" — sem resposta, fica só "seu cabelo".
+    tipo_cabelo: tipo || '',
     cor_cabelo: cor || '',
     idade: idade || '',
     espessura: espessura || '',

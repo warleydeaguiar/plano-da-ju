@@ -8,10 +8,12 @@
  * de lá). Os e-mails das réguas moram em wg_email_sequences.
  */
 
+import { PRODUTO_NOME } from '@/lib/produto'
+
 const APP = 'https://planodaju.julianecost.com'
 
 // ── E-mail imediato do PIX (checkout/pix) ──────────────────────────────────
-export const EMAIL_PIX_ASSUNTO = 'Seu PIX do Plano da Ju — código para pagar 💛'
+export const EMAIL_PIX_ASSUNTO = 'Seu PIX da consulta com a Juliane — código para pagar 💛'
 
 /** E-mail transacional com o PIX copia-e-cola (a cliente paga de qualquer lugar). */
 export function emailPixHtml(first: string, code: string, qrImg?: string): string {
@@ -19,12 +21,13 @@ export function emailPixHtml(first: string, code: string, qrImg?: string): strin
   <div style="background:#FFFAF5;padding:32px 0;font-family:'Plus Jakarta Sans',Helvetica,Arial,sans-serif">
     <div style="max-width:460px;margin:0 auto;background:#fff;border-radius:18px;overflow:hidden;border:1px solid #F0E0E4">
       <div style="background-color:#BE185D;background-image:linear-gradient(135deg,#FB7185,#BE185D);padding:26px 32px">
-        <div style="color:#ffffff;font-size:22px;font-weight:700;font-family:Georgia,serif">Plano da <em>Ju</em></div>
+        <div style="color:#ffffff;font-size:22px;font-weight:700;font-family:Georgia,serif">Juliane <em>Cost</em></div>
+        <div style="color:#FFE4EA;font-size:12px;letter-spacing:.6px;text-transform:uppercase;margin-top:2px">Tricologista</div>
       </div>
       <div style="padding:26px 32px;color:#3D2B2E">
         <p style="font-size:16px;margin:0 0 12px">Oi, ${first}! 💛</p>
         <p style="font-size:14px;line-height:1.6;color:#7A6A6D;margin:0 0 18px">
-          Seu PIX do <strong>Plano da Ju</strong> foi gerado. É só pagar com o código abaixo
+          Seu PIX da <strong>${PRODUTO_NOME}</strong> foi gerado. É só pagar com o código abaixo
           que a Juliane já começa a preparar a sua consulta e o seu plano capilar de 90 dias. <strong>O PIX expira em 1 hora.</strong>
         </p>
         ${qrImg ? `<div style="text-align:center;margin:0 0 18px"><img src="${qrImg}" alt="QR Code PIX" width="180" height="180" style="border-radius:12px"/></div>` : ''}
@@ -42,7 +45,7 @@ export function emailPixHtml(first: string, code: string, qrImg?: string): strin
 // ── SMS (Zenvia; o sendSms tira os acentos) ────────────────────────────────
 /** Toque 1 — na hora em que o PIX é gerado (checkout/pix). */
 export function smsPixGerado(first: string): string {
-  return `${first}, seu PIX do Plano da Ju foi gerado! O codigo esta no seu e-mail. Finalize o pagamento pra garantir sua consulta com a Juliane.`
+  return `${first}, seu PIX da consulta com a Tricologista Juliane Cost foi gerado! O codigo esta no seu e-mail. Pague agora pra garantir sua consulta.`
 }
 
 // SMS sem acento/emoji (GSM-7, custo menor) e SEM link. Estrategia 360: leva pro
