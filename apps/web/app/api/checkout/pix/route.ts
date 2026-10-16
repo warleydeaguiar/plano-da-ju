@@ -13,6 +13,7 @@ import { PLAN_BASE_CENTS } from '@/lib/pricing';
 import { precoParaCobrar } from '@/lib/cupom';
 import { precoDoCliente } from '@/lib/preco-servidor';
 import { telefoneDoCliente } from '@/lib/telefone-cliente';
+import { EMAIL_PIX_ASSUNTO, emailPixHtml, smsPixGerado } from '@/lib/textos-mensagens';
 
 // Preço vem da fonte única (lib/pricing) — nunca hardcode aqui, senão o valor
 // cobrado diverge do que a cliente vê na página.
@@ -52,32 +53,6 @@ function toIntlPhone(raw?: string | null): string {
   const d = String(raw ?? '').replace(/\D/g, '');
   if (!d || d.length < 10) return '';
   return d.startsWith('55') && d.length >= 12 ? d : `55${d}`;
-}
-
-// E-mail transacional com o PIX copia-e-cola (a cliente paga de qualquer lugar).
-function pixEmailHtml(first: string, code: string, qrImg?: string): string {
-  return `
-  <div style="background:#FFFAF5;padding:32px 0;font-family:'Plus Jakarta Sans',Helvetica,Arial,sans-serif">
-    <div style="max-width:460px;margin:0 auto;background:#fff;border-radius:18px;overflow:hidden;border:1px solid #F0E0E4">
-      <div style="background-color:#BE185D;background-image:linear-gradient(135deg,#FB7185,#BE185D);padding:26px 32px">
-        <div style="color:#ffffff;font-size:22px;font-weight:700;font-family:Georgia,serif">Plano da <em>Ju</em></div>
-      </div>
-      <div style="padding:26px 32px;color:#3D2B2E">
-        <p style="font-size:16px;margin:0 0 12px">Oi, ${first}! 💛</p>
-        <p style="font-size:14px;line-height:1.6;color:#7A6A6D;margin:0 0 18px">
-          Seu PIX do <strong>Plano da Ju</strong> foi gerado. É só pagar com o código abaixo
-          que a Juliane já começa a preparar a sua consulta e o seu plano capilar de 90 dias. <strong>O PIX expira em 1 hora.</strong>
-        </p>
-        ${qrImg ? `<div style="text-align:center;margin:0 0 18px"><img src="${qrImg}" alt="QR Code PIX" width="180" height="180" style="border-radius:12px"/></div>` : ''}
-        <div style="font-size:11px;font-weight:700;color:#BE185D;text-transform:uppercase;letter-spacing:.5px;margin:0 0 6px">PIX copia e cola</div>
-        <div style="font-family:monospace;font-size:12.5px;line-height:1.5;color:#3D2B2E;background:#FFF6F9;border:1px dashed #F0C0CE;border-radius:10px;padding:12px;word-break:break-all">${code}</div>
-        <p style="font-size:12.5px;line-height:1.6;color:#7A6A6D;margin:18px 0 0">
-          Abra o app do seu banco, escolha <strong>PIX &gt; Copia e Cola</strong>, cole esse código e confirme.
-          Assim que o pagamento cair, seu acesso é liberado automaticamente.
-        </p>
-      </div>
-    </div>
-  </div>`;
 }
 
 export async function POST(req: NextRequest) {
@@ -324,13 +299,13 @@ export async function POST(req: NextRequest) {
         await sendEmail({
           to: email,
           toName: name,
-          subject: 'Seu PIX do Plano da Ju — código para pagar 💛',
-          html: pixEmailHtml(_first, _code, _qrImg),
+          subject: EMAIL_PIX_ASSUNTO,
+          html: emailPixHtml(_first, _code, _qrImg),
         });
       } catch (e) { console.error('[pix immediate email]', e); }
       try {
         if (_phoneIntl) {
-          await sendSms(_phoneIntl, `${_first}, seu PIX do Plano da Ju foi gerado! O codigo esta no seu e-mail. Finalize o pagamento pra garantir sua consulta com a Juliane.`);
+          await sendSms(_phoneIntl, smsPixGerado(_first));
         }
       } catch (e) { console.error('[pix immediate sms]', e); }
     });

@@ -4,6 +4,7 @@ import { ehPedidoDeBloqueio, registrarBloqueio } from '@/lib/wa-optout';
 import { classificarResposta } from '@/lib/wa-respostas';
 import { responder, marcarConversa, notaPrivada } from '@/lib/chatwoot';
 import { resumoQuizTexto, respostasDasSessoes } from '@/lib/quiz-resumo';
+import { waResposta } from '@/lib/textos-mensagens';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -85,7 +86,7 @@ export async function POST(req: NextRequest) {
     // ── Pedido de bloqueio: para tudo e confirma ──────────────────────────
     if (tipo === 'bloqueio' || ehPedidoDeBloqueio(texto)) {
       await registrarBloqueio(sb, digitos, 'whatsapp');
-      await responder(conversa, digitos, 'Pronto! Você não vai mais receber mensagens automáticas por aqui. 💛');
+      await responder(conversa, digitos, waResposta.bloqueio());
       await marcarLead(sb, digitos, { resposta_tipo: 'bloqueio', resposta_texto: texto.slice(0, 200) });
       return NextResponse.json({ ok: true, bloqueado: true });
     }
@@ -98,8 +99,7 @@ export async function POST(req: NextRequest) {
         resposta_tipo: tipo, resposta_texto: texto.slice(0, 200), respondeu_em: agora,
       });
       await marcarPlanoPorWhatsApp(sb, digitos);
-      await responder(conversa, digitos,
-        'Perfeito! 💛 Vou te mandar o seu plano por aqui. Se precisar de qualquer ajuste, é só me falar nesta conversa.');
+      await responder(conversa, digitos, waResposta.planoPorWhatsapp());
       await marcarConversa(conversa, 'plano-por-whatsapp');
       return NextResponse.json({ ok: true, planoPorWhatsapp: true, lead: lead ?? null });
     }
@@ -130,10 +130,7 @@ export async function POST(req: NextRequest) {
         resposta_tipo: tipo, resposta_texto: texto.slice(0, 200), respondeu_em: agora,
       });
       const link = `${APP_URL}/g/entrar?p=${encodeURIComponent(digitos)}`;
-      await responder(conversa, digitos,
-        `${nome ? `Perfeito, ${nome}! ` : 'Perfeito! '}Sua vaga está reservada 💛\n\n`
-        + `É só tocar aqui para entrar: ${link}\n\n`
-        + 'É nesse grupo que eu aviso quando os produtos entram em promoção de verdade.');
+      await responder(conversa, digitos, waResposta.querGrupo(nome, link));
       await marcarConversa(conversa, 'entrou-no-grupo');
       return NextResponse.json({ ok: true, linkDoGrupoEnviado: true });
     }
@@ -154,15 +151,12 @@ export async function POST(req: NextRequest) {
         // Link novo em vez de pedir para ela tentar de novo: a rota escolhe um
         // grupo com vaga na hora, então um convite que falhou não se repete.
         const link = `${APP_URL}/g/entrar?p=${encodeURIComponent(digitos)}`;
-        await responder(conversa, digitos,
-          `${nome ? `Ai, ${nome}, ` : ''}desculpa! Toca aqui que eu te coloco em um grupo com vaga agora: ${link}`);
+        await responder(conversa, digitos, waResposta.naoEntrei(nome, link));
         await marcarConversa(conversa, 'grupo-sem-acesso');
         return NextResponse.json({ ok: true, novoLinkDoGrupo: true });
       }
 
-      await responder(conversa, digitos,
-        `${nome ? `Que bom, ${nome}! ` : 'Que bom! '}Já que você está no grupo, me conta uma coisa para eu te avisar do que interessa: `
-        + 'o que mais te incomoda no seu cabelo hoje — queda, quebra, volume, frizz ou ressecamento? 💛');
+      await responder(conversa, digitos, waResposta.entrei(nome));
       await marcarConversa(conversa, 'entrou-no-grupo');
       return NextResponse.json({ ok: true, entrouNoGrupo: true });
     }
@@ -176,8 +170,7 @@ export async function POST(req: NextRequest) {
       // Sem optout aqui: ela não pediu para parar de receber mensagens, e o
       // bloqueio permanente calaria também as boas-vindas e o suporte. Marcar
       // o lead abaixo já a tira das duas réguas de cobrança.
-      await responder(conversa, digitos,
-        'Ai, me desculpa! 🙈 Se você já recebeu o Plano de cortesia, ignora essa mensagem — não é para você pagar nada. Já tirei o seu número da fila desse aviso.\n\nSe o seu acesso não estiver funcionando, me fala por aqui que eu resolvo. 💛');
+      await responder(conversa, digitos, waResposta.cortesia());
       await marcarConversa(conversa, 'cortesia-cobrada');
       await marcarLead(sb, digitos, {
         resposta_tipo: 'cortesia',
@@ -205,11 +198,9 @@ export async function POST(req: NextRequest) {
     let respondido: string | null = null;
     if (tipo === 'botao_concluir') {
       const nome = primeiroNome(corpo);
-      respondido = await responder(conversa, digitos,
-        `${nome ? `Que bom, ${nome}! ` : 'Que bom! '}É só tocar aqui para concluir a sua inscrição: ${LINK_OFERTA}\n\nSe travar em alguma etapa, me conta por aqui que eu te ajudo. 💛`);
+      respondido = await responder(conversa, digitos, waResposta.concluir(nome, LINK_OFERTA));
     } else if (tipo === 'botao_duvida') {
-      respondido = await responder(conversa, digitos,
-        'Claro! Me conta: o que mais te incomoda no seu cabelo hoje? Eu te respondo por aqui. 💛');
+      respondido = await responder(conversa, digitos, waResposta.duvida());
       await marcarConversa(conversa, 'duvida-inscricao');
     }
 
@@ -281,10 +272,7 @@ function esperaDoDiagnostico(nome: string): string {
   const dia = agora.getDay();
   const minutos = agora.getHours() * 60 + agora.getMinutes();
   const noExpediente = dia >= 1 && dia <= 5 && minutos >= 8 * 60 && minutos < 17 * 60 + 30;
-  const abertura = 'Nosso atendimento é de segunda a sexta, das 8h às 17h30.';
-  return noExpediente
-    ? `${nome ? `Oi, ${nome}! ` : 'Oi! '}Estou olhando as suas respostas do quiz agora e já te mando o seu diagnóstico por aqui. 💛`
-    : `${nome ? `Oi, ${nome}! ` : 'Oi! '}Recebi o seu pedido 💛 Vou olhar as suas respostas do quiz e te mandar o diagnóstico por aqui. ${abertura}`;
+  return waResposta.diagnostico(nome, noExpediente);
 }
 
 /** Respostas do quiz daquela pessoa, prontas para a atendente ler na conversa. */

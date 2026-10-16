@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { sendSms } from '@/lib/zenvia';
+import { smsPlanoPronto } from '@/lib/textos-mensagens';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -26,10 +27,6 @@ function toIntlPhone(raw?: string | null): string {
   if (!d || d.length < 10) return '';
   return d.startsWith('55') && d.length >= 12 ? d : `55${d}`;
 }
-function smsText(name: string): string {
-  return `${name}, seu plano capilar personalizado da Juliane ficou pronto! Abra o app Plano da Ju pra ver seu cronograma completo e comecar hoje.`;
-}
-
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET;
   const waSecret = process.env.WA_AUTOREPLY_SECRET;
@@ -72,7 +69,7 @@ export async function GET(req: NextRequest) {
     }
     if (dry) { result.sent++; result.details.push({ email: p.email, to: phoneIntl, would_send: true }); continue; }
 
-    const r = await sendSms(phoneIntl, smsText(firstName(p.full_name)));
+    const r = await sendSms(phoneIntl, smsPlanoPronto(firstName(p.full_name)));
     if (r.ok) { await markSent(sb, p.id); result.sent++; }
     else if (r.skipped) { result.failed++; result.details.push({ email: p.email, err: 'zenvia_token_missing' }); }
     else { result.failed++; result.details.push({ email: p.email, err: r.error }); } // não marca → retenta

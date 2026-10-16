@@ -6,6 +6,7 @@ import { telefonesBloqueados, finalTelefone } from '@/lib/wa-optout';
 import { precoDoCliente } from '@/lib/preco-servidor';
 import { conferirCupom } from '@/lib/cupom';
 import { brlCents, PLAN_BASE_CENTS } from '@/lib/pricing';
+import { waDesconto } from '@/lib/textos-mensagens';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -56,17 +57,6 @@ function telefoneIntl(bruto?: string | null): string {
   const d = String(bruto ?? '').replace(/\D/g, '');
   if (!d) return '';
   return d.startsWith('55') && d.length >= 12 ? d : `55${d}`;
-}
-
-function mensagem(nome: string, precoBaseCents: number, precoComCupomCents: number): string {
-  return (
-    `Oi ${nome}! Vi que você ainda não finalizou a sua inscrição na consulta com a Juliane 💛\n\n`
-    // O "em vez de" é o preço DELA (a faixa que respondeu no quiz), senão a
-    // mensagem prometeria um desconto sobre um valor que ela nunca viu.
-    + `Separei um desconto pra você: em vez de ${brlCents(precoBaseCents)}, fica por ${brlCents(precoComCupomCents)}.\n\n`
-    + `É só entrar por aqui que o desconto já vem aplicado:\n`
-    + `https://planodaju.julianecost.com/oferta?cupom=${CUPOM}`
-  );
 }
 
 /** Texto livre — só funciona dentro da janela de 24h. */
@@ -188,7 +178,7 @@ export async function GET(req: NextRequest) {
     // checkout — inclusive o arredondamento para ,90.
     const cupomInfo = await conferirCupom(CUPOM, precoBase);
     const precoComCupom = cupomInfo?.precoCents ?? precoBase;
-    const r = await enviarTexto(telefoneIntl(lead.phone), mensagem(primeiroNome(lead.name), precoBase, precoComCupom));
+    const r = await enviarTexto(telefoneIntl(lead.phone), waDesconto(primeiroNome(lead.name), brlCents(precoBase), brlCents(precoComCupom), CUPOM));
     if (r.ok) {
       enviados++;
       await (sb.from('wg_quiz_leads') as any)

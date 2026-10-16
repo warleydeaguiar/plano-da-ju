@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { pagarme } from '@/lib/pagarme/client';
 import { sendSms } from '@/lib/zenvia';
+import { smsPixToque } from '@/lib/textos-mensagens';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -33,15 +34,6 @@ function toIntlPhone(raw?: string | null): string {
   if (!d || d.length < 10) return '';
   if (d.startsWith('55') && d.length >= 12) return d;
   return `55${d}`;
-}
-
-// SMS sem acento/emoji (GSM-7, custo menor) e SEM link. Estrategia 360: leva pro
-// WhatsApp/e-mail, onde estao o codigo PIX e a oferta. Mensagem por toque.
-function smsText(name: string, touch: number): string {
-  if (touch === 2) {
-    return `${name}, sua consulta com a Juliane ainda ta te esperando! Ainda da tempo de garantir. Chama a gente no WhatsApp que a gente finaliza com voce.`;
-  }
-  return `${name}, ultima chamada! A Juliane separou um horario pra sua consulta. Responde nosso WhatsApp hoje que a gente destrava seu acesso.`;
 }
 
 export async function GET(req: NextRequest) {
@@ -97,7 +89,7 @@ export async function GET(req: NextRequest) {
 
       if (dry) { result.sent++; result.details.push({ email: p.email, touch: nextTouch, hoursSince: Math.round(hoursSince), would_send: true }); continue; }
 
-      const sendRes = await sendSms(phoneIntl, smsText(firstName(p.full_name), nextTouch));
+      const sendRes = await sendSms(phoneIntl, smsPixToque(firstName(p.full_name), nextTouch));
       if (sendRes.ok) {
         await setCount(sb, p.id, nextTouch);
         result.sent++;

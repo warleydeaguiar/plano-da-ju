@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { telefonesBloqueados } from '@/lib/wa-optout'
 import { templateUtilitarioAprovado } from '@/lib/wa-templates'
+import { waEntrouNoGrupo } from '@/lib/textos-mensagens'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -119,8 +120,7 @@ export async function GET(req: NextRequest) {
       .select('phone')
     if (claimed && claimed.length > 0) {
       const first = await resolveFirstName(db, url.searchParams.get('n'), phoneDigits)
-      const ola = first ? `Fico muito feliz, ${first}, que você entrou no meu grupo! 💚` : 'Fico muito feliz que você entrou no meu grupo! 💚'
-      const msg = `${ola}\n\nEu dou uma atenção especial pra todas que estão nele, então me conta: o que mais te incomoda no seu cabelo hoje?`
+      const msg = waEntrouNoGrupo(first)
       // Quem pediu para não receber mensagens não recebe; na dúvida, não envia.
       let bloqueou = true
       try { bloqueou = (await telefonesBloqueados(db, [phoneDigits])).size > 0 } catch { /* não envia */ }

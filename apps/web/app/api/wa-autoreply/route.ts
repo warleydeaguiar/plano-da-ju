@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { waAutoreplyGrupo } from '@/lib/textos-mensagens';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -59,11 +60,7 @@ export async function POST(req: NextRequest) {
 
   const link = `${APP}/g/entrar?p=${phone}${name ? `&n=${encodeURIComponent(name)}` : ''}`;
   const firstName = name.split(/\s+/)[0] || '';
-  const text =
-    `Oiii${firstName ? `, ${firstName}` : ''}! Que bom te ver por aqui 💖 Tem vaga sim!\n\n` +
-    `Entra no nosso grupo de promoções por aqui: ${link}\n\n` +
-    'E me conta uma coisinha, pra eu conseguir te ajudar melhor: o que MAIS te incomoda no seu cabelo hoje? ' +
-    '(queda, frizz, pontas ressecadas, quebra, crescimento, volume…) 💬';
+  const text = waAutoreplyGrupo(firstName, link);
 
   const sent = await sendWhatsApp(phone, text);
   return NextResponse.json({ ok: true, sent });
