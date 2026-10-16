@@ -48,6 +48,7 @@ const NAV: NavGroup[] = [
     secao: 'Vendas',
     itens: [
       { icon: SbVendas, label: 'Todas as vendas', href: '/vendas' },
+      { icon: SbSuporte, label: 'Discador', href: '/discador' },
       {
         icon: SbCheckout, label: 'Checkout', href: '/checkout',
         children: [

@@ -44,6 +44,11 @@ export async function middleware(req: NextRequest) {
   // Página de login é sempre acessível
   if (pathname === '/login') return NextResponse.next()
 
+  // App do discador (celular): autentica com o próprio token do aparelho,
+  // conferido em cada rota (lib/discador-app.ts). O painel (/api/discador-painel)
+  // NÃO entra aqui — continua exigindo login.
+  if (pathname.startsWith('/api/discador/')) return NextResponse.next()
+
   // Cron / integrações server-to-server podem usar Bearer
   if (pathname.startsWith('/api/')) {
     const auth = req.headers.get('authorization') ?? ''
