@@ -324,6 +324,29 @@ async function montarFicha(sb: any, t: any, p: ParametrosDiscador, atendente: st
   }
 }
 
+// ── quem está ligando? (retorno da cliente) ──────────────────────────────────
+/**
+ * O SMS de quem não atende pede "me liga neste número": quando ela liga de volta,
+ * o app pergunta quem é e mostra a ficha dela na chamada recebida. Só acha quem
+ * está (ou esteve nos últimos 10 dias) na fila do discador.
+ */
+export async function quemEstaLigando(ap: Aparelho, telefone: string) {
+  const d = String(telefone ?? '').replace(/\D/g, '')
+  if (d.length < 8) return { achou: false }
+  const sb = createAdminClient()
+  const { p } = await lerConfig(sb)
+  const { data } = await (sb.from('discador_tarefas') as any).select('*')
+    .like('telefone', `%${d.slice(-8)}`)
+    .gte('criada_em', new Date(Date.now() - 10 * 86400_000).toISOString())
+    .order('status', { ascending: true }) // 'aberta' antes de 'cancelada'/'concluida'
+    .order('id', { ascending: false }).limit(1)
+  const t = (data ?? [])[0]
+  if (!t) return { achou: false }
+  const ficha = await montarFicha(sb, t, p, ap.atendente)
+  const fim = t.status === 'aberta' ? null : t.fim_motivo === 'comprou' || t.resultado === 'comprou' ? 'Já pagou' : 'Saiu da fila'
+  return { achou: true, ficha: { ...ficha, situacao: ['Retornou a ligação', fim].filter(Boolean).join(' · ') } }
+}
+
 // ── eventos da chamada ───────────────────────────────────────────────────────
 type Evento =
   | { evento: 'discou'; chip?: string } | { evento: 'atendeu' }

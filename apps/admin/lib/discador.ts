@@ -52,7 +52,9 @@ export const DISCADOR_PADRAO: ParametrosDiscador = {
   limite_quiz_dia: 30,
   horario: { dias: [1, 2, 3, 4, 5], inicio: '08:00', fim: '17:00' },
   sms_sem_atender: true,
-  sms_texto: 'Oi {nome}! Aqui é a {atendente}, da equipe da Juliane Cost. Te liguei sobre a sua consulta. Finalize aqui: {link}',
+  // SMS é AVISO, não clique (Warley, 19/10/2026): sem link — e cabe em 1 SMS (sai sem acento).
+  // Ela pode ligar de volta no número do celular da empresa: o Discador Ju atende.
+  sms_texto: 'Oi {nome}! Aqui é a {atendente}, da equipe da Juliane Cost. Te liguei sobre a sua consulta e não consegui falar. Vou ligar de novo, ou me liga neste número.',
   mensagem_link: 'Oi {nome}! Aqui é a {atendente}, da equipe da Juliane Cost 💛 Para finalizar a sua consulta: {link}',
   ligado_desde: null,
 }

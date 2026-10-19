@@ -185,7 +185,17 @@ export default function DiscadorClient() {
           Mandar SMS pelo chip do celular quando a pessoa não atende (no máximo 1 por dia por telefone)
         </label>
         <textarea value={p.sms_texto} onChange={(e) => set('sms_texto', e.target.value)} rows={2}
-          style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #E6DEE8', fontSize: 13, fontFamily: 'inherit', marginBottom: 8 }} />
+          style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #E6DEE8', fontSize: 13, fontFamily: 'inherit', marginBottom: 4 }} />
+        {(() => {
+          // Com um nome e uma atendente de tamanho comum; sai sem acento (160 caracteres = 1 SMS).
+          const n = String(p.sms_texto ?? '').replaceAll('{nome}', 'Fernanda').replaceAll('{atendente}', 'Juliana')
+            .replaceAll('{link}', 'planodaju.julianecost.com/oferta').length
+          return (
+            <div style={{ fontSize: 12, color: n > 160 ? '#B45309' : gray, marginBottom: 10 }}>
+              SMS é aviso: não precisa de link (se quiser, {'{link}'} põe o da oferta). ≈ {n} caracteres · {n > 160 ? `${Math.ceil(n / 153)} SMS por envio — encurte para caber em 1` : '1 SMS'}
+            </div>
+          )
+        })()}
         <div style={{ fontSize: 12, color: gray, marginBottom: 6 }}>Mensagem do botão &ldquo;mandar o link&rdquo; (WhatsApp/SMS do celular):</div>
         <textarea value={p.mensagem_link} onChange={(e) => set('mensagem_link', e.target.value)} rows={2}
           style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #E6DEE8', fontSize: 13, fontFamily: 'inherit' }} />
