@@ -15,7 +15,7 @@ const MOTIVO: Record<string, string> = {
   quiz_sem_checkout: 'Fez o quiz e não abriu o pagamento',
 }
 const ERRO_TIPO: Record<string, string> = {
-  travou: 'App fechou com erro', chamada_sumiu: 'Ligação não chegou ao app', perdeu_padrao: 'Deixou de ser o telefone padrão', outro: 'Outro',
+  travou: 'App fechou com erro', chamada_sumiu: 'Ligação não chegou ao app', perdeu_padrao: 'Deixou de ser o telefone padrão', sms_falhou: 'SMS não saiu', outro: 'Outro',
 }
 const DESFECHO: Record<string, string> = {
   atendeu: 'Atendeu', nao_atendeu: 'Não atendeu', ocupado: 'Ocupado', recusou: 'Recusou',
@@ -245,6 +245,7 @@ export default function DiscadorClient() {
                   <td style={{ padding: 6, whiteSpace: 'nowrap' }}>{dataHora(e.criado_em)}</td>
                   <td style={{ padding: 6, whiteSpace: 'nowrap' }}><strong>{ERRO_TIPO[e.tipo] ?? e.tipo}</strong><div style={{ fontSize: 11, color: gray }}>app {e.app_versao ?? '—'}</div></td>
                   <td style={{ padding: 6 }}>{e.mensagem}
+                    {e.tipo === 'sms_falhou' && e.detalhe?.codigo_operadora > 0 && <div style={{ fontSize: 11, color: gray }}>código da operadora {e.detalhe.codigo_operadora} · {e.detalhe.tem_link ? 'com link' : 'sem link'}{e.detalhe.teste ? ' · teste' : ''}</div>}
                     {e.detalhe?.rastro && <details style={{ marginTop: 4 }}><summary style={{ fontSize: 11, color: gray, cursor: 'pointer' }}>detalhe técnico</summary><pre style={{ fontSize: 10.5, whiteSpace: 'pre-wrap', color: gray }}>{String(e.detalhe.rastro).slice(0, 3000)}</pre></details>}
                   </td>
                 </tr>

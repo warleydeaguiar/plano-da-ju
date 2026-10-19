@@ -118,7 +118,7 @@ export async function aparelhoDaRequisicao(req: Request): Promise<Aparelho | nul
 
 /** Erro, travamento ou diagnóstico mandado pelo celular (POST /api/discador/erro). */
 export async function registrarErroDoApp(ap: Aparelho, b: any, versao: string | null) {
-  const tipos = ['travou', 'chamada_sumiu', 'perdeu_padrao', 'outro']
+  const tipos = ['travou', 'chamada_sumiu', 'perdeu_padrao', 'sms_falhou', 'outro']
   const sb = createAdminClient()
   await (sb.from('discador_erros') as any).insert({
     aparelho_id: ap.id,
