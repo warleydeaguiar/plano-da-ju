@@ -142,17 +142,21 @@ export async function processarFila(sb: any, { seco = false } = {}): Promise<Res
   const listaAbertas = (abertas ?? []) as any[]
   if (listaAbertas.length) {
     const emails = [...new Set(listaAbertas.map((t) => t.email.toLowerCase()))]
-    const [pagos, perfis, optout] = await Promise.all([
+    const [pagos, perfis, optout, acessoTel] = await Promise.all([
       emailsQuePagaram(sb, emails, new Date(agora - 40 * 86400_000).toISOString()),
       perfisPorEmail(sb, emails),
       telefonesOptout(sb),
+      // Falhou aqui? Segue encerrando pelo e-mail (quem pagou nunca fica na fila por erro desta conferência).
+      telefonesComAcesso(sb, listaAbertas.map((t) => chaveTelefone(t.telefone))).catch(() => new Map<string, 'pago' | 'cortesia'>()),
     ])
     for (const t of listaAbertas) {
       const e = t.email.toLowerCase()
       const perfil = perfis.get(e)
+      const peloTel = acessoTel.get(chaveTelefone(t.telefone))
       let fim: string | null = null
       if (pagos.has(e) || (perfil && perfil.subscription_status === 'active' && perfil.subscription_type !== 'parceria' && perfil.subscription_type !== 'none')) fim = 'comprou'
-      else if (perfil?.subscription_type === 'parceria') fim = 'cortesia'
+      else if (perfil?.subscription_type === 'parceria' || peloTel === 'cortesia') fim = 'cortesia'
+      else if (peloTel === 'pago') fim = 'comprou'
       else if (t.telefone && optout.has(t.telefone.slice(-8))) fim = 'optout'
       else if (new Date(t.criada_em).getTime() < agora - (p.janela_dias + 3) * 86400_000) fim = 'expirou'
       if (!fim) continue
@@ -238,6 +242,11 @@ export async function processarFila(sb: any, { seco = false } = {}): Promise<Res
     .gte('criada_em', new Date(hojeBR.getTime() + BR_MS).toISOString())
   let vagasQuiz = Math.max(0, p.limite_quiz_dia - (quizHoje ?? 0))
 
+  // Pelo telefone também: cortesia/compra feita com OUTRO e-mail não entra na fila.
+  const acessoTel = await telefonesComAcesso(sb, candidatos.map((c) => {
+    const ct = contatos.get(c.email); return chaveTelefone(ct?.telefone ?? perfis.get(c.email)?.phone)
+  }))
+
   const ordem = [...candidatos].sort((a, b) => MOTIVOS[a.motivo].prioridade - MOTIVOS[b.motivo].prioridade)
   for (const c of ordem) {
     if (comTarefa.has(c.email) || pagos.has(c.email)) continue
@@ -248,6 +257,7 @@ export async function processarFila(sb: any, { seco = false } = {}): Promise<Res
     const tel = telefoneNacional(ct?.telefone ?? perfil?.phone)
     if (!tel) { out.semTelefone++; continue }
     if (optout.has(tel.slice(-8))) continue
+    if (acessoTel.has(chaveTelefone(tel))) continue // já teve acesso (pago ou cortesia) com outro e-mail
     if (c.motivo === 'quiz_sem_checkout') { if (vagasQuiz <= 0) continue; vagasQuiz-- }
 
     out.novas[c.motivo]++
@@ -264,6 +274,25 @@ export async function processarFila(sb: any, { seco = false } = {}): Promise<Res
 }
 
 // ── Consultas auxiliares ─────────────────────────────────────────────────────
+/** DDD + 8 últimos dígitos (ignora 55 e o nono dígito) — igual a apps/web/lib/acesso-lead.ts. */
+export function chaveTelefone(bruto?: string | null): string {
+  let d = String(bruto ?? '').replace(/\D/g, '')
+  if (d.startsWith('55') && d.length >= 12) d = d.slice(2)
+  return d.length >= 10 ? d.slice(0, 2) + d.slice(-8) : ''
+}
+
+/** Telefones que já tiveram acesso (pago ou cortesia, ativo ou vencido). Erro = ninguém liga (fail-closed). */
+async function telefonesComAcesso(sb: any, chaves: string[]): Promise<Map<string, 'pago' | 'cortesia'>> {
+  const m = new Map<string, 'pago' | 'cortesia'>()
+  const lista = [...new Set(chaves.filter(Boolean))]
+  for (let i = 0; i < lista.length; i += 500) {
+    const { data, error } = await (sb.rpc as any)('discador_telefones_com_acesso', { p_chaves: lista.slice(i, i + 500) })
+    if (error) throw new Error(`discador_telefones_com_acesso: ${error.message}`)
+    for (const r of (data ?? []) as any[]) if (m.get(r.chave) !== 'cortesia') m.set(r.chave, r.tipo)
+  }
+  return m
+}
+
 async function emailsQuePagaram(sb: any, emails: string[], desde: string): Promise<Set<string>> {
   const s = new Set<string>()
   for (let i = 0; i < emails.length; i += 200) {

@@ -180,3 +180,32 @@ export function fillRichTemplate(template: string, vars: Record<string, string>)
   }
   return result
 }
+
+// ── Respostas do quiz para a FICHA do discador (o que a atendente lê na ligação) ──
+const GASTO: Record<string, string> = {
+  ate_100: 'até R$ 100 por mês', ate_300: 'até R$ 300 por mês', ate_500: 'até R$ 500 por mês', mais_500: 'mais de R$ 500 por mês',
+}
+const SIM_NAO: Record<string, string> = { sim: 'sim', nao: 'não' }
+const CANETA_QUEDA: Record<string, string> = { sim_pouca: 'sim, um pouco', sim_muita: 'sim, muita', nao: 'não' }
+
+/**
+ * As respostas que ajudam a conversa, já em português, na ordem em que fazem
+ * sentido no telefone. Só entra o que a pessoa respondeu.
+ */
+export async function respostasParaFicha(
+  sb: SupabaseClient, session_id: string | null, email: string | null,
+): Promise<{ pergunta: string; resposta: string }[]> {
+  const a = await loadAnswers(sb, session_id, email)
+  const linhas: [string, string][] = [
+    ['O que mais incomoda', arrayLabel(a.incomoda, INCOMODA)],
+    ['Cabelo', [singleLabel(a.tipo, TIPO), singleLabel(a.espessura, ESPESSURA), singleLabel(a.oleosidade, OLEOSIDADE)].filter(Boolean).join(', ')],
+    ['Química', arrayLabel(a.quimica, QUIMICA)],
+    ['Calor', arrayLabel(a.calor, CALOR)],
+    ['Gasta com cabelo', singleLabel(a.gasto_mensal, GASTO)],
+    ['Idade', singleLabel(a.idade, IDADE)],
+    ['É mãe', singleLabel(a.e_mae, SIM_NAO)],
+    ['Usa caneta emagrecedora', singleLabel(a.caneta_emagrecedora, SIM_NAO)],
+    ['Queda com a caneta', singleLabel(a.caneta_queda, CANETA_QUEDA)],
+  ]
+  return linhas.filter(([, r]) => r).map(([pergunta, resposta]) => ({ pergunta, resposta }))
+}

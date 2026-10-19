@@ -21,18 +21,19 @@ export async function GET() {
   const { ligado, motorLigado, p } = await lerConfig(sb)
   const hoje = new Date(); hoje.setUTCHours(3, 0, 0, 0) // meia-noite de Brasília
   if (hoje.getTime() > Date.now()) hoje.setUTCDate(hoje.getUTCDate() - 1)
-  const [atendentes, aparelhos, fila, chamadas, hojeCh] = await Promise.all([
+  const [atendentes, aparelhos, fila, chamadas, hojeCh, erros] = await Promise.all([
     (sb.from('discador_atendentes') as any).select('*').order('id'),
-    (sb.from('discador_aparelhos') as any).select('id, atendente_id, nome, pareado_em, pausado, revogado_em, ultimo_contato_em, estado, app_versao, modelo, codigo_expira').order('id', { ascending: false }),
+    (sb.from('discador_aparelhos') as any).select('id, atendente_id, nome, pareado_em, pausado, revogado_em, ultimo_contato_em, estado, app_versao, modelo, codigo_expira, padrao, padrao_em').order('id', { ascending: false }),
     (sb.from('discador_tarefas') as any).select('id, nome, email, telefone, motivo, prioridade, tentativas, proxima_em, criada_em, contexto').eq('status', 'aberta').order('prioridade').order('proxima_em').limit(200),
-    (sb.from('discador_chamadas') as any).select('id, tarefa_id, tentativa, criada_em, atendeu_em, duracao_s, desfecho, resultado, nota, discador_tarefas(nome, motivo)').order('id', { ascending: false }).limit(30),
+    (sb.from('discador_chamadas') as any).select('id, tarefa_id, tentativa, criada_em, atendeu_em, duracao_s, desfecho, resultado, nota, chip, discador_tarefas(nome, motivo)').order('id', { ascending: false }).limit(30),
     (sb.from('discador_chamadas') as any).select('desfecho, duracao_s, resultado').gte('criada_em', hoje.toISOString()),
+    (sb.from('discador_erros') as any).select('id, aparelho_id, tipo, mensagem, detalhe, app_versao, criado_em').order('id', { ascending: false }).limit(15),
   ])
   const h = (hojeCh.data ?? []) as any[]
   return NextResponse.json({
     ligado, motorLigado, parametros: p,
     atendentes: atendentes.data ?? [], aparelhos: aparelhos.data ?? [],
-    fila: fila.data ?? [], chamadas: chamadas.data ?? [],
+    fila: fila.data ?? [], chamadas: chamadas.data ?? [], erros: erros.data ?? [],
     hoje: {
       ligacoes: h.filter((c) => c.desfecho && c.desfecho !== 'pulou').length,
       atendidas: h.filter((c) => c.desfecho === 'atendeu').length,

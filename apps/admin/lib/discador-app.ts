@@ -19,6 +19,7 @@
  */
 import { createHash, randomBytes } from 'crypto'
 import { createAdminClient } from '@/lib/supabase'
+import { respostasParaFicha } from '@/lib/email-personalization'
 import { MOTIVOS, depoisDe, dentroDoHorario, lerConfig, proximaAbertura, telefoneParaDiscar, type ParametrosDiscador } from '@/lib/discador'
 
 const hash = (s: string) => createHash('sha256').update(s).digest('hex')
@@ -81,21 +82,51 @@ export async function parearAparelho(codigo: string, info: { modelo?: string; an
   return { token, vendedora: at?.nome ?? 'Atendente' }
 }
 
-export type Aparelho = { id: number; atendenteId: number; nome: string | null; pausado: boolean; atendente: string; foto: string | null }
+export type Aparelho = {
+  id: number; atendenteId: number; nome: string | null; pausado: boolean; atendente: string; foto: string | null
+  /** O app é o telefone padrão do celular? undefined = app antigo (0.1.0), que não conta. */
+  padrao?: boolean
+}
 
 export async function aparelhoDaRequisicao(req: Request): Promise<Aparelho | null> {
   const m = (req.headers.get('authorization') ?? '').match(/^Bearer\s+([A-Za-z0-9_-]{30,100})$/)
   if (!m) return null
   const sb = createAdminClient()
   const versao = req.headers.get('x-discador-versao')?.slice(0, 20)
+  // Desde a 0.1.1 o app conta em TODA chamada se é o app de telefone padrão.
+  const h = req.headers.get('x-discador-padrao')
+  const padrao = h === 'sim' ? true : h === 'nao' ? false : undefined
+  const { data: antes } = await (sb.from('discador_aparelhos') as any)
+    .select('id, padrao').eq('token_hash', hash(m[1])).is('revogado_em', null).maybeSingle()
+  if (!antes) return null
+  const agora = new Date().toISOString()
   const { data: a } = await (sb.from('discador_aparelhos') as any)
-    .update({ ultimo_contato_em: new Date().toISOString(), ...(versao ? { app_versao: versao } : {}) })
-    .eq('token_hash', hash(m[1])).is('revogado_em', null)
-    .select('id, atendente_id, nome, pausado').maybeSingle()
+    .update({
+      ultimo_contato_em: agora, ...(versao ? { app_versao: versao } : {}),
+      ...(padrao !== undefined ? { padrao, ...(antes.padrao !== padrao ? { padrao_em: agora } : {}) } : {}),
+    })
+    .eq('id', antes.id).select('id, atendente_id, nome, pausado').maybeSingle()
   if (!a) return null
+  if (padrao === false && antes.padrao !== false) {
+    await (sb.from('discador_erros') as any).insert({ aparelho_id: a.id, tipo: 'perdeu_padrao', app_versao: versao ?? null,
+      mensagem: 'O Discador Ju deixou de ser o app de telefone padrão do celular.' })
+  }
   const { data: at } = await (sb.from('discador_atendentes') as any).select('nome, foto_url, ativo').eq('id', a.atendente_id).maybeSingle()
   if (!at || at.ativo === false) return null
-  return { id: a.id, atendenteId: a.atendente_id, nome: a.nome, pausado: a.pausado, atendente: at.nome, foto: at.foto_url ?? null }
+  return { id: a.id, atendenteId: a.atendente_id, nome: a.nome, pausado: a.pausado, atendente: at.nome, foto: at.foto_url ?? null, padrao }
+}
+
+/** Erro, travamento ou diagnóstico mandado pelo celular (POST /api/discador/erro). */
+export async function registrarErroDoApp(ap: Aparelho, b: any, versao: string | null) {
+  const tipos = ['travou', 'chamada_sumiu', 'perdeu_padrao', 'outro']
+  const sb = createAdminClient()
+  await (sb.from('discador_erros') as any).insert({
+    aparelho_id: ap.id,
+    tipo: tipos.includes(b?.tipo) ? b.tipo : 'outro',
+    mensagem: String(b?.mensagem ?? '').slice(0, 2000) || null,
+    detalhe: b?.detalhe && typeof b.detalhe === 'object' ? b.detalhe : {},
+    app_versao: versao?.slice(0, 20) ?? null,
+  })
 }
 
 // ── estado (tela inicial) ────────────────────────────────────────────────────
@@ -149,6 +180,22 @@ export async function proximaLigacao(ap: Aparelho) {
     const volta = proximaAbertura(p.horario)
     return esperar(`Fora do horário de ligar. Volta ${quandoVolta(volta)}.`, Math.max(30, Math.min(300, Math.round((volta.getTime() - Date.now()) / 1000))))
   }
+  // Sem ser o app de telefone padrão, quem disca é o telefone do celular: a
+  // atendente não vê a ficha e o app não sabe se atenderam. Não liga.
+  if (ap.padrao === false) {
+    return esperar('O Discador Ju não é o app de telefone padrão deste celular. Toque em "Usar como app de telefone" e depois em Começar.', 60)
+  }
+  // Trava para o app antigo (0.1.0), que não conta se é o padrão: em 19/10 ele
+  // seguiu discando com as chamadas indo para o telefone da Samsung — 10 erros
+  // em 4 min. Duas chamadas seguidas que não chegaram ao app = para 10 min.
+  if (ap.padrao === undefined) {
+    const { data: ult } = await (sb.from('discador_chamadas') as any).select('desfecho, encerrou_em')
+      .eq('aparelho_id', ap.id).not('encerrou_em', 'is', null).order('id', { ascending: false }).limit(2)
+    const u = (ult ?? []) as any[]
+    if (u.length === 2 && u.every((c) => c.desfecho === 'erro') && Date.now() - new Date(u[0].encerrou_em).getTime() < 10 * 60_000) {
+      return esperar('As últimas ligações não chegaram ao app. Confira se o Discador Ju é o app de telefone padrão e atualize o app.', 120)
+    }
+  }
 
   // Tenta algumas vezes: a tarefa escolhida pode ter sido paga agora há pouco.
   for (let i = 0; i < 5; i++) {
@@ -188,33 +235,70 @@ async function linkDaPessoa(sb: any, t: any): Promise<{ link: string; cupomCents
 }
 
 const INCOMODA: Record<string, string> = { cresc: 'crescimento', queda: 'queda', pontas: 'pontas', frizz: 'frizz', quebra: 'quebra' }
-const GASTO: Record<string, string> = { ate_100: 'até R$ 100', ate_300: 'até R$ 300', ate_500: 'até R$ 500', mais_500: 'mais de R$ 500' }
 
-/** O que ajuda a puxar conversa: tipo de cabelo, o que incomoda e quanto já gasta por mês. */
-async function respostasDoQuiz(sb: any, sessionId?: string | null): Promise<string[]> {
-  if (!sessionId) return []
-  const { data } = await (sb.from('wg_quiz_answers') as any).select('question_id, answer')
-    .eq('session_id', sessionId).in('question_id', ['tipo', 'incomoda', 'gasto_mensal'])
-  const r: Record<string, any> = {}
-  for (const a of (data ?? []) as any[]) r[a.question_id] = a.answer
-  const lista = (v: any) => (Array.isArray(v) ? v : [v]).filter(Boolean).map((x: string) => INCOMODA[x] ?? String(x).replace(/_/g, ' '))
-  return [
-    r.tipo ? `Cabelo ${String(r.tipo).replace(/_/g, ' ')}` : null,
-    r.incomoda ? `incomoda: ${lista(r.incomoda).join(', ')}` : null,
-    r.gasto_mensal ? `gasta ${GASTO[r.gasto_mensal] ?? String(r.gasto_mensal).replace(/_/g, ' ')}/mês com cabelo` : null,
-  ].filter(Boolean) as string[]
+/** "16/10 13:24" no horário de Brasília. */
+function quando(iso: string): string {
+  const d = new Date(new Date(iso).getTime() - 3 * 3600_000)
+  const p2 = (n: number) => String(n).padStart(2, '0')
+  return `${p2(d.getUTCDate())}/${p2(d.getUTCMonth() + 1)} ${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())}`
+}
+const TEMPLATE_AMIGAVEL: Record<string, string> = {
+  consulta_50off_v1: 'WhatsApp com 50% OFF (cupom de 24 h)',
+  consulta_pendente_v1: 'WhatsApp "sua consulta está pendente"',
+  diagnostico_quiz_v1: 'WhatsApp "quer o seu diagnóstico?"',
+  inscricao_pendente_util_v5: 'WhatsApp "inscrição pendente"',
+}
+const DESFECHO_AMIGAVEL: Record<string, string> = {
+  atendeu: 'atendeu', nao_atendeu: 'não atendeu', ocupado: 'ocupado', recusou: 'recusou', caixa_postal: 'caixa postal',
+  erro: 'não completou', pulou: 'pulada', expirou: 'não completou',
+}
+const RESULTADO_AMIGAVEL: Record<string, string> = Object.fromEntries(RESULTADOS_LIGACAO.map((r) => [r.id, r.rotulo.toLowerCase()]))
+
+/** O que já aconteceu com ela, do mais antigo ao mais novo: o que recebeu, o que respondeu, as ligações anteriores. */
+async function historicoDaPessoa(sb: any, t: any): Promise<string[]> {
+  const itens: { em: string; txt: string }[] = []
+  const leadId = t.contexto?.lead_id
+  const [lead, chamadas, sms] = await Promise.all([
+    leadId ? (sb.from('wg_quiz_leads') as any).select('created_at, inscricao_wa_enviada_em, inscricao_wa_template, inscricao_wa_erro, respondeu_em, resposta_texto').eq('id', leadId).maybeSingle() : Promise.resolve({ data: null }),
+    (sb.from('discador_chamadas') as any).select('criada_em, desfecho, duracao_s, resultado, nota').eq('tarefa_id', t.id).not('encerrou_em', 'is', null).order('id'),
+    (sb.from('discador_sms') as any).select('enviado_em, ok').eq('tarefa_id', t.id).eq('ok', true),
+  ])
+  const l = lead.data as any
+  if (l?.created_at) itens.push({ em: l.created_at, txt: 'Fez o quiz' })
+  if (l?.inscricao_wa_enviada_em && !l.inscricao_wa_erro) {
+    itens.push({ em: l.inscricao_wa_enviada_em, txt: `Recebeu ${TEMPLATE_AMIGAVEL[l.inscricao_wa_template] ?? 'WhatsApp da régua'}` })
+  }
+  if (l?.respondeu_em) itens.push({ em: l.respondeu_em, txt: `Respondeu no WhatsApp${l.resposta_texto ? `: "${String(l.resposta_texto).slice(0, 80)}"` : ''}` })
+  for (const c of (chamadas.data ?? []) as any[]) {
+    if (c.desfecho === 'pulou') continue
+    const dur = c.desfecho === 'atendeu' && c.duracao_s ? ` (${Math.max(1, Math.round(c.duracao_s / 60))} min)` : ''
+    const res = c.resultado ? ` · ${RESULTADO_AMIGAVEL[c.resultado] ?? c.resultado}` : ''
+    const nota = c.nota ? ` — "${String(c.nota).slice(0, 100)}"` : ''
+    itens.push({ em: c.criada_em, txt: `Ligação: ${DESFECHO_AMIGAVEL[c.desfecho] ?? c.desfecho}${dur}${res}${nota}` })
+  }
+  for (const m of (sms.data ?? []) as any[]) itens.push({ em: m.enviado_em, txt: 'Recebeu SMS do discador' })
+  return itens.sort((a, b) => a.em.localeCompare(b.em)).slice(-10).map((i) => `${quando(i.em)} · ${i.txt}`)
+}
+
+const formatarTel = (t?: string | null) => {
+  const d = String(t ?? '').replace(/\D/g, '')
+  return d.length === 11 ? `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}` : d.length === 10 ? `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}` : d
 }
 
 async function montarFicha(sb: any, t: any, p: ParametrosDiscador, atendente: string) {
-  const quiz = await respostasDoQuiz(sb, t.contexto?.session_id)
-  const { link, cupomCents } = await linkDaPessoa(sb, t)
+  const [respostas, historico, { link, cupomCents }] = await Promise.all([
+    respostasParaFicha(sb, t.contexto?.session_id ?? null, t.email ?? null),
+    historicoDaPessoa(sb, t),
+    linkDaPessoa(sb, t),
+  ])
   const cupom = cupomCents != null
   const valorCents = cupomCents ?? t.contexto?.valor_cents ?? 9700
   const primeiro = (t.nome ?? '').trim().split(/\s+/)[0] ?? ''
   const nomeBonito = primeiro ? primeiro[0].toUpperCase() + primeiro.slice(1).toLowerCase() : ''
   const mensagem = p.mensagem_link.replaceAll('{nome}', nomeBonito).replaceAll('{atendente}', atendente)
     .replaceAll('{vendedora}', atendente).replaceAll('{link}', link).replace(/Oi !/, 'Oi!')
-  const detalhes = [...quiz, cupom ? 'recebeu o cupom de 50% no WhatsApp' : null].filter(Boolean).join(' · ')
+  const incomoda = respostas.find((r) => r.pergunta === 'O que mais incomoda')?.resposta
+  const detalhes = [incomoda ? `Incomoda: ${incomoda}` : null, cupom ? 'tem cupom de 50% válido' : null].filter(Boolean).join(' · ')
   return {
     nome: (t.nome ?? '').trim() || 'Cliente sem nome',
     motivo: MOTIVOS[t.motivo as keyof typeof MOTIVOS]?.rotulo ?? t.motivo,
@@ -229,15 +313,20 @@ async function montarFicha(sb: any, t: any, p: ParametrosDiscador, atendente: st
       criado_em: t.contexto?.quando ?? t.criada_em,
       itens: ['Consulta com a Tricologista Juliane Cost', ...(cupom ? [`Com o cupom de 50% (R$ ${(valorCents / 100).toFixed(2).replace('.', ',')})`] : [])],
     },
-    link_painel: `${ADMIN}/discador`,
+    link_painel: `${ADMIN}/funil?pessoa=${encodeURIComponent(t.email ?? t.telefone ?? '')}`,
     link_pagamento: link,
     mensagem,
+    // 0.1.1+: a ficha completa na tela da ligação
+    email: t.email ?? null,
+    telefone_formatado: formatarTel(t.telefone),
+    respostas,
+    historico,
   }
 }
 
 // ── eventos da chamada ───────────────────────────────────────────────────────
 type Evento =
-  | { evento: 'discou' } | { evento: 'atendeu' }
+  | { evento: 'discou'; chip?: string } | { evento: 'atendeu' }
   | { evento: 'encerrou'; desfecho?: string; duracao_s?: number }
   | { evento: 'resultado'; resultado: string; nota?: string }
   | { evento: 'sms'; sms_id: number; ok: boolean; erro?: string }
@@ -250,7 +339,8 @@ export async function registrarEvento(ap: Aparelho, chamadaId: number, e: Evento
   if (!ch) throw new ErroDiscador('Esta ligação não foi encontrada no site. Toque em Começar de novo.')
 
   if (e.evento === 'discou') {
-    await (sb.from('discador_chamadas') as any).update({ discou_em: agora }).eq('id', ch.id).is('discou_em', null)
+    const chip = String((e as any).chip ?? '').trim().slice(0, 60) || null
+    await (sb.from('discador_chamadas') as any).update({ discou_em: agora, ...(chip ? { chip } : {}) }).eq('id', ch.id).is('discou_em', null)
     return { ok: true }
   }
   if (e.evento === 'atendeu') {
@@ -300,7 +390,8 @@ export async function registrarEvento(ap: Aparelho, chamadaId: number, e: Evento
   if (e.evento === 'sms') {
     const ok = !!(e as any).ok
     await (sb.from('discador_sms') as any)
-      .update({ ok, erro: ok ? null : (String((e as any).erro ?? '').trim() || 'falhou no celular').slice(0, 300), enviado_em: agora })
+      .update({ ok, erro: ok ? null : (String((e as any).erro ?? '').trim() || 'falhou no celular').slice(0, 300), enviado_em: agora,
+        chip: String((e as any).chip ?? '').trim().slice(0, 60) || null })
       .eq('id', Number((e as any).sms_id)).eq('tarefa_id', ch.tarefa_id)
     if (ok) await (sb.from('discador_chamadas') as any).update({ sms_enviado_em: agora }).eq('id', ch.id)
     return { ok: true }

@@ -14,6 +14,9 @@ const MOTIVO: Record<string, string> = {
   checkout_abandonado: 'Abriu o pagamento e saiu',
   quiz_sem_checkout: 'Fez o quiz e não abriu o pagamento',
 }
+const ERRO_TIPO: Record<string, string> = {
+  travou: 'App fechou com erro', chamada_sumiu: 'Ligação não chegou ao app', perdeu_padrao: 'Deixou de ser o telefone padrão', outro: 'Outro',
+}
 const DESFECHO: Record<string, string> = {
   atendeu: 'Atendeu', nao_atendeu: 'Não atendeu', ocupado: 'Ocupado', recusou: 'Recusou',
   caixa_postal: 'Caixa postal', erro: 'Erro', pulou: 'Pulou', expirou: 'Expirou',
@@ -223,6 +226,9 @@ export default function DiscadorClient() {
             <div key={x.id} style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, color: ink, padding: '8px 0', borderTop: '1px solid #F3EBE1' }}>
               <span style={{ width: 9, height: 9, borderRadius: '50%', background: online ? green : '#D6CED8' }} />
               <span>{x.nome} · {x.modelo ?? '—'} · app {x.app_versao ?? '—'} · {x.pausado ? 'pausado' : (x.estado ?? 'parado')} · visto {dataHora(x.ultimo_contato_em)}</span>
+              {x.padrao === false && <span style={{ fontSize: 12, fontWeight: 700, color: '#DC2626', background: '#FEE2E2', borderRadius: 20, padding: '2px 8px' }}>NÃO é o app de telefone padrão</span>}
+              {x.padrao === true && <span style={{ fontSize: 12, fontWeight: 700, color: green, background: '#E1F5EB', borderRadius: 20, padding: '2px 8px' }}>app de telefone padrão</span>}
+              {x.padrao == null && <span style={{ fontSize: 12, color: gray }}>atualize o app para ver se é o telefone padrão</span>}
               <button style={btn('#6B5B6E')} onClick={async () => { await post({ acao: 'pausar', id: x.id, pausado: !x.pausado }); carregar() }}>{x.pausado ? 'Retomar' : 'Pausar'}</button>
               <button style={btn('#DC2626')} onClick={async () => { if (confirm('Desligar este celular? Ele precisa parear de novo.')) { await post({ acao: 'revogar', id: x.id }); carregar() } }}>Desligar</button>
             </div>
@@ -230,7 +236,28 @@ export default function DiscadorClient() {
         })}
       </Card>
 
+      {(d.erros ?? []).length > 0 && (
+        <Card titulo="Problemas que o celular relatou">
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <tbody>
+              {d.erros.map((e: any) => (
+                <tr key={e.id} style={{ borderTop: '1px solid #F3EBE1', verticalAlign: 'top' }}>
+                  <td style={{ padding: 6, whiteSpace: 'nowrap' }}>{dataHora(e.criado_em)}</td>
+                  <td style={{ padding: 6, whiteSpace: 'nowrap' }}><strong>{ERRO_TIPO[e.tipo] ?? e.tipo}</strong><div style={{ fontSize: 11, color: gray }}>app {e.app_versao ?? '—'}</div></td>
+                  <td style={{ padding: 6 }}>{e.mensagem}
+                    {e.detalhe?.rastro && <details style={{ marginTop: 4 }}><summary style={{ fontSize: 11, color: gray, cursor: 'pointer' }}>detalhe técnico</summary><pre style={{ fontSize: 10.5, whiteSpace: 'pre-wrap', color: gray }}>{String(e.detalhe.rastro).slice(0, 3000)}</pre></details>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      )}
+
       <Card titulo={`Fila (${d.fila.length})`}>
+        <div style={{ fontSize: 12, color: gray, marginBottom: 10 }}>
+          Só entra quem fez o quiz da consulta ou tentou pagar e não pagou. Ficam de fora, conferido por e-mail E telefone: quem já pagou, quem tem ou teve cortesia, quem pediu para não receber mensagens e a equipe.
+        </div>
         {d.fila.length === 0 ? <div style={{ color: gray, fontSize: 13 }}>Fila vazia.</div> : (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead><tr style={{ color: gray, textAlign: 'left', fontSize: 11, textTransform: 'uppercase' }}>
@@ -260,6 +287,7 @@ export default function DiscadorClient() {
                   <td style={{ padding: 6 }}><strong>{c.discador_tarefas?.nome ?? '—'}</strong></td>
                   <td style={{ padding: 6 }}>tentativa {c.tentativa}</td>
                   <td style={{ padding: 6 }}>{DESFECHO[c.desfecho] ?? '—'}{c.duracao_s ? ` · ${Math.round(c.duracao_s / 60)} min` : ''}</td>
+                  <td style={{ padding: 6, color: gray }}>{c.chip ?? ''}</td>
                   <td style={{ padding: 6 }}>{c.resultado ?? ''}{c.nota ? ` — ${c.nota}` : ''}</td>
                 </tr>
               ))}
