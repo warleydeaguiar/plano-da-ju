@@ -7,6 +7,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { varsBlackFriday } from './black-friday'
 
 // ── Maps de labels (mesma fonte usada no admin de analytics) ────────────────
 const TIPO: Record<string, string> = {
@@ -161,6 +162,9 @@ export async function buildPersonalizationVars(
     calor: calor || 'fontes de calor',
     areas_preocupantes: areas || 'comprimento e pontas',
     como_plano: como_plano || '',
+
+    // Black Friday ({bf_assunto}, {bf_paragrafo}): vazias fora da campanha (lib/black-friday.ts)
+    ...varsBlackFriday(),
 
     // Diagnóstico curto (frase pronta para headline)
     diagnostico_curto: tipo

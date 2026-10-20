@@ -6,6 +6,7 @@ import { newEventId, sendServerEvent } from '../../../lib/tracking-client'
 import { sortearLado, rotuloVariante, type ExperimentoAtivo } from '@/lib/ab'
 import RoletaFG from './RoletaFG'
 import { LINK_YBERA_FASHION_GOLD } from '@/lib/contact'
+import { faseBF, faltaParaBlack, BF_FIM, type FaseBF } from '@/lib/black-friday'
 
 // ─── Design tokens ──────────────────────────────────────────
 const T = {
@@ -159,6 +160,81 @@ function Countdown({ minutes = 14 }: { minutes?: number }) {
   )
 }
 
+// ─── Black Friday (lib/black-friday.ts: liga e desliga sozinho) ─────────
+/**
+ * Relógio que só existe no navegador: a fase e a contagem dependem da hora, e
+ * calcular no servidor daria uma página diferente da que o celular desenha.
+ * Até montar, nada de Black Friday na tela (é um instante).
+ */
+function useAgora(): number | null {
+  const [t, setT] = useState<number | null>(null)
+  useEffect(() => {
+    setT(Date.now())
+    const i = setInterval(() => setT(Date.now()), 1000)
+    return () => clearInterval(i)
+  }, [])
+  return t
+}
+
+function useFaseBF(): FaseBF {
+  const t = useAgora()
+  return t == null ? null : faseBF(t)
+}
+
+/** Faixa preta e dourada em cima da arte. */
+function FaixaBF() {
+  const t = useAgora()
+  const fase = t == null ? null : faseBF(t)
+  if (!fase || t == null) return null
+  const dias = faltaParaBlack(t).dias
+  return (
+    <div style={{
+      background: 'linear-gradient(180deg,#141414,#000)', color: '#fff', borderRadius: 16,
+      padding: '11px 14px', marginBottom: 10, textAlign: 'center', border: '1px solid #2a2a2a',
+      boxShadow: '0 10px 24px -14px rgba(0,0,0,.7)',
+    }}>
+      <div style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: 2.2, textTransform: 'uppercase', color: T.gold }}>
+        {fase === 'esquenta' ? 'Esquenta Black Friday Ybera' : 'Black Friday Ybera · é agora'}
+      </div>
+      <div style={{ fontSize: 12.5, color: '#e9e2d3', marginTop: 3, lineHeight: 1.4 }}>
+        {fase === 'esquenta'
+          ? <>As ofertas da Black saem <strong style={{ color: '#fff' }}>primeiro no grupo</strong>{dias > 1 ? ` · faltam ${dias} dias` : dias === 1 ? ' · falta 1 dia' : ' · começa amanhã'}</>
+          : <>As ofertas estão no <strong style={{ color: '#fff' }}>grupo de promoções</strong> — por tempo limitado</>}
+      </div>
+    </div>
+  )
+}
+
+/** Contagem regressiva REAL: até a Black começar (esquenta) ou até ela acabar (black). */
+function ContagemBF() {
+  const t = useAgora()
+  const fase = t == null ? null : faseBF(t)
+  if (!fase || t == null) return null
+  const alvo = fase === 'esquenta' ? faltaParaBlack(t) : (() => {
+    const ms = Math.max(0, BF_FIM - t)
+    return { dias: Math.floor(ms / 86400_000), horas: Math.floor((ms % 86400_000) / 3600_000), minutos: Math.floor((ms % 3600_000) / 60_000), segundos: Math.floor((ms % 60_000) / 1000) }
+  })()
+  const cel = (n: number, r: string) => (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+      <div style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, fontSize: 20, color: '#fff', background: '#1c1c1c', padding: '6px 9px', borderRadius: 8, minWidth: 42, textAlign: 'center' }}>{String(n).padStart(2, '0')}</div>
+      <div style={{ fontSize: 9, letterSpacing: 1.5, color: '#b9b2a4', textTransform: 'uppercase' }}>{r}</div>
+    </div>
+  )
+  return (
+    <div style={{ marginTop: 14, padding: '12px 14px', background: '#000', borderRadius: 14, textAlign: 'center' }}>
+      <div style={{ fontSize: 10.5, letterSpacing: 2, color: T.gold, fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}>
+        {fase === 'esquenta' ? 'A Black Friday Ybera começa em' : 'A Black Friday termina em'}
+      </div>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+        {cel(alvo.dias, 'dias')}{cel(alvo.horas, 'hrs')}{cel(alvo.minutos, 'min')}{cel(alvo.segundos, 'seg')}
+      </div>
+      <div style={{ fontSize: 11.5, color: '#e9e2d3', marginTop: 8 }}>
+        {fase === 'esquenta' ? 'Quem está no grupo recebe as ofertas antes de todo mundo.' : 'As ofertas estão no grupo agora.'}
+      </div>
+    </div>
+  )
+}
+
 // ─── Social toast ────────────────────────────────────────────
 function SocialToast({ people }: { people: Testimonial[] }) {
   const [idx, setIdx] = useState(0)
@@ -271,14 +347,24 @@ function Field({ label, value, onChange, placeholder, type = 'text' }: {
  * explica onde ele é entregue. O link com o preço fica no grupo, então este é
  * o único caminho adiante — e o botão vai para a distribuição de grupos.
  */
-function StepDescontoLiberado({ nome, href }: { nome: string; href: string }) {
+function StepDescontoLiberado({ nome, href, telefone }: { nome: string; href: string; telefone: string }) {
   const primeiro = (nome || '').trim().split(/\s+/)[0] ?? ''
+  const fase = useFaseBF()
+  // Na Black Friday o grupo é onde as ofertas saem primeiro: o convite vai junto,
+  // em um toque, sem esperar o WhatsApp (/g/entrar escolhe um grupo com vaga).
+  const digitos = telefone.replace(/\D/g, '')
+  const linkGrupo = `/g/entrar?p=${encodeURIComponent(digitos.length >= 12 ? digitos : `55${digitos}`)}${primeiro ? `&n=${encodeURIComponent(primeiro)}` : ''}`
   return (
     <StepShell step={4} total={4} semBarras footer={
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <a href={href} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
           <CTA onClick={() => {}}>Ver a progressiva na loja oficial</CTA>
         </a>
+        {fase && digitos.length >= 10 && (
+          <a href={linkGrupo} style={{ textDecoration: 'none' }}>
+            <CTA variant="dark" onClick={() => {}}>{fase === 'esquenta' ? '🖤 Entrar no grupo da Black Friday' : '🖤 Ver as ofertas da Black no grupo'}</CTA>
+          </a>
+        )}
         <div style={{ textAlign: 'center', fontSize: 11, color: T.muted }}>
           Loja oficial da Ybera · o preço do grupo eu te mando no WhatsApp
         </div>
@@ -318,6 +404,8 @@ function StepDescontoLiberado({ nome, href }: { nome: string; href: string }) {
         Aproveite agora — essa condição é por tempo limitado. 💛
       </div>
 
+      {fase && <ContagemBF />}
+
       {/* O grupo não some do funil: ele vira o segundo passo, com convite pelo
           WhatsApp. Dizer isso aqui evita que ela ache que o telefone foi pedido
           à toa. */}
@@ -326,8 +414,11 @@ function StepDescontoLiberado({ nome, href }: { nome: string; href: string }) {
         background: '#FFF8EE', border: `1px solid ${T.gold}`,
         fontSize: 13, color: T.ink, lineHeight: 1.5, textAlign: 'center',
       }}>
-        Vou te mandar no WhatsApp o convite do meu grupo de ofertas — é por lá que
-        eu aviso das próximas promoções da Ybera.
+        {fase === 'esquenta'
+          ? 'As ofertas da Black Friday da Ybera vão sair primeiro no meu grupo. Vou te mandar o convite no WhatsApp — ou entre agora pelo botão acima.'
+          : fase === 'black'
+            ? 'A Black Friday da Ybera está rolando no meu grupo agora. Vou te mandar o convite no WhatsApp — ou entre pelo botão acima.'
+            : 'Vou te mandar no WhatsApp o convite do meu grupo de ofertas — é por lá que eu aviso das próximas promoções da Ybera.'}
       </div>
     </StepShell>
   )
@@ -350,6 +441,7 @@ function StepDescontoLiberado({ nome, href }: { nome: string; href: string }) {
  */
 function Step1Roleta({ onGirou }: { onGirou: () => void }) {
   const [revelado, setRevelado] = useState(false)
+  const fase = useFaseBF()
   const girarRef = useRef<(() => void) | null>(null)
   return (
     <StepShell step={1} total={4} semBarras footer={
@@ -370,6 +462,7 @@ function Step1Roleta({ onGirou }: { onGirou: () => void }) {
           cabiam e a roleta aparecia cortada pela barra do navegador. Limitar a
           imagem por ALTURA (svh) faz o conjunto caber sem rolagem — em tela
           alta ela volta ao tamanho cheio. */}
+      <FaixaBF />
       <div style={{
         width: '100%', borderRadius: 22, overflow: 'hidden', border: `1px solid ${T.line}`,
         background: T.paper, marginBottom: 14,
@@ -409,6 +502,11 @@ function Step1Roleta({ onGirou }: { onGirou: () => void }) {
           <div style={{ fontSize: 15, color: T.ink, fontWeight: 600 }}>
             no grupo de ofertas da Ju
           </div>
+          {fase && (
+            <div style={{ fontSize: 13, color: T.ink, marginTop: 6 }}>
+              {fase === 'esquenta' ? '🖤 e é lá que a Black Friday chega primeiro' : '🖤 com as ofertas da Black Friday'}
+            </div>
+          )}
           {/* O valor promocional é o do GRUPO — na loja oficial o produto está
               R$ 339,90. Afirmar "sai por R$ 208" e mandar para a loja seria
               prometer um preço que a página seguinte não cobra. */}
@@ -615,6 +713,7 @@ function Step4({ onNext, reviews }: { onNext: () => void; reviews: Testimonial[]
 // STEP 5 — PHONE
 // ═══════════════════════════════════════════════════════════
 function Step5({ onNext, phone, setPhone, toastPeople }: { onNext: () => void; phone: string; setPhone: (v: string) => void; toastPeople: Testimonial[] }) {
+  const fase = useFaseBF()
   const digits = phone.replace(/\D/g, '').slice(0, 11)
   const display = digits.length > 6 ? `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}` : digits.length > 2 ? `(${digits.slice(0,2)}) ${digits.slice(2)}` : digits
   const valid = digits.length >= 10
@@ -633,7 +732,10 @@ function Step5({ onNext, phone, setPhone, toastPeople }: { onNext: () => void; p
         {/* O funil mudou em 25/09/2026: o que vem depois dos dados é o LINK DO
             PRODUTO com a condição, não a entrada no grupo. O convite do grupo
             vai depois, por WhatsApp, e com confirmação. */}
-        <p style={{ fontSize: 14, color: T.muted, lineHeight: 1.5, marginBottom: 24 }}>É por aqui que eu te mando o link com a condição da Progressiva Fashion Gold.</p>
+        <p style={{ fontSize: 14, color: T.muted, lineHeight: 1.5, marginBottom: 24 }}>
+          É por aqui que eu te mando o link com a condição da Progressiva Fashion Gold
+          {fase === 'esquenta' ? ' — e aviso da Black Friday da Ybera antes de todo mundo.' : fase === 'black' ? ' — e as ofertas da Black Friday.' : '.'}
+        </p>
         <label style={{ display: 'block' }}>
           <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, letterSpacing: 0.3 }}>Celular com DDD</div>
           <div style={{ display: 'flex', alignItems: 'center', background: T.paper, border: `1.5px solid ${valid ? T.gold : T.line}`, borderRadius: 14, padding: '0 14px', height: 56, transition: 'border-color 0.2s ease' }}>
@@ -657,7 +759,8 @@ function Step5({ onNext, phone, setPhone, toastPeople }: { onNext: () => void; p
           </div>
           <div style={{ flex: 1, fontSize: 12, color: T.ink, lineHeight: 1.4 }}><strong>247 pessoas</strong> pegaram o desconto nas últimas 24h</div>
         </div>
-        <div style={{ marginTop: 14 }}>
+        {/* Na campanha, a urgência é a data da Black (de verdade) no lugar da barra. */}
+        {fase ? <ContagemBF /> : <div style={{ marginTop: 14 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: T.muted, marginBottom: 6 }}>
             <span>DESCONTOS LIBERADOS HOJE</span>
             <span style={{ color: T.ruby, fontWeight: 600 }}>95% · 5 restantes</span>
@@ -668,7 +771,7 @@ function Step5({ onNext, phone, setPhone, toastPeople }: { onNext: () => void; p
                 arte da página. */}
             <div style={{ width: '95%', height: '100%', background: `linear-gradient(90deg, ${T.gold}, #9D174D)` }} />
           </div>
-        </div>
+        </div>}
       </div>
     </StepShell>
   )
@@ -919,7 +1022,7 @@ export default function QuizFashionGoldClient({ experimentos = [] }: { experimen
       {step === 5 && <Step5 onNext={next} phone={phone} setPhone={setPhone} toastPeople={toastPeople} />}
       {step === 6 && <Step6 onNext={next} name={name} setName={setName} />}
       {step === 7 && <Step7 onSubmit={handleSubmit} email={email} setEmail={setEmail} loading={loading} />}
-      {step === 8 && <StepDescontoLiberado nome={name} href={destinoFinal()} />}
+      {step === 8 && <StepDescontoLiberado nome={name} href={destinoFinal()} telefone={phone} />}
     </>
   )
 }

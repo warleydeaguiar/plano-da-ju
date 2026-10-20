@@ -3,9 +3,15 @@ import { Suspense } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import QuizFashionGoldClient from './QuizFashionGoldClient'
 import type { ExperimentoAtivo } from '@/lib/ab'
+import { faseBF } from '@/lib/black-friday'
 
-export const metadata: Metadata = {
-  title: 'Grupo VIP Ybera Paris — Promoções Exclusivas',
+// Título da aba e do link compartilhado acompanham a Black Friday (lib/black-friday.ts).
+export async function generateMetadata(): Promise<Metadata> {
+  const f = faseBF()
+  const title = f === 'esquenta' ? 'Esquenta Black Friday Ybera — Grupo VIP de Promoções'
+    : f === 'black' ? 'Black Friday Ybera — Ofertas no Grupo VIP'
+    : 'Grupo VIP Ybera Paris — Promoções Exclusivas'
+  return { title, openGraph: { title } }
 }
 
 export const dynamic = 'force-dynamic'

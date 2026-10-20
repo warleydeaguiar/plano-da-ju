@@ -9,6 +9,7 @@
  */
 
 import { PRODUTO_NOME } from '@/lib/produto'
+import { linhaBFWhatsapp } from '@/lib/black-friday'
 
 const APP = 'https://planodaju.julianecost.com'
 
@@ -76,11 +77,16 @@ export function waDesconto(nome: string, precoBase: string, precoComCupom: strin
   )
 }
 
+/** Linha da Black Friday no fim das mensagens do funil dos grupos ('' fora da campanha). */
+const comBF = (texto: string) => { const l = linhaBFWhatsapp(); return l ? `${texto}\n\n${l}` : texto }
+
 /** Primeira mensagem dela no número oficial (funil dos grupos, wa-autoreply). */
 export function waAutoreplyGrupo(firstName: string, link: string): string {
+  const bf = linhaBFWhatsapp()
   return (
     `Oiii${firstName ? `, ${firstName}` : ''}! Que bom te ver por aqui 💖 Tem vaga sim!\n\n` +
     `Entra no nosso grupo de promoções por aqui: ${link}\n\n` +
+    (bf ? `${bf}\n\n` : '') +
     'E me conta uma coisinha, pra eu conseguir te ajudar melhor: o que MAIS te incomoda no seu cabelo hoje? ' +
     '(queda, frizz, pontas ressecadas, quebra, crescimento, volume…) 💬'
   )
@@ -89,7 +95,8 @@ export function waAutoreplyGrupo(firstName: string, link: string): string {
 /** Entrou no grupo pela 1ª vez (g/entrar), quando o template não sai. */
 export function waEntrouNoGrupo(first: string): string {
   const ola = first ? `Fico muito feliz, ${first}, que você entrou no meu grupo! 💚` : 'Fico muito feliz que você entrou no meu grupo! 💚'
-  return `${ola}\n\nEu dou uma atenção especial pra todas que estão nele, então me conta: o que mais te incomoda no seu cabelo hoje?`
+  const bf = linhaBFWhatsapp()
+  return `${ola}\n\n${bf ? `${bf}\n\n` : ''}Eu dou uma atenção especial pra todas que estão nele, então me conta: o que mais te incomoda no seu cabelo hoje?`
 }
 
 /** Respostas automáticas aos botões / pedidos (wa/resposta). */
@@ -99,12 +106,12 @@ export const waResposta = {
   diagnostico: (nome: string, noExpediente: boolean) => noExpediente
     ? `${nome ? `Oi, ${nome}! ` : 'Oi! '}Estou olhando as suas respostas do quiz agora e já te mando o seu diagnóstico por aqui. 💛`
     : `${nome ? `Oi, ${nome}! ` : 'Oi! '}Recebi o seu pedido 💛 Vou olhar as suas respostas do quiz e te mandar o diagnóstico por aqui. Nosso atendimento é de segunda a sexta, das 8h às 17h30.`,
-  querGrupo: (nome: string, link: string) =>
+  querGrupo: (nome: string, link: string) => comBF(
     `${nome ? `Perfeito, ${nome}! ` : 'Perfeito! '}Sua vaga está reservada 💛\n\n`
     + `É só tocar aqui para entrar: ${link}\n\n`
-    + 'É nesse grupo que eu aviso quando os produtos entram em promoção de verdade.',
-  naoEntrei: (nome: string, link: string) =>
-    `${nome ? `Ai, ${nome}, ` : ''}desculpa! Toca aqui que eu te coloco em um grupo com vaga agora: ${link}`,
+    + 'É nesse grupo que eu aviso quando os produtos entram em promoção de verdade.'),
+  naoEntrei: (nome: string, link: string) => comBF(
+    `${nome ? `Ai, ${nome}, ` : ''}desculpa! Toca aqui que eu te coloco em um grupo com vaga agora: ${link}`),
   entrei: (nome: string) =>
     `${nome ? `Que bom, ${nome}! ` : 'Que bom! '}Já que você está no grupo, me conta uma coisa para eu te avisar do que interessa: `
     + 'o que mais te incomoda no seu cabelo hoje — queda, quebra, volume, frizz ou ressecamento? 💛',

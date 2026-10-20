@@ -8,6 +8,7 @@ import { fillRichTemplate } from '@/lib/email-personalization'
 import { injectUnsubscribe } from '@/lib/email-tracking'
 import { PLANO_LIBERADO_ASSUNTO, planoLiberadoHtml } from '@/lib/email-plano-liberado'
 import { DISCADOR_PADRAO, lerConfig } from '@/lib/discador'
+import { varsBlackFriday } from '@/lib/black-friday'
 import { CADEIA_LEAD, FUNIS, type Status } from './mapa'
 
 export type BotaoWa = { tipo: string; texto: string; url?: string }
@@ -34,6 +35,7 @@ const EXEMPLO: Record<string, string> = {
   oleosidade: 'oleoso na raiz', porosidade: 'poroso', problema_principal: 'queda',
   incomoda: 'queda, pontas duplas e frizz', quimica: 'tintura', calor: 'secador',
   areas_preocupantes: 'comprimento e pontas', como_plano: '', diagnostico_curto: 'cabelo ondulado fino e oleoso na raiz',
+  ...varsBlackFriday(),
 }
 const CUPOM_EXEMPLO = 'J50A1B2C3D'
 
