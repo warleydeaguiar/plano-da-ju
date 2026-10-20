@@ -188,17 +188,17 @@ function FaixaBF() {
   if (!fase || t == null) return null
   const dias = faltaParaBlack(t).dias
   return (
+    // Compacta de propósito: a roleta tem de caber na tela sem rolar (ajuste de 09/2026).
     <div style={{
-      background: 'linear-gradient(180deg,#141414,#000)', color: '#fff', borderRadius: 16,
-      padding: '11px 14px', marginBottom: 10, textAlign: 'center', border: '1px solid #2a2a2a',
-      boxShadow: '0 10px 24px -14px rgba(0,0,0,.7)',
+      background: 'linear-gradient(180deg,#141414,#000)', color: '#fff', borderRadius: 12,
+      padding: '7px 10px', marginBottom: 8, textAlign: 'center',
     }}>
-      <div style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: 2.2, textTransform: 'uppercase', color: T.gold }}>
-        {fase === 'esquenta' ? 'Esquenta Black Friday Ybera' : 'Black Friday Ybera · é agora'}
+      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.2, textTransform: 'uppercase', color: T.gold, whiteSpace: 'nowrap' }}>
+        🖤 {fase === 'esquenta' ? 'Esquenta Black Friday Ybera' : 'Black Friday Ybera · é agora'}
       </div>
-      <div style={{ fontSize: 12.5, color: '#e9e2d3', marginTop: 3, lineHeight: 1.4 }}>
+      <div style={{ fontSize: 11.5, color: '#e9e2d3', marginTop: 1, lineHeight: 1.35 }}>
         {fase === 'esquenta'
-          ? <>As ofertas da Black saem <strong style={{ color: '#fff' }}>primeiro no grupo</strong>{dias > 1 ? ` · faltam ${dias} dias` : dias === 1 ? ' · falta 1 dia' : ' · começa amanhã'}</>
+          ? <>Ofertas da Black <strong style={{ color: '#fff' }}>primeiro no grupo</strong>{dias > 1 ? ` · faltam ${dias} dias` : dias === 1 ? ' · falta 1 dia' : ' · começa amanhã'}</>
           : <>As ofertas estão no <strong style={{ color: '#fff' }}>grupo de promoções</strong> — por tempo limitado</>}
       </div>
     </div>
@@ -481,7 +481,7 @@ function Step1Roleta({ onGirou }: { onGirou: () => void }) {
           // título e a comparação de preço continuam visíveis. Encolher a
           // imagem inteira deixava tarja branca dos dois lados.
           style={{
-            width: '100%', height: 'auto', maxHeight: '40svh',
+            width: '100%', height: 'auto', maxHeight: fase ? '35svh' : '40svh',
             objectFit: 'cover', objectPosition: 'center top', display: 'block',
             cursor: revelado ? 'default' : 'pointer',
           }}
