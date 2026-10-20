@@ -960,7 +960,7 @@ export default function QuizFashionGoldClient({ experimentos = [] }: { experimen
     if (typeof window !== 'undefined' && window.fbq) {
       window.fbq('track', 'Lead', { content_name: 'Quiz Fashion Gold', content_category: 'fashion-gold', currency: 'BRL' }, { eventID: leadEventId })
     }
-    sendServerEvent('Lead', { eventId: leadEventId, email, phone, contentName: 'Quiz Fashion Gold', contentCategory: 'fashion-gold', currency: 'BRL' })
+    sendServerEvent('Lead', { eventId: leadEventId, email, phone: phone.replace(/\D/g, ''), contentName: 'Quiz Fashion Gold', contentCategory: 'fashion-gold', currency: 'BRL' })
     if (mostraRoleta) {
       // Variante: em vez de sair da página, mostra o desconto conquistado e o
       // convite para o grupo — é lá que o link com o preço é entregue.
@@ -983,7 +983,7 @@ export default function QuizFashionGoldClient({ experimentos = [] }: { experimen
           quiz_slug: 'fashion-gold',
           ab_variant: abVariant,
           session_id: sessionId,
-          name, email, phone,
+          name, email, phone: phone.replace(/\D/g, ''),
           utm_source: searchParams.get('utm_source'),
           utm_medium: searchParams.get('utm_medium'),
           utm_campaign: searchParams.get('utm_campaign'),

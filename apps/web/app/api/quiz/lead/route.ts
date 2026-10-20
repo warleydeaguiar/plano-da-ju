@@ -40,7 +40,14 @@ export async function POST(req: NextRequest) {
   // Corrige typos previsíveis de domínio (gmil.com -> gmail.com, etc.) já na
   // captação, pra não acumular e-mail problemático que vira bounce depois.
   const email      = emailRaw ? (cleanEmail(emailRaw) || emailRaw) : null
-  const phone      = truncate(body.phone, MAX_LEN.phone)
+  // Só os dígitos, sem o 55 (DDD + número), igual ao quiz da consulta. O quiz dos
+  // grupos gravava "(11) 98765-4321" — e a resposta no WhatsApp, que casa pelos
+  // últimos 8 dígitos, não achava o lead (20/10/2026: 22 respostas, 2 marcadas).
+  const phone      = (() => {
+    let d = String(truncate(body.phone, MAX_LEN.phone) ?? '').replace(/\D/g, '')
+    if (d.startsWith('55') && d.length >= 12) d = d.slice(2)
+    return d.length >= 10 ? d.slice(0, 11) : null
+  })()
   const session_id = truncate(body.session_id, 64)
   const utm_source   = truncate(body.utm_source, MAX_LEN.utm)
   const utm_medium   = truncate(body.utm_medium, MAX_LEN.utm)

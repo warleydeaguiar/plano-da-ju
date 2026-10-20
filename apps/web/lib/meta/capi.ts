@@ -8,6 +8,13 @@ import { logCapiEvent } from './capi-log';
 const PIXEL_ID = '921783859786853';
 const CAPI_TOKEN = process.env.META_CAPI_ACCESS_TOKEN; // System User token
 
+/** Só dígitos, com o 55 do Brasil; null se não parece telefone. */
+function telefoneE164(bruto?: string | null): string | null {
+  let d = String(bruto ?? '').replace(/\D/g, '')
+  if (d.length === 10 || d.length === 11) d = `55${d}`
+  return d.length >= 12 && d.length <= 13 ? d : null
+}
+
 function sha256(value: string): string {
   return crypto.createHash('sha256').update(value.toLowerCase().trim()).digest('hex');
 }
@@ -64,7 +71,10 @@ export async function sendCapiEvent(opts: {
 
   const userData: Record<string, string | string[]> = {};
   if (opts.user.email)     userData.em = sha256(opts.user.email);
-  if (opts.user.phone)     userData.ph = sha256(opts.user.phone);
+  // A Meta só casa telefone em E.164 sem '+' (5511999998888). O quiz dos grupos
+  // mandava "(11) 99999-8888" e o da consulta "11999998888" — nenhum batia.
+  const ph = telefoneE164(opts.user.phone)
+  if (ph)                  userData.ph = sha256(ph);
   if (opts.user.firstName) userData.fn = sha256(opts.user.firstName);
   if (opts.user.lastName)  userData.ln = sha256(opts.user.lastName);
   if (opts.user.zip)       userData.zp = sha256(opts.user.zip);
