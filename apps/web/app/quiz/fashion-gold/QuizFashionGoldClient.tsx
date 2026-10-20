@@ -347,7 +347,11 @@ function Field({ label, value, onChange, placeholder, type = 'text' }: {
  * explica onde ele é entregue. O link com o preço fica no grupo, então este é
  * o único caminho adiante — e o botão vai para a distribuição de grupos.
  */
-function StepDescontoLiberado({ nome, href, telefone }: { nome: string; href: string; telefone: string }) {
+function StepDescontoLiberado({ nome, href, telefone, aoClicar }: {
+  nome: string; href: string; telefone: string
+  /** Mede o destino escolhido na tela final ('loja' ou 'grupo') — antes não dava para saber. */
+  aoClicar: (destino: 'loja' | 'grupo') => void
+}) {
   const primeiro = (nome || '').trim().split(/\s+/)[0] ?? ''
   const fase = useFaseBF()
   // Na Black Friday o grupo é onde as ofertas saem primeiro: o convite vai junto,
@@ -357,11 +361,11 @@ function StepDescontoLiberado({ nome, href, telefone }: { nome: string; href: st
   return (
     <StepShell step={4} total={4} semBarras footer={
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <a href={href} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+        <a href={href} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }} onClick={() => aoClicar('loja')}>
           <CTA onClick={() => {}}>Ver a progressiva na loja oficial</CTA>
         </a>
         {fase && digitos.length >= 10 && (
-          <a href={linkGrupo} style={{ textDecoration: 'none' }}>
+          <a href={linkGrupo} style={{ textDecoration: 'none' }} onClick={() => aoClicar('grupo')}>
             <CTA variant="dark" onClick={() => {}}>{fase === 'esquenta' ? '🖤 Entrar no grupo da Black Friday' : '🖤 Ver as ofertas da Black no grupo'}</CTA>
           </a>
         )}
@@ -415,9 +419,9 @@ function StepDescontoLiberado({ nome, href, telefone }: { nome: string; href: st
         fontSize: 13, color: T.ink, lineHeight: 1.5, textAlign: 'center',
       }}>
         {fase === 'esquenta'
-          ? 'As ofertas da Black Friday da Ybera vão sair primeiro no meu grupo. Vou te mandar o convite no WhatsApp — ou entre agora pelo botão acima.'
+          ? 'As ofertas da Black Friday da Ybera vão sair primeiro no meu grupo. Vou te mandar o convite no WhatsApp — ou entre agora pelo botão abaixo.'
           : fase === 'black'
-            ? 'A Black Friday da Ybera está rolando no meu grupo agora. Vou te mandar o convite no WhatsApp — ou entre pelo botão acima.'
+            ? 'A Black Friday da Ybera está rolando no meu grupo agora. Vou te mandar o convite no WhatsApp — ou entre pelo botão abaixo.'
             : 'Vou te mandar no WhatsApp o convite do meu grupo de ofertas — é por lá que eu aviso das próximas promoções da Ybera.'}
       </div>
     </StepShell>
@@ -1022,7 +1026,13 @@ export default function QuizFashionGoldClient({ experimentos = [] }: { experimen
       {step === 5 && <Step5 onNext={next} phone={phone} setPhone={setPhone} toastPeople={toastPeople} />}
       {step === 6 && <Step6 onNext={next} name={name} setName={setName} />}
       {step === 7 && <Step7 onSubmit={handleSubmit} email={email} setEmail={setEmail} loading={loading} />}
-      {step === 8 && <StepDescontoLiberado nome={name} href={destinoFinal()} telefone={phone} />}
+      {step === 8 && <StepDescontoLiberado nome={name} href={destinoFinal()} telefone={phone} aoClicar={(destino) => {
+        // keepalive: o clique tira a pessoa da página e o envio não pode morrer junto.
+        fetch('/api/quiz/step-event', {
+          method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionId, quiz_slug: 'fashion-gold', ab_variant: abVariant, step_index: 8, step_id: destino, event_type: 'answered' }),
+        }).catch(() => {})
+      }} />}
     </>
   )
 }
