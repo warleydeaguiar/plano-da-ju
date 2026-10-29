@@ -35,7 +35,9 @@ async function experimentos(): Promise<ExperimentoAtivo[]> {
       .select('id, flag_key, target_step_id, traffic_pct, variant_content')
       .eq('target_quiz_slug', 'fashion-gold')
       .eq('status', 'running')
-    const limite = new Promise<{ data: null }>(r => setTimeout(() => r({ data: null }), 8000))
+    // 1,5 s, não 8: em 29/10/2026 o banco caiu e TODA visita do anúncio esperava 8 s
+    // por um teste A/B que nem está rodando. Sem resposta, segue sem experimento.
+    const limite = new Promise<{ data: null }>(r => setTimeout(() => r({ data: null }), 1500))
     const { data } = await Promise.race([consulta, limite])
     return (data ?? []) as ExperimentoAtivo[]
   } catch {
