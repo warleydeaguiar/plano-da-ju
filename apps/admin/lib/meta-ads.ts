@@ -196,3 +196,47 @@ export async function getGrupoAdSpendPorMes(
 
   return saida
 }
+
+export interface GastoDiario {
+  /** 'YYYY-MM-DD' → gasto COM imposto (mesma regra do mensal) */
+  gasto: Record<string, number>
+  /** 'YYYY-MM-DD' → cliques no link */
+  cliques: Record<string, number>
+  status: MetaAdsStatus
+  error?: string
+}
+
+/**
+ * Investimento dia a dia das campanhas "Grupo" (painel /ybera, visão diária).
+ * time_increment=1 devolve uma linha por campanha por dia; somamos só as de grupo.
+ */
+export async function getGrupoAdSpendDiario(since: string, until: string): Promise<GastoDiario> {
+  const out: GastoDiario = { gasto: {}, cliques: {}, status: 'ok' }
+  if (!TOKEN || !ACCOUNT_ID) return { ...out, status: 'not_configured' }
+  let url: string | null = `${BASE}/${ACCOUNT_ID}/insights?${new URLSearchParams({
+    level: 'campaign',
+    fields: 'campaign_name,spend,inline_link_clicks,date_start',
+    time_range: JSON.stringify({ since, until }),
+    time_increment: '1',
+    access_token: TOKEN,
+    limit: '500',
+  })}`
+  try {
+    for (let pagina = 0; url && pagina < 20; pagina++) {
+      const r: Response = await fetch(url, { next: { revalidate: 1800 } })
+      const json = await r.json()
+      if (!r.ok || json?.error) return { ...out, status: 'error', error: json?.error?.message ?? `HTTP ${r.status}` }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const d of (json.data ?? []) as any[]) {
+        if (!isGrupoCampaign(d.campaign_name)) continue
+        const dia = String(d.date_start)
+        out.gasto[dia] = (out.gasto[dia] ?? 0) + (1 + META_TAX_RATE) * parseFloat(d.spend ?? '0')
+        out.cliques[dia] = (out.cliques[dia] ?? 0) + Number(d.inline_link_clicks ?? 0)
+      }
+      url = json?.paging?.next ?? null
+    }
+  } catch (e) {
+    return { ...out, status: 'error', error: e instanceof Error ? e.message : 'falha' }
+  }
+  return out
+}

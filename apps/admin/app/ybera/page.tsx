@@ -2,6 +2,8 @@ import { createAdminClient } from '@/lib/supabase'
 import { getGrupoAdSpend, getGrupoAdSpendPorMes } from '@/lib/meta-ads'
 import { fetchCurrentMonthOrders, fetchYberaOrders, groupByMonth, type YberaOrder } from '@/lib/ybera-api'
 import Sidebar from '../components/Sidebar'
+import Diario from './Diario'
+import { carregarDiarioYbera } from '@/lib/ybera-diario'
 import { META_TAX_RATE } from '@/lib/meta-ads-quiz'
 
 export const dynamic = 'force-dynamic'
@@ -64,12 +66,15 @@ async function getCurrentMonthLeads(): Promise<number> {
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
-export default async function YberaPage() {
-  const [rows, adsResult, liveLeads, liveOrdersResult] = await Promise.all([
+export default async function YberaPage({ searchParams }: { searchParams: Promise<{ dias?: string }> }) {
+  const sp = await searchParams
+  const nDias = [7, 30, 90].includes(Number(sp.dias)) ? Number(sp.dias) : 30
+  const [rows, adsResult, liveLeads, liveOrdersResult, diario] = await Promise.all([
     getYberaData(),
     getGrupoAdSpend('this_month'),
     getCurrentMonthLeads(),
     fetchCurrentMonthOrders(),
+    carregarDiarioYbera(nDias).catch((e) => { console.error('[ybera] diário', e); return null }),
   ])
 
   const currentYM = new Date().toISOString().slice(0, 7) // '2026-06'
@@ -221,6 +226,9 @@ export default async function YberaPage() {
             </div>
           </div>
         </div>
+
+        {/* ── Dia a dia + os leads compram? (12/11/2026) ── */}
+        {diario && <Diario d={diario} nDias={nDias} />}
 
         {/* ── Setup banners ── */}
         {yberaNoToken && (

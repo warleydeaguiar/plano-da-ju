@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getGrupoAdSpendPorMes } from '@/lib/meta-ads'
+import { getGrupoAdSpendDiario, getGrupoAdSpendPorMes } from '@/lib/meta-ads'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,6 +14,11 @@ export const dynamic = 'force-dynamic'
  * Protegido pelo middleware do admin (Bearer CRON_SECRET/ADMIN_SECRET).
  */
 export async function GET(req: NextRequest) {
+  // ?diario=2026-11-01,2026-11-12 → gasto dia a dia (o que o /ybera mostra na visão diária)
+  const diario = (req.nextUrl.searchParams.get('diario') ?? '').split(',')
+  if (diario.length === 2 && diario.every((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))) {
+    return NextResponse.json(await getGrupoAdSpendDiario(diario[0], diario[1]))
+  }
   const meses = (req.nextUrl.searchParams.get('meses') ?? '')
     .split(',').map(m => m.trim()).filter(m => /^\d{4}-\d{2}$/.test(m)).slice(0, 12)
   if (meses.length === 0) {
