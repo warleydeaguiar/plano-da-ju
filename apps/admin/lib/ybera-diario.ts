@@ -19,6 +19,8 @@ import { fetchYberaOrders } from '@/lib/ybera-api'
 import { normEmail, normName, normPhoneKey } from '@/lib/ybera-match'
 
 const BR = 3 * 3600_000
+/** Comissão da afiliada sobre as vendas da Ybera (Warley, 12/11/2026: 20%). */
+export const COMISSAO_YBERA = Number(process.env.YBERA_COMISSAO ?? '0.20')
 export const diaBR = (iso: string) => new Date(new Date(iso).getTime() - BR).toISOString().slice(0, 10)
 
 export type ComoCasou = 'email' | 'telefone' | 'nome'

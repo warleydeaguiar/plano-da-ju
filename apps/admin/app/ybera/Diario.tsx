@@ -1,4 +1,4 @@
-import type { DiarioYbera, ComoCasou } from '@/lib/ybera-diario'
+import { COMISSAO_YBERA, type DiarioYbera, type ComoCasou, type LinhaDia } from '@/lib/ybera-diario'
 
 /**
  * Painel /ybera — visão DIA A DIA (investimento × leads × vendas) e
@@ -33,6 +33,66 @@ function Card({ rotulo, valor, sub, cor }: { rotulo: string; valor: string; sub?
       <div style={{ fontSize: 11, color: gray, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4 }}>{rotulo}</div>
       <div style={{ fontSize: 22, fontWeight: 700, color: cor ?? ink, marginTop: 6, lineHeight: 1.1 }}>{valor}</div>
       {sub && <div style={{ fontSize: 11.5, color: gray, marginTop: 5, lineHeight: 1.4 }}>{sub}</div>}
+    </div>
+  )
+}
+
+/** Investimento × comissão por dia (SVG puro, sem biblioteca). */
+function GraficoRetorno({ dias, hoje }: { dias: LinhaDia[]; hoje: string }) {
+  const serie = [...dias].sort((a, b) => a.dia.localeCompare(b.dia))
+  const W = 1000, H = 230, topo = 14, base = 26, esq = 46
+  const alto = H - topo - base
+  const max = Math.max(1, ...serie.map((l) => Math.max(l.investido ?? 0, l.vendas * COMISSAO_YBERA)))
+  const passo = (W - esq - 8) / serie.length
+  const larg = Math.max(2, Math.min(16, passo / 2 - 2))
+  const y = (v: number) => topo + alto - (v / max) * alto
+  const marcas = [0, 0.25, 0.5, 0.75, 1].map((f) => f * max)
+  const cadaRotulo = Math.ceil(serie.length / 12)
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img"
+      aria-label="Investimento e comissão por dia">
+      {marcas.map((m, i) => (
+        <g key={i}>
+          <line x1={esq} x2={W - 4} y1={y(m)} y2={y(m)} stroke="rgba(0,0,0,0.06)" />
+          <text x={esq - 6} y={y(m) + 4} fontSize="11" fill={gray} textAnchor="end">{m >= 1000 ? `${(m / 1000).toFixed(1)}k` : Math.round(m)}</text>
+        </g>
+      ))}
+      {serie.map((l, i) => {
+        const x0 = esq + i * passo + passo / 2
+        const inv = l.investido ?? 0
+        const com = l.vendas * COMISSAO_YBERA
+        const comLead = l.vendasDeLead * COMISSAO_YBERA
+        const eHoje = l.dia === hoje
+        return (
+          <g key={l.dia} opacity={eHoje ? 0.45 : 1}>
+            <title>{`${diaCurto(l.dia)} · investido ${brl(inv)} · comissão ${brl(com)} (de leads ${brl(comLead)})`}</title>
+            <rect x={x0 - larg - 1} y={y(inv)} width={larg} height={topo + alto - y(inv)} rx="2" fill="#E4A3A3" />
+            <rect x={x0 + 1} y={y(com)} width={larg} height={topo + alto - y(com)} rx="2" fill="#A8DCC3" />
+            <rect x={x0 + 1} y={y(comLead)} width={larg} height={topo + alto - y(comLead)} rx="2" fill={green} />
+            {i % cadaRotulo === 0 && (
+              <text x={x0} y={H - 8} fontSize="11" fill={gray} textAnchor="middle">{l.dia.slice(8, 10)}/{l.dia.slice(5, 7)}</text>
+            )}
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
+
+function LinhaRoi({ titulo, sub, comissao, investido }: { titulo: string; sub: string; comissao: number; investido: number | null }) {
+  const lucro = investido == null ? null : comissao - investido
+  const roi = investido ? (comissao - investido) / investido : null
+  const cor = lucro == null ? ink : lucro >= 0 ? green : '#DC2626'
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1.6fr) repeat(3, minmax(110px, 1fr))', gap: 12, alignItems: 'center', padding: '12px 0', borderTop: linha }}>
+      <div>
+        <div style={{ fontSize: 13.5, fontWeight: 700, color: ink }}>{titulo}</div>
+        <div style={{ fontSize: 11.5, color: gray, marginTop: 2, lineHeight: 1.4 }}>{sub}</div>
+      </div>
+      <div><div style={{ fontSize: 10.5, color: gray, textTransform: 'uppercase', fontWeight: 600 }}>Comissão</div><div style={{ fontSize: 16, fontWeight: 700, color: ink }}>{brl(comissao)}</div></div>
+      <div><div style={{ fontSize: 10.5, color: gray, textTransform: 'uppercase', fontWeight: 600 }}>Lucro</div><div style={{ fontSize: 16, fontWeight: 700, color: cor }}>{brl(lucro)}</div></div>
+      <div><div style={{ fontSize: 10.5, color: gray, textTransform: 'uppercase', fontWeight: 600 }}>ROI</div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: cor }}>{roi == null ? '—' : `${roi >= 0 ? '+' : ''}${(roi * 100).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}%`}</div></div>
     </div>
   )
 }
@@ -81,6 +141,41 @@ export default function Diario({ d, nDias }: { d: DiarioYbera; nDias: number }) 
         <Card rotulo="Vendas ÷ investido" valor={roas == null ? '—' : `${roas.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}×`}
           sub="sobre o valor vendido (não a comissão)" />
       </div>
+
+      {/* ── Retorno: comissão de 20% × investimento ── */}
+      {(() => {
+        // Sem HOJE: o investimento de hoje já existe, mas os pedidos de hoje a Ybera só publica amanhã.
+        const fechados = d.dias.filter((l) => l.dia !== d.ate)
+        const inv = t.investido == null ? null : fechados.reduce((s, l) => s + (l.investido ?? 0), 0)
+        const vendas = fechados.reduce((s, l) => s + l.vendas, 0)
+        const vendasLead = fechados.reduce((s, l) => s + l.vendasDeLead, 0)
+        const pc = `${Math.round(COMISSAO_YBERA * 100)}%`
+        return (
+          <div style={{ background: '#fff', borderRadius: 14, border: linha, padding: '18px 20px', marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ fontSize: 14.5, fontWeight: 700, color: ink }}>Retorno: comissão de {pc} × investimento em anúncio</div>
+              <div style={{ fontSize: 11.5, color: gray }}>Período fechado, sem hoje · investido {brl(inv)}</div>
+            </div>
+            <div style={{ marginTop: 10 }}>
+              <LinhaRoi titulo="Vendas que vieram do anúncio" comissao={vendasLead * COMISSAO_YBERA} investido={inv}
+                sub={`${pc} de ${brl(vendasLead)} — pedidos de quem virou lead no quiz antes de comprar. O número mais justo.`} />
+              <LinhaRoi titulo={`Leads destes ${nDias} dias, até agora`} comissao={c.valor * COMISSAO_YBERA} investido={inv}
+                sub={`${pc} do que os ${num(c.compraram)} leads do período já compraram. Sobe nos próximos dias (compram em ~${c.diasMedios == null ? '?' : Math.round(c.diasMedios)} dias).`} />
+              <LinhaRoi titulo="Todas as vendas da Ybera" comissao={vendas * COMISSAO_YBERA} investido={inv}
+                sub={`${pc} de ${brl(vendas)} — inclui quem compra sem passar pelo quiz (grupos antigos, indicação). Teto otimista.`} />
+            </div>
+            <div style={{ marginTop: 14 }}>
+              <GraficoRetorno dias={d.dias} hoje={d.ate} />
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 11.5, color: gray, marginTop: 6 }}>
+                <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: '#E4A3A3', marginRight: 5 }} />Investido</span>
+                <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: green, marginRight: 5 }} />Comissão das vendas de leads</span>
+                <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: '#A8DCC3', marginRight: 5 }} />Comissão do resto das vendas</span>
+                <span>· hoje aparece apagado (vendas ainda não publicadas)</span>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ── Os leads compram? ── */}
       <div style={{ background: '#fff', borderRadius: 14, border: linha, padding: '18px 20px', marginBottom: 12 }}>
