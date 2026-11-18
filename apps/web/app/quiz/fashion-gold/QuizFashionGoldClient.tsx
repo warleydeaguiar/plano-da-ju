@@ -716,13 +716,13 @@ function Step4({ onNext, reviews }: { onNext: () => void; reviews: Testimonial[]
 // ═══════════════════════════════════════════════════════════
 // STEP 5 — PHONE
 // ═══════════════════════════════════════════════════════════
-function Step5({ onNext, phone, setPhone, toastPeople }: { onNext: () => void; phone: string; setPhone: (v: string) => void; toastPeople: Testimonial[] }) {
+function Step5({ onNext, phone, setPhone, toastPeople, passo = 5 }: { onNext: () => void; phone: string; setPhone: (v: string) => void; toastPeople: Testimonial[]; passo?: number }) {
   const fase = useFaseBF()
   const digits = phone.replace(/\D/g, '').slice(0, 11)
   const display = digits.length > 6 ? `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}` : digits.length > 2 ? `(${digits.slice(0,2)}) ${digits.slice(2)}` : digits
   const valid = digits.length >= 10
   return (
-    <StepShell step={5} total={7} footer={
+    <StepShell step={passo} total={7} footer={
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <CTA onClick={onNext} disabled={!valid}>Continuar</CTA>
         <div style={{ textAlign: 'center', fontSize: 10.5, color: T.muted }}>🔒 Seus dados estão protegidos. Não fazemos spam.</div>
@@ -784,10 +784,10 @@ function Step5({ onNext, phone, setPhone, toastPeople }: { onNext: () => void; p
 // ═══════════════════════════════════════════════════════════
 // STEP 6 — NAME (uma info por página)
 // ═══════════════════════════════════════════════════════════
-function Step6({ onNext, name, setName }: { onNext: () => void; name: string; setName: (v: string) => void }) {
+function Step6({ onNext, name, setName, passo = 6 }: { onNext: () => void; name: string; setName: (v: string) => void; passo?: number }) {
   const valid = name.trim().length >= 2
   return (
-    <StepShell step={6} total={7} footer={
+    <StepShell step={passo} total={7} footer={
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <CTA onClick={onNext} disabled={!valid}>Continuar</CTA>
         <div style={{ textAlign: 'center', fontSize: 10.5, color: T.muted }}>🔒 Seus dados estão protegidos. Não fazemos spam.</div>
@@ -936,7 +936,15 @@ export default function QuizFashionGoldClient({ experimentos = [] }: { experimen
   // Na variante da roleta o caminho é mais curto: quem girou já viu a oferta na
   // arte e quer o desconto — as telas de "como funciona", sorteios e
   // depoimentos só atrasam. Vai direto para os dados.
-  const next = () => setStep(s => (mostraRoleta && s === 1 ? 5 : s + 1))
+  // Teste fg_nome_primeiro (18/11/2026): 1/3 desistia na tela do TELEFONE (2.071 → 1.375 em 7 dias).
+  // Na variante, o nome vem antes — a pergunta mais fácil primeiro, o telefone depois de já ter começado.
+  const nomePrimeiro = experimento?.flag_key === 'fg_nome_primeiro' && lado === 'variant'
+  const ordem = nomePrimeiro ? [1, 6, 5, 7] : [1, 5, 6, 7]
+  const next = () => setStep(s => {
+    if (!mostraRoleta) return s + 1
+    const i = ordem.indexOf(s)
+    return i >= 0 && i < ordem.length - 1 ? ordem[i + 1] : s + 1
+  })
 
   // A pessoa vai DIRETO para a distribuição de grupos (/g/entrar), que escolhe
   // um grupo com vaga e redireciona para o convite.
@@ -1023,8 +1031,8 @@ export default function QuizFashionGoldClient({ experimentos = [] }: { experimen
       {step === 2 && <Step2 onNext={next} />}
       {step === 3 && <Step3 onNext={next} winner={winner} />}
       {step === 4 && <Step4 onNext={next} reviews={reviews} />}
-      {step === 5 && <Step5 onNext={next} phone={phone} setPhone={setPhone} toastPeople={toastPeople} />}
-      {step === 6 && <Step6 onNext={next} name={name} setName={setName} />}
+      {step === 5 && <Step5 onNext={next} phone={phone} setPhone={setPhone} toastPeople={toastPeople} passo={nomePrimeiro ? 6 : 5} />}
+      {step === 6 && <Step6 onNext={next} name={name} setName={setName} passo={nomePrimeiro ? 5 : 6} />}
       {step === 7 && <Step7 onSubmit={handleSubmit} email={email} setEmail={setEmail} loading={loading} />}
       {step === 8 && <StepDescontoLiberado nome={name} href={destinoFinal()} telefone={phone} aoClicar={(destino) => {
         // keepalive: o clique tira a pessoa da página e o envio não pode morrer junto.
